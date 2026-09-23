@@ -25,9 +25,9 @@ They are a starting point, not a fixture — see
 | | | Main lifts | Arms & abs |
 |---|---|---|---|
 | 1 | **Push A** · chest focus | DB bench `3x6–10` · DB shoulder press `3x8–12` · cable crossover `3x12–15` · dips `3x6–12` | hanging leg raise `3x10–15` |
-| 2 | **Pull A** · vertical pull focus | pull-ups `3x5–10` · barbell row `3x6–10` · row machine `3x10–12` | barbell curl `3x8–12` · ab machine `3x12–15` |
+| 2 | **Pull A** · vertical pull focus | pull-ups `3x5–10` · barbell row `3x6–10` · row machine `3x10–12` | barbell curl `3x8–12` · rotary torso machine `3x12–15` |
 | 3 | **Legs** | back squat `3x6–10` · RDL `3x8–10` · Bulgarian split squat `2x8–10` | hanging leg raise `3x10–15` |
-| 4 | **Push B** · shoulder focus | DB shoulder press `3x6–10` · DB bench `3x10–12` · cable crossover `3x12–15` | pushdown `3x10–15` · ab machine `3x12–15` |
+| 4 | **Push B** · shoulder focus | DB shoulder press `3x6–10` · DB bench `3x10–12` · cable crossover `3x12–15` | pushdown `3x10–15` · rotary torso machine `3x12–15` |
 | 5 | **Pull B** · row focus | lat pulldown `3x8–12` · DB row `3x8–12` · row machine `3x10–12` | DB curl `3x10–12` · hanging leg raise `3x10–15` |
 
 Pull-ups and dips are "as many as you can" in spirit. Here they climb a rep

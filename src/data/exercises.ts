@@ -188,11 +188,13 @@ export const EXERCISES: Exercise[] = [
 
   // ---------- abs ----------
   { id: "hanging_leg_raise", name: "Hanging leg raise", patterns: ["abs"], increment: 2.5, bodyweight: true },
+  // Retired: the same machine as ab_machine below. Kept, disabled, so any
+  // record that points at it still resolves.
+  { id: "rotation_machine", name: "Rotation machine", patterns: ["abs"], increment: 5, enabled: false, cue: "Turn from the ribs, hips still. Both directions." },
+  { id: "cable_crunch", name: "Cable crunch", patterns: ["abs"], increment: 5 },
   // Seated twist against a stack — rotation rather than flexion, so it earns
   // its place next to the crunches rather than duplicating one.
-  { id: "rotation_machine", name: "Rotation machine", patterns: ["abs"], increment: 5, cue: "Turn from the ribs, hips still. Both directions." },
-  { id: "cable_crunch", name: "Cable crunch", patterns: ["abs"], increment: 5 },
-  { id: "ab_machine", name: "Ab machine", patterns: ["abs"], increment: 5, cue: "Curl the ribs toward the hips. Slow on the way back." },
+  { id: "ab_machine", name: "Rotary torso machine", patterns: ["abs"], increment: 5, cue: "Turn from the ribs, hips still. Both directions." },
   { id: "plank", name: "Plank", patterns: ["abs"], increment: 0, bodyweight: true, timed: true },
 ];
 
