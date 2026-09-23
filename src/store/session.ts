@@ -25,6 +25,7 @@ import {
 import {
   CARDIO_DEFAULT,
   CARDIO_MINUTES,
+  COURSE_STEP,
   TIME_STEP,
   cardioById,
   cardioPool,
@@ -1469,15 +1470,23 @@ export const courseFor = (state: SessionState, cardioId: string): number | undef
 };
 
 /**
- * Set the distance a timed machine runs. Takes effect from the next block —
- * one already on screen keeps the distance it was started with.
+ * Step the distance a timed machine runs by one `COURSE_STEP`, never below
+ * one step. Takes effect from the next block — one already on screen keeps
+ * the distance it was started with.
  */
-export const setCourse = (
+export const nudgeCourse = (
   state: SessionState,
   cardioId: string,
-  course: number,
-): SessionState =>
-  course > 0 ? { ...state, courses: { ...state.courses, [cardioId]: course } } : state;
+  direction: 1 | -1,
+): SessionState => {
+  const current = courseFor(state, cardioId);
+  const machine = cardioById(cardioId);
+  if (current === undefined || !machine) return state;
+  const step = COURSE_STEP[machine.metric.unit];
+  // Snapped onto the grid, so the records only ever land on whole steps.
+  const next = Math.max(step, Math.round(current / step) * step + step * direction);
+  return { ...state, courses: { ...state.courses, [cardioId]: next } };
+};
 
 /** What a block on this machine is measured over: a course, or the minutes. */
 const cardioLength = (state: SessionState, cardioId: string) => {

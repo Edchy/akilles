@@ -4,6 +4,7 @@ import { Pressable, Text, TextInput, View } from "react-native";
 import { colors, radii } from "@/constants/theme";
 import {
   CARDIO_MINUTES,
+  COURSE_STEP,
   METRICS,
   cardioById,
   cardioPool,
@@ -34,11 +35,11 @@ import {
   hiddenConditioningList,
   hiddenExercises,
   isCustom,
+  nudgeCourse,
   removeConditioning,
   removeExercise,
   restoreConditioning,
   restoreExercise,
-  setCourse,
   useSession,
 } from "@/store/session";
 
@@ -899,7 +900,7 @@ function Conditioning() {
                   <CourseEditor
                     cardioId={row.id}
                     course={row.course!}
-                    onSet={(course) => setState((s) => setCourse(s, row.id, course))}
+                    onNudge={(d) => setState((s) => nudgeCourse(s, row.id, d))}
                   />
                 ) : null}
               </View>
@@ -918,28 +919,41 @@ function Conditioning() {
 }
 
 /**
- * The distance a timed machine runs. Typed rather than picked from a list,
- * since the point is that it can be whatever you want.
+ * The distance a timed machine runs, stepped rather than typed: every
+ * distance keeps its own record, so only whole steps are offered.
  */
 function CourseEditor({
   cardioId,
   course,
-  onSet,
+  onNudge,
 }: {
   cardioId: string;
   course: number;
-  onSet: (course: number) => void;
+  onNudge: (direction: 1 | -1) => void;
 }) {
   const machine = cardioById(cardioId)!;
-  const [draft, setDraft] = useState<string | null>(null);
+  const atMin = course <= COURSE_STEP[machine.metric.unit];
 
-  const commit = () => {
-    if (draft !== null) {
-      const parsed = parseFloat(draft.replace(",", "."));
-      if (!Number.isNaN(parsed) && parsed > 0) onSet(parsed);
-    }
-    setDraft(null);
-  };
+  const step = (label: string, direction: 1 | -1, disabled = false) => (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={direction === 1 ? "Longer" : "Shorter"}
+      accessibilityState={{ disabled }}
+      disabled={disabled}
+      onPress={() => onNudge(direction)}
+      style={({ pressed }) => ({
+        width: 52,
+        height: 52,
+        alignItems: "center",
+        justifyContent: "center",
+        borderRadius: 999,
+        backgroundColor: colors.surface,
+        opacity: disabled ? 0.3 : pressed ? 0.6 : 1,
+      })}
+    >
+      <Text style={{ color: colors.text, fontSize: 24, fontWeight: "700" }}>{label}</Text>
+    </Pressable>
+  );
 
   return (
     <View
@@ -952,30 +966,22 @@ function CourseEditor({
       }}
     >
       <Label>Distance</Label>
-      <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
-        <TextInput
-          value={draft ?? String(Number(course.toFixed(machine.metric.decimals)))}
-          onChangeText={setDraft}
-          onBlur={commit}
-          onSubmitEditing={commit}
-          keyboardType="decimal-pad"
-          returnKeyType="done"
-          selectTextOnFocus
+      <View
+        style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}
+      >
+        {step("−", -1, atMin)}
+        <Text
           style={{
-            flex: 1,
-            minHeight: 48,
-            paddingHorizontal: 14,
-            borderRadius: 12,
-            backgroundColor: colors.surface,
             color: colors.text,
-            fontSize: 20,
-            fontWeight: "700",
+            fontSize: 28,
+            fontWeight: "800",
+            letterSpacing: -0.8,
             fontVariant: ["tabular-nums"],
           }}
-        />
-        <Text style={{ color: colors.muted, fontSize: 16, fontWeight: "700", width: 30 }}>
-          {machine.metric.unit}
+        >
+          {courseLabel(machine, course)}
         </Text>
+        {step("+", 1)}
       </View>
       <Text style={{ color: colors.faint, fontSize: 12, lineHeight: 17 }}>
         Your time over it is the score. Each distance keeps its own times — change
