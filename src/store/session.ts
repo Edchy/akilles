@@ -94,7 +94,7 @@ export type Item = Entry & {
   /** Exercise id supersetted into this one, if any. */
   supersetWith?: string;
   /**
-   * The folded-in floater's own item, so it keeps its exercise, scheme and
+   * The folded-in partner's own item, so it keeps its exercise, scheme and
    * set count rather than inheriting this one's.
    */
   supersetEntry?: Item;
@@ -548,7 +548,7 @@ export const updateEntry = (
   state: SessionState,
   workoutId: string,
   entryId: string,
-  patch: Partial<Pick<Entry, "scheme" | "sets" | "floater">>,
+  patch: Partial<Pick<Entry, "scheme" | "sets">>,
 ): SessionState =>
   patchWorkout(state, workoutId, (w) => ({
     ...w,
@@ -776,7 +776,9 @@ export const buildWorkout = (
             exerciseId,
             weight,
             logged: Array<number | null>(setsFor(e)).fill(null),
-            warmup: first && !e.floater,
+            // Arms and core are small and already warm by the time they
+            // come round — a ramp there is just more to tap through.
+            warmup: first && group !== "arms" && group !== "core",
           };
         });
 
@@ -1122,26 +1124,39 @@ export const skipExercise = (state: SessionState): SessionState => {
   };
 };
 
-/** Floaters still ahead of the cursor — the valid superset partners. */
+/**
+ * Whether a later item can be folded into the one on screen. Any lift can:
+ * what to pair is your call, not the program's. Not conditioning, not one
+ * already carrying a partner, not speed work (its weight comes from
+ * elsewhere), and not one you have already started.
+ */
+const canPair = (it: Item): boolean =>
+  !isConditioning(it) &&
+  !it.supersetWith &&
+  !it.derive &&
+  !it.logged.some((r) => r !== null);
+
+/** Lifts still ahead of the cursor — the valid superset partners. */
 export const supersetOptions = (state: SessionState): Exercise[] => {
   if (!state.active) return [];
   const { items, cursor } = state.active;
   return items
-    .filter((it, i) => i > cursor && it.floater && !isConditioning(it))
+    .filter((it, i) => i > cursor && canPair(it))
     .map((it) => byId(it.exerciseId)!);
 };
 
 /**
- * Pair a floater into the current exercise. The floater is removed from the
- * tail of the workout so it isn't prescribed twice.
+ * Pair a later lift into the current exercise. It is removed from further
+ * down the workout so it isn't prescribed twice.
  */
 export const addSuperset = (state: SessionState, exerciseId: string): SessionState => {
   if (!state.active) return state;
   const { items, cursor } = state.active;
-  const floater = items.find(
-    (f, j) => j > cursor && f.floater && f.exerciseId === exerciseId,
+  const at = items.findIndex(
+    (f, j) => j > cursor && canPair(f) && f.exerciseId === exerciseId,
   );
-  if (!floater) return state;
+  if (at === -1) return state;
+  const partner = items[at];
   return {
     ...state,
     active: {
@@ -1152,12 +1167,12 @@ export const addSuperset = (state: SessionState, exerciseId: string): SessionSta
             ? {
                 ...it,
                 supersetWith: exerciseId,
-                supersetEntry: floater,
-                supersetLogged: Array<number | null>(setsFor(floater!)).fill(null),
+                supersetEntry: partner,
+                supersetLogged: Array<number | null>(setsFor(partner)).fill(null),
               }
             : it,
         )
-        .filter((it, i) => !(i > cursor && it.floater && it.exerciseId === exerciseId)),
+        .filter((_, i) => i !== at),
     },
   };
 };
@@ -1167,7 +1182,7 @@ export const addSuperset = (state: SessionState, exerciseId: string): SessionSta
  * keeping anything already logged against it.
  *
  * "Its own place" is the slot order of the module, not wherever it happened
- * to sit — so a floater released after one was already re-queued still lands
+ * to sit — so a partner released after one was already re-queued still lands
  * in the right order.
  */
 export const removeSuperset = (state: SessionState): SessionState => {

@@ -148,7 +148,7 @@ export default function WorkoutScreen() {
 
   const p = currentPrescription(state)!;
   const partner = item.supersetWith ? byId(item.supersetWith) : undefined;
-  // The floater keeps its own scheme, set count and set log when folded in.
+  // The partner keeps its own scheme, set count and set log when folded in.
   const partnerP = partnerPrescription(state);
   const options = supersetOptions(state);
 
@@ -1387,7 +1387,7 @@ function Why({ prescription }: { prescription: ReturnType<typeof currentPrescrip
   );
 }
 
-/** The folded-in floater: its own target and its own tappable circles. */
+/** The folded-in partner: its own target and its own tappable circles. */
 function Partner({
   name,
   sets,

@@ -22,7 +22,7 @@ A fresh install starts with the five below — push, pull, legs, push, pull.
 They are a starting point, not a fixture — see
 [Editing your training](#editing-your-training).
 
-| | | Exercises | Superset-able |
+| | | Main lifts | Arms & abs |
 |---|---|---|---|
 | 1 | **Push A** · chest focus | DB bench `3x6–10` · DB shoulder press `3x8–12` · cable crossover `3x12–15` · dips `3x6–12` | hanging leg raise `3x10–15` |
 | 2 | **Pull A** · vertical pull focus | pull-ups `3x5–10` · barbell row `3x6–10` · row machine `3x10–12` | barbell curl `3x8–12` · ab machine `3x12–15` |
@@ -61,8 +61,9 @@ finish it — **Ready** stays inert until all three are ticked, so the screen
 cannot be tapped past without reading. Nothing here is logged or affects
 progression; bodyweight and timed movements get no ramp at all.
 
-**Arms and abs close each session** and are floaters: fold them into an
-earlier lift's rest period and the session doesn't get longer.
+**Arms and abs close each session**; fold them into an earlier lift's rest
+period as a superset and the session doesn't get longer. They get no warm-up
+ramp — by then they are warm.
 
 **Logging a set** — one circle per set. Tap it and it fills at the target reps;
 tap again and it counts down if you got fewer; tap past 1 and it clears.
@@ -95,10 +96,9 @@ range is too narrow for that: `8–10` is 8 → 9 → 10. Each exercise is track
 own ladders at their own weights, and changing a slot's range starts that lift
 on a new record.
 
-**Superset** folds an arms/abs exercise from later in the workout into the
-current one, removing it from the tail so it isn't done twice. Only slots
-marked as able to pair — the **Superset** setting on a slot in **Plan** — are
-offered.
+**Superset** folds any lift from later in the workout into the current one,
+removing it from further down so it isn't done twice. What to pair is your
+call: every lift still ahead is offered.
 
 A `×` on the partner card undoes the pairing: the exercise goes back to its own
 place in the workout's slot order, keeping any sets already logged against it.
@@ -261,13 +261,10 @@ Everything here is saved on the phone (AsyncStorage, under `achilles/state`)
 after every change, so it survives reloads and restarts. It is lost only if
 Expo Go's data is cleared or the app is uninstalled.
 
-**Exercises inside a workout.** Tap a workout open, then tap a slot:
-- swap which exercise fills it, from everything in the catalogue of that
-  movement type
-- sets, from 1 to 10
-- rep range: any bottom and top, from 1 to 30 reps
-- whether it can be supersetted into an earlier exercise
-- remove it from the workout
+**Exercises inside a workout.** Tap a workout open, then tap an exercise to
+see what it can be swapped for; tap one and it's swapped. **Sets & reps**
+under the list changes the set count and rep range (any bottom and top, 1–30),
+and **Remove** takes it out of the workout.
 
 **+ Add exercise** adds a slot by movement type, filled with the first exercise
 of that type the workout is not already using. **Hold and drag** a slot to

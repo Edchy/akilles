@@ -72,9 +72,8 @@ export function Modules({ onDragChange }: { onDragChange: (dragging: boolean) =>
   return (
     <View style={{ gap: 24 }}>
       <Text style={{ color: colors.faint, fontSize: 14, lineHeight: 20 }}>
-        Your workouts run top to bottom, then start again. Hold one and drag to
-        change the order; tap it to change what is in it. S marks work you can
-        fold into an earlier exercise's rest.
+        Your workouts run top to bottom, then start again. Tap one to change
+        what is in it; hold and drag to reorder.
       </Text>
 
       <DragList
@@ -278,7 +277,6 @@ function Module({
           opacity: pressed && !drag.active ? 0.6 : 1,
         })}
       >
-        <Grip active={drag.active} />
         <View style={{ flex: 1, gap: 1 }}>
           <Text style={{ color: colors.text, fontSize: 19, fontWeight: "700" }}>
             {workout.name || "Untitled"}
@@ -423,7 +421,11 @@ function Module({
   );
 }
 
-/** One slot: what it is for, what fills it, and — opened — everything about it. */
+/**
+ * One slot. Tapping it does the common thing — swap the exercise — in one
+ * more tap, and closes. Sets, reps and removing the slot are rarer, so they
+ * sit one level further in rather than crowding every swap.
+ */
 function Slot({
   workoutId,
   entry,
@@ -438,6 +440,8 @@ function Slot({
   drag: Drag;
 }) {
   const { state, setState } = useSession();
+  // "Sets & reps" opened, rather than the swap list.
+  const [tuning, setTuning] = useState(false);
   const [confirming, setConfirming] = useState(false);
 
   const options = poolFor(state, workoutId, entry);
@@ -450,19 +454,27 @@ function Slot({
   const update = (patch: Parameters<typeof updateEntry>[3]) =>
     setState((s) => updateEntry(s, workoutId, entry.id, patch));
 
+  const close = () => {
+    setTuning(false);
+    setConfirming(false);
+    onToggle();
+  };
+
   return (
     <View
       style={{
         borderRadius: 14,
-        backgroundColor: drag.active ? colors.raised : "transparent",
+        backgroundColor: drag.active || expanded ? colors.raised : "transparent",
+        marginHorizontal: -10,
+        paddingHorizontal: 10,
       }}
     >
       <Pressable
         accessibilityRole="button"
         accessibilityState={{ expanded }}
-        accessibilityHint="Hold and drag to reorder"
+        accessibilityHint="Tap to swap. Hold and drag to reorder."
         {...moveActions(drag)}
-        onPress={onToggle}
+        onPress={expanded ? close : onToggle}
         onLongPress={drag.start}
         onPressOut={drag.cancel}
         delayLongPress={250}
@@ -470,115 +482,102 @@ function Slot({
           flexDirection: "row",
           alignItems: "center",
           gap: 10,
-          minHeight: 48,
+          minHeight: 52,
           opacity: pressed && !drag.active ? 0.6 : 1,
         })}
       >
-        <Grip active={drag.active} />
-        <View style={{ flex: 1, gap: 1 }}>
-          <Text
-            style={{
-              color: colors.faint,
-              fontSize: 10,
-              fontWeight: "800",
-              letterSpacing: 0.9,
-              textTransform: "uppercase",
-            }}
-          >
-            {entry.slot}
-          </Text>
-          <Text style={{ color: colors.text, fontSize: 15, fontWeight: "600" }}>
-            {byId(exerciseId)?.name ?? "—"}
-          </Text>
-        </View>
-
-        {/* A floater can be folded into an earlier exercise's rest period. */}
-        {entry.floater ? (
-          <Text
-            accessibilityLabel="Can be supersetted"
-            style={{
-              color: colors.line,
-              fontSize: 9,
-              fontWeight: "800",
-              letterSpacing: 0.5,
-            }}
-          >
-            S
-          </Text>
-        ) : null}
-
+        <Text style={{ flex: 1, color: colors.text, fontSize: 17, fontWeight: "600" }}>
+          {byId(exerciseId)?.name ?? "—"}
+        </Text>
         <Text
           style={{
             color: colors.faint,
-            fontSize: 13,
+            fontSize: 14,
             fontWeight: "700",
             fontVariant: ["tabular-nums"],
           }}
         >
           {sets} × {repLabel(entry.scheme)}
         </Text>
-
-        <Text style={{ color: expanded ? colors.acid : colors.faint, fontSize: 12 }}>
-          {expanded ? "▲" : "▼"}
-        </Text>
       </Pressable>
 
-      {expanded ? (
-        <View style={{ gap: 14, paddingBottom: 14, paddingTop: 4 }}>
+      {expanded && !tuning ? (
+        <View style={{ gap: 6, paddingBottom: 10 }}>
           {options.length > 1 ? (
-            <View style={{ gap: 2 }}>
-              {options.map((id) => {
-                const active = id === exerciseId;
-                const used = taken.has(id) && !active;
-                return (
-                  <Pressable
-                    key={id}
-                    accessibilityRole="button"
-                    accessibilityState={{ selected: active, disabled: used }}
-                    disabled={used}
-                    onPress={() =>
-                      setState((s) => chooseExercise(s, workoutId, entry.id, id))
-                    }
-                    style={({ pressed }) => ({
-                      flexDirection: "row",
-                      alignItems: "center",
-                      gap: 10,
-                      minHeight: 48,
-                      paddingHorizontal: 14,
-                      borderRadius: 12,
-                      backgroundColor: active ? colors.acid : colors.raised,
-                      opacity: used ? 0.35 : pressed ? 0.7 : 1,
-                    })}
+            options.map((id) => {
+              const active = id === exerciseId;
+              const used = taken.has(id) && !active;
+              return (
+                <Pressable
+                  key={id}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: active, disabled: used }}
+                  disabled={used}
+                  onPress={() => {
+                    // One tap: swapped, and out of the way.
+                    if (!active) setState((s) => chooseExercise(s, workoutId, entry.id, id));
+                    close();
+                  }}
+                  style={({ pressed }) => ({
+                    flexDirection: "row",
+                    alignItems: "center",
+                    gap: 10,
+                    minHeight: 52,
+                    paddingHorizontal: 14,
+                    borderRadius: 12,
+                    backgroundColor: active ? colors.acid : colors.surface,
+                    opacity: used ? 0.35 : pressed ? 0.7 : 1,
+                  })}
+                >
+                  <Text
+                    style={{
+                      flex: 1,
+                      color: active ? colors.ink : colors.text,
+                      fontSize: 16,
+                      fontWeight: active ? "800" : "600",
+                    }}
                   >
-                    <Text
-                      style={{
-                        flex: 1,
-                        color: active ? colors.ink : colors.text,
-                        fontSize: 15,
-                        fontWeight: active ? "800" : "600",
-                      }}
-                    >
-                      {byId(id)!.name}
+                    {byId(id)!.name}
+                  </Text>
+                  {used ? (
+                    <Text style={{ color: colors.faint, fontSize: 12, fontWeight: "700" }}>
+                      in use
                     </Text>
-                    {used ? (
-                      <Text
-                        style={{
-                          color: colors.faint,
-                          fontSize: 10,
-                          fontWeight: "800",
-                          letterSpacing: 0.8,
-                          textTransform: "uppercase",
-                        }}
-                      >
-                        In use
-                      </Text>
-                    ) : null}
-                  </Pressable>
-                );
-              })}
-            </View>
-          ) : null}
+                  ) : null}
+                </Pressable>
+              );
+            })
+          ) : (
+            <Text
+              style={{ color: colors.faint, fontSize: 14, lineHeight: 20, paddingVertical: 6 }}
+            >
+              Nothing else to swap to. Add more under Exercises.
+            </Text>
+          )}
 
+          <View style={{ flexDirection: "row", marginHorizontal: -12 }}>
+            {confirming ? (
+              <Confirm
+                label="Remove"
+                onCancel={() => setConfirming(false)}
+                onConfirm={() => {
+                  setConfirming(false);
+                  setState((s) => removeEntry(s, workoutId, entry.id));
+                }}
+              />
+            ) : (
+              <>
+                <TextButton label="Sets & reps" onPress={() => setTuning(true)} />
+                <View style={{ flex: 1 }} />
+                <TextButton label="Remove" onPress={() => setConfirming(true)} />
+              </>
+            )}
+          </View>
+        </View>
+      ) : null}
+
+      {expanded && tuning ? (
+        <View style={{ gap: 12, paddingBottom: 12 }}>
           <Setting label="Sets">
             <Step
               glyph="−"
@@ -597,7 +596,7 @@ function Slot({
 
           {fixedRange ? (
             <Setting label="Reps">
-              <Text style={{ color: colors.faint, fontSize: 13 }}>
+              <Text style={{ color: colors.faint, fontSize: 14 }}>
                 {repLabel(entry.scheme)}, fast — speed work
               </Text>
             </Setting>
@@ -605,7 +604,7 @@ function Slot({
             // The ladder climbs from the bottom of the range to the top, then
             // adds weight. A changed range is a new record at its own weight.
             <>
-              <Setting label="Reps from">
+              <Setting label="Fewest reps">
                 <Step
                   glyph="−"
                   label="Lower the bottom of the rep range"
@@ -620,7 +619,7 @@ function Slot({
                   onPress={() => update({ scheme: rangeScheme(reps.min + 1, reps.max) })}
                 />
               </Setting>
-              <Setting label="Reps to">
+              <Setting label="Most reps">
                 <Step
                   glyph="−"
                   label="Lower the top of the rep range"
@@ -638,71 +637,22 @@ function Slot({
             </>
           )}
 
-          <Setting label="Superset">
-            <Chip
-              label={entry.floater ? "Can pair" : "On its own"}
-              selected={!!entry.floater}
-              onPress={() => update({ floater: !entry.floater })}
-            />
-          </Setting>
-
-          <View style={{ flexDirection: "row", marginHorizontal: -12 }}>
-            {confirming ? (
-              <Confirm
-                label="Remove from workout"
-                onCancel={() => setConfirming(false)}
-                onConfirm={() => {
-                  setConfirming(false);
-                  setState((s) => removeEntry(s, workoutId, entry.id));
-                }}
-              />
-            ) : (
-              <>
-                <TextButton label="Remove from workout" onPress={() => setConfirming(true)} />
-                <View style={{ flex: 1 }} />
-                {/* Picking an exercise or changing a number keeps the slot
-                    open for more changes; this is the way out. */}
-                <Pressable
-                  accessibilityRole="button"
-                  onPress={onToggle}
-                  style={({ pressed }) => ({
-                    justifyContent: "center",
-                    minHeight: 44,
-                    paddingHorizontal: 22,
-                    marginRight: 12,
-                    borderRadius: 999,
-                    backgroundColor: colors.acid,
-                    opacity: pressed ? 0.7 : 1,
-                  })}
-                >
-                  <Text style={{ color: colors.ink, fontSize: 14, fontWeight: "800" }}>
-                    Done
-                  </Text>
-                </Pressable>
-              </>
-            )}
-          </View>
+          <Pressable
+            accessibilityRole="button"
+            onPress={close}
+            style={({ pressed }) => ({
+              alignItems: "center",
+              justifyContent: "center",
+              minHeight: 48,
+              borderRadius: 999,
+              backgroundColor: colors.acid,
+              opacity: pressed ? 0.7 : 1,
+            })}
+          >
+            <Text style={{ color: colors.ink, fontSize: 15, fontWeight: "800" }}>Done</Text>
+          </Pressable>
         </View>
       ) : null}
-    </View>
-  );
-}
-
-/** Three short bars: the sign a row can be picked up. */
-function Grip({ active }: { active: boolean }) {
-  return (
-    <View style={{ gap: 3, paddingVertical: 4 }} accessible={false}>
-      {[0, 1, 2].map((i) => (
-        <View
-          key={i}
-          style={{
-            width: 12,
-            height: 2,
-            borderRadius: 1,
-            backgroundColor: active ? colors.acid : colors.line,
-          }}
-        />
-      ))}
     </View>
   );
 }
@@ -731,7 +681,7 @@ function Setting({ label, children }: { label: string; children: React.ReactNode
     <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
       <Text
         style={{
-          width: 72,
+          width: 96,
           color: colors.faint,
           fontSize: 10,
           fontWeight: "800",
@@ -809,7 +759,8 @@ function Step({
         alignItems: "center",
         justifyContent: "center",
         borderRadius: 999,
-        backgroundColor: colors.raised,
+        // Sits on the opened slot's raised panel, so one step darker.
+        backgroundColor: colors.surface,
         opacity: disabled ? 0.3 : pressed ? 0.7 : 1,
       })}
     >

@@ -125,11 +125,6 @@ export type Entry = {
    * the compound lifts over a week.
    */
   sets?: number;
-  /**
-   * Arms/abs work you can fold into an earlier exercise as a superset.
-   * Only entries marked here are offered as superset partners.
-   */
-  floater?: boolean;
 };
 
 export type Workout = {
@@ -152,9 +147,6 @@ const FULL_CYCLE: Authored[] = [
    * A and at 10–12 on Push B are two records at two weights. Pull-ups and dips
    * are "as many as you can" on paper — here they climb a range like
    * anything else, and hitting the top adds weight or takes off assistance.
-   *
-   * Arms and abs are floaters: they can be folded into an earlier exercise's
-   * rest as a superset.
    */
   {
     id: "push_a",
@@ -165,7 +157,7 @@ const FULL_CYCLE: Authored[] = [
       { slot: "Vertical press", pattern: "vertical_push", options: ["db_shoulder"], scheme: "volume" },
       { slot: "Chest fly", pattern: "chest_iso", options: ["cable_crossover"], scheme: "12-15" },
       { slot: "Dips", pattern: "triceps", options: ["dips"], scheme: "6-12" },
-      { slot: "Abs", pattern: "abs", options: ["hanging_leg_raise"], scheme: "10-15", floater: true },
+      { slot: "Abs", pattern: "abs", options: ["hanging_leg_raise"], scheme: "10-15" },
     ],
   },
   {
@@ -176,8 +168,8 @@ const FULL_CYCLE: Authored[] = [
       { slot: "Vertical pull", pattern: "vertical_pull", options: ["pullup"], scheme: "5-10" },
       { slot: "Heavy row", pattern: "horizontal_pull", options: ["bb_row"], scheme: "6-10" },
       { slot: "Machine row", pattern: "horizontal_pull", options: ["machine_row"], scheme: "10-12" },
-      { slot: "Biceps", pattern: "biceps", options: ["bb_curl"], scheme: "volume", floater: true },
-      { slot: "Abs", pattern: "abs", options: ["ab_machine"], scheme: "12-15", floater: true },
+      { slot: "Biceps", pattern: "biceps", options: ["bb_curl"], scheme: "volume" },
+      { slot: "Abs", pattern: "abs", options: ["ab_machine"], scheme: "12-15" },
     ],
   },
   {
@@ -188,7 +180,7 @@ const FULL_CYCLE: Authored[] = [
       { slot: "Squat", pattern: "squat", options: ["back_squat"], scheme: "6-10" },
       { slot: "Hinge", pattern: "hinge", options: ["rdl"], scheme: "8-10" },
       { slot: "Single leg", pattern: "lunge", options: ["bulgarian"], scheme: "8-10", sets: 2 },
-      { slot: "Abs", pattern: "abs", options: ["hanging_leg_raise"], scheme: "10-15", floater: true },
+      { slot: "Abs", pattern: "abs", options: ["hanging_leg_raise"], scheme: "10-15" },
     ],
   },
   {
@@ -199,8 +191,8 @@ const FULL_CYCLE: Authored[] = [
       { slot: "Vertical press", pattern: "vertical_push", options: ["db_shoulder"], scheme: "6-10" },
       { slot: "Horizontal press", pattern: "horizontal_push", options: ["db_bench"], scheme: "10-12" },
       { slot: "Chest fly", pattern: "chest_iso", options: ["cable_crossover"], scheme: "12-15" },
-      { slot: "Triceps", pattern: "triceps", options: ["pushdown"], scheme: "10-15", floater: true },
-      { slot: "Abs", pattern: "abs", options: ["ab_machine"], scheme: "12-15", floater: true },
+      { slot: "Triceps", pattern: "triceps", options: ["pushdown"], scheme: "10-15" },
+      { slot: "Abs", pattern: "abs", options: ["ab_machine"], scheme: "12-15" },
     ],
   },
   {
@@ -211,8 +203,8 @@ const FULL_CYCLE: Authored[] = [
       { slot: "Vertical pull", pattern: "vertical_pull", options: ["lat_pulldown"], scheme: "volume" },
       { slot: "Single-arm row", pattern: "horizontal_pull", options: ["db_row"], scheme: "volume" },
       { slot: "Machine row", pattern: "horizontal_pull", options: ["machine_row"], scheme: "10-12" },
-      { slot: "Biceps", pattern: "biceps", options: ["db_curl"], scheme: "10-12", floater: true },
-      { slot: "Abs", pattern: "abs", options: ["hanging_leg_raise"], scheme: "10-15", floater: true },
+      { slot: "Biceps", pattern: "biceps", options: ["db_curl"], scheme: "10-12" },
+      { slot: "Abs", pattern: "abs", options: ["hanging_leg_raise"], scheme: "10-15" },
     ],
   },
 ];
