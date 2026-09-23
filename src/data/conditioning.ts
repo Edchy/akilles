@@ -6,8 +6,9 @@
  * each is swapped the same way a lift is, and remembered per slot.
  *
  * Neither kind climbs a rep ladder. Cardio progresses by covering more ground
- * in the same fixed minutes — you are only ever racing your own last go on
- * that machine. Mobility does not progress at all; it is a checklist.
+ * in the same fixed minutes, or — on a machine with a set distance — by
+ * covering that distance faster. Either way you are only ever racing your own
+ * last go on that machine. Mobility does not progress at all; it is a checklist.
  */
 
 /** What a machine measures, and in what unit the number is entered. */
@@ -31,6 +32,11 @@ export type CardioExercise = {
   metric: CardioMetric;
   /** Shown once on the screen. Keep it short. */
   cue?: string;
+  /**
+   * Run a set distance and time it, rather than a set time and measure it.
+   * In the machine's own unit; changeable from Plan → Exercises.
+   */
+  distance?: number;
   /** Set false to bench a machine without losing its records. */
   enabled?: boolean;
 };
@@ -41,7 +47,7 @@ export type CardioExercise = {
  * different job from a treadmill before them.
  */
 export const CARDIO: CardioExercise[] = [
-  { id: "treadmill", name: "Treadmill", metric: KM, cue: "Find a pace you could hold for twice as long." },
+  { id: "treadmill", name: "Treadmill", metric: KM, distance: 1, cue: "Settle into a pace, then empty the tank in the last stretch." },
   { id: "row", name: "Rower", metric: METRES, cue: "Legs, back, arms — then the reverse." },
   { id: "ski_erg", name: "Ski-erg", metric: METRES, cue: "Hinge at the hips, finish past the pockets." },
   { id: "bike", name: "Bike", metric: KM },
@@ -224,3 +230,39 @@ export const routineSeconds = (routine: MobilityRoutine): number =>
 /** A distance in its machine's own unit — "1.02 km", "1240 m". */
 export const distanceLabel = (cardio: CardioExercise, distance: number): string =>
   `${distance.toFixed(cardio.metric.decimals)} ${cardio.metric.unit}`;
+
+/** A set distance, without trailing zeros — "1 km", "2.5 km", "500 m". */
+export const courseLabel = (cardio: CardioExercise, distance: number): string =>
+  `${Number(distance.toFixed(cardio.metric.decimals))} ${cardio.metric.unit}`;
+
+/** How far − and + move a time, in seconds. */
+export const TIME_STEP = 5;
+
+/** Seconds as a clock — "4:52", "1:02:10". */
+export const timeLabel = (seconds: number): string => {
+  const s = Math.round(seconds);
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const ss = String(s % 60).padStart(2, "0");
+  return h > 0 ? `${h}:${String(m).padStart(2, "0")}:${ss}` : `${m}:${ss}`;
+};
+
+/**
+ * A typed time back to seconds. Forgiving, since it is typed on a number pad
+ * mid-gasp: "4:52", "4.52" and "452" are all four fifty-two, and a bare "5"
+ * is five minutes. Null for anything that is not a time.
+ */
+export const parseTime = (text: string): number | null => {
+  const t = text.trim();
+  if (!t) return null;
+  const parts = t.split(/[:.,]/);
+  if (parts.some((p) => !/^\d*$/.test(p))) return null;
+  const nums = parts.map((p) => Number(p || 0));
+  if (nums.length === 1) {
+    const digits = parts[0];
+    // Up to two digits is minutes; beyond that the last two are seconds.
+    if (digits.length <= 2) return nums[0] * 60;
+    return Math.floor(nums[0] / 100) * 60 + (nums[0] % 100);
+  }
+  return nums.reduce((total, n) => total * 60 + n, 0);
+};

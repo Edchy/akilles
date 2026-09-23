@@ -5,7 +5,9 @@ import { colors, radii } from "@/constants/theme";
 import {
   CARDIO_MINUTES,
   METRICS,
+  cardioById,
   cardioPool,
+  courseLabel,
   mobilityPool,
   routineSeconds,
 } from "@/data/conditioning";
@@ -27,6 +29,7 @@ import {
   canRemove,
   canRemoveConditioning,
   catalogue,
+  courseFor,
   editExercise,
   hiddenConditioningList,
   hiddenExercises,
@@ -35,6 +38,7 @@ import {
   removeExercise,
   restoreConditioning,
   restoreExercise,
+  setCourse,
   useSession,
 } from "@/store/session";
 
@@ -633,17 +637,26 @@ function Conditioning() {
   const [open, setOpen] = useState<"cardio" | "mobility" | null>(null);
   const [adding, setAdding] = useState<"cardio" | "mobility" | null>(null);
   const [pendingDelete, setPendingDelete] = useState<string | null>(null);
+  // The timed machine whose distance is open for changing.
+  const [editing, setEditing] = useState<string | null>(null);
 
   const cardio = cardioPool(state.hiddenConditioning);
   const mobility = mobilityPool(state.hiddenConditioning);
 
-  const rows =
+  const rows: { id: string; name: string; detail: string; course?: number }[] =
     open === "cardio"
-      ? cardio.map((c) => ({
-          id: c.id,
-          name: c.name,
-          detail: `${CARDIO_MINUTES} min · ${c.metric.unit}`,
-        }))
+      ? cardio.map((c) => {
+          const course = courseFor(state, c.id);
+          return {
+            id: c.id,
+            name: c.name,
+            course,
+            detail:
+              course !== undefined
+                ? `${courseLabel(c, course)} · timed`
+                : `${CARDIO_MINUTES} min · ${c.metric.unit}`,
+          };
+        })
       : open === "mobility"
         ? mobility.map((m) => ({
             id: m.id,
@@ -675,6 +688,7 @@ function Conditioning() {
           accessibilityState={{ expanded: open === kind }}
           onPress={() => {
             setPendingDelete(null);
+            setEditing(null);
             setOpen(open === kind ? null : kind);
           }}
           style={({ pressed }) => ({
@@ -768,103 +782,126 @@ function Conditioning() {
         ? rows.map((row) => {
             const removable = canRemoveConditioning(state, row.id);
             const confirming = pendingDelete === row.id;
+            const timed = row.course !== undefined;
             return (
-              <View
-                key={row.id}
-                style={{
-                  flexDirection: "row",
-                  alignItems: "center",
-                  gap: 10,
-                  minHeight: 48,
-                }}
-              >
-                <View style={{ flex: 1, gap: 1 }}>
-                  <Text
-                    style={{
-                      color: colors.faint,
-                      fontSize: 10,
-                      fontWeight: "800",
-                      letterSpacing: 0.9,
-                      textTransform: "uppercase",
-                    }}
-                  >
-                    {row.detail}
-                  </Text>
-                  <Text
-                    style={{ color: colors.text, fontSize: 15, fontWeight: "600" }}
-                  >
-                    {row.name}
-                  </Text>
-                </View>
-
-                {confirming ? (
-                  <View
-                    style={{ flexDirection: "row", alignItems: "center", gap: 4 }}
-                  >
-                    <Pressable
-                      accessibilityRole="button"
-                      onPress={() => setPendingDelete(null)}
-                      style={({ pressed }) => ({
-                        justifyContent: "center",
-                        minHeight: 44,
-                        paddingHorizontal: 12,
-                        opacity: pressed ? 0.5 : 1,
-                      })}
-                    >
-                      <Text
-                        style={{
-                          color: colors.faint,
-                          fontSize: 13,
-                          fontWeight: "700",
-                        }}
-                      >
-                        Cancel
-                      </Text>
-                    </Pressable>
-                    <Pressable
-                      accessibilityRole="button"
-                      accessibilityLabel={`Confirm removing ${row.name}`}
-                      onPress={() => {
-                        setPendingDelete(null);
-                        setState((s) => removeConditioning(s, row.id));
-                      }}
-                      style={({ pressed }) => ({
-                        justifyContent: "center",
-                        minHeight: 44,
-                        paddingHorizontal: 14,
-                        borderRadius: 999,
-                        backgroundColor: colors.coral,
-                        opacity: pressed ? 0.7 : 1,
-                      })}
-                    >
-                      <Text
-                        style={{ color: colors.ink, fontSize: 13, fontWeight: "800" }}
-                      >
-                        Remove
-                      </Text>
-                    </Pressable>
-                  </View>
-                ) : (
+              <View key={row.id}>
+                <View
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    gap: 10,
+                    minHeight: 48,
+                  }}
+                >
+                  {/* A timed machine opens to change its distance; the rest
+                      have nothing to change. */}
                   <Pressable
-                    accessibilityRole="button"
-                    accessibilityLabel={`Remove ${row.name}`}
-                    accessibilityState={{ disabled: !removable }}
-                    disabled={!removable}
-                    onPress={() => setPendingDelete(row.id)}
+                    accessibilityRole={timed ? "button" : undefined}
+                    accessibilityState={timed ? { expanded: editing === row.id } : undefined}
+                    disabled={!timed}
+                    onPress={() => setEditing(editing === row.id ? null : row.id)}
                     style={({ pressed }) => ({
-                      width: 44,
-                      height: 44,
-                      marginRight: -10,
-                      alignItems: "center",
+                      flex: 1,
+                      gap: 1,
+                      minHeight: 48,
                       justifyContent: "center",
-                      // The last machine or routine cannot go: a block of that
-                      // kind would have nothing to offer.
-                      opacity: !removable ? 0.2 : pressed ? 0.5 : 1,
+                      opacity: pressed ? 0.6 : 1,
                     })}
                   >
-                    <Text style={{ color: colors.faint, fontSize: 17 }}>−</Text>
+                    <Text
+                      style={{
+                        color: colors.faint,
+                        fontSize: 10,
+                        fontWeight: "800",
+                        letterSpacing: 0.9,
+                        textTransform: "uppercase",
+                      }}
+                    >
+                      {row.detail}
+                    </Text>
+                    <Text
+                      style={{ color: colors.text, fontSize: 15, fontWeight: "600" }}
+                    >
+                      {row.name}
+                    </Text>
                   </Pressable>
-                )}
+
+                  {confirming ? (
+                    <View
+                      style={{ flexDirection: "row", alignItems: "center", gap: 4 }}
+                    >
+                      <Pressable
+                        accessibilityRole="button"
+                        onPress={() => setPendingDelete(null)}
+                        style={({ pressed }) => ({
+                          justifyContent: "center",
+                          minHeight: 44,
+                          paddingHorizontal: 12,
+                          opacity: pressed ? 0.5 : 1,
+                        })}
+                      >
+                        <Text
+                          style={{
+                            color: colors.faint,
+                            fontSize: 13,
+                            fontWeight: "700",
+                          }}
+                        >
+                          Cancel
+                        </Text>
+                      </Pressable>
+                      <Pressable
+                        accessibilityRole="button"
+                        accessibilityLabel={`Confirm removing ${row.name}`}
+                        onPress={() => {
+                          setPendingDelete(null);
+                          setState((s) => removeConditioning(s, row.id));
+                        }}
+                        style={({ pressed }) => ({
+                          justifyContent: "center",
+                          minHeight: 44,
+                          paddingHorizontal: 14,
+                          borderRadius: 999,
+                          backgroundColor: colors.coral,
+                          opacity: pressed ? 0.7 : 1,
+                        })}
+                      >
+                        <Text
+                          style={{ color: colors.ink, fontSize: 13, fontWeight: "800" }}
+                        >
+                          Remove
+                        </Text>
+                      </Pressable>
+                    </View>
+                  ) : (
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel={`Remove ${row.name}`}
+                      accessibilityState={{ disabled: !removable }}
+                      disabled={!removable}
+                      onPress={() => setPendingDelete(row.id)}
+                      style={({ pressed }) => ({
+                        width: 44,
+                        height: 44,
+                        marginRight: -10,
+                        alignItems: "center",
+                        justifyContent: "center",
+                        // The last machine or routine cannot go: a block of that
+                        // kind would have nothing to offer.
+                        opacity: !removable ? 0.2 : pressed ? 0.5 : 1,
+                      })}
+                    >
+                      <Text style={{ color: colors.faint, fontSize: 17 }}>−</Text>
+                    </Pressable>
+                  )}
+                </View>
+                {timed && editing === row.id ? (
+                  <CourseEditor
+                    cardioId={row.id}
+                    course={row.course!}
+                    onSet={(course) => setState((s) => setCourse(s, row.id, course))}
+                  />
+                ) : null}
               </View>
             );
           })
@@ -877,6 +914,74 @@ function Conditioning() {
       {section("cardio", "Cardio", cardio.length)}
       {section("mobility", "Mobility", mobility.length)}
     </>
+  );
+}
+
+/**
+ * The distance a timed machine runs. Typed rather than picked from a list,
+ * since the point is that it can be whatever you want.
+ */
+function CourseEditor({
+  cardioId,
+  course,
+  onSet,
+}: {
+  cardioId: string;
+  course: number;
+  onSet: (course: number) => void;
+}) {
+  const machine = cardioById(cardioId)!;
+  const [draft, setDraft] = useState<string | null>(null);
+
+  const commit = () => {
+    if (draft !== null) {
+      const parsed = parseFloat(draft.replace(",", "."));
+      if (!Number.isNaN(parsed) && parsed > 0) onSet(parsed);
+    }
+    setDraft(null);
+  };
+
+  return (
+    <View
+      style={{
+        gap: 10,
+        borderRadius: 14,
+        backgroundColor: colors.raised,
+        padding: 12,
+        marginBottom: 8,
+      }}
+    >
+      <Label>Distance</Label>
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+        <TextInput
+          value={draft ?? String(Number(course.toFixed(machine.metric.decimals)))}
+          onChangeText={setDraft}
+          onBlur={commit}
+          onSubmitEditing={commit}
+          keyboardType="decimal-pad"
+          returnKeyType="done"
+          selectTextOnFocus
+          style={{
+            flex: 1,
+            minHeight: 48,
+            paddingHorizontal: 14,
+            borderRadius: 12,
+            backgroundColor: colors.surface,
+            color: colors.text,
+            fontSize: 20,
+            fontWeight: "700",
+            fontVariant: ["tabular-nums"],
+          }}
+        />
+        <Text style={{ color: colors.muted, fontSize: 16, fontWeight: "700", width: 30 }}>
+          {machine.metric.unit}
+        </Text>
+      </View>
+      <Text style={{ color: colors.faint, fontSize: 12, lineHeight: 17 }}>
+        Your time over it is the score. Each distance keeps its own times — change
+        it back and your old ones are still there.
+      </Text>
+    </View>
   );
 }
 

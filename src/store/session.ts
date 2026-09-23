@@ -25,6 +25,7 @@ import {
 import {
   CARDIO_DEFAULT,
   CARDIO_MINUTES,
+  TIME_STEP,
   cardioById,
   cardioPool,
   hiddenCardio,
@@ -82,6 +83,7 @@ export type Item = Entry & {
   /**
    * Minutes on the clock, for a cardio block. Fixed at five so the distance
    * is comparable session to session: the only variable is how far you get.
+   * Absent on a block run over a set distance — see `course`.
    */
   minutes?: number;
   /**
@@ -90,6 +92,13 @@ export type Item = Entry & {
    * from a genuinely bad one.
    */
   distance?: number | null;
+  /**
+   * The set distance, for a block that times a run rather than measuring
+   * one. When present, `seconds` is the score and `distance` is unused.
+   */
+  course?: number;
+  /** Time taken over `course`, in seconds. `null` until entered, as `distance`. */
+  seconds?: number | null;
   /** Which poses of a mobility routine you have ticked off. */
   moves?: boolean[];
   /** The exercise currently filling this slot. */
@@ -128,7 +137,8 @@ export type Item = Entry & {
 };
 
 /**
- * The best and the last for one cardio machine, at the fixed block length.
+ * The best and the last for one cardio machine, at one block length or one
+ * set distance.
  *
  * Two numbers rather than a log: on the screen you want "beat 1.02" and, when
  * you do, to see that it was your furthest. A full history of every five
@@ -137,10 +147,12 @@ export type Item = Entry & {
 export type CardioRecord = {
   cardioId: string;
   /** Minutes the record was set over. Kept so a changed block length is not compared against the old one. */
-  minutes: number;
-  /** Last session's distance, in the machine's own unit. */
+  minutes?: number;
+  /** The set distance it was timed over, for a timed block. Then `last` and `best` are seconds. */
+  course?: number;
+  /** Last session's score: distance in the machine's unit, or seconds over a course. */
   last: number;
-  /** Furthest ever over the same minutes. */
+  /** Furthest ever over the same minutes — or fastest over the same course. */
   best: number;
   /** Sessions actually completed on this machine. */
   sessions: number;
@@ -190,6 +202,11 @@ export type SessionState = {
    */
   hiddenConditioning: string[];
   /**
+   * The distance you have set a timed machine to run, by machine id. Absent
+   * means the machine's own default — see `distance` on `CardioExercise`.
+   */
+  courses: Record<string, number>;
+  /**
    * One record per exercise PER SCHEME, keyed by `exerciseId:scheme`.
    *
    * An exercise done on a strength day and on a volume day is tracked
@@ -198,11 +215,13 @@ export type SessionState = {
    */
   history: Record<string, ExerciseState>;
   /**
-   * Cardio records, keyed by machine id — not by slot.
+   * Cardio records, keyed by machine and length — not by slot. See `cardioKey`.
    *
-   * The point of the block is to beat your own last distance on *that*
-   * machine, so a treadmill 5 minutes is the same benchmark whether it opened
-   * or closed the session. Mobility keeps no record: there is nothing to beat.
+   * The point of the block is to beat your own last go on *that* machine, so
+   * a treadmill 1 km is the same benchmark whether it opened or closed the
+   * session. Each distance keeps its own record: change the treadmill to
+   * 2 km and it starts fresh, change it back and your 1 km times are there.
+   * Mobility keeps no record: there is nothing to beat.
    */
   conditioning: Record<string, CardioRecord>;
   /** The workout currently in progress, or null on the Today screen. */
@@ -650,6 +669,7 @@ export const initialState: SessionState = {
   customMobility: [],
   hidden: leanHiddenExercises(),
   hiddenConditioning: leanHiddenConditioning(),
+  courses: {},
   history: {},
   conditioning: {},
   active: null,
@@ -1297,7 +1317,7 @@ export const removeSuperset = (state: SessionState): SessionState => {
 export const didTrain = (active: SessionState["active"]): boolean =>
   (active?.items ?? []).some((item) => {
     if (item.skipped || isMobility(item)) return false;
-    if (isCardio(item)) return item.distance !== null && item.distance !== undefined;
+    if (isCardio(item)) return scoreOf(item) !== null;
     return [...item.logged, ...(item.supersetLogged ?? [])].some((r) => r !== null);
   });
 
@@ -1345,19 +1365,21 @@ export const finishWorkout = (
   };
 
   for (const item of state.active?.items ?? []) {
-    // Cardio keeps its own record: last and furthest over the block length.
-    // A block with no distance entered — skipped, or left before the number
-    // went in — writes nothing, so the mark to beat stays where it was.
+    // Cardio keeps its own record: last and best over the block length or
+    // the course. A block with no score entered — skipped, or left before the
+    // number went in — writes nothing, so the mark to beat stays where it was.
     if (isCardio(item)) {
-      if (item.skipped || item.distance === null || item.distance === undefined) continue;
-      const minutes = item.minutes ?? CARDIO_MINUTES;
-      const k = cardioKey(item.exerciseId, minutes);
+      const score = scoreOf(item);
+      if (item.skipped || score === null) continue;
+      const k = itemKey(item);
       const prior = conditioning[k];
       conditioning[k] = {
         cardioId: item.exerciseId,
-        minutes,
-        last: item.distance,
-        best: Math.max(item.distance, prior?.best ?? 0),
+        ...(item.course !== undefined
+          ? { course: item.course }
+          : { minutes: item.minutes ?? CARDIO_MINUTES }),
+        last: score,
+        best: prior ? (isBetter(item, score, prior.best) ? score : prior.best) : score,
         sessions: (prior?.sessions ?? 0) + 1,
       };
       continue;
@@ -1404,16 +1426,66 @@ export const isComplete = (state: SessionState): boolean =>
 /**
  * Key into `conditioning`. Machine and block length together: five minutes on
  * the treadmill is not comparable with ten, so they never share a record.
+ * A timed block is keyed by its course the same way — `treadmill:1km` and
+ * `treadmill:2km` are two records, and neither is `treadmill:5m`.
  */
 export const cardioKey = (cardioId: string, minutes: number) =>
   `${cardioId}:${minutes}m`;
 
-/** The record for a machine at a block length, if you have ever done one. */
-export const cardioRecord = (
+export const courseKey = (cardioId: string, course: number) => {
+  const unit = cardioById(cardioId)?.metric.unit ?? "km";
+  // Rounded so 1, 1.0 and 0.1 + 0.9 all land on the same record.
+  return `${cardioId}:${Number(course.toFixed(3))}${unit}`;
+};
+
+const itemKey = (item: Item) =>
+  item.course !== undefined
+    ? courseKey(item.exerciseId, item.course)
+    : cardioKey(item.exerciseId, item.minutes ?? CARDIO_MINUTES);
+
+/** The record for a cardio block's machine and length, if you have ever done one. */
+export const cardioRecord = (state: SessionState, item: Item): CardioRecord | undefined =>
+  isCardio(item) ? state.conditioning[itemKey(item)] : undefined;
+
+/** Whether a block is timed over a set distance rather than a set time. */
+export const isTimed = (item: Item): boolean => isCardio(item) && item.course !== undefined;
+
+/** The block's score: seconds over a course, or distance in the minutes. */
+export const scoreOf = (item: Item): number | null =>
+  (isTimed(item) ? item.seconds : item.distance) ?? null;
+
+/** Better means further in the minutes, but faster over a course. */
+export const isBetter = (item: Item, score: number, than: number): boolean =>
+  isTimed(item) ? score < than : score > than;
+
+/**
+ * The distance a timed machine runs: yours if you have set one, else its
+ * default. Undefined for a machine timed by the clock instead.
+ */
+export const courseFor = (state: SessionState, cardioId: string): number | undefined => {
+  const machine = cardioById(cardioId);
+  if (machine?.distance === undefined) return undefined;
+  return state.courses[cardioId] ?? machine.distance;
+};
+
+/**
+ * Set the distance a timed machine runs. Takes effect from the next block —
+ * one already on screen keeps the distance it was started with.
+ */
+export const setCourse = (
   state: SessionState,
   cardioId: string,
-  minutes: number,
-): CardioRecord | undefined => state.conditioning[cardioKey(cardioId, minutes)];
+  course: number,
+): SessionState =>
+  course > 0 ? { ...state, courses: { ...state.courses, [cardioId]: course } } : state;
+
+/** What a block on this machine is measured over: a course, or the minutes. */
+const cardioLength = (state: SessionState, cardioId: string) => {
+  const course = courseFor(state, cardioId);
+  return course !== undefined
+    ? { course, seconds: null, minutes: undefined, distance: undefined }
+    : { minutes: CARDIO_MINUTES, distance: null, course: undefined, seconds: undefined };
+};
 
 /**
  * Conditioning choices belong to no single workout — the same treadmill
@@ -1456,8 +1528,7 @@ const cardioBlock = (state: SessionState, where: "open" | "close"): Item => {
     options: [],
     scheme: "volume",
     exerciseId: cardioId,
-    minutes: CARDIO_MINUTES,
-    distance: null,
+    ...cardioLength(state, cardioId),
     weight: 0,
     logged: [],
   };
@@ -1495,54 +1566,50 @@ export const currentRoutine = (state: SessionState): MobilityRoutine | undefined
   return item && isMobility(item) ? mobilityById(item.exerciseId) : undefined;
 };
 
-/** Enter the distance covered. Null clears it back to unentered. */
-export const setDistance = (
-  state: SessionState,
-  distance: number | null,
-): SessionState =>
-  patchItem(state, (it) =>
-    isCardio(it)
-      ? { ...it, distance: distance === null ? null : Math.max(0, distance) }
-      : it,
-  );
-
 /**
- * Last session's distance on this block's machine and minutes, if there is
- * one. It is what an unentered block starts from: shown in the box, stepped
- * from by −/+, and taken as the answer if you press Done without touching it.
- * The item's own `distance` stays null until then, so leaving or skipping a
- * block you never did still records nothing.
+ * Enter the block's score — distance covered, or time over the course. Null
+ * clears it back to unentered.
  */
-export const lastDistance = (state: SessionState, item: Item): number | null =>
-  isCardio(item)
-    ? (cardioRecord(state, item.exerciseId, item.minutes ?? CARDIO_MINUTES)?.last ?? null)
-    : null;
-
-/** Step the distance by the machine's own increment — from last time's, if unentered. */
-export const nudgeDistance = (state: SessionState, direction: 1 | -1): SessionState =>
+export const setScore = (state: SessionState, score: number | null): SessionState =>
   patchItem(state, (it) => {
     if (!isCardio(it)) return it;
-    const step = cardioById(it.exerciseId)?.metric.step ?? 0.05;
-    const next = (it.distance ?? lastDistance(state, it) ?? 0) + step * direction;
+    const value = score === null ? null : Math.max(0, score);
+    return isTimed(it) ? { ...it, seconds: value } : { ...it, distance: value };
+  });
+
+/**
+ * Last session's score on this block's machine and length, if there is one.
+ * It is what an unentered block starts from: shown in the box, stepped from
+ * by −/+, and taken as the answer if you press Done without touching it.
+ * The item's own score stays null until then, so leaving or skipping a
+ * block you never did still records nothing.
+ */
+export const lastScore = (state: SessionState, item: Item): number | null =>
+  cardioRecord(state, item)?.last ?? null;
+
+/**
+ * Step the score — by the machine's own increment, or by a few seconds —
+ * from last time's, if unentered.
+ */
+export const nudgeScore = (state: SessionState, direction: 1 | -1): SessionState =>
+  patchItem(state, (it) => {
+    if (!isCardio(it)) return it;
+    const step = isTimed(it) ? TIME_STEP : (cardioById(it.exerciseId)?.metric.step ?? 0.05);
+    const next = (scoreOf(it) ?? lastScore(state, it) ?? 0) + step * direction;
     // Round back onto the step grid, so a nudge after a typed 1.03 gives 1.05.
-    const snapped = Math.round(next / step) * step;
-    return { ...it, distance: Math.max(0, Number(snapped.toFixed(4))) };
+    const snapped = Math.max(0, Number((Math.round(next / step) * step).toFixed(4)));
+    return isTimed(it) ? { ...it, seconds: snapped } : { ...it, distance: snapped };
   });
 
 /**
  * Done on a cardio block. Left unentered with a record to go on, it means
- * "same as last time" — the distance you were shown is what gets logged.
+ * "same as last time" — the number you were shown is what gets logged.
  */
 export const completeCardio = (state: SessionState): SessionState => {
   const item = state.active?.items[state.active.cursor];
   if (!item || !isCardio(item)) return completeExercise(state);
-  const last = lastDistance(state, item);
-  const entered =
-    item.distance === null || item.distance === undefined
-      ? last === null
-        ? state
-        : setDistance(state, last)
-      : state;
+  const last = lastScore(state, item);
+  const entered = scoreOf(item) === null && last !== null ? setScore(state, last) : state;
   return completeExercise(entered);
 };
 
@@ -1568,7 +1635,7 @@ export const chooseConditioning = (
       items: state.active.items.map((it) => {
         if (it.slot !== slot || !isConditioning(it)) return it;
         return isCardio(it)
-          ? { ...it, exerciseId: id, distance: null }
+          ? { ...it, exerciseId: id, ...cardioLength(state, id) }
           : {
               ...it,
               exerciseId: id,

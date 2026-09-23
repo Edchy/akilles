@@ -10,8 +10,11 @@ import { HoldButton } from "@/components/hold-button";
 import { colors, radii } from "@/constants/theme";
 import { byId } from "@/data/exercises";
 import {
+  courseLabel,
   distanceLabel,
+  parseTime,
   routineSeconds,
+  timeLabel,
   type CardioExercise,
   type MobilityRoutine,
 } from "@/data/conditioning";
@@ -37,17 +40,20 @@ import {
   editWeight,
   finishWorkout,
   isCardio,
+  isBetter,
   isComplete,
   isConditioning,
   isMobility,
-  lastDistance,
-  nudgeDistance,
+  isTimed,
+  lastScore,
+  nudgeScore,
   madeTarget,
   nudgeWeight,
   partnerPrescription,
   previousExercise,
   removeSuperset,
-  setDistance,
+  scoreOf,
+  setScore,
   skipExercise,
   supersetOptions,
   swapForSession,
@@ -461,8 +467,8 @@ function Conditioning({ item }: { item: Item }) {
     setState((s) => (isCardio(item) ? completeCardio(s) : completeExercise(s)));
   };
   // With a record to go on, an untouched box means "same as last time".
-  const last = lastDistance(state, item);
-  const needsDistance = isCardio(item) && item.distance === null && last === null;
+  const last = lastScore(state, item);
+  const needsScore = isCardio(item) && scoreOf(item) === null && last === null;
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.bg }}>
@@ -488,7 +494,11 @@ function Conditioning({ item }: { item: Item }) {
               textTransform: "uppercase",
             }}
           >
-            {isCardio(item) ? `${item.minutes} minutes` : "Mobility"}
+            {!isCardio(item)
+              ? "Mobility"
+              : isTimed(item) && cardio
+                ? courseLabel(cardio, item.course!)
+                : `${item.minutes} minutes`}
           </Text>
 
           <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
@@ -557,12 +567,11 @@ function Conditioning({ item }: { item: Item }) {
         {cardio && isCardio(item) ? (
           <CardioBody
             cardio={cardio}
-            minutes={item.minutes ?? 0}
-            distance={item.distance ?? null}
+            item={item}
             last={last}
-            record={cardioRecord(state, cardio.id, item.minutes ?? 0)}
-            onNudge={(d) => setState((s) => nudgeDistance(s, d))}
-            onSet={(v) => setState((s) => setDistance(s, v))}
+            record={cardioRecord(state, item)}
+            onNudge={(d) => setState((s) => nudgeScore(s, d))}
+            onSet={(v) => setState((s) => setScore(s, v))}
           />
         ) : null}
 
@@ -577,15 +586,17 @@ function Conditioning({ item }: { item: Item }) {
 
       <View style={{ paddingHorizontal: 22, paddingBottom: 14 }}>
         <Column style={{ gap: 10 }}>
-          {needsDistance ? (
+          {needsScore ? (
             <Text style={{ textAlign: "center", color: colors.faint, fontSize: 13 }}>
-              Enter the distance when the clock runs out — or skip the block.
+              {isTimed(item)
+                ? "Enter your time when you finish — or skip the block."
+                : "Enter the distance when the clock runs out — or skip the block."}
             </Text>
           ) : null}
           <Feedback
             label={isMobility(item) ? "Finish" : "Done"}
             fill
-            disabled={needsDistance}
+            disabled={needsScore}
             onPress={advance}
           />
         </Column>
@@ -595,47 +606,52 @@ function Conditioning({ item }: { item: Item }) {
 }
 
 /**
- * The distance you covered, and the mark to beat.
+ * Your score, and the mark to beat.
  *
- * The minutes are fixed, so the only number that moves is this one — which
- * makes the comparison with last time honest without timing anything.
+ * One side of the block is fixed — the minutes, or the distance — so the only
+ * number that moves is the other: how far you got, or how long it took. That
+ * makes the comparison with last time honest without anything else to track.
  */
 function CardioBody({
   cardio,
-  minutes,
-  distance,
+  item,
   last,
   record,
   onNudge,
   onSet,
 }: {
   cardio: CardioExercise;
-  minutes: number;
-  distance: number | null;
-  /** Last session's distance: what the box shows until you change it. */
+  item: Item;
+  /** Last session's score: what the box shows until you change it. */
   last: number | null;
   record: ReturnType<typeof cardioRecord>;
   onNudge: (direction: 1 | -1) => void;
-  onSet: (distance: number | null) => void;
+  onSet: (score: number | null) => void;
 }) {
   const [draft, setDraft] = useState<string | null>(null);
+  const timed = isTimed(item);
+  const score = scoreOf(item);
   const { decimals, unit } = cardio.metric;
+
+  // The box shows a bare number; the card around it says what it means.
+  const show = (v: number) => (timed ? timeLabel(v) : v.toFixed(decimals));
+  const label = (v: number) => (timed ? timeLabel(v) : distanceLabel(cardio, v));
 
   const commit = () => {
     if (draft !== null) {
-      const parsed = parseFloat(draft.replace(",", "."));
-      onSet(Number.isNaN(parsed) ? null : parsed);
+      const parsed = timed ? parseTime(draft) : parseFloat(draft.replace(",", "."));
+      onSet(parsed === null || Number.isNaN(parsed) ? null : parsed);
     }
     setDraft(null);
   };
 
-  const beat = record && distance !== null && distance > record.last;
-  const isBest = record && distance !== null && distance > record.best;
+  const beat = record && score !== null && isBetter(item, score, record.last);
+  const isBest = record && score !== null && isBetter(item, score, record.best);
 
   return (
     <View style={{ gap: 22 }}>
-      {/* The target: what you did last time on this machine, over these same
-          minutes. Absent the first time — there is nothing to chase yet. */}
+      {/* The target: what you did last time on this machine, over this same
+          length. Absent the first time — there is nothing to chase yet. */}
       <View
         style={{
           gap: 10,
@@ -668,23 +684,25 @@ function CardioBody({
                   fontVariant: ["tabular-nums"],
                 }}
               >
-                {distanceLabel(cardio, record.last)}
+                {label(record.last)}
               </Text>
             </View>
             <Text style={{ color: colors.faint, fontSize: 13, lineHeight: 19 }}>
-              Furthest {distanceLabel(cardio, record.best)} · {record.sessions}{" "}
-              {record.sessions === 1 ? "session" : "sessions"} on this machine.
+              {timed ? "Fastest" : "Furthest"} {label(record.best)} · {record.sessions}{" "}
+              {record.sessions === 1 ? "session" : "sessions"}
+              {timed ? ` over ${courseLabel(cardio, item.course!)}.` : " on this machine."}
             </Text>
           </>
         ) : (
           <Text style={{ color: colors.faint, fontSize: 13, lineHeight: 19 }}>
-            First {minutes} minutes on the {cardio.name.toLowerCase()}. Whatever you
-            cover becomes the mark to beat next time.
+            {timed
+              ? `First ${courseLabel(cardio, item.course!)} on the ${cardio.name.toLowerCase()}. Your time becomes the mark to beat next time.`
+              : `First ${item.minutes} minutes on the ${cardio.name.toLowerCase()}. Whatever you cover becomes the mark to beat next time.`}
           </Text>
         )}
       </View>
 
-      {/* The distance, entered the same way a weight is: type it or step it. */}
+      {/* The score, entered the same way a weight is: type it or step it. */}
       <View
         style={{
           flexDirection: "row",
@@ -696,34 +714,36 @@ function CardioBody({
 
         <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
           <TextInput
-            value={draft ?? (distance === null ? "" : distance.toFixed(decimals))}
-            // Last time's distance until you change it, dimmed so it reads as
+            value={draft ?? (score === null ? "" : show(score))}
+            // Last time's score until you change it, dimmed so it reads as
             // a starting point rather than something already logged.
-            placeholder={(last ?? 0).toFixed(decimals)}
+            placeholder={show(last ?? 0)}
             placeholderTextColor={last === null ? colors.faint : colors.muted}
             onChangeText={setDraft}
-            onFocus={() =>
-              setDraft((distance ?? last) === null ? "" : (distance ?? last)!.toFixed(decimals))
-            }
+            onFocus={() => setDraft((score ?? last) === null ? "" : show((score ?? last)!))}
             onBlur={commit}
             onSubmitEditing={commit}
+            // A number pad on both: a time types as 4.52 or 452 and reads back as 4:52.
             keyboardType="decimal-pad"
             selectTextOnFocus
             style={{
-              width: 160,
+              // A time has no unit beside it, so it takes the unit's room.
+              width: timed ? 214 : 160,
               color: colors.acid,
               fontSize: 62,
               fontWeight: "800",
               letterSpacing: -3,
-              textAlign: "right",
+              textAlign: timed ? "center" : "right",
               fontVariant: ["tabular-nums"],
             }}
           />
-          <View style={{ width: 48 }}>
-            <Text style={{ color: colors.muted, fontSize: 20, fontWeight: "700" }}>
-              {unit}
-            </Text>
-          </View>
+          {timed ? null : (
+            <View style={{ width: 48 }}>
+              <Text style={{ color: colors.muted, fontSize: 20, fontWeight: "700" }}>
+                {unit}
+              </Text>
+            </View>
+          )}
         </View>
 
         <Step label="+" onPress={() => onNudge(1)} />
@@ -739,7 +759,7 @@ function CardioBody({
             fontWeight: "800",
           }}
         >
-          Furthest yet.
+          {timed ? "Fastest yet." : "Furthest yet."}
         </Text>
       ) : beat ? (
         <Text
@@ -750,12 +770,15 @@ function CardioBody({
             fontWeight: "800",
           }}
         >
-          Past last time.
+          {timed ? "Faster than last time." : "Past last time."}
         </Text>
       ) : null}
 
       <Text style={{ color: colors.faint, fontSize: 13, lineHeight: 19 }}>
-        {cardio.cue ?? "Same minutes every session — the distance is the score."}
+        {cardio.cue ??
+          (timed
+            ? "Same distance every session — the time is the score."
+            : "Same minutes every session — the distance is the score.")}
       </Text>
     </View>
   );
