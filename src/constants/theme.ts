@@ -47,4 +47,4 @@ export const TAB_BAR_HEIGHT = 96;
  * in — the hold-to-leave circle is exactly this size — so all the labels
  * line up whatever is above them.
  */
-export const BAR_TYPE = { icon: 60, glyph: 32, label: 14 } as const;
+export const BAR_TYPE = { icon: 44, glyph: 32, label: 12 } as const;

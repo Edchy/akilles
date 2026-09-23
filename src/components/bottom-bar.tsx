@@ -54,7 +54,7 @@ export function BarButton({
         height: TAB_BAR_HEIGHT,
         alignItems: "center",
         justifyContent: "center",
-        gap: 6,
+        gap: 2,
         opacity: disabled ? 0.3 : pressed ? 0.55 : 1,
       })}
     >

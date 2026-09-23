@@ -81,7 +81,7 @@ export function HoldButton({
       accessibilityLabel={`${label}. Press and hold.`}
       onPressIn={start}
       onPressOut={cancel}
-      style={{ flex: 1, alignItems: "center", justifyContent: "center", gap: 6 }}
+      style={{ flex: 1, alignItems: "center", justifyContent: "center", gap: 2 }}
     >
       <View
         style={{
