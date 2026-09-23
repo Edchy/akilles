@@ -113,7 +113,7 @@ Three tabs, plus the workout itself which takes over the screen.
 
 | Tab | |
 |---|---|
-| **Today** | The next workout and its exercises. One button: Start. |
+| **Today** | The next workout, large and nothing else. **Start**, or **Skip** to move the cycle on without recording anything (with an Undo for a mis-tap). |
 | **History** | Every exercise you've trained, its current weight and next target. |
 | **Plan** | Two segments: **Workouts** (your sessions, their order, and what fills each slot) and **Exercises** (the catalogue of every movement). |
 

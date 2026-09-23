@@ -3,7 +3,7 @@ import { Pressable, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { Column } from "@/components/screen";
-import { colors, TAB_BAR_HEIGHT } from "@/constants/theme";
+import { BAR_TYPE, colors, TAB_BAR_HEIGHT } from "@/constants/theme";
 
 /**
  * The bar chrome. Mounted once for the life of the app so it never animates
@@ -54,12 +54,16 @@ export function BarButton({
         height: TAB_BAR_HEIGHT,
         alignItems: "center",
         justifyContent: "center",
-        gap: 5,
+        gap: 6,
         opacity: disabled ? 0.3 : pressed ? 0.55 : 1,
       })}
     >
-      <Text style={{ color: tint, fontSize: 21 }}>{glyph}</Text>
-      <Text style={{ color: tint, fontSize: 11, fontWeight: "700", letterSpacing: 0.3 }}>
+      <View style={{ height: BAR_TYPE.icon, justifyContent: "center" }}>
+        <Text style={{ color: tint, fontSize: BAR_TYPE.glyph }}>{glyph}</Text>
+      </View>
+      <Text
+        style={{ color: tint, fontSize: BAR_TYPE.label, fontWeight: "800", letterSpacing: 0.3 }}
+      >
         {label}
       </Text>
     </Pressable>

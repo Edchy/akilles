@@ -1,33 +1,23 @@
 import { router } from "expo-router";
+import { useState } from "react";
 import { Pressable, ScrollView, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { Column, COLUMN } from "@/components/screen";
 import { colors, radii } from "@/constants/theme";
-import {
-  CARDIO_MINUTES,
-  cardioById,
-  mobilityById,
-  mobilityPool,
-  routineSeconds,
-} from "@/data/conditioning";
 import { byId } from "@/data/exercises";
-import { repLabel, setsFor } from "@/data/split";
 import { decayLabel, type Decay } from "@/lib/progression";
 import { weightLabel } from "@/lib/warmup";
 import type { DecayOffer } from "@/store/session";
 import {
-  CARDIO_SLOTS,
-  CONDITIONING_ID,
-  MOBILITY_SLOT,
-  buildWorkout,
-  chosen,
   acceptDecay,
+  buildWorkout,
   daysSinceTrained,
   declineDecay,
   decayOffers,
   pendingDecays,
-  slotKey,
+  setNextWorkout,
+  skipWorkout,
   upNext,
   useSession,
 } from "@/store/session";
@@ -38,6 +28,12 @@ export default function TodayScreen() {
   const { state, setState } = useSession();
   const insets = useSafeAreaInsets();
   const workout = upNext(state);
+  // The one after, so you know what skipping would give you.
+  const at = state.workouts.findIndex((w) => w.id === workout.id);
+  const then =
+    state.workouts.length > 1 ? state.workouts[(at + 1) % state.workouts.length] : null;
+  // The workout just skipped, so a mis-tap is one tap to undo.
+  const [skipped, setSkipped] = useState<{ id: string; name: string } | null>(null);
 
   // What time WOULD cost, computed fresh each render. Nothing is written
   // until you answer the prompt below.
@@ -47,57 +43,23 @@ export default function TodayScreen() {
   const adjusted = pendingDecays(state);
 
   const start = () => {
+    setSkipped(null);
     setState((s) => buildWorkout(s));
     router.push("/workout");
   };
 
-  /** The block the conditioning slot currently holds, falling back to default. */
-  const conditioning = (slot: string, fallback: string) =>
-    state.choices[slotKey(CONDITIONING_ID, slot)] ?? fallback;
+  const skip = () => {
+    setSkipped({ id: workout.id, name: workout.name });
+    setState((s) => skipWorkout(s));
+  };
 
-  const openCardio = cardioById(conditioning(CARDIO_SLOTS.open, "treadmill"))!;
-  const closeCardio = cardioById(conditioning(CARDIO_SLOTS.close, "ski_erg"))!;
-  const routine = mobilityById(
-    conditioning(MOBILITY_SLOT, mobilityPool()[0].id),
-  )!;
-
-  // What the session actually runs, in order: cardio, the lifts, cardio,
-  // mobility. Same shape as `buildWorkout` produces.
-  const rows = [
-    {
-      key: CARDIO_SLOTS.open,
-      name: openCardio.name,
-      detail: `${CARDIO_MINUTES} min`,
-      conditioning: true,
-      floater: false,
-    },
-    ...workout.exercises.map((entry) => ({
-      key: entry.id,
-      name: byId(chosen(state, workout.id, entry))!.name,
-      detail: `${setsFor(entry)} × ${repLabel(entry.scheme)}`,
-      conditioning: false,
-      floater: !!entry.floater,
-    })),
-    {
-      key: CARDIO_SLOTS.close,
-      name: closeCardio.name,
-      detail: `${CARDIO_MINUTES} min`,
-      conditioning: true,
-      floater: false,
-    },
-    {
-      key: MOBILITY_SLOT,
-      name: routine.name,
-      detail: `${Math.round(routineSeconds(routine) / 60)} min`,
-      conditioning: true,
-      floater: false,
-    },
-  ];
+  const count = workout.exercises.length;
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.bg }}>
       <ScrollView
         contentContainerStyle={{
+          flexGrow: 1,
           paddingTop: insets.top + 28,
           paddingHorizontal: 22,
           width: "100%",
@@ -107,35 +69,6 @@ export default function TodayScreen() {
           gap: 26,
         }}
       >
-        <View style={{ gap: 8 }}>
-          <Text
-            style={{
-              color: colors.acid,
-              fontSize: 12,
-              fontWeight: "800",
-              letterSpacing: 1.4,
-              textTransform: "uppercase",
-            }}
-          >
-            Next up
-          </Text>
-          <Text
-            style={{
-              color: colors.text,
-              fontFamily: serif,
-              fontSize: 44,
-              lineHeight: 47,
-              fontWeight: "700",
-              letterSpacing: -1.6,
-            }}
-          >
-            {workout.name}
-          </Text>
-          <Text style={{ color: colors.muted, fontSize: 15 }}>
-            {workout.subtitle}
-          </Text>
-        </View>
-
         {offers.length > 0 ? (
           <DecayPrompt
             offers={offers}
@@ -147,108 +80,128 @@ export default function TodayScreen() {
           <DecayBanner adjusted={adjusted} />
         ) : null}
 
-        <View style={{ gap: 2 }}>
-          {rows.map((row, i) => {
-            return (
-              <View
-                key={`${row.key}-${i}`}
-                style={{
-                  flexDirection: "row",
-                  alignItems: "center",
-                  gap: 14,
-                  borderBottomWidth: i === rows.length - 1 ? 0 : 1,
-                  borderBottomColor: colors.line,
-                  paddingVertical: 15,
-                }}
-              >
-                <Text
-                  style={{
-                    // Wide enough for a two-digit number: the conditioning
-                    // blocks push the list past nine rows.
-                    width: 20,
-                    color: colors.faint,
-                    fontSize: 13,
-                    fontWeight: "700",
-                    fontVariant: ["tabular-nums"],
-                  }}
-                >
-                  {i + 1}
-                </Text>
-                <Text
-                  style={{
-                    flex: 1,
-                    // Cardio and mobility bookend the lifting rather than
-                    // being part of it, so they sit back a shade.
-                    color: row.conditioning ? colors.muted : colors.text,
-                    fontSize: 16,
-                    fontWeight: "600",
-                  }}
-                >
-                  {row.name}
-                </Text>
-                {/* Marks work you can fold into an earlier exercise's rest. */}
-                {row.floater ? (
-                  <Text
-                    accessibilityLabel="Can be supersetted"
-                    style={{
-                      color: colors.line,
-                      fontSize: 9,
-                      fontWeight: "800",
-                      letterSpacing: 0.5,
-                    }}
-                  >
-                    S
-                  </Text>
-                ) : null}
-
-                <Text
-                  style={{
-                    color: colors.faint,
-                    fontSize: 14,
-                    fontWeight: "700",
-                    fontVariant: ["tabular-nums"],
-                  }}
-                >
-                  {row.detail}
-                </Text>
-              </View>
-            );
-          })}
+        {/* One thing on the screen: what you are about to do. The exercises
+            are for the workout itself to show, one at a time. */}
+        <View style={{ flex: 1, justifyContent: "center", gap: 10 }}>
+          <Text
+            style={{
+              color: colors.acid,
+              fontSize: 14,
+              fontWeight: "800",
+              letterSpacing: 1.6,
+              textTransform: "uppercase",
+            }}
+          >
+            Next up
+          </Text>
+          <Text
+            style={{
+              color: colors.text,
+              fontFamily: serif,
+              fontSize: 68,
+              lineHeight: 70,
+              fontWeight: "700",
+              letterSpacing: -2.4,
+            }}
+          >
+            {workout.name || "Untitled"}
+          </Text>
+          {workout.subtitle ? (
+            <Text style={{ color: colors.muted, fontSize: 20, lineHeight: 26 }}>
+              {workout.subtitle}
+            </Text>
+          ) : null}
+          <Text style={{ color: colors.faint, fontSize: 15, marginTop: 8 }}>
+            {count} {count === 1 ? "exercise" : "exercises"}
+            {then && then.id !== workout.id ? ` · then ${then.name}` : ""}
+          </Text>
         </View>
       </ScrollView>
 
       <View style={{ paddingHorizontal: 22, paddingBottom: 16 }}>
-        <Column style={{ gap: 10 }}>
-        <Pressable
-          accessibilityRole="button"
-          onPress={start}
-          style={({ pressed }) => ({
-            minHeight: 60,
-            alignItems: "center",
-            justifyContent: "center",
-            borderRadius: radii.button,
-            borderCurve: "continuous",
-            backgroundColor: colors.acid,
-            opacity: pressed ? 0.8 : 1,
-          })}
-        >
-          <Text style={{ color: colors.ink, fontSize: 17, fontWeight: "800" }}>
-            Start
-          </Text>
-        </Pressable>
-        <Text
-          style={{
-            textAlign: "center",
-            color: colors.faint,
-            fontSize: 13,
-            lineHeight: 19,
-          }}
-        >
-          Stop whenever you want. The next session picks up where the cycle left off.
-        </Text>
+        <Column style={{ gap: 12 }}>
+          {skipped ? (
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 6,
+              }}
+            >
+              <Text style={{ color: colors.faint, fontSize: 15 }}>
+                Skipped {skipped.name}.
+              </Text>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={`Undo skipping ${skipped.name}`}
+                hitSlop={12}
+                onPress={() => {
+                  setState((s) => setNextWorkout(s, skipped.id));
+                  setSkipped(null);
+                }}
+                style={({ pressed }) => ({
+                  minHeight: 44,
+                  justifyContent: "center",
+                  opacity: pressed ? 0.5 : 1,
+                })}
+              >
+                <Text style={{ color: colors.acid, fontSize: 15, fontWeight: "800" }}>
+                  Undo
+                </Text>
+              </Pressable>
+            </View>
+          ) : null}
+
+          <View style={{ flexDirection: "row", gap: 12 }}>
+            {/* With one workout there is nothing to skip to. */}
+            {then ? (
+              <BigButton label="Skip" onPress={skip} />
+            ) : null}
+            <BigButton label="Start" primary onPress={start} />
+          </View>
         </Column>
       </View>
     </View>
+  );
+}
+
+/** The two things Today asks: big enough to hit without looking twice. */
+function BigButton({
+  label,
+  primary = false,
+  onPress,
+}: {
+  label: string;
+  primary?: boolean;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      onPress={onPress}
+      style={({ pressed }) => ({
+        // Start is the answer nearly every time, so it takes twice the room.
+        flex: primary ? 2 : 1,
+        minHeight: 76,
+        alignItems: "center",
+        justifyContent: "center",
+        borderRadius: radii.button,
+        borderCurve: "continuous",
+        backgroundColor: primary ? colors.acid : colors.raised,
+        opacity: pressed ? 0.8 : 1,
+      })}
+    >
+      <Text
+        style={{
+          color: primary ? colors.ink : colors.text,
+          fontSize: 22,
+          fontWeight: "800",
+        }}
+      >
+        {label}
+      </Text>
+    </Pressable>
   );
 }
 

@@ -485,6 +485,14 @@ export const moveWorkout = (state: SessionState, from: number, to: number): Sess
   workouts: move(state.workouts, from, to),
 });
 
+/**
+ * Skip the next workout without starting it: the cycle moves on to the one
+ * after, and nothing is recorded — no exercise is flagged as skipped, since
+ * none was ever offered. Undone with `setNextWorkout`.
+ */
+export const skipWorkout = (state: SessionState): SessionState =>
+  state.active ? state : { ...state, nextWorkout: following(state, upNext(state).id) };
+
 /** Make a workout the next one Start runs. */
 export const setNextWorkout = (state: SessionState, id: string): SessionState =>
   workoutById(state, id) ? { ...state, nextWorkout: id } : state;

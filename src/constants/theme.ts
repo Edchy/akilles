@@ -35,6 +35,16 @@ export const radii = {
 
 /**
  * Height of the bottom bar, excluding the device's safe area.
- * Sized to hold a 44pt touch target — the platform minimum — plus its label.
+ *
+ * Deliberately oversized. The bar is used mid-set — sweaty hands, heart rate
+ * up, half a glance — so its targets are about twice the 44pt platform
+ * minimum, and the glyphs and labels are sized to read at arm's length.
  */
-export const TAB_BAR_HEIGHT = 72;
+export const TAB_BAR_HEIGHT = 96;
+
+/**
+ * Sizes for everything in the bottom bar. `icon` is the box every glyph sits
+ * in — the hold-to-leave circle is exactly this size — so all the labels
+ * line up whatever is above them.
+ */
+export const BAR_TYPE = { icon: 60, glyph: 32, label: 14 } as const;

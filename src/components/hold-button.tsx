@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import { Animated, Easing, Pressable, Text, View } from "react-native";
 
-import { colors } from "@/constants/theme";
+import { BAR_TYPE, colors } from "@/constants/theme";
 
 /** 44pt is the minimum touch target on both platforms. */
-const CIRCLE = 44;
+const CIRCLE = BAR_TYPE.icon;
 
 /**
  * Press and hold to confirm. The circle fills from the bottom up while held;
@@ -81,7 +81,7 @@ export function HoldButton({
       accessibilityLabel={`${label}. Press and hold.`}
       onPressIn={start}
       onPressOut={cancel}
-      style={{ flex: 1, alignItems: "center", justifyContent: "center", gap: 5 }}
+      style={{ flex: 1, alignItems: "center", justifyContent: "center", gap: 6 }}
     >
       <View
         style={{
@@ -109,7 +109,7 @@ export function HoldButton({
         <Text
           style={{
             color: holding ? colors.bg : colors.muted,
-            fontSize: 19,
+            fontSize: 26,
             fontWeight: "600",
           }}
         >
@@ -120,8 +120,8 @@ export function HoldButton({
       <Text
         style={{
           color: holding ? colors.coral : colors.muted,
-          fontSize: 11,
-          fontWeight: "700",
+          fontSize: BAR_TYPE.label,
+          fontWeight: "800",
           letterSpacing: 0.3,
         }}
       >
