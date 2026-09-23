@@ -122,29 +122,31 @@ Three tabs, plus the workout itself which takes over the screen.
 Both segments are accordions — one workout or one category open at a time, so
 the whole list fits on a screen.
 
-The **Exercises** segment is the catalogue of what exists, **grouped by
-muscle** — Chest,
-Back, Shoulders, Arms, Quads & squats, Hamstrings & hinge, Calves, Core,
-Explosive. So an overhead press sits under Shoulders, where you would look for
-it, with its movement type shown underneath as a subtitle.
+The **Exercises** segment is your catalogue, grouped the way you train:
+**Push, Pull, Legs, Core** — then cardio machines and mobility routines. Each
+exercise is listed by name with its weight step; nothing else.
 
-That finer movement type is still what slots match on; it just is not the
-browsing structure.
+**Tap an exercise** to rename it or change its **weight step** — how many kg
+one press of − or + moves it (1, 1.25, 2, 2.5, 3, 4, 5 or 10). Edits work on
+built-ins too: they are stored alongside, so the exercise keeps its id and its
+history. **Remove** (two taps) puts a built-in back in the library, or deletes
+one of your own — **unless it is the last one of a movement type**, since a
+slot of that type would then have nothing to prescribe. Either way, training
+history is kept, so adding it back later resumes where it left off.
 
-`+` on a heading adds an exercise: name it, pick which movement types it counts
-as, and say how its weight moves. `−` removes any exercise, built-in or not,
-after a confirmation — **unless it is the last one of a movement type**, since
-a slot of that type would then have nothing to prescribe. A removed exercise
-keeps its training history, so adding it back later resumes where it left off.
+**+ on a group adds.** First the **library** — built-in exercises you are not
+using, one tap to add — then **Create your own**: name it, pick the equipment
+(barbell, dumbbells, machine, bodyweight — which sets a sensible weight step),
+and say what it counts as. The catalogue starts with the program's exercises
+plus a common alternative or two for each job; everything else waits in the
+library rather than cluttering the list.
 
-**An exercise can belong to more than one type.** A hip thrust is both a hinge
-and hamstring work; dips are a horizontal press and triceps work; a chin-up is
-a vertical pull and biceps work. Those appear under every heading they belong
-to, and in every slot of those types. When adding one, "also counts as" picks
-the extra categories.
+**An exercise can belong to more than one group or type.** Groups come from
+movement types, so a face pull (shoulders and a row) is under Push and Pull,
+and fills slots of both types.
 
 **But it can only fill one slot per module.** If hip thrust is your Hinge on
-Lower · Strength, the Hamstrings slot still lists it — greyed out and marked
+Legs, a Hamstrings slot there still lists it — greyed out and marked
 **in use** — so it is clear *why* you cannot pick it rather than the option
 silently vanishing. Your current pick is never greyed in its own slot.
 

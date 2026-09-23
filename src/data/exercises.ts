@@ -196,41 +196,56 @@ export const EXERCISES: Exercise[] = [
 ];
 
 /**
- * The lean starting catalogue: exactly what the starting program names.
+ * The starting catalogue: what the starting program names, plus a common
+ * alternative or two for each job, so every slot has something to swap to.
  *
- * Everything else in `EXERCISES` above ships *removed* — present in the app,
- * listed under "Removed" in the exercise library, one tap from coming back.
- * The app therefore opens with one exercise per job rather than four, and you
- * grow it deliberately: to swap something out, first put something in.
+ * Everything else in `EXERCISES` above is the *library* — not in your
+ * catalogue, but one tap away from the + on each group. The app opens with
+ * a short list rather than every variation it knows, and grows only where
+ * you decide it should.
  *
  * This is a starting point, not a rule. It seeds `hidden` on first launch and
- * is never consulted again, so anything you restore stays restored.
+ * is never consulted again, so anything you add stays added.
  */
 export const LEAN: string[] = [
-  // Push
+  // Push — the program's presses, plus one or two to swap to for each
   "db_bench",
+  "bench",
+  "incline_db_press",
   "db_shoulder",
+  "machine_shoulder",
   "cable_crossover",
+  "lateral_raise",
   "dips",
   "pushdown",
+  "overhead_ext",
   // Pull
   "pullup",
   "lat_pulldown",
   "bb_row",
   "machine_row",
   "db_row",
+  "cable_row",
+  "face_pull",
   "bb_curl",
   "db_curl",
+  "hammer_curl",
   // Legs
   "back_squat",
+  "leg_press",
   "rdl",
   "bulgarian",
+  "leg_ext",
+  "leg_curl",
+  "calf_raise",
   // Core
   "hanging_leg_raise",
   "ab_machine",
+  "cable_crunch",
+  "plank",
 ];
 
-/** Built-in lifts that start out removed — everything not in `LEAN`. */
+/** Built-in lifts that start in the library — everything not in `LEAN`. */
 export const leanHiddenExercises = (): string[] =>
   EXERCISES.filter((e) => !LEAN.includes(e.id)).map((e) => e.id);
 
@@ -296,6 +311,50 @@ export const groupsOf = (ex: Exercise): Group[] => [
 export const groupOf = (ex: Exercise): Group =>
   ex.group ?? GROUP_BY_PATTERN[ex.patterns[0]];
 
+/**
+ * How the exercise list is browsed: the split you train in. Worked out from
+ * movement types, so an exercise spanning two — a face pull is shoulder work
+ * and a row — is listed under both.
+ */
+export type Category = "push" | "pull" | "legs" | "core";
+
+const CATEGORY_BY_PATTERN: Record<Pattern, Category> = {
+  horizontal_push: "push",
+  vertical_push: "push",
+  chest_iso: "push",
+  triceps: "push",
+  shoulders: "push",
+  horizontal_pull: "pull",
+  vertical_pull: "pull",
+  biceps: "pull",
+  squat: "legs",
+  hinge: "legs",
+  lunge: "legs",
+  quads: "legs",
+  hamstrings: "legs",
+  calves: "legs",
+  jump: "legs",
+  abs: "core",
+};
+
+export const CATEGORY_LABEL: Record<Category, string> = {
+  push: "Push",
+  pull: "Pull",
+  legs: "Legs",
+  core: "Core",
+};
+
+export const CATEGORY_ORDER: Category[] = ["push", "pull", "legs", "core"];
+
+/** Every category an exercise belongs to, from all of its movement types. */
+export const categoriesOf = (ex: Exercise): Category[] => [
+  ...new Set(ex.patterns.map((p) => CATEGORY_BY_PATTERN[p])),
+];
+
+/** Movement types that make up a category, in list order. */
+export const patternsIn = (category: Category): Pattern[] =>
+  PATTERN_ORDER_FOR_CATEGORY.filter((p) => CATEGORY_BY_PATTERN[p] === category);
+
 /** Whether an exercise counts as a given movement type. */
 export const isPattern = (ex: Exercise, pattern: Pattern): boolean =>
   ex.patterns.includes(pattern);
@@ -321,6 +380,25 @@ export const PATTERN_LABEL: Record<Pattern, string> = {
 };
 
 /** The order patterns appear in the library. */
+const PATTERN_ORDER_FOR_CATEGORY: Pattern[] = [
+  "horizontal_push",
+  "vertical_push",
+  "chest_iso",
+  "shoulders",
+  "triceps",
+  "vertical_pull",
+  "horizontal_pull",
+  "biceps",
+  "squat",
+  "hinge",
+  "lunge",
+  "quads",
+  "hamstrings",
+  "calves",
+  "jump",
+  "abs",
+];
+
 export const PATTERN_ORDER: Pattern[] = [
   "horizontal_push",
   "chest_iso",
@@ -355,5 +433,29 @@ export const setCustomExercises = (list: Exercise[]) => {
   customExercises = list;
 };
 
-export const byId = (id: string): Exercise | undefined =>
-  EXERCISES.find((e) => e.id === id) ?? customExercises.find((e) => e.id === id);
+/**
+ * Your changes to an exercise — its name, its weight step — kept apart from
+ * the definition, so a built-in keeps its id and history and its original
+ * values stay underneath. Kept in sync by the store, like the custom list.
+ */
+export type ExerciseEdit = { name?: string; increment?: number };
+
+let exerciseEdits: Record<string, ExerciseEdit> = {};
+
+export const setExerciseEdits = (edits: Record<string, ExerciseEdit>) => {
+  exerciseEdits = edits;
+};
+
+/** An exercise as you have it: its definition with your edits on top. */
+export const withEdits = (ex: Exercise): Exercise => {
+  const edit = exerciseEdits[ex.id];
+  return edit ? { ...ex, ...edit } : ex;
+};
+
+export const byId = (id: string): Exercise | undefined => {
+  const ex = EXERCISES.find((e) => e.id === id) ?? customExercises.find((e) => e.id === id);
+  return ex && withEdits(ex);
+};
+
+/** The weight steps an exercise can move by, per press of − or +. */
+export const INCREMENTS = [1, 1.25, 2, 2.5, 3, 4, 5, 10];

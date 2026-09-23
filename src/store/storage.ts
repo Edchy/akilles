@@ -13,7 +13,7 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 import { setCustomConditioning } from "@/data/conditioning";
-import { setCustomExercises } from "@/data/exercises";
+import { leanHiddenExercises, setCustomExercises, setExerciseEdits } from "@/data/exercises";
 import { DEFAULT_WORKOUTS } from "@/data/split";
 import {
   CONDITIONING_ID,
@@ -49,8 +49,12 @@ const KEY = "achilles/state";
  * 6 — removed built-in workouts are kept on a Removed list so they can be put
  *     back. Any built-in already missing — deleted before the list existed —
  *     is placed on it at its default position.
+ * 7 — the exercise catalogue starts from a new default pool, and the rest is
+ *     a library to add from rather than a "Removed" list. The catalogue is
+ *     reset to that pool — plus anything a workout uses — since nothing had
+ *     been curated by hand yet. Exercise edits (name, weight step) are new.
  */
-const VERSION = 6;
+const VERSION = 7;
 
 /** What actually goes to disk. Older blobs carry a cycle position, not an id. */
 type Saved = {
@@ -135,10 +139,22 @@ export const fromSaved = (raw: string): SessionState | Unreadable => {
         restored.workouts.some((w) => w.id === workout.id) ? [] : [{ workout, at }],
       );
     }
+    if (saved.version < 7) {
+      const used = new Set(
+        restored.workouts.flatMap((w) =>
+          w.exercises.flatMap((e) => [
+            ...e.options,
+            ...(restored.choices[`${w.id}/${e.id}`] ? [restored.choices[`${w.id}/${e.id}`]] : []),
+          ]),
+        ),
+      );
+      restored.hidden = leanHiddenExercises().filter((id) => !used.has(id));
+    }
     // `byId`, `cardioById` and `mobilityById` resolve custom entries through
     // module-level lists, so those have to be repopulated before anything
     // looks one up — including the commit below.
     setCustomExercises(restored.custom);
+    setExerciseEdits(restored.exerciseEdits);
     setCustomConditioning(restored.customCardio, restored.customMobility);
 
     // Yesterday's abandoned workout is not resumed. It is closed out exactly

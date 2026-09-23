@@ -14,8 +14,11 @@ import {
   isPattern,
   leanHiddenExercises,
   setCustomExercises,
+  setExerciseEdits,
+  withEdits,
   groupOf,
   type Exercise,
+  type ExerciseEdit,
   type Group,
   type Pattern,
 } from "@/data/exercises";
@@ -170,6 +173,8 @@ export type SessionState = {
   choices: Record<string, string>;
   /** Exercises you have added to the catalogue. */
   custom: Exercise[];
+  /** Your renames and weight steps, by exercise id — built-in or yours. */
+  exerciseEdits: Record<string, ExerciseEdit>;
   /** Cardio machines and mobility routines you have added. */
   customCardio: CardioExercise[];
   customMobility: MobilityRoutine[];
@@ -235,16 +240,20 @@ export const slotKey = (workoutId: string, entryId: string) => `${workoutId}/${e
  * The exercise catalogue: the built-in list plus anything you have added,
  * minus anything you have removed.
  */
-export const catalogue = (state: SessionState): Exercise[] => [
-  ...EXERCISES.filter((e) => e.enabled !== false && !state.hidden.includes(e.id)),
-  ...state.custom,
-];
+export const catalogue = (state: SessionState): Exercise[] =>
+  [
+    ...EXERCISES.filter((e) => e.enabled !== false && !state.hidden.includes(e.id)),
+    ...state.custom,
+  ].map(withEdits);
 
-/** Built-in exercises you have removed, so they can be put back. */
+/**
+ * The library: built-in exercises not in your catalogue — never added, or
+ * removed since. One tap from the + on a group brings one in.
+ */
 export const hiddenExercises = (state: SessionState): Exercise[] =>
-  EXERCISES.filter((e) => state.hidden.includes(e.id));
+  EXERCISES.filter((e) => e.enabled !== false && state.hidden.includes(e.id)).map(withEdits);
 
-/** Put a removed built-in back into the catalogue. */
+/** Bring a built-in in from the library. */
 export const restoreExercise = (state: SessionState, id: string): SessionState => ({
   ...state,
   hidden: state.hidden.filter((h) => h !== id),
@@ -271,23 +280,54 @@ export const canRemove = (state: SessionState, id: string): boolean => {
 };
 
 /** Look up an exercise anywhere: built-in or one of yours. */
-export const lookup = (state: SessionState, id: string): Exercise | undefined =>
-  state.custom.find((e) => e.id === id) ?? byId(id);
+export const lookup = (state: SessionState, id: string): Exercise | undefined => {
+  const mine = state.custom.find((e) => e.id === id);
+  return mine ? withEdits(mine) : byId(id);
+};
 
-/** Add an exercise to the catalogue. Its pattern decides which slots offer it. */
+/**
+ * Add an exercise of your own. Its movement types decide which slots offer
+ * it. The id comes from the name, numbered if that one is taken.
+ */
 export const addExercise = (
   state: SessionState,
   exercise: Exercise,
 ): SessionState => {
-  const custom = [...state.custom, exercise];
+  const taken = (id: string) =>
+    EXERCISES.some((e) => e.id === id) || state.custom.some((e) => e.id === id);
+  let id = exercise.id;
+  for (let n = 2; taken(id); n++) id = `${exercise.id}_${n}`;
+  const custom = [...state.custom, { ...exercise, id }];
   setCustomExercises(custom);
   return { ...state, custom };
 };
 
 /**
- * Remove an exercise from the catalogue. Any slot using it falls back to that
- * slot's first option; its training history is kept, so adding it back later
- * resumes where it left off. Refused if it would empty a movement type.
+ * Rename an exercise or change its weight step. Built-in or yours, the edit
+ * is stored on its own, so the id — and every record keyed by it — stays
+ * the same. A blank name is ignored rather than leaving a nameless row.
+ */
+export const editExercise = (
+  state: SessionState,
+  id: string,
+  patch: ExerciseEdit,
+): SessionState => {
+  const next: ExerciseEdit = { ...state.exerciseEdits[id] };
+  if (patch.name !== undefined) {
+    const name = patch.name.trim();
+    if (name) next.name = name;
+  }
+  if (patch.increment !== undefined && patch.increment > 0) next.increment = patch.increment;
+  const exerciseEdits = { ...state.exerciseEdits, [id]: next };
+  setExerciseEdits(exerciseEdits);
+  return { ...state, exerciseEdits };
+};
+
+/**
+ * Remove an exercise from the catalogue. A built-in goes back to the library;
+ * one of yours is deleted. Any slot using it falls back to that slot's first
+ * option; its training history is kept, so adding it back later resumes where
+ * it left off. Refused if it would empty a movement type.
  */
 export const removeExercise = (state: SessionState, id: string): SessionState => {
   if (!canRemove(state, id)) return state;
@@ -605,6 +645,7 @@ export const initialState: SessionState = {
   removedWorkouts: [],
   choices: {},
   custom: [],
+  exerciseEdits: {},
   customCardio: [],
   customMobility: [],
   hidden: leanHiddenExercises(),
