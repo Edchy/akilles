@@ -128,8 +128,9 @@ export const EXERCISES: Exercise[] = [
   { id: "back_squat", name: "Back squat", patterns: ["squat"], increment: 2.5, cue: "Knees track over toes." },
   { id: "front_squat", name: "Front squat", patterns: ["squat"], increment: 2.5 },
   { id: "goblet_squat", name: "Goblet squat", patterns: ["squat"], increment: 2.5 },
-  { id: "hack_squat", name: "Hack squat", patterns: ["quads"], increment: 5 },
-  { id: "leg_press", name: "Leg press", patterns: ["quads"], increment: 5 },
+  // Squat-pattern machines: they fill a Squat slot as well as quad work.
+  { id: "hack_squat", name: "Hack squat", patterns: ["squat", "quads"], increment: 5 },
+  { id: "leg_press", name: "Leg press", patterns: ["squat", "quads"], increment: 5 },
 
   // ---------- hinge ----------
   { id: "deadlift", name: "Deadlift", patterns: ["hinge"], increment: 2.5, cue: "Bar close, push the floor away." },
@@ -198,6 +199,8 @@ export const EXERCISES: Exercise[] = [
 /**
  * The starting catalogue: what the starting program names, plus a common
  * alternative or two for each job, so every slot has something to swap to.
+ * "Each job" means each slot's movement type: a slot only offers exercises of
+ * its own type, so a leg curl is no alternative for a Hinge slot.
  *
  * Everything else in `EXERCISES` above is the *library* — not in your
  * catalogue, but one tap away from the + on each group. The app opens with
@@ -215,6 +218,7 @@ export const LEAN: string[] = [
   "db_shoulder",
   "machine_shoulder",
   "cable_crossover",
+  "cable_fly",
   "lateral_raise",
   "dips",
   "pushdown",
@@ -232,9 +236,12 @@ export const LEAN: string[] = [
   "hammer_curl",
   // Legs
   "back_squat",
+  "goblet_squat",
   "leg_press",
   "rdl",
+  "db_rdl",
   "bulgarian",
+  "walking_lunge",
   "leg_ext",
   "leg_curl",
   "calf_raise",

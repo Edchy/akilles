@@ -53,8 +53,11 @@ const KEY = "achilles/state";
  *     a library to add from rather than a "Removed" list. The catalogue is
  *     reset to that pool — plus anything a workout uses — since nothing had
  *     been curated by hand yet. Exercise edits (name, weight step) are new.
+ * 8 — the default pool gained an alternative for every slot that had none
+ *     (squat, hinge, single leg, chest fly); those are added to the
+ *     catalogue. Nothing is removed.
  */
-const VERSION = 7;
+const VERSION = 8;
 
 /** What actually goes to disk. Older blobs carry a cycle position, not an id. */
 type Saved = {
@@ -149,6 +152,10 @@ export const fromSaved = (raw: string): SessionState | Unreadable => {
         ),
       );
       restored.hidden = leanHiddenExercises().filter((id) => !used.has(id));
+    }
+    if (saved.version < 8) {
+      const added = ["goblet_squat", "db_rdl", "walking_lunge", "cable_fly"];
+      restored.hidden = restored.hidden.filter((id) => !added.includes(id));
     }
     // `byId`, `cardioById` and `mobilityById` resolve custom entries through
     // module-level lists, so those have to be repopulated before anything
