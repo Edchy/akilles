@@ -59,6 +59,29 @@ import {
 
 const serif = process.env.EXPO_OS === "ios" ? "Georgia" : "serif";
 
+/**
+ * Fixed heights for everything on the exercise screen whose content varies.
+ *
+ * Mid-workout you tap without really looking, so nothing may move under the
+ * thumb: each block is sized for its largest case — a two-line name, a
+ * 68pt weight, three lines of "last time", the tallest action — and smaller
+ * content sits inside that space rather than shrinking it.
+ */
+const FIXED = {
+  /** Two lines of the exercise name; longer names shrink to fit. */
+  name: 88,
+  /** The "seconds, not reps" line, reserved whether or not it shows. */
+  note: 20,
+  /** Weight row: the 68pt input is the tallest of its forms. */
+  weight: 84,
+  /** Set circles never grow past this, so two sets are as tall as four. */
+  circle: 76,
+  /** Up to three lines of "last time". */
+  why: 57,
+  /** The tallest answer: a one-line note above a 60pt button. */
+  action: 89,
+} as const;
+
 export default function WorkoutScreen() {
   const { state, setState } = useSession();
   const insets = useSafeAreaInsets();
@@ -170,8 +193,13 @@ export default function WorkoutScreen() {
       >
         {/* The exercise and the weight are the surface — no card around them. */}
         <View style={{ gap: 4 }}>
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+          <View
+            style={{ height: FIXED.name, flexDirection: "row", alignItems: "center", gap: 10 }}
+          >
             <Text
+              numberOfLines={2}
+              adjustsFontSizeToFit
+              minimumFontScale={0.6}
               style={{
                 flex: 1,
                 color: colors.text,
@@ -212,14 +240,19 @@ export default function WorkoutScreen() {
               </Pressable>
             ) : null}
           </View>
-          {p.exercise.timed ? (
-            <Text style={{ color: colors.muted, fontSize: 15, fontWeight: "600" }}>
-              seconds, not reps
-            </Text>
-          ) : null}
+          <Text
+            style={{ height: FIXED.note, color: colors.muted, fontSize: 15, fontWeight: "600" }}
+          >
+            {p.exercise.timed ? "seconds, not reps" : ""}
+          </Text>
         </View>
 
-        {p.exercise.unloaded ? null : item.derive ? (
+        <View style={{ height: FIXED.weight, justifyContent: "center" }}>
+        {p.exercise.unloaded ? (
+          <Text style={{ textAlign: "center", color: colors.faint, fontSize: 17, fontWeight: "700" }}>
+            No weight — just the reps
+          </Text>
+        ) : item.derive ? (
           // Derived from the heavy day's weight, so there is nothing to edit.
           <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
             <Text
@@ -250,6 +283,7 @@ export default function WorkoutScreen() {
             onSet={(w) => setState((s) => editWeight(s, w))}
           />
         )}
+        </View>
 
         <Sets
           logged={item.logged}
@@ -317,7 +351,7 @@ export default function WorkoutScreen() {
 
       {/* The action: one row, only when there is something to answer. */}
       <View style={{ paddingHorizontal: 22, paddingBottom: 14 }}>
-        <Column>
+        <Column style={{ height: FIXED.action, justifyContent: "flex-end" }}>
           {logged && made ? (
             <View style={{ flexDirection: "row", gap: 10 }}>
               <Feedback label="Felt good" glyph="👍" fill onPress={() => next("up")} />
@@ -1124,19 +1158,25 @@ function Sets({
   /** Shorter circles for a supersetted partner, so the main lift stays primary. */
   compact?: boolean;
 }) {
-  // The circles span the full width with even gaps between them, so four sets
-  // and two sets both fill the row. `aspectRatio` keeps each one round at
-  // whatever width it lands on.
-  //
-  // A partner row is capped and packed left instead: with only two sets,
-  // stretching them would make circles taller than the main lift's row, and
-  // capping them under space-between would fling the pair to opposite edges.
+  // Every circle is the same fixed size, packed from the left, and the row
+  // is always the same height — two sets must not make bigger circles than
+  // four, or the screen changes shape from one exercise to the next. Only
+  // when there are too many to fit do they shrink, and then inside the same
+  // row height.
+  const [width, setWidth] = useState(0);
+  const full = compact ? 56 : FIXED.circle;
+  const gap = 12;
+  const n = logged.length;
+  const fits = width > 0 ? (width - gap * (n - 1)) / n : full;
+  const size = Math.max(36, Math.min(full, fits));
   return (
     <View
+      onLayout={(e) => setWidth(e.nativeEvent.layout.width)}
       style={{
+        height: full,
         flexDirection: "row",
-        justifyContent: compact ? "flex-start" : "space-between",
-        gap: 12,
+        alignItems: "center",
+        gap,
       }}
     >
       {logged.map((reps, i) => {
@@ -1149,9 +1189,8 @@ function Sets({
             accessibilityLabel={`Set ${i + 1}${filled ? `, ${reps} reps` : ", not logged"}`}
             onPress={() => onTap(i)}
             style={({ pressed }) => ({
-              flex: compact ? undefined : 1,
-              width: compact ? 56 : undefined,
-              aspectRatio: 1,
+              width: size,
+              height: size,
               alignItems: "center",
               justifyContent: "center",
               borderRadius: 999,
@@ -1320,7 +1359,7 @@ function Why({ prescription }: { prescription: ReturnType<typeof currentPrescrip
 
   if (prescription.exercise.unloaded) {
     return (
-      <Text style={{ color: colors.faint, fontSize: 13, lineHeight: 19 }}>
+      <Text style={{ height: FIXED.why, color: colors.faint, fontSize: 13, lineHeight: 19 }}>
         Maximum effort every rep. Rest as long as you need between sets.
       </Text>
     );
@@ -1338,7 +1377,14 @@ function Why({ prescription }: { prescription: ReturnType<typeof currentPrescrip
           }`
         : "First time on this one. Pick a weight you could do two more reps with.";
 
-  return <Text style={{ color: colors.faint, fontSize: 13, lineHeight: 19 }}>{text}</Text>;
+  return (
+    <Text
+      numberOfLines={3}
+      style={{ height: FIXED.why, color: colors.faint, fontSize: 13, lineHeight: 19 }}
+    >
+      {text}
+    </Text>
+  );
 }
 
 /** The folded-in floater: its own target and its own tappable circles. */
