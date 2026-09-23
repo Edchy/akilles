@@ -1,3 +1,9 @@
+import {
+  Quicksand_500Medium,
+  Quicksand_600SemiBold,
+  Quicksand_700Bold,
+  useFonts,
+} from "@expo-google-fonts/quicksand";
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { View } from "react-native";
@@ -31,11 +37,19 @@ function Shell() {
 
 export default function RootLayout() {
   const { state, setState, ready } = useSaved();
+  // The display face ships inside the bundle, so this is as quick as the read
+  // below. A font that fails to load falls back to the system face rather
+  // than holding the app on a blank screen.
+  const [fontsLoaded, fontError] = useFonts({
+    Quicksand_500Medium,
+    Quicksand_600SemiBold,
+    Quicksand_700Bold,
+  });
 
   // Nothing renders until the saved training is read back, so no screen can
   // act on an empty state and write it over a year of history. The read is a
   // single small file, so this is a frame or two, not a visible spinner.
-  if (!ready) {
+  if (!ready || (!fontsLoaded && !fontError)) {
     return <View style={{ flex: 1, backgroundColor: colors.bg }} />;
   }
 

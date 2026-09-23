@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Pressable, Text, TextInput, View } from "react-native";
 
 import { DragList, type Drag } from "@/components/drag-list";
+import { Icon, type IconName } from "@/components/icon";
 import { colors, radii } from "@/constants/theme";
 import { PATTERN_LABEL, PATTERN_ORDER, byId } from "@/data/exercises";
 import {
@@ -170,7 +171,7 @@ function RemovedWorkouts() {
         >
           {rows.length}
         </Text>
-        <Text style={{ color: colors.faint, fontSize: 12 }}>{open ? "▲" : "▼"}</Text>
+        <Icon name={open ? "collapse" : "expand"} size={14} color={colors.faint} />
       </Pressable>
 
       {open ? (
@@ -256,7 +257,7 @@ function Module({
         borderCurve: "continuous",
         backgroundColor: isNext || drag.active ? colors.surface : colors.bg,
         borderWidth: 1,
-        borderColor: drag.active ? colors.acid : isNext ? colors.surface : colors.line,
+        borderColor: drag.active ? colors.rise : isNext ? colors.surface : colors.line,
         padding: 16,
       }}
     >
@@ -289,7 +290,7 @@ function Module({
         {isNext ? (
           <Text
             style={{
-              color: colors.acid,
+              color: colors.rise,
               fontSize: 11,
               fontWeight: "800",
               letterSpacing: 1,
@@ -299,9 +300,7 @@ function Module({
             Next
           </Text>
         ) : null}
-        <Text style={{ color: colors.faint, fontSize: 12 }}>
-          {expanded ? "▲" : "▼"}
-        </Text>
+        <Icon name={expanded ? "collapse" : "expand"} size={14} color={colors.faint} />
       </Pressable>
 
       {expanded && renaming ? (
@@ -525,7 +524,7 @@ function Slot({
                     minHeight: 52,
                     paddingHorizontal: 14,
                     borderRadius: 12,
-                    backgroundColor: active ? colors.acid : colors.surface,
+                    backgroundColor: active ? colors.cloud : colors.surface,
                     opacity: used ? 0.35 : pressed ? 0.7 : 1,
                   })}
                 >
@@ -580,14 +579,14 @@ function Slot({
         <View style={{ gap: 12, paddingBottom: 12 }}>
           <Setting label="Sets">
             <Step
-              glyph="−"
+              icon="minus"
               label="Fewer sets"
               disabled={sets <= SETS_RANGE.min}
               onPress={() => update({ sets: sets - 1 })}
             />
             <Count value={sets} />
             <Step
-              glyph="+"
+              icon="plus"
               label="More sets"
               disabled={sets >= SETS_RANGE.max}
               onPress={() => update({ sets: sets + 1 })}
@@ -606,14 +605,14 @@ function Slot({
             <>
               <Setting label="Fewest reps">
                 <Step
-                  glyph="−"
+                  icon="minus"
                   label="Lower the bottom of the rep range"
                   disabled={reps.min <= REPS_RANGE.min}
                   onPress={() => update({ scheme: rangeScheme(reps.min - 1, reps.max) })}
                 />
                 <Count value={reps.min} />
                 <Step
-                  glyph="+"
+                  icon="plus"
                   label="Raise the bottom of the rep range"
                   disabled={reps.min >= reps.max}
                   onPress={() => update({ scheme: rangeScheme(reps.min + 1, reps.max) })}
@@ -621,14 +620,14 @@ function Slot({
               </Setting>
               <Setting label="Most reps">
                 <Step
-                  glyph="−"
+                  icon="minus"
                   label="Lower the top of the rep range"
                   disabled={reps.max <= reps.min}
                   onPress={() => update({ scheme: rangeScheme(reps.min, reps.max - 1) })}
                 />
                 <Count value={reps.max} />
                 <Step
-                  glyph="+"
+                  icon="plus"
                   label="Raise the top of the rep range"
                   disabled={reps.max >= REPS_RANGE.max}
                   onPress={() => update({ scheme: rangeScheme(reps.min, reps.max + 1) })}
@@ -645,7 +644,7 @@ function Slot({
               justifyContent: "center",
               minHeight: 48,
               borderRadius: 999,
-              backgroundColor: colors.acid,
+              backgroundColor: colors.cloud,
               opacity: pressed ? 0.7 : 1,
             })}
           >
@@ -717,7 +716,7 @@ function Chip({
         minHeight: 44,
         paddingHorizontal: 14,
         borderRadius: 999,
-        backgroundColor: selected ? colors.acid : colors.raised,
+        backgroundColor: selected ? colors.cloud : colors.raised,
         opacity: pressed ? 0.7 : 1,
       })}
     >
@@ -736,12 +735,12 @@ function Chip({
 }
 
 function Step({
-  glyph,
+  icon,
   label,
   disabled,
   onPress,
 }: {
-  glyph: string;
+  icon: IconName;
   label: string;
   disabled: boolean;
   onPress: () => void;
@@ -764,7 +763,7 @@ function Step({
         opacity: disabled ? 0.3 : pressed ? 0.7 : 1,
       })}
     >
-      <Text style={{ color: colors.text, fontSize: 18, fontWeight: "700" }}>{glyph}</Text>
+      <Icon name={icon} size={18} color={colors.text} weight="semibold" />
     </Pressable>
   );
 }
@@ -795,7 +794,7 @@ function TextButton({
     >
       <Text
         style={{
-          color: accent ? colors.acid : colors.muted,
+          color: accent ? colors.rise : colors.muted,
           fontSize: 13,
           fontWeight: "700",
         }}
@@ -829,7 +828,7 @@ function Confirm({
           paddingHorizontal: 14,
           marginRight: 12,
           borderRadius: 999,
-          backgroundColor: colors.coral,
+          backgroundColor: colors.bend,
           opacity: pressed ? 0.7 : 1,
         })}
       >

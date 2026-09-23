@@ -1,13 +1,14 @@
 import { usePathname, useRouter } from "expo-router";
 
 import { BarButton } from "@/components/bottom-bar";
+import type { IconName } from "@/components/icon";
 
-type Tab = { href: string; label: string; glyph: string };
+type Tab = { href: string; label: string; icon: IconName };
 
 const TABS: Tab[] = [
-  { href: "/", label: "Today", glyph: "◎" },
-  { href: "/history", label: "History", glyph: "▤" },
-  { href: "/plan", label: "Plan", glyph: "☰" },
+  { href: "/", label: "Today", icon: "today" },
+  { href: "/history", label: "History", icon: "history" },
+  { href: "/plan", label: "Plan", icon: "plan" },
 ];
 
 /** Default bar contents: the three tabs, whenever a screen has nothing else. */
@@ -20,7 +21,7 @@ export function TabButtons() {
       {TABS.map((tab) => (
         <BarButton
           key={tab.href}
-          glyph={tab.glyph}
+          icon={tab.icon}
           label={tab.label}
           active={pathname === tab.href}
           onPress={() => router.replace(tab.href as never)}

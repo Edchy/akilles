@@ -2,6 +2,7 @@ import type { PropsWithChildren } from "react";
 import { Pressable, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { Icon, type IconName } from "@/components/icon";
 import { Column } from "@/components/screen";
 import { ACTION_TYPE, BAR_TYPE, colors, TAB_BAR_HEIGHT } from "@/constants/theme";
 
@@ -28,23 +29,23 @@ export function BottomBar({ children }: PropsWithChildren) {
 }
 
 export function BarButton({
-  glyph,
+  icon,
   label,
   onPress,
   active,
   disabled,
   action,
 }: {
-  glyph: string;
+  icon: IconName;
   label: string;
   onPress: () => void;
   /** A workout-bar action rather than a tab: drawn at the larger size. */
   action?: boolean;
-  /** The current tab, in acid. */
+  /** The current tab, in rising blue. */
   active?: boolean;
   disabled?: boolean;
 }) {
-  const tint = active ? colors.acid : disabled ? colors.faint : colors.muted;
+  const tint = active ? colors.rise : disabled ? colors.faint : colors.muted;
   const size = action ? ACTION_TYPE : BAR_TYPE;
 
   return (
@@ -62,8 +63,19 @@ export function BarButton({
         opacity: disabled ? 0.3 : pressed ? 0.55 : 1,
       })}
     >
+      {/* A drop of rising blue over the current tab. Always laid out, just
+          clear when inactive, so switching tabs moves nothing. */}
+      <View
+        style={{
+          width: 6,
+          height: 6,
+          borderRadius: 3,
+          marginBottom: 2,
+          backgroundColor: active ? colors.rise : "transparent",
+        }}
+      />
       <View style={{ height: size.icon, justifyContent: "center" }}>
-        <Text style={{ color: tint, fontSize: size.glyph }}>{glyph}</Text>
+        <Icon name={icon} size={size.glyph} color={tint} weight={action ? "regular" : "medium"} />
       </View>
       <Text
         style={{ color: tint, fontSize: BAR_TYPE.label, fontWeight: "800", letterSpacing: 0.3 }}

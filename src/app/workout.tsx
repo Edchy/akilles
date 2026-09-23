@@ -7,7 +7,8 @@ import { Column, COLUMN } from "@/components/screen";
 import { useBarActions } from "@/components/bar-actions";
 import { BarButton } from "@/components/bottom-bar";
 import { HoldButton } from "@/components/hold-button";
-import { colors, radii } from "@/constants/theme";
+import { Icon, type IconName } from "@/components/icon";
+import { colors, fonts, radii } from "@/constants/theme";
 import { byId } from "@/data/exercises";
 import {
   courseLabel,
@@ -63,7 +64,6 @@ import {
   type Item,
 } from "@/store/session";
 
-const serif = process.env.EXPO_OS === "ios" ? "Georgia" : "serif";
 
 /**
  * Fixed heights for everything on the exercise screen whose content varies.
@@ -103,7 +103,7 @@ export default function WorkoutScreen() {
       <>
         <BarButton
           action
-          glyph="←"
+          icon="back"
           label="Back"
           disabled={active.cursor === 0}
           onPress={() => {
@@ -112,7 +112,7 @@ export default function WorkoutScreen() {
           }}
         />
         <HoldButton
-          glyph="×"
+          icon="close"
           label="Leave"
           onHold={() => {
             // Leaving ends the session: whatever went unlogged is recorded as
@@ -125,7 +125,7 @@ export default function WorkoutScreen() {
         />
         <BarButton
           action
-          glyph="→"
+          icon="forward"
           label="Skip"
           onPress={() => {
             setPicking(false);
@@ -209,11 +209,10 @@ export default function WorkoutScreen() {
               style={{
                 flex: 1,
                 color: colors.text,
-                fontFamily: serif,
+                fontFamily: fonts.display,
                 fontSize: 40,
                 lineHeight: 44,
-                fontWeight: "700",
-                letterSpacing: -1.5,
+                letterSpacing: -0.8,
               }}
             >
               {p.exercise.name}
@@ -230,19 +229,11 @@ export default function WorkoutScreen() {
                   alignItems: "center",
                   justifyContent: "center",
                   borderRadius: 999,
-                  backgroundColor: swapping ? colors.acid : colors.raised,
+                  backgroundColor: swapping ? colors.cloud : colors.raised,
                   opacity: pressed ? 0.7 : 1,
                 })}
               >
-                <Text
-                  style={{
-                    color: swapping ? colors.ink : colors.muted,
-                    fontSize: 17,
-                    fontWeight: "700",
-                  }}
-                >
-                  ⇄
-                </Text>
+                <Icon name="swap" size={20} color={swapping ? colors.ink : colors.muted} />
               </Pressable>
             ) : null}
           </View>
@@ -263,10 +254,10 @@ export default function WorkoutScreen() {
           <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
             <Text
               style={{
-                color: colors.acid,
+                color: colors.rise,
+                fontFamily: fonts.displayBold,
                 fontSize: 46,
-                fontWeight: "800",
-                letterSpacing: -2,
+                letterSpacing: -0.9,
                 fontVariant: ["tabular-nums"],
               }}
             >
@@ -360,8 +351,8 @@ export default function WorkoutScreen() {
         <Column style={{ height: FIXED.action, justifyContent: "flex-end" }}>
           {logged && made ? (
             <View style={{ flexDirection: "row", gap: 10 }}>
-              <Feedback label="Felt good" glyph="👍" fill onPress={() => next("up")} />
-              <Feedback label="Felt heavy" glyph="👎" onPress={() => next("down")} />
+              <Feedback label="Felt good" icon="up" fill onPress={() => next("up")} />
+              <Feedback label="Felt heavy" icon="down" onPress={() => next("down")} />
             </View>
           ) : logged && noProgression ? (
             // Speed and jump work: nothing to rate, just move on.
@@ -426,7 +417,7 @@ function Header() {
                   borderRadius: 999,
                   backgroundColor:
                     i < active.cursor
-                      ? colors.acid
+                      ? colors.rise
                       : i === active.cursor
                         ? colors.muted
                         : colors.line,
@@ -487,7 +478,7 @@ function Conditioning({ item }: { item: Item }) {
         <View style={{ gap: 6 }}>
           <Text
             style={{
-              color: colors.acid,
+              color: colors.rise,
               fontSize: 12,
               fontWeight: "800",
               letterSpacing: 1.4,
@@ -506,11 +497,10 @@ function Conditioning({ item }: { item: Item }) {
               style={{
                 flex: 1,
                 color: colors.text,
-                fontFamily: serif,
+                fontFamily: fonts.display,
                 fontSize: 40,
                 lineHeight: 44,
-                fontWeight: "700",
-                letterSpacing: -1.5,
+                letterSpacing: -0.8,
               }}
             >
               {cardio?.name ?? routine?.name ?? ""}
@@ -529,19 +519,11 @@ function Conditioning({ item }: { item: Item }) {
                   alignItems: "center",
                   justifyContent: "center",
                   borderRadius: 999,
-                  backgroundColor: swapping ? colors.acid : colors.raised,
+                  backgroundColor: swapping ? colors.cloud : colors.raised,
                   opacity: pressed ? 0.7 : 1,
                 })}
               >
-                <Text
-                  style={{
-                    color: swapping ? colors.ink : colors.muted,
-                    fontSize: 17,
-                    fontWeight: "700",
-                  }}
-                >
-                  ⇄
-                </Text>
+                <Icon name="swap" size={20} color={swapping ? colors.ink : colors.muted} />
               </Pressable>
             ) : null}
           </View>
@@ -729,10 +711,10 @@ function CardioBody({
             style={{
               // A time has no unit beside it, so it takes the unit's room.
               width: timed ? 214 : 160,
-              color: colors.acid,
+              color: colors.rise,
+              fontFamily: fonts.displayBold,
               fontSize: 62,
-              fontWeight: "800",
-              letterSpacing: -3,
+              letterSpacing: -1.2,
               textAlign: timed ? "center" : "right",
               fontVariant: ["tabular-nums"],
             }}
@@ -754,7 +736,7 @@ function CardioBody({
         <Text
           style={{
             textAlign: "center",
-            color: colors.acid,
+            color: colors.rise,
             fontSize: 14,
             fontWeight: "800",
           }}
@@ -765,7 +747,7 @@ function CardioBody({
         <Text
           style={{
             textAlign: "center",
-            color: colors.acid,
+            color: colors.rise,
             fontSize: 14,
             fontWeight: "800",
           }}
@@ -859,18 +841,10 @@ function MobilityBody({
                   borderRadius: 999,
                   borderWidth: ticked ? 0 : 1.5,
                   borderColor: colors.line,
-                  backgroundColor: ticked ? colors.acid : "transparent",
+                  backgroundColor: ticked ? colors.rise : "transparent",
                 }}
               >
-                <Text
-                  style={{
-                    color: ticked ? colors.ink : "transparent",
-                    fontSize: 15,
-                    fontWeight: "800",
-                  }}
-                >
-                  ✓
-                </Text>
+                {ticked ? <Icon name="check" size={15} color={colors.ink} weight="bold" /> : null}
               </View>
             </Pressable>
           );
@@ -918,7 +892,7 @@ function ConditioningSwap({
               minHeight: 50,
               paddingHorizontal: 14,
               borderRadius: 12,
-              backgroundColor: active ? colors.acid : "transparent",
+              backgroundColor: active ? colors.cloud : "transparent",
               opacity: pressed ? 0.7 : 1,
             })}
           >
@@ -982,7 +956,7 @@ function SwapList({
               minHeight: 50,
               paddingHorizontal: 14,
               borderRadius: 12,
-              backgroundColor: active ? colors.acid : "transparent",
+              backgroundColor: active ? colors.cloud : "transparent",
               opacity: used ? 0.35 : pressed ? 0.7 : 1,
             })}
           >
@@ -1051,7 +1025,7 @@ function Warmup({
           <View style={{ gap: 6 }}>
             <Text
               style={{
-                color: colors.acid,
+                color: colors.rise,
                 fontSize: 12,
                 fontWeight: "800",
                 letterSpacing: 1.4,
@@ -1063,11 +1037,10 @@ function Warmup({
             <Text
               style={{
                 color: colors.text,
-                fontFamily: serif,
+                fontFamily: fonts.display,
                 fontSize: 38,
                 lineHeight: 42,
-                fontWeight: "700",
-                letterSpacing: -1.4,
+                letterSpacing: -0.8,
               }}
             >
               {name}
@@ -1098,9 +1071,9 @@ function Warmup({
                   style={{
                     flex: 1,
                     color: done[i] ? colors.faint : colors.text,
+                    fontFamily: fonts.displayBold,
                     fontSize: 30,
-                    fontWeight: "800",
-                    letterSpacing: -1,
+                    letterSpacing: -0.6,
                     fontVariant: ["tabular-nums"],
                     textDecorationLine: done[i] ? "line-through" : "none",
                   }}
@@ -1127,18 +1100,10 @@ function Warmup({
                     borderRadius: 999,
                     borderWidth: done[i] ? 0 : 1.5,
                     borderColor: colors.line,
-                    backgroundColor: done[i] ? colors.acid : "transparent",
+                    backgroundColor: done[i] ? colors.rise : "transparent",
                   }}
                 >
-                  <Text
-                    style={{
-                      color: done[i] ? colors.ink : "transparent",
-                      fontSize: 15,
-                      fontWeight: "800",
-                    }}
-                  >
-                    ✓
-                  </Text>
+                  {done[i] ? <Icon name="check" size={15} color={colors.ink} weight="bold" /> : null}
                 </View>
               </Pressable>
             ))}
@@ -1221,8 +1186,8 @@ function Sets({
               borderColor: colors.line,
               backgroundColor: filled
                 ? short
-                  ? colors.coral
-                  : colors.acid
+                  ? colors.bend
+                  : colors.rise
                 : "transparent",
               opacity: pressed ? 0.7 : 1,
             })}
@@ -1295,10 +1260,10 @@ function WeightControl({
               style={{
                 width: 190,
                 textAlign: "center",
-                color: colors.acid,
+                color: colors.rise,
+                fontFamily: fonts.displayBold,
                 fontSize: 34,
-                fontWeight: "800",
-                letterSpacing: -1,
+                letterSpacing: -0.7,
               }}
             >
               Bodyweight
@@ -1316,10 +1281,10 @@ function WeightControl({
           selectTextOnFocus
           style={{
             width: 150,
-            color: colors.acid,
+            color: colors.rise,
+            fontFamily: fonts.displayBold,
             fontSize: 68,
-            fontWeight: "800",
-            letterSpacing: -3,
+            letterSpacing: -1.4,
             textAlign: "right",
             fontVariant: ["tabular-nums"],
           }}
@@ -1355,10 +1320,11 @@ function WeightControl({
   );
 }
 
-function Step({ label, onPress }: { label: string; onPress: () => void }) {
+function Step({ label, onPress }: { label: "−" | "+"; onPress: () => void }) {
   return (
     <Pressable
       accessibilityRole="button"
+      accessibilityLabel={label === "+" ? "More" : "Less"}
       onPress={onPress}
       style={({ pressed }) => ({
         width: 52,
@@ -1370,7 +1336,7 @@ function Step({ label, onPress }: { label: string; onPress: () => void }) {
         opacity: pressed ? 0.6 : 1,
       })}
     >
-      <Text style={{ color: colors.text, fontSize: 26, fontWeight: "700" }}>{label}</Text>
+      <Icon name={label === "+" ? "plus" : "minus"} size={22} color={colors.text} weight="semibold" />
     </Pressable>
   );
 }
@@ -1443,7 +1409,7 @@ function Partner({
         <View style={{ flex: 1, gap: 2 }}>
           <Text
             style={{
-              color: colors.acid,
+              color: colors.rise,
               fontSize: 11,
               fontWeight: "800",
               letterSpacing: 1.2,
@@ -1475,7 +1441,7 @@ function Partner({
             opacity: pressed ? 0.5 : 1,
           })}
         >
-          <Text style={{ color: colors.muted, fontSize: 18 }}>×</Text>
+          <Icon name="close" size={16} color={colors.muted} />
         </Pressable>
       </View>
 
@@ -1538,15 +1504,15 @@ function SupersetPicker({
 
 function Feedback({
   label,
-  glyph,
+  icon,
   onPress,
   fill,
   disabled,
 }: {
   label: string;
-  glyph?: string;
+  icon?: IconName;
   onPress: () => void;
-  /** The affirmative action, in acid. */
+  /** The affirmative action: the cloud-white pill. */
   fill?: boolean;
   disabled?: boolean;
 }) {
@@ -1565,11 +1531,11 @@ function Feedback({
         gap: 8,
         borderRadius: radii.button,
         borderCurve: "continuous",
-        backgroundColor: fill ? colors.acid : colors.raised,
+        backgroundColor: fill ? colors.cloud : colors.raised,
         opacity: disabled ? 0.3 : pressed ? 0.75 : 1,
       })}
     >
-      {glyph ? <Text style={{ fontSize: 18 }}>{glyph}</Text> : null}
+      {icon ? <Icon name={icon} size={20} color={fill ? colors.ink : colors.text} /> : null}
       <Text
         style={{
           color: fill ? colors.ink : colors.text,
@@ -1608,11 +1574,10 @@ function Finished({ hasSession }: { hasSession: boolean }) {
         <Text
           style={{
             color: colors.text,
-            fontFamily: serif,
+            fontFamily: fonts.display,
             fontSize: 46,
             lineHeight: 49,
-            fontWeight: "700",
-            letterSpacing: -1.8,
+            letterSpacing: -0.9,
           }}
         >
           Done.

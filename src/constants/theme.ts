@@ -1,36 +1,56 @@
 /**
- * Dark palette. The app is black-first: the exercise and the weight are the
- * surface, and everything else recedes into the background.
+ * The gravity-rain garden: a dusk-green ground where every colour is a rule.
+ *
+ * Blue rain rises — a target hit, the weight to lift, where you are. Red rain
+ * bends — a target missed, or something you are about to undo. Cloud white
+ * is the pill you press. Nothing else is coloured, so a colour always means
+ * one of those three things.
  */
 export const colors = {
-  /** Page background. True black so the screen reads as one surface. */
-  bg: "#0A0A08",
+  /** Page background: the garden at dusk. Dark, but green, not black. */
+  bg: "#222A27",
   /** Raised panels — the superset block, the tab bar, pickers. */
-  surface: "#161613",
+  surface: "#2C3531",
   /** A step above surface, for controls that sit on it. */
-  raised: "#232320",
+  raised: "#37413D",
   /** Hairlines and empty circle borders. */
-  line: "#2E2E29",
+  line: "#4A5550",
 
-  /** Primary text. */
-  text: "#F5F3EA",
-  /** Secondary text: targets, explanations, inactive tabs. */
-  muted: "#8A8880",
-  /** Barely-there text, for hints. */
-  faint: "#55544C",
+  /** Primary text: clear cloud. */
+  text: "#E7E8E2",
+  /** Secondary text: targets, explanations, inactive tabs. Stone. */
+  muted: "#B6BBB7",
+  /** Hints. Still readable at arm's length on the ground and on panels. */
+  faint: "#9AA49F",
 
-  /** Hit the target. Also the weight, and the active tab. */
-  acid: "#D9FF57",
-  /** Missed the target. Used sparingly — it is not an error colour. */
-  coral: "#FF745C",
+  /** Blue rain rises: hit the target, the weight, the active tab. */
+  rise: "#6AA7FF",
+  /** Red rain bends: missed the target. Not an error colour — a miss is information. */
+  bend: "#FF7A70",
+  /** The primary pill and anything selected: clear cloud, ink on top. */
+  cloud: "#E7E8E2",
 
-  ink: "#0A0A08",
+  /** Orbit black: text on a filled pill. */
+  ink: "#0F1113",
   white: "#FFFFFF",
+};
+
+/**
+ * Faces. Quicksand is the garden's voice — light, rounded, floating — and
+ * carries the display moments: exercise and workout names, the weight, the
+ * score. Sentences and labels stay in the system face, which reads better
+ * small. Custom faces ignore `fontWeight` on iOS, so the weight is in the name.
+ */
+export const fonts = {
+  display: "Quicksand_600SemiBold",
+  displayBold: "Quicksand_700Bold",
+  displayLight: "Quicksand_500Medium",
 };
 
 export const radii = {
   card: 28,
-  button: 18,
+  /** Pills, like the garden's drift buttons. */
+  button: 999,
 };
 
 /**

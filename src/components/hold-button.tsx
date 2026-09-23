@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Animated, Easing, Pressable, Text, View } from "react-native";
 
+import { Icon, type IconName } from "@/components/icon";
 import { ACTION_TYPE, BAR_TYPE, colors } from "@/constants/theme";
 
 /** Same size as the arrows' icon box beside it, so the labels line up. */
@@ -13,12 +14,12 @@ const CIRCLE = ACTION_TYPE.icon;
  * session: too consequential for a stray tap, not worth a dialog.
  */
 export function HoldButton({
-  glyph,
+  icon,
   label,
   holdMs = 1000,
   onHold,
 }: {
-  glyph: string;
+  icon: IconName;
   label: string;
   holdMs?: number;
   onHold: () => void;
@@ -97,10 +98,12 @@ export function HoldButton({
           right: 0,
           bottom: 0,
           height: areaHeight,
-          backgroundColor: colors.coral,
+          backgroundColor: colors.bend,
           opacity: 0.3,
         }}
       />
+      {/* Stands in for the tab bar's drop, so this label lines up with its neighbours'. */}
+      <View style={{ height: 8 }} />
       <View
         style={{
           width: CIRCLE,
@@ -109,7 +112,7 @@ export function HoldButton({
           justifyContent: "center",
           borderRadius: 999,
           borderWidth: 1.5,
-          borderColor: holding ? colors.coral : colors.line,
+          borderColor: holding ? colors.bend : colors.line,
           // Clips the rising fill to the circle.
           overflow: "hidden",
         }}
@@ -121,23 +124,15 @@ export function HoldButton({
             right: 0,
             bottom: 0,
             height: fillHeight,
-            backgroundColor: colors.coral,
+            backgroundColor: colors.bend,
           }}
         />
-        <Text
-          style={{
-            color: holding ? colors.bg : colors.muted,
-            fontSize: 30,
-            fontWeight: "600",
-          }}
-        >
-          {glyph}
-        </Text>
+        <Icon name={icon} size={26} color={holding ? colors.ink : colors.muted} weight="semibold" />
       </View>
 
       <Text
         style={{
-          color: holding ? colors.coral : colors.muted,
+          color: holding ? colors.bend : colors.muted,
           fontSize: BAR_TYPE.label,
           fontWeight: "800",
           letterSpacing: 0.3,

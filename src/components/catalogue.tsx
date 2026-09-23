@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { Pressable, Text, TextInput, View } from "react-native";
 
+import { Icon } from "@/components/icon";
 import { colors, radii } from "@/constants/theme";
 import {
   CARDIO_MINUTES,
@@ -246,23 +247,11 @@ function CardHeader({
           borderRadius: 999,
           // A filled circle, so adding reads as an action rather than a stray
           // glyph next to the count.
-          backgroundColor: adding ? colors.acid : colors.raised,
+          backgroundColor: adding ? colors.cloud : colors.raised,
           opacity: pressed ? 0.7 : 1,
         })}
       >
-        <Text
-          style={{
-            color: adding ? colors.ink : colors.text,
-            fontSize: 22,
-            fontWeight: "600",
-            // No lineHeight: it boxes the glyph, and "+" and "×" have
-            // different baselines, so neither ends up centred.
-            includeFontPadding: false,
-            textAlignVertical: "center",
-          }}
-        >
-          {adding ? "×" : "+"}
-        </Text>
+        <Icon name={adding ? "close" : "plus"} size={20} color={adding ? colors.ink : colors.text} />
       </Pressable>
     </View>
   );
@@ -314,7 +303,7 @@ function AddPanel({
               <Text style={{ flex: 1, color: colors.text, fontSize: 16, fontWeight: "600" }}>
                 {row.name}
               </Text>
-              <Text style={{ color: colors.acid, fontSize: 20, fontWeight: "700" }}>+</Text>
+              <Icon name="plus" size={18} color={colors.rise} weight="semibold" />
             </Pressable>
           ))}
         </>
@@ -475,7 +464,7 @@ function ExerciseRow({
                     minHeight: 44,
                     paddingHorizontal: 16,
                     borderRadius: 999,
-                    backgroundColor: colors.coral,
+                    backgroundColor: colors.bend,
                     opacity: pressed ? 0.7 : 1,
                   })}
                 >
@@ -513,7 +502,7 @@ function ExerciseRow({
                     minHeight: 44,
                     paddingHorizontal: 22,
                     borderRadius: 999,
-                    backgroundColor: colors.acid,
+                    backgroundColor: colors.cloud,
                     opacity: pressed ? 0.7 : 1,
                   })}
                 >
@@ -716,9 +705,7 @@ function Conditioning() {
           >
             {count}
           </Text>
-          <Text style={{ color: colors.faint, fontSize: 12 }}>
-            {open === kind ? "▲" : "▼"}
-          </Text>
+          <Icon name={open === kind ? "collapse" : "expand"} size={14} color={colors.faint} />
         </Pressable>
         <Pressable
           accessibilityRole="button"
@@ -735,21 +722,15 @@ function Conditioning() {
             alignItems: "center",
             justifyContent: "center",
             borderRadius: 999,
-            backgroundColor: adding === kind ? colors.acid : colors.raised,
+            backgroundColor: adding === kind ? colors.cloud : colors.raised,
             opacity: pressed ? 0.7 : 1,
           })}
         >
-          <Text
-            style={{
-              color: adding === kind ? colors.ink : colors.text,
-              fontSize: 22,
-              fontWeight: "600",
-              includeFontPadding: false,
-              textAlignVertical: "center",
-            }}
-          >
-            {adding === kind ? "×" : "+"}
-          </Text>
+          <Icon
+            name={adding === kind ? "close" : "plus"}
+            size={20}
+            color={adding === kind ? colors.ink : colors.text}
+          />
         </Pressable>
       </View>
 
@@ -863,7 +844,7 @@ function Conditioning() {
                           minHeight: 44,
                           paddingHorizontal: 14,
                           borderRadius: 999,
-                          backgroundColor: colors.coral,
+                          backgroundColor: colors.bend,
                           opacity: pressed ? 0.7 : 1,
                         })}
                       >
@@ -892,7 +873,7 @@ function Conditioning() {
                         opacity: !removable ? 0.2 : pressed ? 0.5 : 1,
                       })}
                     >
-                      <Text style={{ color: colors.faint, fontSize: 17 }}>−</Text>
+                      <Icon name="minus" size={16} color={colors.faint} />
                     </Pressable>
                   )}
                 </View>
@@ -951,7 +932,7 @@ function CourseEditor({
         opacity: disabled ? 0.3 : pressed ? 0.6 : 1,
       })}
     >
-      <Text style={{ color: colors.text, fontSize: 24, fontWeight: "700" }}>{label}</Text>
+      <Icon name={label === "+" ? "plus" : "minus"} size={20} color={colors.text} weight="semibold" />
     </Pressable>
   );
 
@@ -1178,7 +1159,7 @@ function AddMobility({
               >
                 {m.seconds}s{m.perSide ? " ×2" : ""}
               </Text>
-              <Text style={{ color: colors.faint, fontSize: 15 }}>−</Text>
+              <Icon name="minus" size={14} color={colors.faint} />
             </Pressable>
           ))}
         </View>
@@ -1266,7 +1247,7 @@ function Chip({
         borderRadius: 999,
         borderWidth: on ? 0 : 1,
         borderColor: colors.line,
-        backgroundColor: on ? colors.acid : "transparent",
+        backgroundColor: on ? colors.cloud : "transparent",
         opacity: pressed ? 0.7 : 1,
       })}
     >
@@ -1303,7 +1284,7 @@ function Submit({
         minHeight: subtle ? 44 : 50,
         borderRadius: radii.button,
         borderCurve: "continuous",
-        backgroundColor: subtle ? colors.raised : colors.acid,
+        backgroundColor: subtle ? colors.raised : colors.cloud,
         opacity: disabled ? 0.35 : pressed ? 0.8 : 1,
       })}
     >

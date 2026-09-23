@@ -5,9 +5,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Catalogue } from "@/components/catalogue";
 import { Modules } from "@/components/modules";
 import { COLUMN } from "@/components/screen";
-import { colors } from "@/constants/theme";
+import { colors, fonts } from "@/constants/theme";
 
-const serif = process.env.EXPO_OS === "ios" ? "Georgia" : "serif";
 
 type Segment = "modules" | "exercises";
 
@@ -41,10 +40,9 @@ export default function PlanScreen() {
       <Text
         style={{
           color: colors.text,
-          fontFamily: serif,
+          fontFamily: fonts.display,
           fontSize: 40,
-          fontWeight: "700",
-          letterSpacing: -1.5,
+          letterSpacing: -0.8,
         }}
       >
         Plan
@@ -96,7 +94,7 @@ function Tab({
         justifyContent: "center",
         minHeight: 44,
         borderRadius: 999,
-        backgroundColor: active ? colors.acid : "transparent",
+        backgroundColor: active ? colors.cloud : "transparent",
         opacity: pressed ? 0.8 : 1,
       })}
     >

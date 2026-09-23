@@ -4,7 +4,7 @@ import { Pressable, ScrollView, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { Column, COLUMN } from "@/components/screen";
-import { colors, radii } from "@/constants/theme";
+import { colors, fonts, radii } from "@/constants/theme";
 import { byId } from "@/data/exercises";
 import { decayLabel, type Decay } from "@/lib/progression";
 import { weightLabel } from "@/lib/warmup";
@@ -22,7 +22,6 @@ import {
   useSession,
 } from "@/store/session";
 
-const serif = process.env.EXPO_OS === "ios" ? "Georgia" : "serif";
 
 export default function TodayScreen() {
   const { state, setState } = useSession();
@@ -83,23 +82,11 @@ export default function TodayScreen() {
         <View style={{ flex: 1, justifyContent: "center", gap: 10 }}>
           <Text
             style={{
-              color: colors.acid,
-              fontSize: 14,
-              fontWeight: "800",
-              letterSpacing: 1.6,
-              textTransform: "uppercase",
-            }}
-          >
-            Next up
-          </Text>
-          <Text
-            style={{
               color: colors.text,
-              fontFamily: serif,
+              fontFamily: fonts.display,
               fontSize: 68,
               lineHeight: 70,
-              fontWeight: "700",
-              letterSpacing: -2.4,
+              letterSpacing: -1.4,
             }}
           >
             {workout.name || "Untitled"}
@@ -109,9 +96,18 @@ export default function TodayScreen() {
               {workout.subtitle}
             </Text>
           ) : null}
-          <Text style={{ color: colors.faint, fontSize: 15, marginTop: 8 }}>
-            {count} {count === 1 ? "exercise" : "exercises"}
-          </Text>
+          {/* One clear drop per exercise: the session's rain, not yet fallen. */}
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 7, marginTop: 10 }}>
+            {Array.from({ length: count }, (_, i) => (
+              <View
+                key={i}
+                style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: colors.cloud }}
+              />
+            ))}
+            <Text style={{ color: colors.faint, fontSize: 15, marginLeft: 6 }}>
+              {count} {count === 1 ? "exercise" : "exercises"}
+            </Text>
+          </View>
         </View>
       </ScrollView>
 
@@ -143,7 +139,7 @@ export default function TodayScreen() {
                   opacity: pressed ? 0.5 : 1,
                 })}
               >
-                <Text style={{ color: colors.acid, fontSize: 15, fontWeight: "800" }}>
+                <Text style={{ color: colors.rise, fontSize: 15, fontWeight: "800" }}>
                   Undo
                 </Text>
               </Pressable>
@@ -182,7 +178,7 @@ function BigButton({
         justifyContent: "center",
         borderRadius: radii.button,
         borderCurve: "continuous",
-        backgroundColor: primary ? colors.acid : colors.raised,
+        backgroundColor: primary ? colors.cloud : colors.raised,
         opacity: pressed ? 0.8 : 1,
       })}
     >
@@ -232,7 +228,7 @@ function DecayBanner({
     >
       <Text
         style={{
-          color: colors.acid,
+          color: colors.rise,
           fontSize: 11,
           fontWeight: "800",
           letterSpacing: 1.2,
@@ -309,7 +305,7 @@ function DecayPrompt({
       <View style={{ gap: 6 }}>
         <Text
           style={{
-            color: colors.acid,
+            color: colors.rise,
             fontSize: 11,
             fontWeight: "800",
             letterSpacing: 1.2,
@@ -388,7 +384,7 @@ function Choice({
         justifyContent: "center",
         borderRadius: radii.button,
         borderCurve: "continuous",
-        backgroundColor: fill ? colors.acid : colors.raised,
+        backgroundColor: fill ? colors.cloud : colors.raised,
         opacity: pressed ? 0.75 : 1,
       })}
     >

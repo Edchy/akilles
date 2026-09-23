@@ -3,14 +3,13 @@ import { Pressable, ScrollView, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { COLUMN } from "@/components/screen";
-import { colors, radii } from "@/constants/theme";
+import { colors, fonts, radii } from "@/constants/theme";
 import { byId } from "@/data/exercises";
 import { ladderFor, type Scheme } from "@/data/split";
 import { weightLabel } from "@/lib/warmup";
 import { exportBackup, pickBackup } from "@/store/backup";
 import { resetToDefault, useSession, type SessionState } from "@/store/session";
 
-const serif = process.env.EXPO_OS === "ios" ? "Georgia" : "serif";
 
 export default function HistoryScreen() {
   const { state } = useSession();
@@ -41,10 +40,9 @@ export default function HistoryScreen() {
       <Text
         style={{
           color: colors.text,
-          fontFamily: serif,
+          fontFamily: fonts.display,
           fontSize: 40,
-          fontWeight: "700",
-          letterSpacing: -1.5,
+          letterSpacing: -0.8,
         }}
       >
         History
@@ -91,7 +89,7 @@ export default function HistoryScreen() {
                 <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
                   <Text
                     style={{
-                      color: colors.acid,
+                      color: colors.rise,
                       fontSize: 15,
                       fontWeight: "800",
                       fontVariant: ["tabular-nums"],
@@ -105,7 +103,7 @@ export default function HistoryScreen() {
                   <Text
                     style={{
                       marginLeft: "auto",
-                      color: st.skippedLast ? colors.coral : colors.faint,
+                      color: st.skippedLast ? colors.bend : colors.faint,
                       fontSize: 13,
                       fontVariant: ["tabular-nums"],
                     }}
@@ -191,7 +189,7 @@ function Backup() {
 
       {resetting ? (
         <View style={{ gap: 10 }}>
-          <Text style={{ color: colors.coral, fontSize: 14, lineHeight: 20, fontWeight: "600" }}>
+          <Text style={{ color: colors.bend, fontSize: 14, lineHeight: 20, fontWeight: "600" }}>
             Reset everything to how the app first starts? Your workouts, exercises,
             edits and history on this phone are all replaced.
           </Text>
@@ -210,7 +208,7 @@ function Backup() {
         </View>
       ) : pending ? (
         <View style={{ gap: 10 }}>
-          <Text style={{ color: colors.coral, fontSize: 14, lineHeight: 20, fontWeight: "600" }}>
+          <Text style={{ color: colors.bend, fontSize: 14, lineHeight: 20, fontWeight: "600" }}>
             Replace everything on this phone with this backup? What is here now
             is lost.
           </Text>
@@ -269,7 +267,7 @@ function Action({
   disabled?: boolean;
   onPress: () => void;
 }) {
-  const fill = tone === "primary" ? colors.acid : tone === "danger" ? colors.coral : colors.raised;
+  const fill = tone === "primary" ? colors.rise : tone === "danger" ? colors.bend : colors.raised;
   return (
     <Pressable
       accessibilityRole="button"
