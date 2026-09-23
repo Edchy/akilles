@@ -75,13 +75,13 @@ import {
  */
 const FIXED = {
   /** Two lines of the exercise name; longer names shrink to fit. */
-  name: 88,
+  name: 68,
   /** The "seconds, not reps" line, reserved whether or not it shows. */
   note: 20,
-  /** Weight row: the 68pt input is the tallest of its forms. */
-  weight: 84,
+  /** Weight row: the 44pt steppers are the tallest of its forms. */
+  weight: 56,
   /** Set circles never grow past this, so two sets are as tall as four. */
-  circle: 76,
+  circle: 96,
   /** Up to three lines of "last time". */
   why: 57,
   /** The tallest answer: a one-line note above a 60pt button. */
@@ -189,35 +189,35 @@ export default function WorkoutScreen() {
 
       <ScrollView
         contentContainerStyle={{
+          flexGrow: 1,
           paddingHorizontal: 22,
-          paddingBottom: 20,
+          paddingBottom: 12,
           width: "100%",
           maxWidth: COLUMN,
           alignSelf: "center",
-          gap: 22,
+          gap: 14,
         }}
       >
-        {/* The exercise and the weight are the surface — no card around them. */}
-        <View style={{ gap: 4 }}>
+        {/* What and how heavy: compact, at the top. Read once, then left alone. */}
+        <View style={{ gap: 2 }}>
           <View
             style={{ height: FIXED.name, flexDirection: "row", alignItems: "center", gap: 10 }}
           >
             <Text
               numberOfLines={2}
               adjustsFontSizeToFit
-              minimumFontScale={0.6}
+              minimumFontScale={0.7}
               style={{
                 flex: 1,
                 color: colors.text,
                 fontFamily: fonts.display,
-                fontSize: 40,
-                lineHeight: 44,
-                letterSpacing: -0.8,
+                fontSize: 30,
+                lineHeight: 34,
+                letterSpacing: -0.6,
               }}
             >
               {p.exercise.name}
             </Text>
-
             {canSwap ? (
               <Pressable
                 accessibilityRole="button"
@@ -244,6 +244,18 @@ export default function WorkoutScreen() {
           </Text>
         </View>
 
+        {swapping ? (
+          <SwapList
+            options={pool}
+            taken={currentTaken(state)}
+            current={item.exerciseId}
+            onPick={(id) => {
+              setSwapping(false);
+              setState((s) => swapForSession(s, id));
+            }}
+          />
+        ) : null}
+
         <View style={{ height: FIXED.weight, justifyContent: "center" }}>
         {p.exercise.unloaded ? (
           <Text style={{ textAlign: "center", color: colors.faint, fontSize: 17, fontWeight: "700" }}>
@@ -251,13 +263,13 @@ export default function WorkoutScreen() {
           </Text>
         ) : item.derive ? (
           // Derived from the heavy day's weight, so there is nothing to edit.
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8 }}>
             <Text
               style={{
                 color: colors.rise,
                 fontFamily: fonts.displayBold,
-                fontSize: 46,
-                letterSpacing: -0.9,
+                fontSize: 40,
+                letterSpacing: -0.8,
                 fontVariant: ["tabular-nums"],
               }}
             >
@@ -282,25 +294,16 @@ export default function WorkoutScreen() {
         )}
         </View>
 
-        <Sets
-          logged={item.logged}
-          target={p.reps}
-          onTap={(i) => setState((s) => tapSet(s, i))}
-        />
-
-        <Why prescription={p} />
-
-        {swapping ? (
-          <SwapList
-            options={pool}
-            taken={currentTaken(state)}
-            current={item.exerciseId}
-            onPick={(id) => {
-              setSwapping(false);
-              setState((s) => swapForSession(s, id));
-            }}
+        {/* The circles are the screen: centred in whatever room is left, so
+            they sit in the same place on every exercise. */}
+        <View style={{ flex: 1, minHeight: FIXED.circle + FIXED.why + 60, justifyContent: "center", gap: 18 }}>
+          <Sets
+            logged={item.logged}
+            target={p.reps}
+            onTap={(i) => setState((s) => tapSet(s, i))}
           />
-        ) : null}
+          <Why prescription={p} />
+        </View>
 
         {partner && partnerP && item.supersetLogged ? (
           <Partner
@@ -313,23 +316,24 @@ export default function WorkoutScreen() {
             onRemove={() => setState((s) => removeSuperset(s))}
           />
         ) : options.length > 0 && !picking ? (
+          // Offered, not pushed: a quiet link under the circles.
           <Pressable
             accessibilityRole="button"
             onPress={() => setPicking(true)}
+            hitSlop={8}
             style={({ pressed }) => ({
+              alignSelf: "center",
+              flexDirection: "row",
               alignItems: "center",
-              justifyContent: "center",
-              minHeight: 56,
-              borderRadius: radii.card,
-              borderCurve: "continuous",
-              borderWidth: 1,
-              borderColor: colors.line,
-              borderStyle: "dashed",
+              gap: 6,
+              minHeight: 44,
+              paddingHorizontal: 12,
               opacity: pressed ? 0.6 : 1,
             })}
           >
+            <Icon name="plus" size={14} color={colors.muted} weight="semibold" />
             <Text style={{ color: colors.muted, fontSize: 14, fontWeight: "700" }}>
-              + Superset
+              Superset
             </Text>
           </Pressable>
         ) : null}
@@ -1146,14 +1150,14 @@ function Sets({
   /** Shorter circles for a supersetted partner, so the main lift stays primary. */
   compact?: boolean;
 }) {
-  // Every circle is the same fixed size, packed from the left, and the row
+  // Every circle is the same fixed size, centred as a group, and the row
   // is always the same height — two sets must not make bigger circles than
   // four, or the screen changes shape from one exercise to the next. Only
   // when there are too many to fit do they shrink, and then inside the same
   // row height.
   const [width, setWidth] = useState(0);
   const full = compact ? 56 : FIXED.circle;
-  const gap = 12;
+  const gap = compact ? 12 : 16;
   const n = logged.length;
   const fits = width > 0 ? (width - gap * (n - 1)) / n : full;
   const size = Math.max(36, Math.min(full, fits));
@@ -1164,6 +1168,7 @@ function Sets({
         height: full,
         flexDirection: "row",
         alignItems: "center",
+        justifyContent: "center",
         gap,
       }}
     >
@@ -1195,7 +1200,7 @@ function Sets({
             <Text
               style={{
                 color: filled ? colors.ink : colors.faint,
-                fontSize: compact ? 19 : 24,
+                fontSize: compact ? 19 : 30,
                 fontWeight: "800",
                 fontVariant: ["tabular-nums"],
               }}
@@ -1239,10 +1244,11 @@ function WeightControl({
       style={{
         flexDirection: "row",
         alignItems: "center",
-        justifyContent: "space-between",
+        justifyContent: "center",
+        gap: 14,
       }}
     >
-      <Step label="−" onPress={() => onNudge(-1)} />
+      <Step label="−" small onPress={() => onNudge(-1)} />
 
       {/* The input needs an explicit width: on web a TextInput has an
           intrinsic size that ignores flex and overflows its row. */}
@@ -1258,11 +1264,11 @@ function WeightControl({
           >
             <Text
               style={{
-                width: 190,
+                width: 166,
                 textAlign: "center",
                 color: colors.rise,
                 fontFamily: fonts.displayBold,
-                fontSize: 34,
+                fontSize: 26,
                 letterSpacing: -0.7,
               }}
             >
@@ -1280,17 +1286,17 @@ function WeightControl({
           keyboardType="decimal-pad"
           selectTextOnFocus
           style={{
-            width: 150,
+            width: 104,
             color: colors.rise,
             fontFamily: fonts.displayBold,
-            fontSize: 68,
-            letterSpacing: -1.4,
+            fontSize: 40,
+            letterSpacing: -0.8,
             textAlign: "right",
             fontVariant: ["tabular-nums"],
           }}
         />
-        <View style={{ width: 58 }}>
-          <Text style={{ color: colors.muted, fontSize: 20, fontWeight: "700" }}>
+        <View style={{ width: 56 }}>
+          <Text style={{ color: colors.muted, fontSize: 17, fontWeight: "700" }}>
             kg
           </Text>
           {perHand ? (
@@ -1315,20 +1321,29 @@ function WeightControl({
         )}
       </View>
 
-      <Step label="+" onPress={() => onNudge(1)} />
+      <Step label="+" small onPress={() => onNudge(1)} />
     </View>
   );
 }
 
-function Step({ label, onPress }: { label: "−" | "+"; onPress: () => void }) {
+function Step({
+  label,
+  small,
+  onPress,
+}: {
+  label: "−" | "+";
+  /** The weight's steppers: the weight sits above the circles, not beside them. */
+  small?: boolean;
+  onPress: () => void;
+}) {
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={label === "+" ? "More" : "Less"}
       onPress={onPress}
       style={({ pressed }) => ({
-        width: 52,
-        height: 52,
+        width: small ? 44 : 52,
+        height: small ? 44 : 52,
         alignItems: "center",
         justifyContent: "center",
         borderRadius: 999,
@@ -1336,7 +1351,7 @@ function Step({ label, onPress }: { label: "−" | "+"; onPress: () => void }) {
         opacity: pressed ? 0.6 : 1,
       })}
     >
-      <Icon name={label === "+" ? "plus" : "minus"} size={22} color={colors.text} weight="semibold" />
+      <Icon name={label === "+" ? "plus" : "minus"} size={small ? 18 : 22} color={colors.text} weight="semibold" />
     </Pressable>
   );
 }
@@ -1348,7 +1363,7 @@ function Why({ prescription }: { prescription: ReturnType<typeof currentPrescrip
 
   if (prescription.exercise.unloaded) {
     return (
-      <Text style={{ height: FIXED.why, color: colors.faint, fontSize: 13, lineHeight: 19 }}>
+      <Text style={{ height: FIXED.why, color: colors.faint, fontSize: 13, lineHeight: 19, textAlign: "center" }}>
         Maximum effort every rep. Rest as long as you need between sets.
       </Text>
     );
@@ -1369,7 +1384,7 @@ function Why({ prescription }: { prescription: ReturnType<typeof currentPrescrip
   return (
     <Text
       numberOfLines={3}
-      style={{ height: FIXED.why, color: colors.faint, fontSize: 13, lineHeight: 19 }}
+      style={{ height: FIXED.why, color: colors.faint, fontSize: 13, lineHeight: 19, textAlign: "center" }}
     >
       {text}
     </Text>
