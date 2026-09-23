@@ -8,7 +8,7 @@ import { byId } from "@/data/exercises";
 import { ladderFor, type Scheme } from "@/data/split";
 import { weightLabel } from "@/lib/warmup";
 import { exportBackup, pickBackup } from "@/store/backup";
-import { useSession, type SessionState } from "@/store/session";
+import { resetToDefault, useSession, type SessionState } from "@/store/session";
 
 const serif = process.env.EXPO_OS === "ios" ? "Georgia" : "serif";
 
@@ -142,6 +142,8 @@ function Backup() {
   const [note, setNote] = useState<string | null>(null);
   // A backup that has been read and checked, waiting for the second tap.
   const [pending, setPending] = useState<SessionState | null>(null);
+  // Reset asked for once, waiting for the second tap.
+  const [resetting, setResetting] = useState(false);
 
   const run = async (task: () => Promise<void>) => {
     setBusy(true);
@@ -187,7 +189,26 @@ function Backup() {
         reset.
       </Text>
 
-      {pending ? (
+      {resetting ? (
+        <View style={{ gap: 10 }}>
+          <Text style={{ color: colors.coral, fontSize: 14, lineHeight: 20, fontWeight: "600" }}>
+            Reset everything to how the app first starts? Your workouts, exercises,
+            edits and history on this phone are all replaced.
+          </Text>
+          <View style={{ flexDirection: "row", gap: 8 }}>
+            <Action label="Cancel" onPress={() => setResetting(false)} />
+            <Action
+              label="Reset"
+              tone="danger"
+              onPress={() => {
+                setState(resetToDefault());
+                setResetting(false);
+                setNote("Reset to the starting program.");
+              }}
+            />
+          </View>
+        </View>
+      ) : pending ? (
         <View style={{ gap: 10 }}>
           <Text style={{ color: colors.coral, fontSize: 14, lineHeight: 20, fontWeight: "600" }}>
             Replace everything on this phone with this backup? What is here now
@@ -207,9 +228,28 @@ function Backup() {
           </View>
         </View>
       ) : (
-        <View style={{ flexDirection: "row", gap: 8 }}>
-          <Action label="Save backup" tone="primary" disabled={busy} onPress={save} />
-          <Action label="Restore" disabled={busy} onPress={open} />
+        <View style={{ gap: 8 }}>
+          <View style={{ flexDirection: "row", gap: 8 }}>
+            <Action label="Save backup" tone="primary" disabled={busy} onPress={save} />
+            <Action label="Restore" disabled={busy} onPress={open} />
+          </View>
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => {
+              setNote(null);
+              setResetting(true);
+            }}
+            style={({ pressed }) => ({
+              alignItems: "center",
+              justifyContent: "center",
+              minHeight: 44,
+              opacity: pressed ? 0.5 : 1,
+            })}
+          >
+            <Text style={{ color: colors.faint, fontSize: 14, fontWeight: "700" }}>
+              Reset to default
+            </Text>
+          </Pressable>
         </View>
       )}
 

@@ -656,6 +656,18 @@ export const initialState: SessionState = {
 };
 
 /**
+ * Back to a fresh install: the starting program, the starting catalogue, no
+ * edits, no history. For testing — and for starting over. The module-level
+ * lists that resolve custom exercises and edits are cleared with it.
+ */
+export const resetToDefault = (): SessionState => {
+  setCustomExercises([]);
+  setExerciseEdits({});
+  setCustomConditioning([], []);
+  return initialState;
+};
+
+/**
  * What time has cost you, as an offer rather than a fact.
  *
  * Nothing here writes anything. It reports what a layoff or a stalled month
