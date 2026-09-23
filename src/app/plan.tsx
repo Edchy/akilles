@@ -20,9 +20,13 @@ type Segment = "modules" | "exercises";
 export default function PlanScreen() {
   const insets = useSafeAreaInsets();
   const [segment, setSegment] = useState<Segment>("modules");
+  // Frozen while a row is being dragged, or the drag would scroll the page too.
+  const [dragging, setDragging] = useState(false);
 
   return (
     <ScrollView
+      scrollEnabled={!dragging}
+      keyboardShouldPersistTaps="handled"
       style={{ flex: 1, backgroundColor: colors.bg }}
       contentContainerStyle={{
         paddingTop: insets.top + 28,
@@ -67,7 +71,7 @@ export default function PlanScreen() {
         />
       </View>
 
-      {segment === "modules" ? <Modules /> : <Catalogue />}
+      {segment === "modules" ? <Modules onDragChange={setDragging} /> : <Catalogue />}
     </ScrollView>
   );
 }

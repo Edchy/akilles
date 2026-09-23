@@ -1,10 +1,10 @@
 {
   "expo": {
-    "name": "Chuck",
+    "name": "Akilles",
     "slug": "chuck",
     "version": "0.1.0",
     "orientation": "portrait",
-    "scheme": "chuck",
+    "scheme": "akilles",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "ios": {

@@ -24,6 +24,7 @@ export type Pattern =
   | "quads"
   | "hamstrings"
   | "calves"
+  | "chest_iso"
   | "abs"
   | "jump";
 
@@ -97,7 +98,14 @@ export const EXERCISES: Exercise[] = [
   { id: "db_bench", name: "Dumbbell bench press", patterns: ["horizontal_push"], increment: 2.5, perHand: true, cue: "Lower until you feel a stretch." },
   { id: "incline_bench", name: "Incline barbell press", patterns: ["horizontal_push"], increment: 2.5 },
   { id: "machine_chest", name: "Machine chest press", patterns: ["horizontal_push"], increment: 5 },
+  { id: "incline_db_press", name: "Incline dumbbell press", patterns: ["horizontal_push"], increment: 2.5, perHand: true, cue: "Bench at about 30°. Press over the collarbones." },
   { id: "dips", name: "Dips", patterns: ["horizontal_push", "triceps"], increment: 2.5, bodyweight: true, assistable: true },
+
+  // ---------- chest isolation ----------
+  // Flyes open the chest rather than pressing. Kept as their own type so they
+  // never turn up as a substitute for the day's press.
+  { id: "cable_fly", name: "Cable incline fly", patterns: ["chest_iso"], increment: 2.5, cue: "Low pulleys, slight bend in the elbows. Squeeze at the top." },
+  { id: "cable_crossover", name: "Cable crossover", patterns: ["chest_iso"], increment: 2.5, cue: "High pulleys, hands meet low in front of the hips." },
 
   // ---------- vertical push ----------
   { id: "ohp", name: "Overhead press", patterns: ["vertical_push"], increment: 2.5, cue: "Squeeze glutes, ribs down." },
@@ -113,6 +121,8 @@ export const EXERCISES: Exercise[] = [
   { id: "bb_row", name: "Barbell row", patterns: ["horizontal_pull"], increment: 2.5, cue: "Torso still, pull to navel." },
   { id: "cable_row", name: "Seated cable row", patterns: ["horizontal_pull"], increment: 5 },
   { id: "chest_supported_row", name: "Chest-supported row", patterns: ["horizontal_pull"], increment: 2.5 },
+  { id: "machine_row", name: "Row machine", patterns: ["horizontal_pull"], increment: 5 },
+  { id: "db_row", name: "Dumbbell row", patterns: ["horizontal_pull"], increment: 2.5, perHand: true, cue: "One arm at a time. Pull to the hip, not the chest." },
 
   // ---------- squat ----------
   { id: "back_squat", name: "Back squat", patterns: ["squat"], increment: 2.5, cue: "Knees track over toes." },
@@ -127,6 +137,7 @@ export const EXERCISES: Exercise[] = [
   { id: "good_morning", name: "Good morning", patterns: ["hinge"], increment: 2.5 },
   { id: "hip_thrust", name: "Hip thrust", patterns: ["hinge", "hamstrings"], increment: 2.5 },
   { id: "back_ext", name: "Back extension", patterns: ["hinge", "hamstrings"], increment: 2.5, bodyweight: true },
+  { id: "db_rdl", name: "Dumbbell Romanian deadlift", patterns: ["hamstrings", "hinge"], increment: 2.5, perHand: true, cue: "Hips back, dumbbells close to the legs." },
   { id: "nordic_curl", name: "Nordic curl", patterns: ["hamstrings"], increment: 2.5, bodyweight: true },
 
   // ---------- lunge / single leg ----------
@@ -145,13 +156,16 @@ export const EXERCISES: Exercise[] = [
 
   // ---------- biceps ----------
   { id: "db_curl", name: "Dumbbell curl", patterns: ["biceps"], increment: 2.5, perHand: true },
+  { id: "bb_curl", name: "Barbell curl", patterns: ["biceps"], increment: 2.5, cue: "Elbows pinned, no swing." },
   { id: "hammer_curl", name: "Hammer curl", patterns: ["biceps"], increment: 2.5, perHand: true },
   { id: "cable_curl", name: "Cable curl", patterns: ["biceps"], increment: 2.5 },
+  { id: "spider_curl", name: "Spider curl", patterns: ["biceps"], increment: 2.5, perHand: true, cue: "Chest on the incline, arms straight down. No swing." },
 
   // ---------- triceps ----------
   { id: "pushdown", name: "Triceps pushdown", patterns: ["triceps"], increment: 2.5 },
   { id: "overhead_ext", name: "Overhead triceps extension", patterns: ["triceps"], increment: 2.5, perHand: true },
   { id: "skullcrusher", name: "Skullcrusher", patterns: ["triceps"], increment: 2.5 },
+  { id: "kickback", name: "Triceps kickback", patterns: ["triceps"], increment: 2.5, perHand: true, cue: "Upper arm pinned to your side, straighten from the elbow." },
 
   // ---------- calves ----------
   { id: "calf_raise", name: "Standing calf raise", patterns: ["calves"], increment: 5 },
@@ -173,9 +187,52 @@ export const EXERCISES: Exercise[] = [
 
   // ---------- abs ----------
   { id: "hanging_leg_raise", name: "Hanging leg raise", patterns: ["abs"], increment: 2.5, bodyweight: true },
+  // Seated twist against a stack — rotation rather than flexion, so it earns
+  // its place next to the crunches rather than duplicating one.
+  { id: "rotation_machine", name: "Rotation machine", patterns: ["abs"], increment: 5, cue: "Turn from the ribs, hips still. Both directions." },
   { id: "cable_crunch", name: "Cable crunch", patterns: ["abs"], increment: 5 },
+  { id: "ab_machine", name: "Ab machine", patterns: ["abs"], increment: 5, cue: "Curl the ribs toward the hips. Slow on the way back." },
   { id: "plank", name: "Plank", patterns: ["abs"], increment: 0, bodyweight: true, timed: true },
 ];
+
+/**
+ * The lean starting catalogue: exactly what the starting program names.
+ *
+ * Everything else in `EXERCISES` above ships *removed* — present in the app,
+ * listed under "Removed" in the exercise library, one tap from coming back.
+ * The app therefore opens with one exercise per job rather than four, and you
+ * grow it deliberately: to swap something out, first put something in.
+ *
+ * This is a starting point, not a rule. It seeds `hidden` on first launch and
+ * is never consulted again, so anything you restore stays restored.
+ */
+export const LEAN: string[] = [
+  // Push
+  "db_bench",
+  "db_shoulder",
+  "cable_crossover",
+  "dips",
+  "pushdown",
+  // Pull
+  "pullup",
+  "lat_pulldown",
+  "bb_row",
+  "machine_row",
+  "db_row",
+  "bb_curl",
+  "db_curl",
+  // Legs
+  "back_squat",
+  "rdl",
+  "bulgarian",
+  // Core
+  "hanging_leg_raise",
+  "ab_machine",
+];
+
+/** Built-in lifts that start out removed — everything not in `LEAN`. */
+export const leanHiddenExercises = (): string[] =>
+  EXERCISES.filter((e) => !LEAN.includes(e.id)).map((e) => e.id);
 
 /**
  * Which muscle group a pattern belongs to. The library browses by muscle —
@@ -184,6 +241,7 @@ export const EXERCISES: Exercise[] = [
  */
 const GROUP_BY_PATTERN: Record<Pattern, Group> = {
   horizontal_push: "chest",
+  chest_iso: "chest",
   vertical_push: "shoulders",
   horizontal_pull: "back",
   vertical_pull: "back",
@@ -245,6 +303,7 @@ export const isPattern = (ex: Exercise, pattern: Pattern): boolean =>
 /** Human-readable heading for each pattern, used by the exercise library. */
 export const PATTERN_LABEL: Record<Pattern, string> = {
   horizontal_push: "Horizontal press",
+  chest_iso: "Chest isolation",
   vertical_push: "Vertical press",
   horizontal_pull: "Horizontal pull",
   vertical_pull: "Vertical pull",
@@ -264,6 +323,7 @@ export const PATTERN_LABEL: Record<Pattern, string> = {
 /** The order patterns appear in the library. */
 export const PATTERN_ORDER: Pattern[] = [
   "horizontal_push",
+  "chest_iso",
   "vertical_push",
   "horizontal_pull",
   "vertical_pull",

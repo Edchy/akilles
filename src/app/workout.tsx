@@ -9,12 +9,25 @@ import { BarButton } from "@/components/bottom-bar";
 import { HoldButton } from "@/components/hold-button";
 import { colors, radii } from "@/constants/theme";
 import { byId } from "@/data/exercises";
+import {
+  distanceLabel,
+  routineSeconds,
+  type CardioExercise,
+  type MobilityRoutine,
+} from "@/data/conditioning";
+import { decayLabel } from "@/lib/progression";
 import { weightLabel } from "@/lib/warmup";
 import {
   addSuperset,
   allSetsLogged,
+  cardioRecord,
+  chooseConditioning,
+  completeCardio,
   completeExercise,
   chooseExercise,
+  conditioningPool,
+  currentCardio,
+  currentRoutine,
   currentPool,
   currentPrescription,
   currentTaken,
@@ -24,16 +37,24 @@ import {
   dismissWarmup,
   editWeight,
   finishWorkout,
+  isCardio,
   isComplete,
+  isConditioning,
+  isMobility,
+  lastDistance,
+  nudgeDistance,
   madeTarget,
   nudgeWeight,
   partnerPrescription,
   previousExercise,
   removeSuperset,
+  setDistance,
   skipExercise,
   supersetOptions,
   tapSet,
+  toggleMove,
   useSession,
+  type Item,
 } from "@/store/session";
 
 const serif = process.env.EXPO_OS === "ios" ? "Georgia" : "serif";
@@ -65,8 +86,9 @@ export default function WorkoutScreen() {
           label="Leave"
           onHold={() => {
             // Leaving ends the session: whatever went unlogged is recorded as
-            // skipped, and the cycle moves on. Nothing is owed. Held rather
-            // than tapped so a stray thumb mid-set can't end the workout.
+            // skipped, and the cycle moves on. Nothing is owed. Leaving before
+            // anything was logged cancels instead — see `finishWorkout`. Held
+            // rather than tapped so a stray thumb mid-set can't end the workout.
             setState((s) => finishWorkout(s));
             router.replace("/");
           }}
@@ -88,8 +110,18 @@ export default function WorkoutScreen() {
   if (done) return <Finished hasSession={!!active} />;
 
 
-  const p = currentPrescription(state)!;
   const item = active.items[active.cursor];
+
+  // Cardio and mobility are their own screens: no weight, no rep circles and
+  // no thumbs. They still sit inside the same session, so the bar's Back,
+  // Leave and Skip work on them exactly as on a lift.
+  if (isConditioning(item)) {
+    return (
+      <Conditioning key={item.slot} item={item} />
+    );
+  }
+
+  const p = currentPrescription(state)!;
   const partner = item.supersetWith ? byId(item.supersetWith) : undefined;
   // The floater keeps its own scheme, set count and set log when folded in.
   const partnerP = partnerPrescription(state);
@@ -122,63 +154,7 @@ export default function WorkoutScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.bg }}>
-      {/* Header: just where you are. Leaving and skipping live in the bar
-          at the bottom, next to the thumb. */}
-      <View
-        style={{
-          paddingTop: insets.top + 14,
-          paddingHorizontal: 22,
-          paddingBottom: 14,
-        }}
-      >
-        <Column style={{ gap: 12 }}>
-          <Text
-            style={{
-              color: colors.muted,
-              fontSize: 12,
-              fontWeight: "800",
-              letterSpacing: 1.3,
-              textTransform: "uppercase",
-            }}
-          >
-            {currentWorkout(state).name}
-          </Text>
-
-          {/* One segment per exercise, weighted: a paired screen holds two
-              exercises, so it is twice as wide and the total never changes
-              when you superset. */}
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
-            <View style={{ flex: 1, flexDirection: "row", gap: 3 }}>
-              {active.items.map((it, i) => (
-                <View
-                  key={i}
-                  style={{
-                    flex: it.supersetWith ? 2 : 1,
-                    height: 3,
-                    borderRadius: 999,
-                    backgroundColor:
-                      i < active.cursor
-                        ? colors.acid
-                        : i === active.cursor
-                          ? colors.muted
-                          : colors.line,
-                  }}
-                />
-              ))}
-            </View>
-            <Text
-              style={{
-                color: colors.faint,
-                fontSize: 11,
-                fontWeight: "800",
-                fontVariant: ["tabular-nums"],
-              }}
-            >
-              {exerciseCount(state, "done") + 1}/{exerciseCount(state, "total")}
-            </Text>
-          </View>
-        </Column>
-      </View>
+      <Header />
 
       <ScrollView
         contentContainerStyle={{
@@ -288,7 +264,7 @@ export default function WorkoutScreen() {
             current={item.exerciseId}
             onPick={(id) => {
               setSwapping(false);
-              setState((s) => chooseExercise(s, active.workoutId, item.slot, id));
+              setState((s) => chooseExercise(s, active.workoutId, item.id, id));
             }}
           />
         ) : null}
@@ -361,6 +337,545 @@ export default function WorkoutScreen() {
         </Column>
       </View>
 
+    </View>
+  );
+}
+
+/**
+ * Where you are in the session: the module's name, and one segment per block.
+ *
+ * Shared by the lifting screen and the conditioning ones so the bar of
+ * progress does not jump or reset when the session moves between them.
+ */
+function Header() {
+  const { state } = useSession();
+  const insets = useSafeAreaInsets();
+  const active = state.active;
+  if (!active) return null;
+
+  return (
+    <View
+      style={{ paddingTop: insets.top + 14, paddingHorizontal: 22, paddingBottom: 14 }}
+    >
+      <Column style={{ gap: 12 }}>
+        <Text
+          style={{
+            color: colors.muted,
+            fontSize: 12,
+            fontWeight: "800",
+            letterSpacing: 1.3,
+            textTransform: "uppercase",
+          }}
+        >
+          {currentWorkout(state).name}
+        </Text>
+
+        {/* One segment per exercise, weighted: a paired screen holds two
+            exercises, so it is twice as wide and the total never changes
+            when you superset. */}
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+          <View style={{ flex: 1, flexDirection: "row", gap: 3 }}>
+            {active.items.map((it, i) => (
+              <View
+                key={i}
+                style={{
+                  flex: it.supersetWith ? 2 : 1,
+                  height: 3,
+                  borderRadius: 999,
+                  backgroundColor:
+                    i < active.cursor
+                      ? colors.acid
+                      : i === active.cursor
+                        ? colors.muted
+                        : colors.line,
+                }}
+              />
+            ))}
+          </View>
+          <Text
+            style={{
+              color: colors.faint,
+              fontSize: 11,
+              fontWeight: "800",
+              fontVariant: ["tabular-nums"],
+            }}
+          >
+            {exerciseCount(state, "done") + 1}/{exerciseCount(state, "total")}
+          </Text>
+        </View>
+      </Column>
+    </View>
+  );
+}
+
+/**
+ * A cardio or mobility block: the same frame — heading, swap button, body,
+ * one action — around two quite different insides.
+ */
+function Conditioning({ item }: { item: Item }) {
+  const { state, setState } = useSession();
+  const [swapping, setSwapping] = useState(false);
+
+  const cardio = currentCardio(state);
+  const routine = currentRoutine(state);
+  const pool = conditioningPool(state, item);
+
+  const advance = () => {
+    setSwapping(false);
+    setState((s) => (isCardio(item) ? completeCardio(s) : completeExercise(s)));
+  };
+  // With a record to go on, an untouched box means "same as last time".
+  const last = lastDistance(state, item);
+  const needsDistance = isCardio(item) && item.distance === null && last === null;
+
+  return (
+    <View style={{ flex: 1, backgroundColor: colors.bg }}>
+      <Header />
+
+      <ScrollView
+        contentContainerStyle={{
+          paddingHorizontal: 22,
+          paddingBottom: 20,
+          width: "100%",
+          maxWidth: COLUMN,
+          alignSelf: "center",
+          gap: 22,
+        }}
+      >
+        <View style={{ gap: 6 }}>
+          <Text
+            style={{
+              color: colors.acid,
+              fontSize: 12,
+              fontWeight: "800",
+              letterSpacing: 1.4,
+              textTransform: "uppercase",
+            }}
+          >
+            {isCardio(item) ? `${item.minutes} minutes` : "Mobility"}
+          </Text>
+
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+            <Text
+              style={{
+                flex: 1,
+                color: colors.text,
+                fontFamily: serif,
+                fontSize: 40,
+                lineHeight: 44,
+                fontWeight: "700",
+                letterSpacing: -1.5,
+              }}
+            >
+              {cardio?.name ?? routine?.name ?? ""}
+            </Text>
+
+            {pool.length > 1 ? (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={
+                  isCardio(item) ? "Choose a different machine" : "Choose a different routine"
+                }
+                onPress={() => setSwapping((v) => !v)}
+                style={({ pressed }) => ({
+                  width: 44,
+                  height: 44,
+                  alignItems: "center",
+                  justifyContent: "center",
+                  borderRadius: 999,
+                  backgroundColor: swapping ? colors.acid : colors.raised,
+                  opacity: pressed ? 0.7 : 1,
+                })}
+              >
+                <Text
+                  style={{
+                    color: swapping ? colors.ink : colors.muted,
+                    fontSize: 17,
+                    fontWeight: "700",
+                  }}
+                >
+                  ⇄
+                </Text>
+              </Pressable>
+            ) : null}
+          </View>
+
+          {routine ? (
+            <Text style={{ color: colors.muted, fontSize: 15, fontWeight: "600" }}>
+              {routine.subtitle} · about {Math.round(routineSeconds(routine) / 60)} min
+            </Text>
+          ) : null}
+        </View>
+
+        {swapping ? (
+          <ConditioningSwap
+            options={pool}
+            current={item.exerciseId}
+            onPick={(id) => {
+              setSwapping(false);
+              setState((s) => chooseConditioning(s, item.slot, id));
+            }}
+          />
+        ) : null}
+
+        {cardio && isCardio(item) ? (
+          <CardioBody
+            cardio={cardio}
+            minutes={item.minutes ?? 0}
+            distance={item.distance ?? null}
+            last={last}
+            record={cardioRecord(state, cardio.id, item.minutes ?? 0)}
+            onNudge={(d) => setState((s) => nudgeDistance(s, d))}
+            onSet={(v) => setState((s) => setDistance(s, v))}
+          />
+        ) : null}
+
+        {routine && isMobility(item) ? (
+          <MobilityBody
+            routine={routine}
+            done={item.moves ?? []}
+            onToggle={(i) => setState((s) => toggleMove(s, i))}
+          />
+        ) : null}
+      </ScrollView>
+
+      <View style={{ paddingHorizontal: 22, paddingBottom: 14 }}>
+        <Column style={{ gap: 10 }}>
+          {needsDistance ? (
+            <Text style={{ textAlign: "center", color: colors.faint, fontSize: 13 }}>
+              Enter the distance when the clock runs out — or skip the block.
+            </Text>
+          ) : null}
+          <Feedback
+            label={isMobility(item) ? "Finish" : "Done"}
+            fill
+            disabled={needsDistance}
+            onPress={advance}
+          />
+        </Column>
+      </View>
+    </View>
+  );
+}
+
+/**
+ * The distance you covered, and the mark to beat.
+ *
+ * The minutes are fixed, so the only number that moves is this one — which
+ * makes the comparison with last time honest without timing anything.
+ */
+function CardioBody({
+  cardio,
+  minutes,
+  distance,
+  last,
+  record,
+  onNudge,
+  onSet,
+}: {
+  cardio: CardioExercise;
+  minutes: number;
+  distance: number | null;
+  /** Last session's distance: what the box shows until you change it. */
+  last: number | null;
+  record: ReturnType<typeof cardioRecord>;
+  onNudge: (direction: 1 | -1) => void;
+  onSet: (distance: number | null) => void;
+}) {
+  const [draft, setDraft] = useState<string | null>(null);
+  const { decimals, unit } = cardio.metric;
+
+  const commit = () => {
+    if (draft !== null) {
+      const parsed = parseFloat(draft.replace(",", "."));
+      onSet(Number.isNaN(parsed) ? null : parsed);
+    }
+    setDraft(null);
+  };
+
+  const beat = record && distance !== null && distance > record.last;
+  const isBest = record && distance !== null && distance > record.best;
+
+  return (
+    <View style={{ gap: 22 }}>
+      {/* The target: what you did last time on this machine, over these same
+          minutes. Absent the first time — there is nothing to chase yet. */}
+      <View
+        style={{
+          gap: 10,
+          borderRadius: radii.card,
+          borderCurve: "continuous",
+          backgroundColor: colors.surface,
+          padding: 18,
+        }}
+      >
+        {record ? (
+          <>
+            <View style={{ flexDirection: "row", alignItems: "baseline", gap: 10 }}>
+              <Text
+                style={{
+                  color: colors.faint,
+                  fontSize: 11,
+                  fontWeight: "800",
+                  letterSpacing: 1.2,
+                  textTransform: "uppercase",
+                }}
+              >
+                To beat
+              </Text>
+              <Text
+                style={{
+                  color: colors.text,
+                  fontSize: 24,
+                  fontWeight: "800",
+                  letterSpacing: -0.8,
+                  fontVariant: ["tabular-nums"],
+                }}
+              >
+                {distanceLabel(cardio, record.last)}
+              </Text>
+            </View>
+            <Text style={{ color: colors.faint, fontSize: 13, lineHeight: 19 }}>
+              Furthest {distanceLabel(cardio, record.best)} · {record.sessions}{" "}
+              {record.sessions === 1 ? "session" : "sessions"} on this machine.
+            </Text>
+          </>
+        ) : (
+          <Text style={{ color: colors.faint, fontSize: 13, lineHeight: 19 }}>
+            First {minutes} minutes on the {cardio.name.toLowerCase()}. Whatever you
+            cover becomes the mark to beat next time.
+          </Text>
+        )}
+      </View>
+
+      {/* The distance, entered the same way a weight is: type it or step it. */}
+      <View
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          justifyContent: "space-between",
+        }}
+      >
+        <Step label="−" onPress={() => onNudge(-1)} />
+
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+          <TextInput
+            value={draft ?? (distance === null ? "" : distance.toFixed(decimals))}
+            // Last time's distance until you change it, dimmed so it reads as
+            // a starting point rather than something already logged.
+            placeholder={(last ?? 0).toFixed(decimals)}
+            placeholderTextColor={last === null ? colors.faint : colors.muted}
+            onChangeText={setDraft}
+            onFocus={() =>
+              setDraft((distance ?? last) === null ? "" : (distance ?? last)!.toFixed(decimals))
+            }
+            onBlur={commit}
+            onSubmitEditing={commit}
+            keyboardType="decimal-pad"
+            selectTextOnFocus
+            style={{
+              width: 160,
+              color: colors.acid,
+              fontSize: 62,
+              fontWeight: "800",
+              letterSpacing: -3,
+              textAlign: "right",
+              fontVariant: ["tabular-nums"],
+            }}
+          />
+          <View style={{ width: 48 }}>
+            <Text style={{ color: colors.muted, fontSize: 20, fontWeight: "700" }}>
+              {unit}
+            </Text>
+          </View>
+        </View>
+
+        <Step label="+" onPress={() => onNudge(1)} />
+      </View>
+
+      {/* Said only when it is true — a line that always shows says nothing. */}
+      {isBest ? (
+        <Text
+          style={{
+            textAlign: "center",
+            color: colors.acid,
+            fontSize: 14,
+            fontWeight: "800",
+          }}
+        >
+          Furthest yet.
+        </Text>
+      ) : beat ? (
+        <Text
+          style={{
+            textAlign: "center",
+            color: colors.acid,
+            fontSize: 14,
+            fontWeight: "800",
+          }}
+        >
+          Past last time.
+        </Text>
+      ) : null}
+
+      <Text style={{ color: colors.faint, fontSize: 13, lineHeight: 19 }}>
+        {cardio.cue ?? "Same minutes every session — the distance is the score."}
+      </Text>
+    </View>
+  );
+}
+
+/**
+ * The mobility routine: a list of holds to tick off. Nothing is timed for you
+ * and nothing is recorded — it is a checklist so you do not skip the third one.
+ */
+function MobilityBody({
+  routine,
+  done,
+  onToggle,
+}: {
+  routine: MobilityRoutine;
+  done: boolean[];
+  onToggle: (index: number) => void;
+}) {
+  return (
+    <View style={{ gap: 18 }}>
+      <View style={{ gap: 2 }}>
+        {routine.moves.map((move, i) => {
+          const ticked = done[i] ?? false;
+          return (
+            <Pressable
+              key={move.id}
+              accessibilityRole="checkbox"
+              accessibilityState={{ checked: ticked }}
+              accessibilityLabel={`${move.name}, ${move.seconds} seconds${
+                move.perSide ? " each side" : ""
+              }`}
+              onPress={() => onToggle(i)}
+              style={({ pressed }) => ({
+                flexDirection: "row",
+                alignItems: "center",
+                gap: 14,
+                borderBottomWidth: i === routine.moves.length - 1 ? 0 : 1,
+                borderBottomColor: colors.line,
+                paddingVertical: 15,
+                opacity: pressed ? 0.6 : 1,
+              })}
+            >
+              <View style={{ flex: 1, gap: 2 }}>
+                <Text
+                  style={{
+                    color: ticked ? colors.faint : colors.text,
+                    fontSize: 17,
+                    fontWeight: "600",
+                    textDecorationLine: ticked ? "line-through" : "none",
+                  }}
+                >
+                  {move.name}
+                </Text>
+                {move.cue ? (
+                  <Text style={{ color: colors.faint, fontSize: 12, lineHeight: 17 }}>
+                    {move.cue}
+                  </Text>
+                ) : null}
+              </View>
+
+              <Text
+                style={{
+                  color: colors.muted,
+                  fontSize: 15,
+                  fontWeight: "700",
+                  fontVariant: ["tabular-nums"],
+                }}
+              >
+                {move.seconds}s{move.perSide ? " ×2" : ""}
+              </Text>
+
+              <View
+                style={{
+                  width: 28,
+                  height: 28,
+                  alignItems: "center",
+                  justifyContent: "center",
+                  borderRadius: 999,
+                  borderWidth: ticked ? 0 : 1.5,
+                  borderColor: colors.line,
+                  backgroundColor: ticked ? colors.acid : "transparent",
+                }}
+              >
+                <Text
+                  style={{
+                    color: ticked ? colors.ink : "transparent",
+                    fontSize: 15,
+                    fontWeight: "800",
+                  }}
+                >
+                  ✓
+                </Text>
+              </View>
+            </Pressable>
+          );
+        })}
+      </View>
+
+      <Text style={{ color: colors.faint, fontSize: 13, lineHeight: 19 }}>
+        Nothing here is counted. Breathe, hold, and stop when the tension eases.
+      </Text>
+    </View>
+  );
+}
+
+/** The machines or routines this block could use instead. */
+function ConditioningSwap({
+  options,
+  current,
+  onPick,
+}: {
+  options: { id: string; name: string }[];
+  current: string;
+  onPick: (id: string) => void;
+}) {
+  return (
+    <View
+      style={{
+        gap: 2,
+        borderRadius: radii.card,
+        borderCurve: "continuous",
+        backgroundColor: colors.surface,
+        padding: 10,
+      }}
+    >
+      {options.map((o) => {
+        const active = o.id === current;
+        return (
+          <Pressable
+            key={o.id}
+            accessibilityRole="button"
+            accessibilityState={{ selected: active }}
+            onPress={() => onPick(o.id)}
+            style={({ pressed }) => ({
+              flexDirection: "row",
+              alignItems: "center",
+              minHeight: 50,
+              paddingHorizontal: 14,
+              borderRadius: 12,
+              backgroundColor: active ? colors.acid : "transparent",
+              opacity: pressed ? 0.7 : 1,
+            })}
+          >
+            <Text
+              style={{
+                flex: 1,
+                color: active ? colors.ink : colors.text,
+                fontSize: 16,
+                fontWeight: active ? "800" : "600",
+              }}
+            >
+              {o.name}
+            </Text>
+          </Pressable>
+        );
+      })}
     </View>
   );
 }
@@ -809,7 +1324,9 @@ function Why({ prescription }: { prescription: ReturnType<typeof currentPrescrip
     );
   }
 
-  const text = skippedLast
+  const text = prescription.decay
+    ? decayLabel(prescription.decay)
+    : skippedLast
     ? "Skipped last time. Same weight and reps as before."
     : deloaded
       ? "Backed off 10% after two heavy sessions. Build it up again."

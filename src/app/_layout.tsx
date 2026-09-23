@@ -1,6 +1,5 @@
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { useState } from "react";
 import { View } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
@@ -8,7 +7,8 @@ import { BarActionsProvider, useBarSlot } from "@/components/bar-actions";
 import { BottomBar } from "@/components/bottom-bar";
 import { TabButtons } from "@/components/tab-bar";
 import { colors } from "@/constants/theme";
-import { SessionContext, initialState, type SessionState } from "@/store/session";
+import { SessionContext } from "@/store/session";
+import { useSaved } from "@/store/use-saved";
 
 function Shell() {
   // A screen can replace the bar's buttons with its own; the bar itself is
@@ -30,7 +30,14 @@ function Shell() {
 }
 
 export default function RootLayout() {
-  const [state, setState] = useState<SessionState>(initialState);
+  const { state, setState, ready } = useSaved();
+
+  // Nothing renders until the saved training is read back, so no screen can
+  // act on an empty state and write it over a year of history. The read is a
+  // single small file, so this is a frame or two, not a visible spinner.
+  if (!ready) {
+    return <View style={{ flex: 1, backgroundColor: colors.bg }} />;
+  }
 
   return (
     <SafeAreaProvider>

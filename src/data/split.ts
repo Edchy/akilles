@@ -1,26 +1,32 @@
 import type { Pattern } from "@/data/exercises";
 
 /**
- * The split: five workouts in a cycle, each a fixed list of exercises.
+ * The split: workouts in a cycle, each a list of exercise slots.
  *
  * The cycle advances when you TRAIN, not when the calendar moves.
  * Miss a day and you simply pick up at the next workout in the cycle.
  * There is no debt and nothing to make up.
  *
- * To change a workout, edit its `exercises` list. The ids come from
- * `exercises.ts` — that file is the menu, this file is the order.
+ * The workouts themselves live in your saved state and are edited from the
+ * Plan tab — add, remove, reorder, and change what is in each. What is here is
+ * the starting program a fresh install opens with. The exercise ids come from
+ * `exercises.ts` — that file is the menu, this file is the default order.
  */
 
 /**
  * Which rep ladder an exercise climbs before adding weight.
  *
- * The same lift appears on more than one scheme — bench is heavy on day 1 and
- * lighter on day 3 — and each scheme keeps its own weight and its own rung.
- * See the `history` key in `store/session.ts`.
+ * Either one of the named schemes, or any rep range of your own written
+ * "min-max" — "6-10" climbs 6 → 8 → 10, then adds weight and starts again.
+ *
+ * The same lift can appear on more than one scheme — heavy bench one day,
+ * lighter bench another — and each scheme keeps its own weight and its own
+ * rung. See the `history` key in `store/session.ts`.
  */
-export type Scheme = "strength" | "volume" | "pump" | "speed";
+export type NamedScheme = "strength" | "volume" | "pump" | "speed";
+export type Scheme = NamedScheme | `${number}-${number}`;
 
-export const LADDERS: Record<Scheme, number[]> = {
+export const LADDERS: Record<NamedScheme, number[]> = {
   strength: [5, 6, 8],
   volume: [8, 10, 12],
   pump: [12, 15, 20],
@@ -29,17 +35,69 @@ export const LADDERS: Record<Scheme, number[]> = {
   speed: [3],
 };
 
-export const SETS: Record<Scheme, number> = {
+export const SETS: Record<NamedScheme, number> = {
   strength: 4,
   volume: 3,
   pump: 3,
   speed: 6,
 };
 
+/** Sets for a rep range of your own, unless the slot says otherwise. */
+const DEFAULT_SETS = 3;
+
+const isNamed = (scheme: Scheme): scheme is NamedScheme => scheme in LADDERS;
+
+/** Fewest and most reps a range can span. */
+export const REPS_RANGE = { min: 1, max: 30 } as const;
+
+/**
+ * The scheme for a rep range. A range matching a named scheme's ends IS that
+ * scheme — 8–12 is volume — so the lift keeps the history it already has.
+ */
+export const rangeScheme = (min: number, max: number): Scheme => {
+  const lo = Math.max(REPS_RANGE.min, Math.min(min, max));
+  const hi = Math.min(REPS_RANGE.max, Math.max(min, max));
+  for (const name of ["strength", "volume", "pump"] as const) {
+    const ladder = LADDERS[name];
+    if (ladder[0] === lo && ladder[ladder.length - 1] === hi) return name;
+  }
+  return `${lo}-${hi}`;
+};
+
+/**
+ * The rungs a scheme climbs. A range of your own gets three — bottom,
+ * middle, top — or every rep when it is too narrow for that: 8–10 climbs
+ * 8 → 9 → 10, 6–10 climbs 6 → 8 → 10.
+ */
+export const ladderFor = (scheme: Scheme): number[] => {
+  if (isNamed(scheme)) return LADDERS[scheme];
+  const [lo, hi] = scheme.split("-").map(Number);
+  if (!(lo > 0) || !(hi >= lo)) return LADDERS.volume;
+  return [...new Set([lo, Math.round((lo + hi) / 2), hi])];
+};
+
+/** The ends of a scheme's ladder. */
+export const repRange = (scheme: Scheme): { min: number; max: number } => {
+  const ladder = ladderFor(scheme);
+  return { min: ladder[0], max: ladder[ladder.length - 1] };
+};
+
+/** "6–10", or just "3" for speed work that does not climb. */
+export const repLabel = (scheme: Scheme): string => {
+  const { min, max } = repRange(scheme);
+  return min === max ? `${min}` : `${min}–${max}`;
+};
+
 export type Entry = {
   /**
-   * What this slot is for. Fixed — it is the module's contract, and does not
-   * change when you swap the exercise inside it.
+   * Identifies the slot within its workout, so two slots with the same label
+   * — a second Biceps — stay distinct. Built-in slots use their label, which
+   * keeps choices saved before slots had ids pointing at the right place.
+   */
+  id: string;
+  /**
+   * What this slot is for. It does not change when you swap the exercise
+   * inside it.
    */
   slot: string;
   /**
@@ -76,358 +134,118 @@ export type Entry = {
 
 export type Workout = {
   id: string;
-  /** A letter. The subtitle says what it actually is. */
   name: string;
   /** What the workout trains, in lower case. Keep it to a few words. */
   subtitle: string;
   exercises: Entry[];
 };
 
-export const CYCLE: Workout[] = [
+/** A workout as authored below — slot ids are filled in from the labels. */
+type Authored = Omit<Workout, "exercises"> & { exercises: Omit<Entry, "id">[] };
+
+const FULL_CYCLE: Authored[] = [
   /*
-   * Each module is a fixed sequence of slots. The slot says what the position
-   * is for; `options` says which exercises can fill it — first is the default,
-   * the rest are what the swap button offers.
+   * Push, pull, legs, push, pull. Each slot names its exercise; the swap
+   * button offers everything else in the catalogue of the same movement type.
    *
-   * Progression follows the exercise, not the slot: swap bench for dumbbell
-   * bench and you get dumbbell bench's own weight and ladder, and barbell
-   * bench is still where you left it when you swap back.
+   * Progression follows the exercise AND its rep range: bench at 6–10 on Push
+   * A and at 10–12 on Push B are two records at two weights. Pull-ups and dips
+   * are "as many as you can" on paper — here they climb a range like
+   * anything else, and hitting the top adds weight or takes off assistance.
+   *
+   * Arms and abs are floaters: they can be folded into an earlier exercise's
+   * rest as a superset.
    */
   {
-    id: "upper_strength",
-    name: "Push · Pull · Heavy",
-    subtitle: "bench, pull-up, overhead press",
+    id: "push_a",
+    name: "Push A",
+    subtitle: "chest focus",
     exercises: [
-      {
-        slot: "Horizontal press",
-        pattern: "horizontal_push",
-        options: ["bench", "db_bench", "incline_bench"],
-        scheme: "strength",
-      },
-      {
-        slot: "Vertical pull",
-        pattern: "vertical_pull",
-        options: ["pullup", "chinup", "lat_pulldown"],
-        scheme: "strength",
-      },
-      {
-        slot: "Vertical press",
-        pattern: "vertical_push",
-        options: ["ohp", "db_shoulder", "machine_shoulder"],
-        scheme: "strength",
-      },
-      {
-        slot: "Horizontal pull",
-        pattern: "horizontal_pull",
-        options: ["bb_row", "cable_row", "chest_supported_row"],
-        scheme: "volume",
-      },
-      {
-        slot: "Rear delts",
-        pattern: "shoulders",
-        options: ["face_pull", "rear_delt_fly"],
-        scheme: "volume",
-        sets: 2,
-        floater: true,
-      },
-      {
-        slot: "Biceps",
-        pattern: "biceps",
-        options: ["db_curl", "hammer_curl", "cable_curl"],
-        scheme: "volume",
-        sets: 2,
-        floater: true,
-      },
-      {
-        slot: "Triceps",
-        pattern: "triceps",
-        options: ["pushdown", "skullcrusher", "overhead_ext"],
-        scheme: "volume",
-        sets: 2,
-        floater: true,
-      },
-      {
-        slot: "Abs",
-        pattern: "abs",
-        options: ["hanging_leg_raise", "cable_crunch", "plank"],
-        scheme: "volume",
-        sets: 2,
-        floater: true,
-      },
+      { slot: "Horizontal press", pattern: "horizontal_push", options: ["db_bench"], scheme: "6-10" },
+      { slot: "Vertical press", pattern: "vertical_push", options: ["db_shoulder"], scheme: "volume" },
+      { slot: "Chest fly", pattern: "chest_iso", options: ["cable_crossover"], scheme: "12-15" },
+      { slot: "Dips", pattern: "triceps", options: ["dips"], scheme: "6-12" },
+      { slot: "Abs", pattern: "abs", options: ["hanging_leg_raise"], scheme: "10-15", floater: true },
     ],
   },
   {
-    id: "lower_strength",
-    name: "Legs · Heavy",
-    subtitle: "squat, hinge, lunge",
+    id: "pull_a",
+    name: "Pull A",
+    subtitle: "vertical pull focus",
     exercises: [
-      {
-        slot: "Squat",
-        pattern: "squat",
-        options: ["back_squat", "front_squat", "goblet_squat"],
-        scheme: "strength",
-      },
-      {
-        slot: "Hinge",
-        pattern: "hinge",
-        options: ["rdl", "deadlift", "good_morning"],
-        scheme: "strength",
-      },
-      {
-        slot: "Lunge",
-        pattern: "lunge",
-        options: ["bulgarian", "walking_lunge", "step_up"],
-        scheme: "volume",
-      },
-      {
-        slot: "Hamstrings",
-        pattern: "hamstrings",
-        options: ["leg_curl", "back_ext", "hip_thrust"],
-        scheme: "volume",
-      },
-      {
-        slot: "Calves",
-        pattern: "calves",
-        options: ["calf_raise", "seated_calf", "leg_press_calf"],
-        scheme: "volume",
-      },
-      {
-        slot: "Biceps",
-        pattern: "biceps",
-        options: ["hammer_curl", "db_curl", "cable_curl"],
-        scheme: "volume",
-        sets: 2,
-        floater: true,
-      },
-      {
-        slot: "Triceps",
-        pattern: "triceps",
-        options: ["overhead_ext", "pushdown", "skullcrusher"],
-        scheme: "volume",
-        sets: 2,
-        floater: true,
-      },
-      {
-        slot: "Abs",
-        pattern: "abs",
-        options: ["cable_crunch", "hanging_leg_raise", "plank"],
-        scheme: "volume",
-        sets: 2,
-        floater: true,
-      },
+      { slot: "Vertical pull", pattern: "vertical_pull", options: ["pullup"], scheme: "5-10" },
+      { slot: "Heavy row", pattern: "horizontal_pull", options: ["bb_row"], scheme: "6-10" },
+      { slot: "Machine row", pattern: "horizontal_pull", options: ["machine_row"], scheme: "10-12" },
+      { slot: "Biceps", pattern: "biceps", options: ["bb_curl"], scheme: "volume", floater: true },
+      { slot: "Abs", pattern: "abs", options: ["ab_machine"], scheme: "12-15", floater: true },
     ],
   },
   {
-    id: "upper_volume",
-    name: "Push · Pull",
-    subtitle: "same lifts, higher reps",
+    id: "legs",
+    name: "Legs",
+    subtitle: "squat, hinge, split squat",
     exercises: [
-      {
-        slot: "Horizontal press",
-        pattern: "horizontal_push",
-        options: ["bench", "db_bench", "incline_bench"],
-        scheme: "volume",
-      },
-      {
-        slot: "Vertical pull",
-        pattern: "vertical_pull",
-        options: ["pullup", "lat_pulldown", "chinup"],
-        scheme: "volume",
-      },
-      {
-        slot: "Vertical press",
-        pattern: "vertical_push",
-        options: ["ohp", "db_shoulder", "machine_shoulder"],
-        scheme: "volume",
-      },
-      {
-        slot: "Horizontal pull",
-        pattern: "horizontal_pull",
-        options: ["bb_row", "cable_row", "chest_supported_row"],
-        scheme: "pump",
-      },
-      {
-        slot: "Side delts",
-        pattern: "shoulders",
-        options: ["lateral_raise", "face_pull", "rear_delt_fly"],
-        scheme: "pump",
-        sets: 3,
-        floater: true,
-      },
-      {
-        slot: "Biceps",
-        pattern: "biceps",
-        options: ["cable_curl", "db_curl", "hammer_curl"],
-        scheme: "volume",
-        sets: 2,
-        floater: true,
-      },
-      {
-        slot: "Triceps",
-        pattern: "triceps",
-        options: ["skullcrusher", "pushdown", "overhead_ext"],
-        scheme: "volume",
-        sets: 2,
-        floater: true,
-      },
-      {
-        slot: "Abs",
-        pattern: "abs",
-        options: ["hanging_leg_raise", "cable_crunch", "plank"],
-        scheme: "pump",
-        sets: 2,
-        floater: true,
-      },
+      { slot: "Squat", pattern: "squat", options: ["back_squat"], scheme: "6-10" },
+      { slot: "Hinge", pattern: "hinge", options: ["rdl"], scheme: "8-10" },
+      { slot: "Single leg", pattern: "lunge", options: ["bulgarian"], scheme: "8-10", sets: 2 },
+      { slot: "Abs", pattern: "abs", options: ["hanging_leg_raise"], scheme: "10-15", floater: true },
     ],
   },
   {
-    id: "lower_power",
-    name: "Legs · Explosive",
-    subtitle: "jumps and speed work",
+    id: "push_b",
+    name: "Push B",
+    subtitle: "shoulder focus",
     exercises: [
-      // Jumps first — most demanding on the nervous system, so they want you
-      // fresh. Then loaded speed work, then the accessory.
-      {
-        slot: "Jump",
-        pattern: "jump",
-        options: ["box_jump", "broad_jump", "jump_squat", "depth_jump"],
-        scheme: "speed",
-        sets: 5,
-      },
-      {
-        slot: "Speed squat",
-        pattern: "squat",
-        options: ["speed_squat"],
-        scheme: "speed",
-        derive: { from: "back_squat", scheme: "strength", fraction: 0.65 },
-      },
-      {
-        slot: "Speed hinge",
-        pattern: "hinge",
-        options: ["speed_deadlift"],
-        scheme: "speed",
-        derive: { from: "rdl", scheme: "strength", fraction: 0.65 },
-      },
-      {
-        slot: "Quads",
-        pattern: "quads",
-        options: ["leg_ext", "leg_press", "hack_squat"],
-        scheme: "volume",
-        sets: 4,
-      },
-      {
-        slot: "Hamstrings",
-        pattern: "hamstrings",
-        options: ["leg_curl", "back_ext", "hip_thrust"],
-        scheme: "volume",
-      },
-      {
-        slot: "Calves",
-        pattern: "calves",
-        options: ["calf_raise", "seated_calf", "leg_press_calf"],
-        scheme: "pump",
-        sets: 3,
-        floater: true,
-      },
-      {
-        slot: "Biceps",
-        pattern: "biceps",
-        options: ["db_curl", "hammer_curl", "cable_curl"],
-        scheme: "pump",
-        sets: 2,
-        floater: true,
-      },
-      {
-        slot: "Triceps",
-        pattern: "triceps",
-        options: ["pushdown", "overhead_ext", "skullcrusher"],
-        scheme: "pump",
-        sets: 2,
-        floater: true,
-      },
-      {
-        slot: "Abs",
-        pattern: "abs",
-        options: ["cable_crunch", "hanging_leg_raise", "plank"],
-        scheme: "pump",
-        sets: 2,
-        floater: true,
-      },
+      { slot: "Vertical press", pattern: "vertical_push", options: ["db_shoulder"], scheme: "6-10" },
+      { slot: "Horizontal press", pattern: "horizontal_push", options: ["db_bench"], scheme: "10-12" },
+      { slot: "Chest fly", pattern: "chest_iso", options: ["cable_crossover"], scheme: "12-15" },
+      { slot: "Triceps", pattern: "triceps", options: ["pushdown"], scheme: "10-15", floater: true },
+      { slot: "Abs", pattern: "abs", options: ["ab_machine"], scheme: "12-15", floater: true },
     ],
   },
   {
-    id: "upper_pump",
-    name: "Shoulders · Arms",
-    subtitle: "machines and cables",
+    id: "pull_b",
+    name: "Pull B",
+    subtitle: "row focus",
     exercises: [
-      {
-        slot: "Horizontal press",
-        pattern: "horizontal_push",
-        options: ["machine_chest", "db_bench", "dips"],
-        scheme: "pump",
-      },
-      {
-        slot: "Vertical pull",
-        pattern: "vertical_pull",
-        options: ["lat_pulldown", "chinup", "pullup"],
-        scheme: "pump",
-      },
-      {
-        slot: "Vertical press",
-        pattern: "vertical_push",
-        options: ["machine_shoulder", "db_shoulder", "ohp"],
-        scheme: "pump",
-      },
-      {
-        slot: "Horizontal pull",
-        pattern: "horizontal_pull",
-        options: ["cable_row", "chest_supported_row", "bb_row"],
-        scheme: "pump",
-      },
-      {
-        slot: "Side delts",
-        pattern: "shoulders",
-        options: ["lateral_raise", "face_pull", "rear_delt_fly"],
-        scheme: "volume",
-      },
-      {
-        slot: "Rear delts",
-        pattern: "shoulders",
-        options: ["rear_delt_fly", "face_pull"],
-        scheme: "pump",
-        sets: 2,
-        floater: true,
-      },
-      {
-        slot: "Biceps",
-        pattern: "biceps",
-        options: ["hammer_curl", "cable_curl", "db_curl"],
-        scheme: "pump",
-        sets: 2,
-        floater: true,
-      },
-      {
-        slot: "Triceps",
-        pattern: "triceps",
-        options: ["overhead_ext", "pushdown", "skullcrusher"],
-        scheme: "pump",
-        sets: 2,
-        floater: true,
-      },
-      {
-        slot: "Abs",
-        pattern: "abs",
-        options: ["cable_crunch", "plank", "hanging_leg_raise"],
-        scheme: "pump",
-        sets: 2,
-        floater: true,
-      },
+      { slot: "Vertical pull", pattern: "vertical_pull", options: ["lat_pulldown"], scheme: "volume" },
+      { slot: "Single-arm row", pattern: "horizontal_pull", options: ["db_row"], scheme: "volume" },
+      { slot: "Machine row", pattern: "horizontal_pull", options: ["machine_row"], scheme: "10-12" },
+      { slot: "Biceps", pattern: "biceps", options: ["db_curl"], scheme: "10-12", floater: true },
+      { slot: "Abs", pattern: "abs", options: ["hanging_leg_raise"], scheme: "10-15", floater: true },
     ],
   },
 ];
 
-export const workoutAt = (cycleIndex: number): Workout =>
-  CYCLE[cycleIndex % CYCLE.length];
+/**
+ * The program a fresh install starts with. Built-in slots take their label as
+ * their id — labels are unique within each built-in workout.
+ */
+export const DEFAULT_WORKOUTS: Workout[] = FULL_CYCLE.map((w) => ({
+  ...w,
+  exercises: w.exercises.map((e) => ({ ...e, id: e.slot })),
+}));
+
+/**
+ * Dev flag for manual testing: bundle with `EXPO_PUBLIC_SHORT_WORKOUTS=1`
+ * (`npm run start:dev`) and every workout runs only its first two exercises,
+ * so a full lap of the cycle takes minutes instead of five sessions. Ladders,
+ * swaps and history behave exactly as in the full split — there is just less
+ * of it.
+ */
+export const SHORT_WORKOUTS = process.env.EXPO_PUBLIC_SHORT_WORKOUTS === "1";
+
+/** A short id for something you created, unique enough for one phone. */
+export const newId = (prefix: string): string =>
+  `${prefix}_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
+
+/**
+ * The scheme a new slot of a movement type starts on. Jumps are speed work —
+ * low reps, no ladder — and everything else opens in the middle of the range.
+ */
+export const defaultScheme = (pattern: Pattern): Scheme =>
+  pattern === "jump" ? "speed" : "volume";
 
 /** Set count for an entry: its own override, else the scheme default. */
-export const setsFor = (entry: Entry): number => entry.sets ?? SETS[entry.scheme];
+export const setsFor = (entry: Entry): number =>
+  entry.sets ?? (isNamed(entry.scheme) ? SETS[entry.scheme] : DEFAULT_SETS);

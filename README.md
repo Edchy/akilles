@@ -1,4 +1,4 @@
-# Achilles
+# Akilles
 
 A workout app with one job: open it and know exactly what to do.
 
@@ -14,41 +14,31 @@ npm start
 
 ## How it works
 
-**The split** — five workouts in a cycle. It advances *when you train*, not when
-the calendar moves: miss a day and you pick up at the next workout. There is no
-debt and nothing to make up.
+**The split** — workouts in a cycle, top to bottom and round again. It advances
+*when you train*, not when the calendar moves: miss a day and you pick up at the
+next workout. There is no debt and nothing to make up.
 
-| | | Main slots | Floaters |
+A fresh install starts with the five below — push, pull, legs, push, pull.
+They are a starting point, not a fixture — see
+[Editing your training](#editing-your-training).
+
+| | | Exercises | Superset-able |
 |---|---|---|---|
-| 1 | **Push · Pull · Heavy** | h-press, v-pull, v-press `4x5` · h-pull `3x8` | rear delts, biceps, triceps, abs |
-| 2 | **Legs · Heavy** | squat, hinge `4x5` · lunge, hamstrings, calves `3x8` | biceps, triceps, abs |
-| 3 | **Push · Pull** | h-press, v-pull, v-press `3x8` · h-pull `3x12` | side delts, biceps, triceps, abs |
-| 4 | **Legs · Explosive** | jump `5x3` · speed squat, speed hinge `6x3` · quads, hamstrings | calves, biceps, triceps, abs |
-| 5 | **Shoulders · Arms** | h-press, v-pull, v-press, h-pull `3x12` · side delts | rear delts, biceps, triceps, abs |
+| 1 | **Push A** · chest focus | DB bench `3x6–10` · DB shoulder press `3x8–12` · cable crossover `3x12–15` · dips `3x6–12` | hanging leg raise `3x10–15` |
+| 2 | **Pull A** · vertical pull focus | pull-ups `3x5–10` · barbell row `3x6–10` · row machine `3x10–12` | barbell curl `3x8–12` · ab machine `3x12–15` |
+| 3 | **Legs** | back squat `3x6–10` · RDL `3x8–10` · Bulgarian split squat `2x8–10` | hanging leg raise `3x10–15` |
+| 4 | **Push B** · shoulder focus | DB shoulder press `3x6–10` · DB bench `3x10–12` · cable crossover `3x12–15` | pushdown `3x10–15` · ab machine `3x12–15` |
+| 5 | **Pull B** · row focus | lat pulldown `3x8–12` · DB row `3x8–12` · row machine `3x10–12` | DB curl `3x10–12` · hanging leg raise `3x10–15` |
 
-Every workout ends with the same three floaters — biceps, triceps, abs at 2
-sets — so arms and abs are trained every day without outweighing the compounds.
+Pull-ups and dips are "as many as you can" in spirit. Here they climb a rep
+range like everything else, and topping it out adds weight — or takes
+assistance off, on an assist machine.
 
-Weekly sets per slot:
-
-```
-Horizontal press  10     Horizontal pull    9     Rear delts    4
-Vertical pull     10     Hamstrings         6     Squat         4
-Vertical press    10     Calves             6     Hinge         4
-Biceps            10     Side delts         6     Quads         4
-Triceps           10     Speed squat/hinge  6     Lunge         3
-Abs               10     Jump               5
-```
-
-Every pattern gets direct work, nothing sits below 3 sets, and pressing and
-pulling are matched. Squat and hinge read low because their heavy sets are
-`4x5` — the compound work is the reps, not the set count, and speed squats
-and jumps add five more lower-body exposures on top.
-
-**Slots, not fixed exercises.** Each module is a fixed sequence of *slots* —
+**Slots, not fixed exercises.** Each module is a sequence of *slots* —
 "Horizontal press", "Vertical pull", "Biceps" — and a slot offers every
 exercise of its movement type. The slot is the module's contract, so the
-muscles trained stay the same however you fill it.
+muscles trained stay the same however you fill it. The slots themselves are
+yours to add, remove and reorder in **Plan**.
 
 Swap with the `⇄` next to the exercise name during a workout, before you log
 the first set — swapping after that would throw the work away. The choice
@@ -59,21 +49,9 @@ bench and you get dumbbell bench's own weight and ladder, not bench's numbers
 applied to dumbbells; swap back weeks later and barbell bench resumes exactly
 where it left off.
 
-**The same lifts come back at different rep ranges.** Bench is `4x5` on day 1 and
-`3x8` on day 3, on *independent ladders at independent weights*. Each main lift
-is therefore trained twice a cycle rather than once, so it progresses twice as
-fast and you get familiar with a small number of movements. Day 5 is the
-exception — machines and cables, lighter on the joints.
-
-**Day 4 is explosive work**, borrowed from PHAT and Candito. Jumps come first
-— they are the most neurally demanding, so they want you fresh — then loaded
-speed work: sets of three at 65% of your heavy-day weight, moved fast.
-
-That 65% is **derived, not tracked**. Speed squat reads whatever your heavy
-squat currently is and takes a fraction of it, so it keeps up on its own with
-no second number to maintain and no 1RM test. Jumps have no weight at all.
-Neither is rated or progressed — you make a jump harder by jumping higher, and
-speed work by moving faster, and the app does not try to measure either.
+**The same lifts come back at different rep ranges.** DB bench is `6–10` on
+Push A and `10–12` on Push B, on *independent ladders at independent weights*,
+so each main lift is trained twice a cycle and progresses on both.
 
 **Warm-ups** run before the first exercise of each muscle group: three ramping
 sets at 40/60/80% of the working weight, for 10/6/3 reps. Tap each one as you
@@ -81,12 +59,8 @@ finish it — **Ready** stays inert until all three are ticked, so the screen
 cannot be tapped past without reading. Nothing here is logged or affects
 progression; bodyweight and timed movements get no ramp at all.
 
-**Arms and abs every day**, always the last three, always 2 sets so they don't
-outweigh the compounds over a week. All three are floaters: fold them into an
+**Arms and abs close each session** and are floaters: fold them into an
 earlier lift's rest period and the session doesn't get longer.
-
-Weekly sets land at 10 for each press/pull pattern, 10 each for biceps, triceps
-and abs, 7 for squat and hinge.
 
 **Logging a set** — one circle per set. Tap it and it fills at the target reps;
 tap again and it counts down if you got fewer; tap past 1 and it clears.
@@ -103,7 +77,7 @@ any time you want.
 
 | | |
 |---|---|
-| 👍 | climb the rep ladder — 8 → 10 → 12 |
+| 👍 | climb the rep ladder — 6 → 8 → 10 |
 | 👍 at the top | weight += increment, back to the bottom rung |
 | 👎 | hold everything, repeat it exactly |
 | 👎 twice in a row | deload 10%, back to the bottom rung |
@@ -112,13 +86,17 @@ any time you want.
 thumbs question — missing reps already says the weight was too much, so the
 same prescription simply comes back next time.
 
-Strength days use the 5 → 6 → 8 ladder at 4 sets; volume days use 8 → 10 → 12 at
-3 sets. Each exercise is tracked **separately per scheme** — bench on a strength
-day and bench on a volume day sit on their own ladders at their own weights.
+**Rep ranges.** A slot climbs from the bottom of its range to the top in three
+rungs — `6–10` is 6 → 8 → 10, `12–15` is 12 → 14 → 15 — or rep by rep when the
+range is too narrow for that: `8–10` is 8 → 9 → 10. Each exercise is tracked
+**separately per rep range**: bench at 6–10 and bench at 10–12 sit on their
+own ladders at their own weights, and changing a slot's range starts that lift
+on a new record.
 
 **Superset** folds an arms/abs exercise from later in the workout into the
-current one, removing it from the tail so it isn't done twice. Only entries
-marked `floater: true` in `split.ts` are offered.
+current one, removing it from the tail so it isn't done twice. Only slots
+marked as able to pair — the **Superset** setting on a slot in **Plan** — are
+offered.
 
 A `×` on the partner card undoes the pairing: the exercise goes back to its own
 place in the workout's slot order, keeping any sets already logged against it.
@@ -137,7 +115,7 @@ Three tabs, plus the workout itself which takes over the screen.
 |---|---|
 | **Today** | The next workout and its exercises. One button: Start. |
 | **History** | Every exercise you've trained, its current weight and next target. |
-| **Plan** | Two segments: **Workouts** (the five sessions and what fills each slot) and **Exercises** (the catalogue of every movement). |
+| **Plan** | Two segments: **Workouts** (your sessions, their order, and what fills each slot) and **Exercises** (the catalogue of every movement). |
 
 Both segments are accordions — one workout or one category open at a time, so
 the whole list fits on a screen.
@@ -224,11 +202,29 @@ it, but not so grave that it deserves a confirmation dialog.
 Every control is at least the 44pt platform minimum — the bar is 72pt tall to
 hold a full-size target plus its label.
 
-**Nothing is saved until the workout ends.** Circle taps, weight edits, thumbs
-and skips all live on the session, so Back can revisit any exercise and change
-what you answered. The single commit happens when you finish the last exercise
-or press Leave — a session you abandon by closing the app entirely is lost, and
-that is the intended trade for being able to change your mind freely.
+**Your training is saved to the device.** The cycle position, your slot
+choices, exercises you have added or removed, and the full per-exercise history
+are written to AsyncStorage after every change and read back on launch. It is
+one small JSON blob; a year of training is around 35KB.
+
+**Nothing is committed to history until the workout ends.** Circle taps, weight
+edits, thumbs and skips all live on the session, so Back can revisit any
+exercise and change what you answered. The single commit happens when you
+finish the last exercise or press Leave.
+
+**Leaving before you've trained anything cancels.** If no set was logged and no
+distance entered, Leave simply closes the workout: the same one stays next and
+nothing is flagged as skipped. Starting and bailing should not drop a workout
+from the rotation.
+
+**A workout in progress survives until the end of the day it was started.**
+Close the app mid-session, or have the OS kill it, and reopening puts you back
+on the same exercise with your circles still filled. Come back the next day and
+the session is closed out as if you had pressed Leave — what you trained counts,
+the rest is skipped, and the cycle moves on — so a dead phone never costs you a
+session's progress. It is a calendar day in the phone's own timezone, not
+twenty-four hours: a workout begun at 9pm is stale by the next morning, not by
+the next evening.
 
 **A skip records nothing** — the weight and rep ladder come back next time
 exactly as they were. The flag is written when the workout *ends*, not when
@@ -242,19 +238,53 @@ target, coral for one that came up short.
 
 ## Editing your training
 
+Everything about the program is edited in the app, under **Plan → Workouts**.
+
+**Workouts.** Any number from one up; with one, it simply repeats.
+- **+ New workout** adds an empty one at the bottom of the cycle.
+- **Hold and drag** a workout to reorder the cycle. Dragging only changes the
+  order — whatever was next stays next, and the cycle carries on from wherever
+  it now sits.
+- **Do next** makes a workout the next one Start runs. It is the only way to
+  change what is next, other than finishing a workout.
+- **Rename** edits its name and the line under it.
+- **Remove** takes two taps. If it was next, the one after it becomes next.
+  The last workout cannot go. History is per exercise, not per workout, so
+  removing one loses no training.
+- A removed built-in workout goes to **Removed** at the bottom of the list,
+  kept exactly as you left it; **Put back** returns it to where it sat. A
+  workout you created yourself is deleted outright instead.
+
+Everything here is saved on the phone (AsyncStorage, under `achilles/state`)
+after every change, so it survives reloads and restarts. It is lost only if
+Expo Go's data is cleared or the app is uninstalled.
+
+**Exercises inside a workout.** Tap a workout open, then tap a slot:
+- swap which exercise fills it, from everything in the catalogue of that
+  movement type
+- sets, from 1 to 10
+- rep range: any bottom and top, from 1 to 30 reps
+- whether it can be supersetted into an earlier exercise
+- remove it from the workout
+
+**+ Add exercise** adds a slot by movement type, filled with the first exercise
+of that type the workout is not already using. **Hold and drag** a slot to
+reorder it within the workout.
+
+Edits to a workout that is in progress take effect from its next run; the
+session you are in keeps the shape it started with.
+
 | What | Where |
 |---|---|
-| Slots, their exercise pools, and rep schemes | `src/data/split.ts` |
+| The starting program a fresh install opens with | `src/data/split.ts` |
 | The menu of available exercises | `src/data/exercises.ts` |
 | Progression rules and rep ladders | `src/lib/progression.ts`, `src/data/split.ts` |
 
-`split.ts` is the one you'll actually edit — swap an `exerciseId`, reorder the
-list, mark something `floater: true` to make it superset-able. `exercises.ts` is
-the menu those ids come from.
-
 ## Known gaps
 
-- **State is in-memory.** Closing the app resets everything. Needs AsyncStorage.
+- **Your training lives only on this phone.** It survives closing the app and
+  restarting the device, but uninstalling, wiping, or moving to a new phone
+  loses it. There is no export and no sync yet.
 - No rest timer between sets.
 - History shows current state per exercise, not a session-by-session log.
 - **Starting weights are guesses** (`STARTING_WEIGHT` in `progression.ts`). You

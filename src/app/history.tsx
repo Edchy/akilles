@@ -4,7 +4,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { COLUMN } from "@/components/screen";
 import { colors } from "@/constants/theme";
 import { byId } from "@/data/exercises";
-import { LADDERS } from "@/data/split";
+import { ladderFor, type Scheme } from "@/data/split";
 import { weightLabel } from "@/lib/warmup";
 import { useSession } from "@/store/session";
 
@@ -56,7 +56,8 @@ export default function HistoryScreen() {
         <View style={{ gap: 2 }}>
           {rows.map(({ key, scheme, state: st, exercise }, i) => {
             const last = st.lastPerformed;
-            const target = LADDERS[scheme as keyof typeof LADDERS][st.rung];
+            const ladder = ladderFor(scheme as Scheme);
+            const target = ladder[Math.min(st.rung, ladder.length - 1)];
             return (
               <View
                 key={key}
