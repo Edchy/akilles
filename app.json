@@ -1,14 +1,17 @@
 {
   "expo": {
     "name": "Akilles",
-    "slug": "chuck",
+    "slug": "akilles",
     "version": "0.1.0",
     "orientation": "portrait",
     "scheme": "akilles",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "runtimeVersion": {
+        "policy": "appVersion"
+      }
     },
     "android": {
       "edgeToEdgeEnabled": true,
@@ -25,6 +28,16 @@
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "af661e39-36c8-42f1-b65d-8a421d220a92"
+      }
+    },
+    "owner": "edch",
+    "updates": {
+      "url": "https://u.expo.dev/af661e39-36c8-42f1-b65d-8a421d220a92"
     }
   }
 }
