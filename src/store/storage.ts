@@ -80,21 +80,39 @@ const isToday = (startedAt: number | undefined): boolean => {
 };
 
 /**
- * Read the saved training back.
- *
- * Anything unreadable — absent, corrupt, or written by a future version —
- * yields a fresh state rather than throwing, since failing to start is a
- * worse outcome than starting empty.
+ * Why a saved blob could not be read: not ours at all, or written by a newer
+ * version of the app than this one understands.
  */
-export const load = async (): Promise<SessionState> => {
-  try {
-    const raw = await AsyncStorage.getItem(KEY);
-    if (!raw) return initialState;
+export type Unreadable = "invalid" | "newer";
 
-    const saved = JSON.parse(raw) as Saved;
-    // Older versions are read and filled in from `initialState`; a newer one
-    // we cannot understand starts fresh rather than being half-interpreted.
-    if (saved.version > VERSION) return initialState;
+/**
+ * Turn saved text back into state, migrating it from whatever version wrote
+ * it. Shared by launch and by restoring a backup file, so both go through
+ * exactly the same migrations.
+ *
+ * Throws nothing: anything that is not a saved blob comes back as the reason.
+ */
+export const fromSaved = (raw: string): SessionState | Unreadable => {
+  let saved: Saved;
+  try {
+    saved = JSON.parse(raw) as Saved;
+  } catch {
+    return "invalid";
+  }
+  if (
+    !saved ||
+    typeof saved.version !== "number" ||
+    !saved.state ||
+    typeof saved.state !== "object" ||
+    typeof saved.state.history !== "object"
+  ) {
+    return "invalid";
+  }
+  // Older versions are read and filled in from `initialState`; a newer one
+  // we cannot understand is refused rather than half-interpreted.
+  if (saved.version > VERSION) return "newer";
+
+  try {
 
     // Pre-4 blobs carry a cycle position; the new program starts at the top.
     const { cycleIndex: _position, ...stored } = saved.state;
@@ -134,6 +152,30 @@ export const load = async (): Promise<SessionState> => {
     }
     return restored;
   } catch {
+    return "invalid";
+  }
+};
+
+/** State as the text that goes to disk — or into a backup file. */
+export const toSaved = (state: SessionState): string => {
+  const saved: Saved = { version: VERSION, state };
+  return JSON.stringify(saved);
+};
+
+/**
+ * Read the saved training back.
+ *
+ * Anything unreadable — absent, corrupt, or written by a future version —
+ * yields a fresh state rather than throwing, since failing to start is a
+ * worse outcome than starting empty.
+ */
+export const load = async (): Promise<SessionState> => {
+  try {
+    const raw = await AsyncStorage.getItem(KEY);
+    if (!raw) return initialState;
+    const state = fromSaved(raw);
+    return typeof state === "string" ? initialState : state;
+  } catch {
     return initialState;
   }
 };
@@ -141,8 +183,7 @@ export const load = async (): Promise<SessionState> => {
 /** Write the training to disk. Errors are swallowed — see `useSaved`. */
 export const save = async (state: SessionState): Promise<void> => {
   try {
-    const saved: Saved = { version: VERSION, state };
-    await AsyncStorage.setItem(KEY, JSON.stringify(saved));
+    await AsyncStorage.setItem(KEY, toSaved(state));
   } catch {
     // A failed write is not worth interrupting a set for. The next change
     // writes the whole state again, so one lost write costs nothing.
