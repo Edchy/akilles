@@ -28,10 +28,8 @@ export default function TodayScreen() {
   const { state, setState } = useSession();
   const insets = useSafeAreaInsets();
   const workout = upNext(state);
-  // The one after, so you know what skipping would give you.
-  const at = state.workouts.findIndex((w) => w.id === workout.id);
-  const then =
-    state.workouts.length > 1 ? state.workouts[(at + 1) % state.workouts.length] : null;
+  // With one workout there is nothing to skip to.
+  const canSkip = state.workouts.length > 1;
   // The workout just skipped, so a mis-tap is one tap to undo.
   const [skipped, setSkipped] = useState<{ id: string; name: string } | null>(null);
 
@@ -113,7 +111,6 @@ export default function TodayScreen() {
           ) : null}
           <Text style={{ color: colors.faint, fontSize: 15, marginTop: 8 }}>
             {count} {count === 1 ? "exercise" : "exercises"}
-            {then && then.id !== workout.id ? ` · then ${then.name}` : ""}
           </Text>
         </View>
       </ScrollView>
@@ -154,10 +151,7 @@ export default function TodayScreen() {
           ) : null}
 
           <View style={{ flexDirection: "row", gap: 12 }}>
-            {/* With one workout there is nothing to skip to. */}
-            {then ? (
-              <BigButton label="Skip" onPress={skip} />
-            ) : null}
+            {canSkip ? <BigButton label="Skip" onPress={skip} /> : null}
             <BigButton label="Start" primary onPress={start} />
           </View>
         </Column>
