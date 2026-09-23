@@ -3,7 +3,7 @@ import { Pressable, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { Column } from "@/components/screen";
-import { BAR_TYPE, colors, TAB_BAR_HEIGHT } from "@/constants/theme";
+import { ACTION_TYPE, BAR_TYPE, colors, TAB_BAR_HEIGHT } from "@/constants/theme";
 
 /**
  * The bar chrome. Mounted once for the life of the app so it never animates
@@ -33,15 +33,19 @@ export function BarButton({
   onPress,
   active,
   disabled,
+  action,
 }: {
   glyph: string;
   label: string;
   onPress: () => void;
+  /** A workout-bar action rather than a tab: drawn at the larger size. */
+  action?: boolean;
   /** The current tab, in acid. */
   active?: boolean;
   disabled?: boolean;
 }) {
   const tint = active ? colors.acid : disabled ? colors.faint : colors.muted;
+  const size = action ? ACTION_TYPE : BAR_TYPE;
 
   return (
     <Pressable
@@ -58,8 +62,8 @@ export function BarButton({
         opacity: disabled ? 0.3 : pressed ? 0.55 : 1,
       })}
     >
-      <View style={{ height: BAR_TYPE.icon, justifyContent: "center" }}>
-        <Text style={{ color: tint, fontSize: BAR_TYPE.glyph }}>{glyph}</Text>
+      <View style={{ height: size.icon, justifyContent: "center" }}>
+        <Text style={{ color: tint, fontSize: size.glyph }}>{glyph}</Text>
       </View>
       <Text
         style={{ color: tint, fontSize: BAR_TYPE.label, fontWeight: "800", letterSpacing: 0.3 }}

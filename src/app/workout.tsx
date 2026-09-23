@@ -73,6 +73,7 @@ export default function WorkoutScreen() {
     active && !done ? (
       <>
         <BarButton
+          action
           glyph="←"
           label="Back"
           disabled={active.cursor === 0}
@@ -94,6 +95,7 @@ export default function WorkoutScreen() {
           }}
         />
         <BarButton
+          action
           glyph="→"
           label="Skip"
           onPress={() => {

@@ -48,3 +48,10 @@ export const TAB_BAR_HEIGHT = 96;
  * line up whatever is above them.
  */
 export const BAR_TYPE = { icon: 44, glyph: 32, label: 12 } as const;
+
+/**
+ * The workout bar's larger icons — Back, Leave, Skip. Arrows are thin
+ * characters and read smaller than the tab icons at the same size, and the
+ * Leave circle has to stay visible around a thumb.
+ */
+export const ACTION_TYPE = { icon: 52, glyph: 40 } as const;
