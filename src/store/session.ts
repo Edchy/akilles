@@ -954,10 +954,9 @@ export const completeExercise = (
 };
 
 /**
- * Swap the exercise filling a slot. Used from Plan and from the workout.
- *
- * The choice sticks: a swap mid-workout becomes the module's new default, so
- * something you tried and liked carries over without a second trip to Plan.
+ * Change which exercise fills a slot in the program. Plan only: it changes
+ * what the workout uses from its next run, never a session in progress —
+ * that session keeps the shape it started with. See `swapForSession`.
  */
 export const chooseExercise = (
   state: SessionState,
@@ -966,45 +965,39 @@ export const chooseExercise = (
   exerciseId: string,
 ): SessionState => {
   // Refuse an exercise another slot in this module is already using: it would
-  // mean doing the same movement twice in one session. Mid-workout, check the
-  // live items — a swap already made this session counts.
-  if (state.active?.workoutId === workoutId) {
-    const taken = new Set(
-      state.active.items
-        .filter((it) => it.id !== entryId && !isConditioning(it))
-        .flatMap((it) => [it.exerciseId, ...(it.supersetWith ? [it.supersetWith] : [])]),
-    );
-    if (taken.has(exerciseId)) return state;
-  } else {
-    const entry = workoutById(state, workoutId)?.exercises.find((e) => e.id === entryId);
-    if (entry && takenElsewhere(state, workoutId, entry).has(exerciseId)) return state;
-  }
-
-  const choices = { ...state.choices, [slotKey(workoutId, entryId)]: exerciseId };
-  if (!state.active || state.active.workoutId !== workoutId) {
-    return { ...state, choices };
-  }
-  // Mid-workout: swap the live item too, seeding it from that exercise's own
-  // history so it opens at the right weight.
-  const ex = byId(exerciseId)!;
+  // mean doing the same movement twice in one session.
+  const entry = workoutById(state, workoutId)?.exercises.find((e) => e.id === entryId);
+  if (entry && takenElsewhere(state, workoutId, entry).has(exerciseId)) return state;
   return {
     ...state,
-    choices,
-    active: {
-      ...state.active,
-      items: state.active.items.map((it) =>
-        it.id === entryId && !isConditioning(it) && !it.logged.some((r) => r !== null)
-          ? {
-              ...it,
-              exerciseId,
-              weight: (state.history[key(exerciseId, it.scheme)] ?? freshState(ex))
-                .weight,
-              logged: Array<number | null>(setsFor(it)).fill(null),
-            }
-          : it,
-      ),
-    },
+    choices: { ...state.choices, [slotKey(workoutId, entryId)]: exerciseId },
   };
+};
+
+/**
+ * Swap the exercise on screen for this session only — the machine is taken,
+ * the dumbbells are gone. The program is untouched; the next run of this
+ * workout offers the usual exercise again. Changing it for good is Plan's
+ * job.
+ *
+ * Refused once a set is logged (that work would be thrown away), and for an
+ * exercise the rest of the session is already using.
+ */
+export const swapForSession = (state: SessionState, exerciseId: string): SessionState => {
+  if (!state.active) return state;
+  const { items, cursor } = state.active;
+  const item = items[cursor];
+  if (!item || isConditioning(item) || item.logged.some((r) => r !== null)) return state;
+  if (currentTaken(state).has(exerciseId)) return state;
+  const ex = byId(exerciseId);
+  if (!ex) return state;
+  // Seeded from that exercise's own history, so it opens at the right weight.
+  return patchItem(state, (it) => ({
+    ...it,
+    exerciseId,
+    weight: (state.history[key(exerciseId, it.scheme)] ?? freshState(ex)).weight,
+    logged: Array<number | null>(setsFor(it)).fill(null),
+  }));
 };
 
 /**

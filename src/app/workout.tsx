@@ -24,7 +24,6 @@ import {
   chooseConditioning,
   completeCardio,
   completeExercise,
-  chooseExercise,
   conditioningPool,
   currentCardio,
   currentRoutine,
@@ -51,6 +50,7 @@ import {
   setDistance,
   skipExercise,
   supersetOptions,
+  swapForSession,
   tapSet,
   toggleMove,
   useSession,
@@ -300,7 +300,7 @@ export default function WorkoutScreen() {
             current={item.exerciseId}
             onPick={(id) => {
               setSwapping(false);
-              setState((s) => chooseExercise(s, active.workoutId, item.id, id));
+              setState((s) => swapForSession(s, id));
             }}
           />
         ) : null}

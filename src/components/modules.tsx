@@ -518,8 +518,8 @@ function Slot({
           {sets} × {repLabel(entry.scheme)}
         </Text>
 
-        <Text style={{ color: expanded ? colors.acid : colors.faint, fontSize: 14 }}>
-          ⇄
+        <Text style={{ color: expanded ? colors.acid : colors.faint, fontSize: 12 }}>
+          {expanded ? "▲" : "▼"}
         </Text>
       </Pressable>
 
@@ -657,7 +657,29 @@ function Slot({
                 }}
               />
             ) : (
-              <TextButton label="Remove from workout" onPress={() => setConfirming(true)} />
+              <>
+                <TextButton label="Remove from workout" onPress={() => setConfirming(true)} />
+                <View style={{ flex: 1 }} />
+                {/* Picking an exercise or changing a number keeps the slot
+                    open for more changes; this is the way out. */}
+                <Pressable
+                  accessibilityRole="button"
+                  onPress={onToggle}
+                  style={({ pressed }) => ({
+                    justifyContent: "center",
+                    minHeight: 44,
+                    paddingHorizontal: 22,
+                    marginRight: 12,
+                    borderRadius: 999,
+                    backgroundColor: colors.acid,
+                    opacity: pressed ? 0.7 : 1,
+                  })}
+                >
+                  <Text style={{ color: colors.ink, fontSize: 14, fontWeight: "800" }}>
+                    Done
+                  </Text>
+                </Pressable>
+              </>
             )}
           </View>
         </View>

@@ -41,8 +41,10 @@ muscles trained stay the same however you fill it. The slots themselves are
 yours to add, remove and reorder in **Plan**.
 
 Swap with the `⇄` next to the exercise name during a workout, before you log
-the first set — swapping after that would throw the work away. The choice
-sticks as the module's new default, and **Plan** shows what each slot is set to.
+the first set — swapping after that would throw the work away. A swap there is
+**for this session only**: the machine is taken today, so next time the usual
+exercise comes back. To change what a slot uses for good, change it in
+**Plan**.
 
 **Progression follows the exercise, not the slot.** Swap bench for dumbbell
 bench and you get dumbbell bench's own weight and ladder, not bench's numbers
