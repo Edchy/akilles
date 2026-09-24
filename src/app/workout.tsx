@@ -9,6 +9,7 @@ import { useBarActions } from "@/components/bar-actions";
 import { ActionButton, useBarSpace } from "@/components/bottom-bar";
 import { HoldButton } from "@/components/hold-button";
 import { Icon, type IconName } from "@/components/icon";
+import { GuideButton } from "@/components/guide";
 import { Illustration } from "@/components/illustration";
 import { Sheet } from "@/components/sheet";
 import { colors, fonts, radii } from "@/constants/theme";
@@ -244,6 +245,7 @@ export default function WorkoutScreen() {
             >
               {p.exercise.name}
             </Text>
+            <GuideButton id={p.exercise.id} name={p.exercise.name} cue={p.exercise.cue} />
             {canSwap ? (
               <Pressable
                 accessibilityRole="button"
@@ -535,6 +537,8 @@ function Conditioning({ item }: { item: Item }) {
             >
               {cardio?.name ?? ""}
             </Text>
+
+            {cardio ? <GuideButton id={cardio.id} name={cardio.name} cue={cardio.cue} /> : null}
 
             {pool.length > 1 ? (
               <Pressable
@@ -1027,7 +1031,12 @@ function MobilityCard({ card, left, position }: { card: Card; left: number; posi
         backgroundColor: colors.surface,
       }}
     >
-      <Illustration id={move.id} style={{ flex: 1 }} />
+      <View style={{ flex: 1 }}>
+        <Illustration id={move.id} style={{ flex: 1 }} />
+        <View style={{ position: "absolute", top: 12, right: 12 }}>
+          <GuideButton id={move.id} name={move.name} cue={move.cue} onPicture />
+        </View>
+      </View>
 
       <View style={{ gap: 6, paddingHorizontal: 18, paddingTop: 16, paddingBottom: 18 }}>
         <View style={{ flexDirection: "row", alignItems: "center" }}>

@@ -74,6 +74,11 @@ once the hold runs out (the phone buzzes), and Finish on the last card. Swipe
 to move between cards at any time; swiping away mid-hold pauses it. Nothing
 is recorded. The illustrations are placeholders until the set is made.
 
+**How to do it** — the ⓘ beside any lift or machine, and on every mobility
+card, opens a sheet: the picture, three steps, and the one mistake to watch
+for. Guides live in `src/data/guides.ts`; an exercise you added yourself shows
+its own cue instead.
+
 **Logging a set** — one circle per set. Tap it and it fills at the target reps;
 tap again and it counts down if you got fewer; tap past 1 and it clears.
 Hold a circle to put it straight back to the target — a stray extra tap on a
