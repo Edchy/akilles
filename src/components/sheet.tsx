@@ -15,8 +15,18 @@ export function Sheet({
   visible,
   title,
   onClose,
+  closeLabel = "Cancel",
+  scrollEnabled = true,
   children,
-}: PropsWithChildren<{ visible: boolean; title: string; onClose: () => void }>) {
+}: PropsWithChildren<{
+  visible: boolean;
+  title: string;
+  onClose: () => void;
+  /** "Done" where edits apply as you make them; "Cancel" where you are picking. */
+  closeLabel?: string;
+  /** Frozen while a row inside is being dragged, or the drag scrolls the sheet. */
+  scrollEnabled?: boolean;
+}>) {
   return (
     <Modal
       visible={visible}
@@ -49,10 +59,22 @@ export function Sheet({
               opacity: pressed ? 0.5 : 1,
             })}
           >
-            <Text style={{ color: colors.muted, fontSize: 16, fontWeight: "700" }}>Cancel</Text>
+            <Text
+              style={{
+                color: closeLabel === "Done" ? colors.text : colors.muted,
+                fontSize: 16,
+                fontWeight: "700",
+              }}
+            >
+              {closeLabel}
+            </Text>
           </Pressable>
         </Column>
-        <ScrollView contentContainerStyle={{ paddingHorizontal: 22, paddingBottom: 40 }}>
+        <ScrollView
+          scrollEnabled={scrollEnabled}
+          keyboardShouldPersistTaps="handled"
+          contentContainerStyle={{ paddingHorizontal: 22, paddingBottom: 40 }}
+        >
           <Column>{children}</Column>
         </ScrollView>
       </View>

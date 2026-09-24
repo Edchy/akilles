@@ -22,6 +22,7 @@ const ICONS = {
   minus: { sf: "minus", glyph: "−" },
   check: { sf: "checkmark", glyph: "✓" },
   expand: { sf: "chevron.down", glyph: "▼" },
+  open: { sf: "chevron.right", glyph: "›" },
   collapse: { sf: "chevron.up", glyph: "▲" },
   up: { sf: "hand.thumbsup", glyph: "👍" },
   down: { sf: "hand.thumbsdown", glyph: "👎" },
