@@ -1,3 +1,4 @@
+import * as Haptics from "expo-haptics";
 import { router } from "expo-router";
 import { useState } from "react";
 import { Pressable, ScrollView, Text, TextInput, View } from "react-native";
@@ -1192,7 +1193,11 @@ function Sets({
             accessibilityLabel={`Set ${i + 1}${filled ? `, ${reps} reps` : ", not logged"}`}
             accessibilityHint="Tap to log or count down. Hold to reset to the target."
             onPress={() => onTap(i)}
-            onLongPress={() => onReset(i)}
+            onLongPress={() => {
+              // The circle is under the thumb, so say it happened by touch.
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+              onReset(i);
+            }}
             delayLongPress={400}
             style={({ pressed }) => ({
               width: size,

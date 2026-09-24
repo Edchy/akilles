@@ -1,3 +1,4 @@
+import * as Haptics from "expo-haptics";
 import { useEffect, useRef, useState } from "react";
 import { Animated, Easing, Pressable, Text, View } from "react-native";
 
@@ -53,6 +54,8 @@ export function HoldButton({
       timer.current = null;
       setHolding(false);
       progress.setValue(0);
+      // Felt, not just seen: the thumb holding it covers the circle.
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
       onHold();
     }, holdMs);
   };
