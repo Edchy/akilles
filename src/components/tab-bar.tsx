@@ -1,6 +1,6 @@
 import { usePathname, useRouter } from "expo-router";
 
-import { BarButton } from "@/components/bottom-bar";
+import { TabButton } from "@/components/bottom-bar";
 import type { IconName } from "@/components/icon";
 
 type Tab = { href: string; label: string; icon: IconName };
@@ -19,7 +19,7 @@ export function TabButtons() {
   return (
     <>
       {TABS.map((tab) => (
-        <BarButton
+        <TabButton
           key={tab.href}
           icon={tab.icon}
           label={tab.label}

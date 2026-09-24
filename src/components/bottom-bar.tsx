@@ -4,7 +4,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { Icon, type IconName } from "@/components/icon";
 import { Column } from "@/components/screen";
-import { ACTION_TYPE, BAR_TYPE, colors, TAB_BAR_HEIGHT } from "@/constants/theme";
+import { ACTION_TYPE, BAR_TYPE, colors, fonts, radii, TAB_BAR_HEIGHT } from "@/constants/theme";
 
 /**
  * The bar chrome. Mounted once for the life of the app so it never animates
@@ -28,60 +28,109 @@ export function BottomBar({ children }: PropsWithChildren) {
   );
 }
 
-export function BarButton({
+/** The bar's labels: the display face, in capitals, like the names above. */
+export const barLabel = {
+  fontFamily: fonts.voice,
+  fontSize: BAR_TYPE.label,
+  letterSpacing: 1.2,
+  textTransform: "uppercase",
+} as const;
+
+/** One of the three tabs. The current one sits in a pill of rising blue. */
+export function TabButton({
   icon,
   label,
   onPress,
   active,
-  disabled,
-  action,
 }: {
   icon: IconName;
   label: string;
   onPress: () => void;
-  /** A workout-bar action rather than a tab: drawn at the larger size. */
-  action?: boolean;
-  /** The current tab, in rising blue. */
-  active?: boolean;
-  disabled?: boolean;
+  active: boolean;
 }) {
-  const tint = active ? colors.rise : disabled ? colors.faint : colors.muted;
-  const size = action ? ACTION_TYPE : BAR_TYPE;
+  const tint = active ? colors.rise : colors.muted;
 
   return (
     <Pressable
-      accessibilityRole="button"
-      accessibilityState={{ selected: active, disabled }}
-      disabled={disabled}
+      accessibilityRole="tab"
+      accessibilityLabel={label}
+      accessibilityState={{ selected: active }}
       onPress={onPress}
       style={({ pressed }) => ({
         flex: 1,
         height: TAB_BAR_HEIGHT,
         alignItems: "center",
         justifyContent: "center",
-        gap: 2,
-        opacity: disabled ? 0.3 : pressed ? 0.55 : 1,
+        gap: 6,
+        opacity: pressed && !active ? 0.55 : 1,
       })}
     >
-      {/* A drop of rising blue over the current tab. Always laid out, just
-          clear when inactive, so switching tabs moves nothing. */}
+      {/* Always laid out, just clear when inactive, so switching tabs moves nothing. */}
       <View
         style={{
-          width: 6,
-          height: 6,
-          borderRadius: 3,
-          marginBottom: 2,
-          backgroundColor: active ? colors.rise : "transparent",
+          width: BAR_TYPE.pillWidth,
+          height: BAR_TYPE.pillHeight,
+          borderRadius: radii.button,
+          alignItems: "center",
+          justifyContent: "center",
+          backgroundColor: active ? colors.riseWash : "transparent",
         }}
-      />
-      <View style={{ height: size.icon, justifyContent: "center" }}>
-        <Icon name={icon} size={size.glyph} color={tint} weight={action ? "regular" : "medium"} />
-      </View>
-      <Text
-        style={{ color: tint, fontSize: BAR_TYPE.label, fontWeight: "800", letterSpacing: 0.3 }}
       >
-        {label}
-      </Text>
+        <Icon name={icon} size={BAR_TYPE.glyph} color={tint} weight="semibold" />
+      </View>
+      <Text style={[barLabel, { color: active ? colors.rise : colors.muted }]}>{label}</Text>
+    </Pressable>
+  );
+}
+
+/**
+ * A workout action: a disc with the glyph in it, label below. Back, Leave and
+ * Skip all share this shape — Leave's disc is drawn by `HoldButton` to match.
+ */
+export function ActionButton({
+  icon,
+  label,
+  onPress,
+  disabled,
+}: {
+  icon: IconName;
+  label: string;
+  onPress: () => void;
+  disabled?: boolean;
+}) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      accessibilityState={{ disabled }}
+      disabled={disabled}
+      onPress={onPress}
+      style={{
+        flex: 1,
+        height: TAB_BAR_HEIGHT,
+        alignItems: "center",
+        justifyContent: "center",
+        gap: 6,
+        opacity: disabled ? 0.3 : 1,
+      }}
+    >
+      {({ pressed }) => (
+        <>
+          <View
+            style={{
+              width: ACTION_TYPE.circle,
+              height: ACTION_TYPE.circle,
+              borderRadius: radii.button,
+              alignItems: "center",
+              justifyContent: "center",
+              backgroundColor: pressed ? colors.line : colors.raised,
+            }}
+          >
+            <Icon name={icon} size={ACTION_TYPE.glyph} color={colors.text} weight="semibold" />
+          </View>
+          <Text style={[barLabel, { color: colors.muted }]}>{label}</Text>
+        </>
+      )}
     </Pressable>
   );
 }

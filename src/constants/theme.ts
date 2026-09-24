@@ -25,6 +25,8 @@ export const colors = {
 
   /** Blue rain rises: hit the target, the weight, the active tab. */
   rise: "#6AA7FF",
+  /** A wash of rising blue: the pill behind the current tab. */
+  riseWash: "rgba(106, 167, 255, 0.16)",
   /** Red rain bends: missed the target. Not an error colour — a miss is information. */
   bend: "#FF7A70",
   /** The primary pill and anything selected: clear cloud, ink on top. */
@@ -68,15 +70,14 @@ export const radii = {
 export const TAB_BAR_HEIGHT = 96;
 
 /**
- * Sizes for everything in the bottom bar. `icon` is the box every glyph sits
- * in — the hold-to-leave circle is exactly this size — so all the labels
- * line up whatever is above them.
+ * The tabs: a glyph, and under it the name in the display face's capitals.
+ * The current tab sits in a pill of rising blue, a target the size of a thumb.
  */
-export const BAR_TYPE = { icon: 44, glyph: 32, label: 12 } as const;
+export const BAR_TYPE = { pillWidth: 72, pillHeight: 40, glyph: 26, label: 15 } as const;
 
 /**
- * The workout bar's larger icons — Back, Leave, Skip. Arrows are thin
- * characters and read smaller than the tab icons at the same size, and the
- * Leave circle has to stay visible around a thumb.
+ * The workout bar: Back, Leave and Skip are three identical discs, so the
+ * one you must hold differs only in what happens under your thumb. Large
+ * enough that the Leave fill stays visible around it.
  */
-export const ACTION_TYPE = { icon: 52, glyph: 40 } as const;
+export const ACTION_TYPE = { circle: 60, glyph: 24 } as const;

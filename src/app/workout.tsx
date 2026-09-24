@@ -6,7 +6,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { Column, COLUMN } from "@/components/screen";
 import { useBarActions } from "@/components/bar-actions";
-import { BarButton } from "@/components/bottom-bar";
+import { ActionButton } from "@/components/bottom-bar";
 import { HoldButton } from "@/components/hold-button";
 import { Icon, type IconName } from "@/components/icon";
 import { Sheet } from "@/components/sheet";
@@ -107,9 +107,8 @@ export default function WorkoutScreen() {
   useBarActions(
     active && !done ? (
       <>
-        <BarButton
-          action
-          icon="back"
+        <ActionButton
+          icon="previous"
           label="Back"
           disabled={active.cursor === 0}
           onPress={() => {
@@ -129,9 +128,8 @@ export default function WorkoutScreen() {
             router.replace("/");
           }}
         />
-        <BarButton
-          action
-          icon="forward"
+        <ActionButton
+          icon="next"
           label="Skip"
           onPress={() => {
             setPicking(false);

@@ -3,10 +3,11 @@ import { useEffect, useRef, useState } from "react";
 import { Animated, Easing, Pressable, Text, View } from "react-native";
 
 import { Icon, type IconName } from "@/components/icon";
-import { ACTION_TYPE, BAR_TYPE, colors } from "@/constants/theme";
+import { barLabel } from "@/components/bottom-bar";
+import { ACTION_TYPE, colors, radii, TAB_BAR_HEIGHT } from "@/constants/theme";
 
-/** Same size as the arrows' icon box beside it, so the labels line up. */
-const CIRCLE = ACTION_TYPE.icon;
+/** The same disc as Back and Skip beside it, so the three read as one row. */
+const CIRCLE = ACTION_TYPE.circle;
 
 /**
  * Press and hold to confirm. The circle fills from the bottom up while held,
@@ -85,19 +86,22 @@ export function HoldButton({
       accessibilityLabel={`${label}. Press and hold.`}
       onPressIn={start}
       onPressOut={cancel}
-      style={{ flex: 1, alignItems: "center", justifyContent: "center", gap: 2 }}
+      style={{
+        flex: 1,
+        height: TAB_BAR_HEIGHT,
+        alignItems: "center",
+        justifyContent: "center",
+        gap: 6,
+      }}
     >
-      {/* Stands in for the tab bar's drop, so this label lines up with its neighbours'. */}
-      <View style={{ height: 8 }} />
       <View
         style={{
           width: CIRCLE,
           height: CIRCLE,
           alignItems: "center",
           justifyContent: "center",
-          borderRadius: 999,
-          borderWidth: 1.5,
-          borderColor: holding ? colors.bend : colors.line,
+          borderRadius: radii.button,
+          backgroundColor: colors.raised,
           // Clips the rising fill to the circle.
           overflow: "hidden",
         }}
@@ -112,19 +116,15 @@ export function HoldButton({
             backgroundColor: colors.bend,
           }}
         />
-        <Icon name={icon} size={26} color={holding ? colors.ink : colors.muted} weight="semibold" />
+        <Icon
+          name={icon}
+          size={ACTION_TYPE.glyph}
+          color={holding ? colors.ink : colors.text}
+          weight="semibold"
+        />
       </View>
 
-      <Text
-        style={{
-          color: holding ? colors.bend : colors.muted,
-          fontSize: BAR_TYPE.label,
-          fontWeight: "800",
-          letterSpacing: 0.3,
-        }}
-      >
-        {label}
-      </Text>
+      <Text style={[barLabel, { color: holding ? colors.bend : colors.muted }]}>{label}</Text>
     </Pressable>
   );
 }
