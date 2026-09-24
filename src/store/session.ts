@@ -1875,10 +1875,10 @@ export const completeCardio = (state: SessionState): SessionState => {
   return completeExercise(entered);
 };
 
-/** Tick a pose off the mobility checklist. */
-export const toggleMove = (state: SessionState, index: number): SessionState =>
+/** Mark a pose of the mobility routine done — its timer has run out on every side. */
+export const completeMove = (state: SessionState, index: number): SessionState =>
   patchItem(state, (it) =>
-    it.moves ? { ...it, moves: it.moves.map((d, i) => (i === index ? !d : d)) } : it,
+    it.moves ? { ...it, moves: it.moves.map((d, i) => (i === index ? true : d)) } : it,
   );
 
 /** Swap the machine or routine filling a conditioning block. Sticks for next time. */

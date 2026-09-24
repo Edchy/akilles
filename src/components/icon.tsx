@@ -27,6 +27,8 @@ const ICONS = {
   expand: { sf: "chevron.down", glyph: "▼" },
   open: { sf: "chevron.right", glyph: "›" },
   collapse: { sf: "chevron.up", glyph: "▲" },
+  stretch: { sf: "figure.cooldown", glyph: "◯" },
+  info: { sf: "info.circle", glyph: "ⓘ" },
 } as const satisfies Record<string, { sf: SymbolViewProps["name"]; glyph: string }>;
 
 export type IconName = keyof typeof ICONS;

@@ -67,6 +67,13 @@ warm-up only and goes straight to that exercise's working sets.
 period as a superset and the session doesn't get longer. They get no warm-up
 ramp — by then they are warm.
 
+**Mobility closes each session** as a deck of cards, one per stretch and one
+per side where a stretch has two: the picture, the name, a line on how, and a
+countdown. One big button does everything — Start, Pause, Resume, then Next
+once the hold runs out (the phone buzzes), and Finish on the last card. Swipe
+to move between cards at any time; swiping away mid-hold pauses it. Nothing
+is recorded. The illustrations are placeholders until the set is made.
+
 **Logging a set** — one circle per set. Tap it and it fills at the target reps;
 tap again and it counts down if you got fewer; tap past 1 and it clears.
 Hold a circle to put it straight back to the target — a stray extra tap on a

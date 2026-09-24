@@ -1,6 +1,6 @@
 import * as Haptics from "expo-haptics";
 import { router } from "expo-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Pressable, ScrollView, Text, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -9,6 +9,7 @@ import { useBarActions } from "@/components/bar-actions";
 import { ActionButton, useBarSpace } from "@/components/bottom-bar";
 import { HoldButton } from "@/components/hold-button";
 import { Icon, type IconName } from "@/components/icon";
+import { Illustration } from "@/components/illustration";
 import { Sheet } from "@/components/sheet";
 import { colors, fonts, radii } from "@/constants/theme";
 import { byId } from "@/data/exercises";
@@ -23,9 +24,9 @@ import {
   courseLabel,
   distanceLabel,
   parseTime,
-  routineSeconds,
   timeLabel,
   type CardioExercise,
+  type MobilityMove,
   type MobilityRoutine,
 } from "@/data/conditioning";
 import { decayLabel } from "@/lib/progression";
@@ -71,7 +72,7 @@ import {
   supersetOptions,
   swapForSession,
   tapSet,
-  toggleMove,
+  completeMove,
   useSession,
   type Item,
 } from "@/store/session";
@@ -169,11 +170,8 @@ export default function WorkoutScreen() {
   // Cardio and mobility are their own screens: no weight, no rep circles and
   // no rep ladder. They still sit inside the same session, so the bar's Back,
   // Leave and Skip work on them exactly as on a lift.
-  if (isConditioning(item)) {
-    return (
-      <Conditioning key={item.slot} item={item} />
-    );
-  }
+  if (isMobility(item)) return <Mobility key={item.slot} item={item} />;
+  if (isConditioning(item)) return <Conditioning key={item.slot} item={item} />;
 
   const p = currentPrescription(state)!;
   const partner = item.supersetWith ? byId(item.supersetWith) : undefined;
@@ -479,22 +477,18 @@ function Header() {
   );
 }
 
-/**
- * A cardio or mobility block: the same frame — heading, swap button, body,
- * one action — around two quite different insides.
- */
+/** A cardio block: heading, swap button, the score, one action. */
 function Conditioning({ item }: { item: Item }) {
   const barSpace = useBarSpace();
   const { state, setState } = useSession();
   const [swapping, setSwapping] = useState(false);
 
   const cardio = currentCardio(state);
-  const routine = currentRoutine(state);
   const pool = conditioningPool(state, item);
 
   const advance = () => {
     setSwapping(false);
-    setState((s) => (isCardio(item) ? completeCardio(s) : completeExercise(s)));
+    setState((s) => completeCardio(s));
   };
   // With a record to go on, an untouched box means "same as last time".
   const last = lastScore(state, item);
@@ -524,11 +518,7 @@ function Conditioning({ item }: { item: Item }) {
               textTransform: "uppercase",
             }}
           >
-            {!isCardio(item)
-              ? "Mobility"
-              : isTimed(item) && cardio
-                ? courseLabel(cardio, item.course!)
-                : `${item.minutes} minutes`}
+            {isTimed(item) && cardio ? courseLabel(cardio, item.course!) : `${item.minutes} minutes`}
           </Text>
 
           <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
@@ -543,15 +533,13 @@ function Conditioning({ item }: { item: Item }) {
                 letterSpacing: 0.3,
               }}
             >
-              {cardio?.name ?? routine?.name ?? ""}
+              {cardio?.name ?? ""}
             </Text>
 
             {pool.length > 1 ? (
               <Pressable
                 accessibilityRole="button"
-                accessibilityLabel={
-                  isCardio(item) ? "Choose a different machine" : "Choose a different routine"
-                }
+                accessibilityLabel="Choose a different machine"
                 onPress={() => setSwapping((v) => !v)}
                 style={({ pressed }) => ({
                   width: 44,
@@ -568,16 +556,11 @@ function Conditioning({ item }: { item: Item }) {
             ) : null}
           </View>
 
-          {routine ? (
-            <Text style={{ color: colors.muted, fontSize: 15, fontWeight: "600" }}>
-              {routine.subtitle} · about {Math.round(routineSeconds(routine) / 60)} min
-            </Text>
-          ) : null}
         </View>
 
         <Sheet
           visible={swapping}
-          title={isCardio(item) ? "Choose a machine" : "Choose a routine"}
+          title="Choose a machine"
           onClose={() => setSwapping(false)}
         >
           <ConditioningSwap
@@ -590,7 +573,7 @@ function Conditioning({ item }: { item: Item }) {
           />
         </Sheet>
 
-        {cardio && isCardio(item) ? (
+        {cardio ? (
           <CardioBody
             cardio={cardio}
             item={item}
@@ -601,13 +584,6 @@ function Conditioning({ item }: { item: Item }) {
           />
         ) : null}
 
-        {routine && isMobility(item) ? (
-          <MobilityBody
-            routine={routine}
-            done={item.moves ?? []}
-            onToggle={(i) => setState((s) => toggleMove(s, i))}
-          />
-        ) : null}
       </ScrollView>
 
       <View style={{ paddingHorizontal: 22, paddingBottom: barSpace + 14 }}>
@@ -620,7 +596,7 @@ function Conditioning({ item }: { item: Item }) {
             </Text>
           ) : null}
           <Action
-            label={isMobility(item) ? "Finish" : "Done"}
+            label="Done"
             fill
             disabled={needsScore}
             onPress={advance}
@@ -811,93 +787,308 @@ function CardioBody({
 }
 
 /**
- * The mobility routine: a list of holds to tick off. Nothing is timed for you
- * and nothing is recorded — it is a checklist so you do not skip the third one.
+ * The mobility routine as a deck of cards: one per stretch, one per side where
+ * a stretch has two. Each card is the picture, the name, a line on how, and a
+ * countdown. Start it, hold, and when it runs out swipe — or press Next — for
+ * the next one. The button is the whole control, so it never moves: Start,
+ * Pause, Resume, Next, and Finish on the last card.
+ *
+ * Nothing here is recorded: a pose is marked done once its timer has run out
+ * on every side, only so the session knows the block was worked through.
  */
-function MobilityBody({
-  routine,
-  done,
-  onToggle,
-}: {
-  routine: MobilityRoutine;
-  done: boolean[];
-  onToggle: (index: number) => void;
-}) {
+function Mobility({ item }: { item: Item }) {
+  const barSpace = useBarSpace();
+  const { state, setState } = useSession();
+  const [swapping, setSwapping] = useState(false);
+  const routine = currentRoutine(state);
+  const pool = conditioningPool(state, item);
+  if (!routine) return null;
+
   return (
-    <View style={{ gap: 18 }}>
-      <View style={{ gap: 2 }}>
-        {routine.moves.map((move, i) => {
-          const ticked = done[i] ?? false;
-          return (
+    <View style={{ flex: 1, backgroundColor: colors.bg }}>
+      <Header />
+
+      <View style={{ paddingHorizontal: 22 }}>
+        <Column style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+          <View style={{ flex: 1, gap: 2 }}>
+            <Text
+              style={{
+                color: colors.rise,
+                fontSize: 12,
+                fontWeight: "800",
+                letterSpacing: 1.4,
+                textTransform: "uppercase",
+              }}
+            >
+              Mobility
+            </Text>
+            <Text
+              numberOfLines={1}
+              style={{
+                color: colors.text,
+                fontFamily: fonts.display,
+                textTransform: "uppercase",
+                fontSize: 30,
+                letterSpacing: 0.3,
+              }}
+            >
+              {routine.name}
+            </Text>
+          </View>
+          {pool.length > 1 ? (
             <Pressable
-              key={move.id}
-              accessibilityRole="checkbox"
-              accessibilityState={{ checked: ticked }}
-              accessibilityLabel={`${move.name}, ${move.seconds} seconds${
-                move.perSide ? " each side" : ""
-              }`}
-              onPress={() => onToggle(i)}
+              accessibilityRole="button"
+              accessibilityLabel="Choose a different routine"
+              onPress={() => setSwapping(true)}
               style={({ pressed }) => ({
-                flexDirection: "row",
+                width: 44,
+                height: 44,
                 alignItems: "center",
-                gap: 14,
-                borderBottomWidth: i === routine.moves.length - 1 ? 0 : 1,
-                borderBottomColor: colors.line,
-                paddingVertical: 15,
-                opacity: pressed ? 0.6 : 1,
+                justifyContent: "center",
+                borderRadius: 999,
+                backgroundColor: colors.raised,
+                opacity: pressed ? 0.7 : 1,
               })}
             >
-              <View style={{ flex: 1, gap: 2 }}>
-                <Text
-                  style={{
-                    color: ticked ? colors.faint : colors.text,
-                    fontSize: 17,
-                    fontWeight: "600",
-                    textDecorationLine: ticked ? "line-through" : "none",
-                  }}
-                >
-                  {move.name}
-                </Text>
-                {move.cue ? (
-                  <Text style={{ color: colors.faint, fontSize: 12, lineHeight: 17 }}>
-                    {move.cue}
-                  </Text>
-                ) : null}
-              </View>
-
-              <Text
-                style={{
-                  color: colors.muted,
-                  fontSize: 15,
-                  fontWeight: "700",
-                  fontVariant: ["tabular-nums"],
-                }}
-              >
-                {move.seconds}s{move.perSide ? " ×2" : ""}
-              </Text>
-
-              <View
-                style={{
-                  width: 28,
-                  height: 28,
-                  alignItems: "center",
-                  justifyContent: "center",
-                  borderRadius: 999,
-                  borderWidth: ticked ? 0 : 1.5,
-                  borderColor: colors.line,
-                  backgroundColor: ticked ? colors.rise : "transparent",
-                }}
-              >
-                {ticked ? <Icon name="check" size={15} color={colors.ink} weight="bold" /> : null}
-              </View>
+              <Icon name="swap" size={20} color={colors.muted} />
             </Pressable>
-          );
-        })}
+          ) : null}
+        </Column>
       </View>
 
-      <Text style={{ color: colors.faint, fontSize: 13, lineHeight: 19 }}>
-        Nothing here is counted. Breathe, hold, and stop when the tension eases.
-      </Text>
+      <Sheet visible={swapping} title="Choose a routine" onClose={() => setSwapping(false)}>
+        <ConditioningSwap
+          options={pool}
+          current={item.exerciseId}
+          onPick={(id) => {
+            setSwapping(false);
+            setState((s) => chooseConditioning(s, item.slot, id));
+          }}
+        />
+      </Sheet>
+
+      {/* Keyed by routine: a swap deals a fresh deck with fresh timers. */}
+      <MobilityDeck
+        key={routine.id}
+        routine={routine}
+        barSpace={barSpace}
+        onMoveDone={(i) => setState((s) => completeMove(s, i))}
+        onFinish={() => setState((s) => completeExercise(s))}
+      />
+    </View>
+  );
+}
+
+type Card = { move: MobilityMove; index: number; side: "Left side" | "Right side" | null };
+
+function MobilityDeck({
+  routine,
+  barSpace,
+  onMoveDone,
+  onFinish,
+}: {
+  routine: MobilityRoutine;
+  barSpace: number;
+  onMoveDone: (index: number) => void;
+  onFinish: () => void;
+}) {
+  const cards = routine.moves.flatMap((move, index): Card[] =>
+    move.perSide
+      ? [
+          { move, index, side: "Left side" },
+          { move, index, side: "Right side" },
+        ]
+      : [{ move, index, side: null }],
+  );
+
+  const pager = useRef<ScrollView>(null);
+  // The pager's own size: pages are sized to it, since a horizontal scroller
+  // does not stretch its children to fill its height.
+  const [size, setSize] = useState({ width: 0, height: 0 });
+  const { width } = size;
+  const [page, setPage] = useState(0);
+  // Seconds left on each card. A card at zero is done.
+  const [left, setLeft] = useState<number[]>(() => cards.map((c) => c.move.seconds));
+  // The card whose clock is running, and when it runs out. Kept as an end
+  // time rather than counted down tick by tick, so a slow frame or a locked
+  // phone cannot stretch the hold.
+  const [running, setRunning] = useState<{ page: number; endAt: number } | null>(null);
+
+  useEffect(() => {
+    if (!running) return;
+    const tick = setInterval(() => {
+      const rem = (running.endAt - Date.now()) / 1000;
+      if (rem > 0) {
+        setLeft((l) => l.map((v, i) => (i === running.page ? rem : v)));
+        return;
+      }
+      clearInterval(tick);
+      setRunning(null);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      setLeft((l) => {
+        const next = l.map((v, i) => (i === running.page ? 0 : v));
+        const { index } = cards[running.page];
+        // The pose is done once every side of it is.
+        if (cards.every((c, i) => c.index !== index || next[i] <= 0)) onMoveDone(index);
+        return next;
+      });
+    }, 200);
+    return () => clearInterval(tick);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [running]);
+
+  const pause = () => {
+    if (!running) return;
+    const rem = Math.max(0, (running.endAt - Date.now()) / 1000);
+    setLeft((l) => l.map((v, i) => (i === running.page ? rem : v)));
+    setRunning(null);
+  };
+
+  const goTo = (p: number) => pager.current?.scrollTo({ x: p * width, animated: true });
+
+  const card = cards[page];
+  const done = left[page] <= 0;
+  const last = page === cards.length - 1;
+  const started = left[page] < card.move.seconds;
+  const action = running
+    ? { label: "Pause", onPress: pause }
+    : done
+      ? last
+        ? { label: "Finish", onPress: onFinish }
+        : { label: "Next", onPress: () => goTo(page + 1) }
+      : {
+          label: started ? "Resume" : `Start · ${timeLabel(card.move.seconds)}`,
+          onPress: () => setRunning({ page, endAt: Date.now() + left[page] * 1000 }),
+        };
+
+  return (
+    <>
+      <View style={{ flex: 1, marginTop: 14 }} onLayout={(e) => {
+          const { width, height } = e.nativeEvent.layout;
+          setSize({ width, height });
+        }}
+      >
+        {width > 0 ? (
+          <ScrollView
+            ref={pager}
+            horizontal
+            pagingEnabled
+            showsHorizontalScrollIndicator={false}
+            scrollEventThrottle={16}
+            onScroll={(e) => {
+              const p = Math.round(e.nativeEvent.contentOffset.x / width);
+              if (p !== page && p >= 0 && p < cards.length) {
+                // Swiping away mid-hold pauses it; the time left is kept.
+                pause();
+                setPage(p);
+              }
+            }}
+          >
+            {cards.map((c, i) => (
+              <View key={i} style={{ width, height: size.height, paddingHorizontal: 22 }}>
+                <Column style={{ flex: 1 }}>
+                  <MobilityCard
+                    card={c}
+                    left={left[i]}
+                    position={`${i + 1} / ${cards.length}`}
+                  />
+                </Column>
+              </View>
+            ))}
+          </ScrollView>
+        ) : null}
+      </View>
+
+      <View style={{ paddingHorizontal: 22, paddingTop: 12, paddingBottom: barSpace + 14 }}>
+        <Column style={{ gap: 8 }}>
+          {/* Always laid out, so the hint appearing moves nothing. */}
+          <Text style={{ height: 18, textAlign: "center", color: colors.faint, fontSize: 13 }}>
+            {done && !last ? "Swipe for the next stretch" : ""}
+          </Text>
+          <Action label={action.label} fill onPress={action.onPress} />
+        </Column>
+      </View>
+    </>
+  );
+}
+
+function MobilityCard({ card, left, position }: { card: Card; left: number; position: string }) {
+  const { move, side } = card;
+  const done = left <= 0;
+  const progress = 1 - left / move.seconds;
+
+  return (
+    <View
+      style={{
+        flex: 1,
+        overflow: "hidden",
+        borderRadius: radii.card,
+        borderCurve: "continuous",
+        backgroundColor: colors.surface,
+      }}
+    >
+      <Illustration id={move.id} style={{ flex: 1 }} />
+
+      <View style={{ gap: 6, paddingHorizontal: 18, paddingTop: 16, paddingBottom: 18 }}>
+        <View style={{ flexDirection: "row", alignItems: "center" }}>
+          <Text
+            style={{
+              flex: 1,
+              color: colors.rise,
+              fontSize: 12,
+              fontWeight: "800",
+              letterSpacing: 1.2,
+              textTransform: "uppercase",
+            }}
+          >
+            {side ?? "Hold"}
+          </Text>
+          <Text style={{ color: colors.faint, fontSize: 12, fontWeight: "800" }}>{position}</Text>
+        </View>
+
+        <View style={{ flexDirection: "row", alignItems: "flex-end", gap: 12 }}>
+          <Text
+            style={{
+              flex: 1,
+              color: colors.text,
+              fontFamily: fonts.display,
+              textTransform: "uppercase",
+              fontSize: 32,
+              lineHeight: 33,
+              letterSpacing: 0.3,
+            }}
+          >
+            {move.name}
+          </Text>
+          <Text
+            style={{
+              color: done ? colors.rise : colors.text,
+              fontFamily: fonts.displayBold,
+              fontSize: 52,
+              lineHeight: 52,
+              fontVariant: ["tabular-nums"],
+            }}
+          >
+            {done ? "Done" : timeLabel(Math.ceil(left))}
+          </Text>
+        </View>
+
+        {/* Two lines kept whether or not there is a cue, so cards line up. */}
+        <Text numberOfLines={2} style={{ minHeight: 40, color: colors.muted, fontSize: 14, lineHeight: 20 }}>
+          {move.cue ?? "Ease in, breathe slowly, and stop when the tension fades."}
+        </Text>
+      </View>
+
+      {/* The hold, filling along the foot of the card. */}
+      <View style={{ height: 6, backgroundColor: colors.raised }}>
+        <View
+          style={{
+            width: `${Math.min(1, Math.max(0, progress)) * 100}%`,
+            height: 6,
+            backgroundColor: colors.rise,
+          }}
+        />
+      </View>
     </View>
   );
 }
