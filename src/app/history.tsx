@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Pressable, ScrollView, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { useBarSpace } from "@/components/bottom-bar";
 import { COLUMN } from "@/components/screen";
 import { colors, fonts, radii } from "@/constants/theme";
 import { byId } from "@/data/exercises";
@@ -14,6 +15,7 @@ import { resetToDefault, useSession, type SessionState } from "@/store/session";
 export default function HistoryScreen() {
   const { state } = useSession();
   const insets = useSafeAreaInsets();
+  const barSpace = useBarSpace();
 
   // One row per exercise+scheme we've actually trained.
   const rows = Object.entries(state.history)
@@ -33,7 +35,7 @@ export default function HistoryScreen() {
         width: "100%",
         maxWidth: COLUMN,
         alignSelf: "center",
-        paddingBottom: 28,
+        paddingBottom: barSpace + 28,
         gap: 22,
       }}
     >

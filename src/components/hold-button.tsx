@@ -1,16 +1,13 @@
 import * as Haptics from "expo-haptics";
 import { useEffect, useRef, useState } from "react";
-import { Animated, Easing, Pressable, Text, View } from "react-native";
+import { Animated, Easing, Pressable } from "react-native";
 
-import { Icon, type IconName } from "@/components/icon";
-import { barLabel } from "@/components/bottom-bar";
-import { ACTION_TYPE, colors, radii, TAB_BAR_HEIGHT } from "@/constants/theme";
-
-/** The same disc as Back and Skip beside it, so the three read as one row. */
-const CIRCLE = ACTION_TYPE.circle;
+import { PRESSED, Slot } from "@/components/bottom-bar";
+import type { IconName } from "@/components/icon";
+import { colors } from "@/constants/theme";
 
 /**
- * Press and hold to confirm. The circle fills from the bottom up while held,
+ * Press and hold to confirm. The slot fills from the bottom up while held,
  * and drains back if you let go early. Used for leaving a workout, which ends the
  * session: too consequential for a stray tap, not worth a dialog.
  */
@@ -75,9 +72,10 @@ export function HoldButton({
     });
   };
 
+  // A fraction, so the fill rises through the slot whatever its height.
   const fillHeight = progress.interpolate({
     inputRange: [0, 1],
-    outputRange: [0, CIRCLE],
+    outputRange: ["0%", "100%"],
   });
 
   return (
@@ -86,25 +84,15 @@ export function HoldButton({
       accessibilityLabel={`${label}. Press and hold.`}
       onPressIn={start}
       onPressOut={cancel}
-      style={{
-        flex: 1,
-        height: TAB_BAR_HEIGHT,
-        alignItems: "center",
-        justifyContent: "center",
-        gap: 6,
-      }}
+      style={{ flex: 1 }}
     >
-      <View
-        style={{
-          width: CIRCLE,
-          height: CIRCLE,
-          alignItems: "center",
-          justifyContent: "center",
-          borderRadius: radii.button,
-          backgroundColor: colors.raised,
-          // Clips the rising fill to the circle.
-          overflow: "hidden",
-        }}
+      {/* The same slot as Back and Skip beside it; only the red rising under
+          a held thumb sets it apart. */}
+      <Slot
+        icon={icon}
+        label={label}
+        tint={colors.text}
+        fill={holding ? PRESSED : undefined}
       >
         <Animated.View
           style={{
@@ -116,15 +104,7 @@ export function HoldButton({
             backgroundColor: colors.bend,
           }}
         />
-        <Icon
-          name={icon}
-          size={ACTION_TYPE.glyph}
-          color={holding ? colors.ink : colors.text}
-          weight="semibold"
-        />
-      </View>
-
-      <Text style={[barLabel, { color: holding ? colors.bend : colors.muted }]}>{label}</Text>
+      </Slot>
     </Pressable>
   );
 }

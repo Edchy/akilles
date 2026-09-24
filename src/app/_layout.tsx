@@ -17,7 +17,8 @@ import { useSaved } from "@/store/use-saved";
 
 function Shell() {
   // A screen can replace the bar's buttons with its own; the bar itself is
-  // mounted once here and never animates, so screens slide underneath it.
+  // mounted once here, floating over the screens, and never animates — so
+  // screens slide underneath it.
   const slot = useBarSlot();
 
   return (

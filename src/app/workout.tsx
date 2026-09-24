@@ -6,7 +6,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { Column, COLUMN } from "@/components/screen";
 import { useBarActions } from "@/components/bar-actions";
-import { ActionButton } from "@/components/bottom-bar";
+import { ActionButton, useBarSpace } from "@/components/bottom-bar";
 import { HoldButton } from "@/components/hold-button";
 import { Icon, type IconName } from "@/components/icon";
 import { Sheet } from "@/components/sheet";
@@ -97,6 +97,7 @@ const FIXED = {
 export default function WorkoutScreen() {
   const { state, setState } = useSession();
   const insets = useSafeAreaInsets();
+  const barSpace = useBarSpace();
   const [picking, setPicking] = useState(false);
   const [swapping, setSwapping] = useState(false);
 
@@ -361,7 +362,7 @@ export default function WorkoutScreen() {
 
       {/* The action: once every set is logged, one button on. The reps
           already say how it went, so nothing is asked. */}
-      <View style={{ paddingHorizontal: 22, paddingBottom: 14 }}>
+      <View style={{ paddingHorizontal: 22, paddingBottom: barSpace + 14 }}>
         <Column style={{ height: FIXED.action, justifyContent: "flex-end" }}>
           {logged ? (
             <View style={{ gap: 12 }}>
@@ -464,6 +465,7 @@ function Header() {
  * one action — around two quite different insides.
  */
 function Conditioning({ item }: { item: Item }) {
+  const barSpace = useBarSpace();
   const { state, setState } = useSession();
   const [swapping, setSwapping] = useState(false);
 
@@ -589,7 +591,7 @@ function Conditioning({ item }: { item: Item }) {
         ) : null}
       </ScrollView>
 
-      <View style={{ paddingHorizontal: 22, paddingBottom: 14 }}>
+      <View style={{ paddingHorizontal: 22, paddingBottom: barSpace + 14 }}>
         <Column style={{ gap: 10 }}>
           {needsScore ? (
             <Text style={{ textAlign: "center", color: colors.faint, fontSize: 13 }}>
@@ -1029,6 +1031,7 @@ function Warmup({
   onReady: () => void;
 }) {
   const insets = useSafeAreaInsets();
+  const barSpace = useBarSpace();
   // Local: a warm-up is never recorded, so this only exists to stop you
   // tapping past the screen without reading it.
   const [done, setDone] = useState<boolean[]>(() => sets.map(() => false));
@@ -1140,7 +1143,7 @@ function Warmup({
         </Column>
       </View>
 
-      <View style={{ paddingHorizontal: 22, paddingBottom: 14 }}>
+      <View style={{ paddingHorizontal: 22, paddingBottom: barSpace + 14 }}>
         <Column>
           <Action
             label="Ready"
@@ -1582,6 +1585,7 @@ function Action({
 function Finished({ hasSession }: { hasSession: boolean }) {
   const { state, setState } = useSession();
   const insets = useSafeAreaInsets();
+  const barSpace = useBarSpace();
 
   // How it went, before the session is committed and gone.
   const t = sessionTally(state);
@@ -1617,8 +1621,8 @@ function Finished({ hasSession }: { hasSession: boolean }) {
         backgroundColor: colors.bg,
         paddingTop: insets.top + 90,
         paddingHorizontal: 22,
-        // The persistent bar already sits below, carrying the safe-area inset.
-        paddingBottom: 20,
+        // The floating bar sits over the foot of the screen; clear it.
+        paddingBottom: barSpace + 20,
       }}
     >
       <Column style={{ gap: 12 }}>

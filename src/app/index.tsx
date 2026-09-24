@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { Pressable, ScrollView, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { useBarSpace } from "@/components/bottom-bar";
 import { Icon } from "@/components/icon";
 import { Column, COLUMN } from "@/components/screen";
 import { colors, fonts, radii } from "@/constants/theme";
@@ -31,6 +32,7 @@ import {
 export default function TodayScreen() {
   const { state, setState } = useSession();
   const insets = useSafeAreaInsets();
+  const barSpace = useBarSpace();
   const workout = upNext(state);
   // With one workout there is nothing to skip to.
   const canSkip = state.workouts.length > 1;
@@ -135,7 +137,7 @@ export default function TodayScreen() {
         <Preview workout={workout} open={showList} onToggle={() => setShowList((v) => !v)} />
       </ScrollView>
 
-      <View style={{ paddingHorizontal: 22, paddingBottom: 16 }}>
+      <View style={{ paddingHorizontal: 22, paddingBottom: barSpace + 16 }}>
         <Column style={{ gap: 14 }}>
           {/* Akilles has a word, out of the way of the workout itself. After a
               skip, the remark names it and carries the Undo. */}

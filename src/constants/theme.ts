@@ -61,23 +61,24 @@ export const radii = {
 };
 
 /**
- * Height of the bottom bar, excluding the device's safe area.
+ * The bottom bar: a floating capsule of glass, the same shape whether it
+ * carries the tabs or the workout's Back, Leave and Skip.
  *
  * Deliberately oversized. The bar is used mid-set — sweaty hands, heart rate
- * up, half a glance — so its targets are about twice the 44pt platform
- * minimum, and the glyphs and labels are sized to read at arm's length.
+ * up, half a glance — so each slot is a thumb-sized lozenge well past the 44pt
+ * platform minimum, and the glyphs and labels read at arm's length.
  */
-export const TAB_BAR_HEIGHT = 96;
-
-/**
- * The tabs: a glyph, and under it the name in the display face's capitals.
- * The current tab sits in a pill of rising blue, a target the size of a thumb.
- */
-export const BAR_TYPE = { pillWidth: 72, pillHeight: 40, glyph: 26, label: 15 } as const;
-
-/**
- * The workout bar: Back, Leave and Skip are three identical discs, so the
- * one you must hold differs only in what happens under your thumb. Large
- * enough that the Leave fill stays visible around it.
- */
-export const ACTION_TYPE = { circle: 60, glyph: 24 } as const;
+export const BAR = {
+  /** Capsule height. */
+  height: 80,
+  /** Inset of the slots from the capsule's edge. */
+  padding: 6,
+  /**
+   * Gap to the screen's sides — the content's own gutter, so the capsule
+   * lines up with the buttons above it — and to its foot on phones without
+   * a home bar.
+   */
+  margin: 22,
+  glyph: 26,
+  label: 14,
+} as const;
