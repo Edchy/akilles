@@ -2,7 +2,8 @@ import type { PropsWithChildren } from "react";
 import { Modal, Pressable, ScrollView, Text, View } from "react-native";
 
 import { Column } from "@/components/screen";
-import { colors } from "@/constants/theme";
+import { Icon } from "@/components/icon";
+import { colors, radii } from "@/constants/theme";
 
 /**
  * A native iOS sheet for picking from a list mid-workout.
@@ -79,5 +80,158 @@ export function Sheet({
         </ScrollView>
       </View>
     </Modal>
+  );
+}
+
+/** A small heading over a group in a sheet. */
+export function SectionLabel({ children }: { children: string }) {
+  return (
+    <Text
+      style={{
+        color: colors.faint,
+        fontSize: 13,
+        fontWeight: "800",
+        letterSpacing: 1,
+        textTransform: "uppercase",
+      }}
+    >
+      {children}
+    </Text>
+  );
+}
+
+/** A full-width action at the foot of a sheet. */
+export function BigButton({
+  label,
+  danger,
+  quiet,
+  disabled,
+  onPress,
+}: {
+  label: string;
+  /** The second tap of a removal. */
+  danger?: boolean;
+  /** Present but not inviting: the first tap of a removal. */
+  quiet?: boolean;
+  disabled?: boolean;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityState={{ disabled }}
+      disabled={disabled}
+      onPress={onPress}
+      style={({ pressed }) => ({
+        alignItems: "center",
+        justifyContent: "center",
+        minHeight: 56,
+        borderRadius: radii.button,
+        borderCurve: "continuous",
+        backgroundColor: danger ? colors.bend : quiet ? "transparent" : colors.raised,
+        borderWidth: quiet ? 1 : 0,
+        borderColor: colors.line,
+        opacity: disabled ? 0.3 : pressed ? 0.7 : 1,
+      })}
+    >
+      <Text
+        style={{
+          color: danger ? colors.ink : quiet ? colors.bend : colors.text,
+          fontSize: 16,
+          fontWeight: "800",
+        }}
+      >
+        {label}
+      </Text>
+    </Pressable>
+  );
+}
+
+/** A quiet way out: "Cancel", "Keep it". Centred under the action it undoes. */
+export function TextButton({ label, onPress }: { label: string; onPress: () => void }) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      onPress={onPress}
+      style={({ pressed }) => ({
+        alignSelf: "center",
+        justifyContent: "center",
+        minHeight: 48,
+        paddingHorizontal: 20,
+        opacity: pressed ? 0.5 : 1,
+      })}
+    >
+      <Text style={{ color: colors.muted, fontSize: 15, fontWeight: "700" }}>{label}</Text>
+    </Pressable>
+  );
+}
+
+/**
+ * A tappable row that opens something: a name, one detail, a chevron. Large
+ * on the Plan lists themselves; standard inside a sheet.
+ */
+export function OpenRow({
+  title,
+  detail,
+  tag,
+  large,
+  muted,
+  onPress,
+}: {
+  title: string;
+  detail?: string;
+  /** A short marker on the right, like "Next". */
+  tag?: string;
+  large?: boolean;
+  /** Something on its way out or not yet yours, like a library entry. */
+  muted?: boolean;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      onPress={onPress}
+      style={({ pressed }) => ({
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 12,
+        minHeight: large ? 84 : 64,
+        paddingHorizontal: large ? 20 : 16,
+        paddingVertical: 12,
+        borderRadius: large ? radii.card : 18,
+        borderCurve: "continuous",
+        backgroundColor: colors.surface,
+        opacity: pressed ? 0.7 : 1,
+      })}
+    >
+      <View style={{ flex: 1, gap: 3 }}>
+        <Text
+          style={{
+            color: muted ? colors.muted : colors.text,
+            fontSize: large ? 21 : 17,
+            fontWeight: large ? "700" : "600",
+          }}
+        >
+          {title}
+        </Text>
+        {detail ? (
+          <Text style={{ color: colors.faint, fontSize: large ? 14 : 13 }}>{detail}</Text>
+        ) : null}
+      </View>
+      {tag ? (
+        <Text
+          style={{
+            color: colors.rise,
+            fontSize: 12,
+            fontWeight: "800",
+            letterSpacing: 1,
+            textTransform: "uppercase",
+          }}
+        >
+          {tag}
+        </Text>
+      ) : null}
+      <Icon name="open" size={large ? 15 : 13} color={colors.faint} weight="semibold" />
+    </Pressable>
   );
 }

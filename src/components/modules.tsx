@@ -3,7 +3,7 @@ import { Pressable, Text, TextInput, View } from "react-native";
 
 import { DragList, type Drag } from "@/components/drag-list";
 import { Icon, type IconName } from "@/components/icon";
-import { Sheet } from "@/components/sheet";
+import { BigButton, SectionLabel, Sheet, TextButton } from "@/components/sheet";
 import { colors, radii } from "@/constants/theme";
 import { PATTERN_LABEL, PATTERN_ORDER, byId } from "@/data/exercises";
 import {
@@ -771,70 +771,6 @@ function Setting({
   );
 }
 
-/** A small heading over a group in a sheet. */
-function SectionLabel({ children }: { children: string }) {
-  return (
-    <Text
-      style={{
-        color: colors.faint,
-        fontSize: 13,
-        fontWeight: "800",
-        letterSpacing: 1,
-        textTransform: "uppercase",
-      }}
-    >
-      {children}
-    </Text>
-  );
-}
-
-/** A full-width action at the foot of a sheet. */
-function BigButton({
-  label,
-  danger,
-  quiet,
-  disabled,
-  onPress,
-}: {
-  label: string;
-  /** The second tap of a removal. */
-  danger?: boolean;
-  /** Present but not inviting: the first tap of a removal. */
-  quiet?: boolean;
-  disabled?: boolean;
-  onPress: () => void;
-}) {
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityState={{ disabled }}
-      disabled={disabled}
-      onPress={onPress}
-      style={({ pressed }) => ({
-        alignItems: "center",
-        justifyContent: "center",
-        minHeight: 56,
-        borderRadius: radii.button,
-        borderCurve: "continuous",
-        backgroundColor: danger ? colors.bend : quiet ? "transparent" : colors.raised,
-        borderWidth: quiet ? 1 : 0,
-        borderColor: colors.line,
-        opacity: disabled ? 0.3 : pressed ? 0.7 : 1,
-      })}
-    >
-      <Text
-        style={{
-          color: danger ? colors.ink : quiet ? colors.bend : colors.text,
-          fontSize: 16,
-          fontWeight: "800",
-        }}
-      >
-        {label}
-      </Text>
-    </Pressable>
-  );
-}
-
 function Chip({
   label,
   selected = false,
@@ -902,25 +838,6 @@ function Step({
       })}
     >
       <Icon name={icon} size={18} color={colors.text} weight="semibold" />
-    </Pressable>
-  );
-}
-
-/** A quiet way out: "Cancel", "Keep it". Centred under the action it undoes. */
-function TextButton({ label, onPress }: { label: string; onPress: () => void }) {
-  return (
-    <Pressable
-      accessibilityRole="button"
-      onPress={onPress}
-      style={({ pressed }) => ({
-        alignSelf: "center",
-        justifyContent: "center",
-        minHeight: 48,
-        paddingHorizontal: 20,
-        opacity: pressed ? 0.5 : 1,
-      })}
-    >
-      <Text style={{ color: colors.muted, fontSize: 15, fontWeight: "700" }}>{label}</Text>
     </Pressable>
   );
 }

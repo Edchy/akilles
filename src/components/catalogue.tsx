@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { Pressable, Text, TextInput, View } from "react-native";
 
 import { Icon } from "@/components/icon";
+import { BigButton, OpenRow, SectionLabel, Sheet, TextButton } from "@/components/sheet";
 import { colors, radii } from "@/constants/theme";
 import {
   CARDIO_MINUTES,
@@ -36,6 +37,7 @@ import {
   hiddenConditioningList,
   hiddenExercises,
   isCustom,
+  isCustomConditioning,
   nudgeCourse,
   removeConditioning,
   removeExercise,
@@ -49,16 +51,21 @@ const stepLabel = (ex: Exercise) =>
   ex.unloaded ? "no weight" : `${ex.increment || 2.5} kg steps`;
 
 /**
- * Your exercises, grouped the way you train them: push, pull, legs, core.
- * Rendered inside the Plan tab's "Exercises" segment — see `plan.tsx`.
+ * Your exercises, grouped the way you train them: push, pull, legs, core —
+ * then the cardio machines and mobility routines. Rendered inside the Plan
+ * tab's "Exercises" segment — see `plan.tsx`.
  *
- * Built-ins you are not using are not listed here at all; they are the
- * library, offered by the + on each group.
+ * The page is just the groups. Each opens a sheet listing what is in it;
+ * each exercise opens its own sheet on top, with room for what you can
+ * change. Built-ins you are not using are the library, offered by Add.
  */
+type Group = Category | "cardio" | "mobility";
+
+const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
+
 export function Catalogue() {
   const { state } = useSession();
-  // One group open at a time — together they are too long to scroll.
-  const [open, setOpen] = useState<Category | null>(null);
+  const [open, setOpen] = useState<Group | null>(null);
 
   // An exercise spanning two groups — a face pull is shoulders and a row — is
   // listed under both.
@@ -71,189 +78,157 @@ export function Catalogue() {
     return map;
   }, [state]);
 
+  const cardio = cardioPool(state.hiddenConditioning);
+  const mobility = mobilityPool(state.hiddenConditioning);
+  const category = open && open !== "cardio" && open !== "mobility" ? open : null;
+
   return (
-    <View style={{ gap: 22 }}>
+    <View style={{ gap: 24 }}>
       <Text style={{ color: colors.faint, fontSize: 14, lineHeight: 20 }}>
-        Tap an exercise to rename it or change how much the weight moves. + adds
-        one from the library, or one of your own.
+        Tap a group to see what is in it, change an exercise, or add one.
       </Text>
 
-      {CATEGORY_ORDER.map((category) => (
-        <CategoryCard
-          key={category}
-          category={category}
-          list={byCategory.get(category) ?? []}
-          open={open === category}
-          onToggle={() => setOpen(open === category ? null : category)}
-        />
-      ))}
+      <View style={{ gap: 10 }}>
+        {CATEGORY_ORDER.map((c) => (
+          <OpenRow
+            key={c}
+            large
+            title={CATEGORY_LABEL[c]}
+            detail={plural((byCategory.get(c) ?? []).length, "exercise", "exercises")}
+            onPress={() => setOpen(c)}
+          />
+        ))}
+      </View>
 
       {/* Cardio and mobility are pools in the same sense — add to them,
           remove from them — but they are not push, pull, legs or core, so
-          they sit below rather than being filed under one. */}
-      <Conditioning />
+          they sit apart rather than being filed under one. */}
+      <View style={{ gap: 10 }}>
+        <OpenRow
+          large
+          title="Cardio"
+          detail={plural(cardio.length, "machine", "machines")}
+          onPress={() => setOpen("cardio")}
+        />
+        <OpenRow
+          large
+          title="Mobility"
+          detail={plural(mobility.length, "routine", "routines")}
+          onPress={() => setOpen("mobility")}
+        />
+      </View>
+
+      <CategorySheet
+        category={category}
+        list={category ? (byCategory.get(category) ?? []) : []}
+        onClose={() => setOpen(null)}
+      />
+      <CardioSheet visible={open === "cardio"} onClose={() => setOpen(null)} />
+      <MobilitySheet visible={open === "mobility"} onClose={() => setOpen(null)} />
     </View>
   );
 }
 
-function CategoryCard({
+/** One group's exercises. Tap one to change it; Add brings one in. */
+function CategorySheet({
   category,
   list,
-  open,
-  onToggle,
+  onClose,
 }: {
-  category: Category;
+  category: Category | null;
   list: Exercise[];
-  open: boolean;
-  onToggle: () => void;
+  onClose: () => void;
 }) {
   const { state, setState } = useSession();
-  const [adding, setAdding] = useState(false);
   const [editing, setEditing] = useState<string | null>(null);
+  const [adding, setAdding] = useState(false);
 
-  const library = hiddenExercises(state)
-    .filter((e) => categoriesOf(e).includes(category))
-    .sort((a, b) => a.name.localeCompare(b.name));
+  const close = () => {
+    setEditing(null);
+    setAdding(false);
+    onClose();
+  };
+
+  const library = category
+    ? hiddenExercises(state)
+        .filter((e) => categoriesOf(e).includes(category))
+        .sort((a, b) => a.name.localeCompare(b.name))
+    : [];
 
   return (
-    <View
-      style={{
-        gap: 6,
-        borderRadius: radii.card,
-        borderCurve: "continuous",
-        backgroundColor: open ? colors.surface : "transparent",
-        // The border stays at 1px either way — dropping it when open shifted
-        // everything inside by a pixel.
-        borderWidth: 1,
-        borderColor: open ? colors.surface : colors.line,
-        padding: 16,
-      }}
+    <Sheet
+      visible={!!category}
+      title={category ? CATEGORY_LABEL[category] : ""}
+      closeLabel="Done"
+      onClose={close}
     >
-      <CardHeader
-        label={CATEGORY_LABEL[category]}
-        count={list.length}
-        open={open}
-        adding={adding}
-        onToggle={() => {
-          setEditing(null);
-          onToggle();
-        }}
-        onAdd={() => {
-          if (!open) onToggle();
-          setAdding((v) => !v);
-        }}
+      <View style={{ gap: 12, paddingTop: 12 }}>
+        {list.map((exercise) => (
+          <OpenRow
+            key={exercise.id}
+            title={exercise.name}
+            detail={stepLabel(exercise)}
+            onPress={() => setEditing(exercise.id)}
+          />
+        ))}
+        {list.length === 0 ? (
+          <Text style={{ color: colors.faint, fontSize: 15, paddingVertical: 12 }}>
+            Nothing here yet.
+          </Text>
+        ) : null}
+        <AddLink label="Add exercise" onPress={() => setAdding(true)} />
+      </View>
+
+      <ExerciseSheet
+        exercise={list.find((e) => e.id === editing)}
+        onClose={() => setEditing(null)}
       />
 
-      {open && adding ? (
-        <AddPanel
-          library={library.map((e) => ({ id: e.id, name: e.name }))}
-          onTake={(id) => setState((s) => restoreExercise(s, id))}
-          create={
-            <CreateExercise
-              category={category}
-              onCreate={(exercise) => {
-                setAdding(false);
-                setState((s) => addExercise(s, exercise));
-              }}
-            />
-          }
-        />
+      {category ? (
+        <Sheet
+          visible={adding}
+          title={`Add to ${CATEGORY_LABEL[category]}`}
+          onClose={() => setAdding(false)}
+        >
+          <AddPanel
+            library={library.map((e) => ({ id: e.id, name: e.name }))}
+            onTake={(id) => {
+              setState((s) => restoreExercise(s, id));
+              setAdding(false);
+            }}
+            create={
+              <CreateExercise
+                category={category}
+                onCreate={(exercise) => {
+                  setAdding(false);
+                  setState((s) => addExercise(s, exercise));
+                }}
+              />
+            }
+          />
+        </Sheet>
       ) : null}
-
-      {open
-        ? list.map((exercise) => (
-            <ExerciseRow
-              key={exercise.id}
-              exercise={exercise}
-              editing={editing === exercise.id}
-              onToggle={() => setEditing(editing === exercise.id ? null : exercise.id)}
-            />
-          ))
-        : null}
-
-      {open && list.length === 0 ? (
-        <Text style={{ color: colors.faint, fontSize: 14, paddingVertical: 12 }}>
-          Nothing here yet. + adds one.
-        </Text>
-      ) : null}
-    </View>
+    </Sheet>
   );
 }
 
-/** A group's header: its name and count, and the + that opens adding. */
-function CardHeader({
-  label,
-  count,
-  open,
-  adding,
-  onToggle,
-  onAdd,
-}: {
-  label: string;
-  count: number;
-  open: boolean;
-  adding: boolean;
-  onToggle: () => void;
-  onAdd: () => void;
-}) {
+/** "+ Add exercise" at the foot of a list in a sheet. */
+function AddLink({ label, onPress }: { label: string; onPress: () => void }) {
   return (
-    <View
-      style={{
+    <Pressable
+      accessibilityRole="button"
+      onPress={onPress}
+      style={({ pressed }) => ({
         flexDirection: "row",
         alignItems: "center",
-        gap: 10,
-        // Fixed so the row cannot change height when the card opens.
-        height: 48,
-      }}
+        gap: 8,
+        minHeight: 56,
+        opacity: pressed ? 0.6 : 1,
+      })}
     >
-      <Pressable
-        accessibilityRole="button"
-        accessibilityState={{ expanded: open }}
-        onPress={onToggle}
-        style={({ pressed }) => ({
-          flex: 1,
-          flexDirection: "row",
-          alignItems: "center",
-          gap: 8,
-          height: "100%",
-          opacity: pressed ? 0.6 : 1,
-        })}
-      >
-        <Text style={{ flex: 1, color: colors.text, fontSize: 21, fontWeight: "700" }}>
-          {label}
-        </Text>
-        <Text
-          style={{
-            color: colors.faint,
-            fontSize: 13,
-            fontWeight: "800",
-            fontVariant: ["tabular-nums"],
-          }}
-        >
-          {count}
-        </Text>
-      </Pressable>
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel={`Add to ${label}`}
-        onPress={onAdd}
-        hitSlop={8}
-        style={({ pressed }) => ({
-          width: 44,
-          height: 44,
-          marginRight: -6,
-          alignItems: "center",
-          justifyContent: "center",
-          borderRadius: 999,
-          // A filled circle, so adding reads as an action rather than a stray
-          // glyph next to the count.
-          backgroundColor: adding ? colors.cloud : colors.raised,
-          opacity: pressed ? 0.7 : 1,
-        })}
-      >
-        <Icon name={adding ? "close" : "plus"} size={20} color={adding ? colors.ink : colors.text} />
-      </Pressable>
-    </View>
+      <Icon name="plus" size={16} color={colors.rise} weight="semibold" />
+      <Text style={{ color: colors.rise, fontSize: 16, fontWeight: "700" }}>{label}</Text>
+    </Pressable>
   );
 }
 
@@ -331,197 +306,106 @@ function AddPanel({
 }
 
 /**
- * One exercise. Tapped open, it shows the two things worth changing — its
- * name and how far − and + move the weight — and a way to remove it.
+ * One exercise: its name and how far − and + move its weight, and a way to
+ * remove it. Edits apply as you make them.
  */
-function ExerciseRow({
+function ExerciseSheet({
   exercise,
-  editing,
-  onToggle,
+  onClose,
 }: {
-  exercise: Exercise;
-  editing: boolean;
-  onToggle: () => void;
+  exercise: Exercise | undefined;
+  onClose: () => void;
 }) {
+  return (
+    <Sheet visible={!!exercise} title="Exercise" closeLabel="Done" onClose={onClose}>
+      {exercise ? <ExerciseEditor key={exercise.id} exercise={exercise} onRemoved={onClose} /> : null}
+    </Sheet>
+  );
+}
+
+function ExerciseEditor({ exercise, onRemoved }: { exercise: Exercise; onRemoved: () => void }) {
   const { state, setState } = useSession();
   const [name, setName] = useState(exercise.name);
   const [confirming, setConfirming] = useState(false);
   const removable = canRemove(state, exercise.id);
   const mine = isCustom(state, exercise.id);
 
-  const saveName = () => {
-    if (name.trim() && name.trim() !== exercise.name) {
-      setState((s) => editExercise(s, exercise.id, { name }));
-    } else {
-      setName(exercise.name);
-    }
-  };
-
-  const close = () => {
-    saveName();
-    setConfirming(false);
-    onToggle();
-  };
-
   return (
-    <View
-      style={{
-        borderRadius: 14,
-        backgroundColor: editing ? colors.raised : "transparent",
-        marginHorizontal: -10,
-        paddingHorizontal: 10,
-      }}
-    >
-      <Pressable
-        accessibilityRole="button"
-        accessibilityState={{ expanded: editing }}
-        onPress={editing ? close : onToggle}
-        style={({ pressed }) => ({
-          flexDirection: "row",
-          alignItems: "center",
-          gap: 10,
-          minHeight: 52,
-          opacity: pressed ? 0.6 : 1,
-        })}
-      >
-        <Text style={{ flex: 1, color: colors.text, fontSize: 17, fontWeight: "600" }}>
-          {exercise.name}
-        </Text>
-        <Text style={{ color: colors.faint, fontSize: 13, fontWeight: "700" }}>
-          {stepLabel(exercise)}
-        </Text>
-      </Pressable>
+    <View style={{ gap: 36, paddingTop: 12 }}>
+      <TextInput
+        value={name}
+        onChangeText={(text) => {
+          setName(text);
+          // A blank name is ignored by the store, so clearing to retype is safe.
+          setState((s) => editExercise(s, exercise.id, { name: text }));
+        }}
+        onBlur={() => setName((n) => (n.trim() ? n : exercise.name))}
+        returnKeyType="done"
+        placeholder="Name"
+        placeholderTextColor={colors.faint}
+        style={{
+          minHeight: 64,
+          paddingHorizontal: 16,
+          borderRadius: 16,
+          backgroundColor: colors.surface,
+          color: colors.text,
+          fontSize: 24,
+          fontWeight: "700",
+        }}
+      />
 
-      {editing ? (
-        <View style={{ gap: 12, paddingBottom: 12 }}>
-          <TextInput
-            value={name}
-            onChangeText={setName}
-            onBlur={saveName}
-            onSubmitEditing={saveName}
-            returnKeyType="done"
-            placeholder="Name"
-            placeholderTextColor={colors.faint}
-            style={{
-              minHeight: 48,
-              paddingHorizontal: 14,
-              borderRadius: 12,
-              backgroundColor: colors.surface,
-              color: colors.text,
-              fontSize: 16,
-              fontWeight: "600",
-            }}
-          />
-
-          {exercise.unloaded ? null : (
-            <View style={{ gap: 8 }}>
-              <Label>Weight step</Label>
-              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-                {INCREMENTS.map((step) => (
-                  <Chip
-                    key={step}
-                    label={`${step}`}
-                    on={(exercise.increment || 2.5) === step}
-                    onPress={() => setState((s) => editExercise(s, exercise.id, { increment: step }))}
-                  />
-                ))}
-              </View>
-              <Text style={{ color: colors.faint, fontSize: 12, lineHeight: 17 }}>
-                How many kg one press of − or + moves the weight
-                {exercise.perHand ? ", per dumbbell" : ""}.
-              </Text>
-            </View>
-          )}
-
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-            {confirming ? (
-              <>
-                <Pressable
-                  accessibilityRole="button"
-                  onPress={() => setConfirming(false)}
-                  style={({ pressed }) => ({
-                    justifyContent: "center",
-                    minHeight: 44,
-                    paddingHorizontal: 4,
-                    opacity: pressed ? 0.5 : 1,
-                  })}
-                >
-                  <Text style={{ color: colors.faint, fontSize: 14, fontWeight: "700" }}>
-                    Cancel
-                  </Text>
-                </Pressable>
-                <View style={{ flex: 1 }} />
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel={`Confirm removing ${exercise.name}`}
-                  onPress={() => {
-                    setConfirming(false);
-                    onToggle();
-                    setState((s) => removeExercise(s, exercise.id));
-                  }}
-                  style={({ pressed }) => ({
-                    justifyContent: "center",
-                    minHeight: 44,
-                    paddingHorizontal: 16,
-                    borderRadius: 999,
-                    backgroundColor: colors.bend,
-                    opacity: pressed ? 0.7 : 1,
-                  })}
-                >
-                  <Text style={{ color: colors.ink, fontSize: 14, fontWeight: "800" }}>
-                    {mine ? "Delete" : "Remove"}
-                  </Text>
-                </Pressable>
-              </>
-            ) : (
-              <>
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityState={{ disabled: !removable }}
-                  disabled={!removable}
-                  onPress={() => setConfirming(true)}
-                  style={({ pressed }) => ({
-                    justifyContent: "center",
-                    minHeight: 44,
-                    paddingHorizontal: 4,
-                    // The last exercise of a type cannot go: a slot of that
-                    // type would have nothing to prescribe.
-                    opacity: !removable ? 0.25 : pressed ? 0.5 : 1,
-                  })}
-                >
-                  <Text style={{ color: colors.muted, fontSize: 14, fontWeight: "700" }}>
-                    {mine ? "Delete" : "Remove"}
-                  </Text>
-                </Pressable>
-                <View style={{ flex: 1 }} />
-                <Pressable
-                  accessibilityRole="button"
-                  onPress={close}
-                  style={({ pressed }) => ({
-                    justifyContent: "center",
-                    minHeight: 44,
-                    paddingHorizontal: 22,
-                    borderRadius: 999,
-                    backgroundColor: colors.cloud,
-                    opacity: pressed ? 0.7 : 1,
-                  })}
-                >
-                  <Text style={{ color: colors.ink, fontSize: 14, fontWeight: "800" }}>Done</Text>
-                </Pressable>
-              </>
-            )}
+      {exercise.unloaded ? null : (
+        <View style={{ gap: 12 }}>
+          <SectionLabel>Weight step</SectionLabel>
+          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10 }}>
+            {INCREMENTS.map((step) => (
+              <Chip
+                key={step}
+                label={`${step} kg`}
+                on={(exercise.increment || 2.5) === step}
+                onPress={() => setState((s) => editExercise(s, exercise.id, { increment: step }))}
+              />
+            ))}
           </View>
-          {!removable ? (
-            <Text style={{ color: colors.faint, fontSize: 12, lineHeight: 17 }}>
-              The last of its kind stays, or a slot would have nothing to use.
-            </Text>
-          ) : !mine ? (
-            <Text style={{ color: colors.faint, fontSize: 12, lineHeight: 17 }}>
-              Removing puts it back in the library, history and all.
-            </Text>
-          ) : null}
+          <Text style={{ color: colors.faint, fontSize: 13, lineHeight: 19 }}>
+            How much one press of − or + moves the weight
+            {exercise.perHand ? ", per dumbbell" : ""}.
+          </Text>
         </View>
-      ) : null}
+      )}
+
+      <View style={{ gap: 8 }}>
+        {confirming ? (
+          <>
+            <BigButton
+              label={`${mine ? "Delete" : "Remove"} ${exercise.name}`}
+              danger
+              onPress={() => {
+                setConfirming(false);
+                setState((s) => removeExercise(s, exercise.id));
+                onRemoved();
+              }}
+            />
+            <TextButton label="Keep it" onPress={() => setConfirming(false)} />
+          </>
+        ) : (
+          <BigButton
+            label={mine ? "Delete exercise" : "Remove exercise"}
+            quiet
+            // The last exercise of a type cannot go: a slot of that type
+            // would have nothing to prescribe.
+            disabled={!removable}
+            onPress={() => setConfirming(true)}
+          />
+        )}
+        <Text style={{ color: colors.faint, fontSize: 13, lineHeight: 19, textAlign: "center" }}>
+          {!removable
+            ? "The last of its kind stays, or a slot would have nothing to use."
+            : mine
+              ? "Deleting keeps its history, in case you make it again."
+              : "Removing puts it back in the library, history and all."}
+        </Text>
+      </View>
     </View>
   );
 }
@@ -621,281 +505,256 @@ function CreateExercise({
   );
 }
 
-/** The cardio and mobility pools, edited exactly like the exercise groups. */
-function Conditioning() {
+/** The cardio machines. Tap one to change it; Add brings one in. */
+function CardioSheet({ visible, onClose }: { visible: boolean; onClose: () => void }) {
   const { state, setState } = useSession();
-  const [open, setOpen] = useState<"cardio" | "mobility" | null>(null);
-  const [adding, setAdding] = useState<"cardio" | "mobility" | null>(null);
-  const [pendingDelete, setPendingDelete] = useState<string | null>(null);
-  // The timed machine whose distance is open for changing.
   const [editing, setEditing] = useState<string | null>(null);
+  const [adding, setAdding] = useState(false);
+  const machines = cardioPool(state.hiddenConditioning);
 
-  const cardio = cardioPool(state.hiddenConditioning);
-  const mobility = mobilityPool(state.hiddenConditioning);
+  const close = () => {
+    setEditing(null);
+    setAdding(false);
+    onClose();
+  };
 
-  const rows: { id: string; name: string; detail: string; course?: number }[] =
-    open === "cardio"
-      ? cardio.map((c) => {
+  return (
+    <Sheet visible={visible} title="Cardio" closeLabel="Done" onClose={close}>
+      <View style={{ gap: 12, paddingTop: 12 }}>
+        {machines.map((c) => {
           const course = courseFor(state, c.id);
-          return {
-            id: c.id,
-            name: c.name,
-            course,
-            detail:
-              course !== undefined
-                ? `${courseLabel(c, course)} · timed`
-                : `${CARDIO_MINUTES} min · ${c.metric.unit}`,
-          };
-        })
-      : open === "mobility"
-        ? mobility.map((m) => ({
-            id: m.id,
-            name: m.name,
-            detail: `${m.moves.length} ${
-              m.moves.length === 1 ? "hold" : "holds"
-            } · ${Math.round(routineSeconds(m) / 60)} min`,
-          }))
-        : [];
-
-  const section = (kind: "cardio" | "mobility", label: string, count: number) => (
-    <View
-      key={kind}
-      style={{
-        gap: 6,
-        borderRadius: radii.card,
-        borderCurve: "continuous",
-        backgroundColor: open === kind ? colors.surface : "transparent",
-        borderWidth: 1,
-        borderColor: open === kind ? colors.surface : colors.line,
-        padding: 16,
-      }}
-    >
-      <View
-        style={{ flexDirection: "row", alignItems: "center", gap: 10, height: 44 }}
-      >
-        <Pressable
-          accessibilityRole="button"
-          accessibilityState={{ expanded: open === kind }}
-          onPress={() => {
-            setPendingDelete(null);
-            setEditing(null);
-            setOpen(open === kind ? null : kind);
-          }}
-          style={({ pressed }) => ({
-            flex: 1,
-            flexDirection: "row",
-            alignItems: "center",
-            gap: 8,
-            height: "100%",
-            opacity: pressed ? 0.6 : 1,
-          })}
-        >
-          <Text
-            style={{ flex: 1, color: colors.text, fontSize: 19, fontWeight: "700" }}
-          >
-            {label}
-          </Text>
-          <Text
-            style={{
-              color: colors.faint,
-              fontSize: 11,
-              fontWeight: "800",
-              fontVariant: ["tabular-nums"],
-            }}
-          >
-            {count}
-          </Text>
-          <Icon name={open === kind ? "collapse" : "expand"} size={14} color={colors.faint} />
-        </Pressable>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={`Add to ${label}`}
-          onPress={() => {
-            setOpen(kind);
-            setAdding(adding === kind ? null : kind);
-          }}
-          hitSlop={8}
-          style={({ pressed }) => ({
-            width: 44,
-            height: 44,
-            marginRight: -6,
-            alignItems: "center",
-            justifyContent: "center",
-            borderRadius: 999,
-            backgroundColor: adding === kind ? colors.cloud : colors.raised,
-            opacity: pressed ? 0.7 : 1,
-          })}
-        >
-          <Icon
-            name={adding === kind ? "close" : "plus"}
-            size={20}
-            color={adding === kind ? colors.ink : colors.text}
-          />
-        </Pressable>
+          return (
+            <OpenRow
+              key={c.id}
+              title={c.name}
+              detail={
+                course !== undefined
+                  ? `${courseLabel(c, course)}, timed`
+                  : `${CARDIO_MINUTES} minutes, distance in ${c.metric.unit}`
+              }
+              onPress={() => setEditing(c.id)}
+            />
+          );
+        })}
+        <AddLink label="Add machine" onPress={() => setAdding(true)} />
       </View>
 
-      {open === kind && adding === kind ? (
+      <Sheet
+        visible={!!editing && machines.some((c) => c.id === editing)}
+        title="Machine"
+        closeLabel="Done"
+        onClose={() => setEditing(null)}
+      >
+        {editing ? <MachineEditor id={editing} onRemoved={() => setEditing(null)} /> : null}
+      </Sheet>
+
+      <Sheet visible={adding} title="Add to Cardio" onClose={() => setAdding(false)}>
         <AddPanel
           library={hiddenConditioningList(state)
-            .filter((row) => row.kind === kind)
+            .filter((row) => row.kind === "cardio")
             .map((row) => ({ id: row.id, name: row.name }))}
-          onTake={(id) => setState((s) => restoreConditioning(s, id))}
+          onTake={(id) => {
+            setState((s) => restoreConditioning(s, id));
+            setAdding(false);
+          }}
           create={
-            kind === "cardio" ? (
-              <AddCardio
-                onAdd={(machine) => {
-                  setAdding(null);
-                  setState((s) => addCardio(s, machine));
-                }}
-              />
-            ) : (
-              <AddMobility
-                onAdd={(routine) => {
-                  setAdding(null);
-                  setState((s) => addMobility(s, routine));
-                }}
-              />
-            )
+            <AddCardio
+              onAdd={(machine) => {
+                setAdding(false);
+                setState((s) => addCardio(s, machine));
+              }}
+            />
           }
+        />
+      </Sheet>
+    </Sheet>
+  );
+}
+
+/** One machine: its set distance, if it runs one, and removing it. */
+function MachineEditor({ id, onRemoved }: { id: string; onRemoved: () => void }) {
+  const { state, setState } = useSession();
+  const machine = cardioById(id);
+  if (!machine) return null;
+  const course = courseFor(state, id);
+
+  return (
+    <View style={{ gap: 36, paddingTop: 12 }}>
+      <View style={{ gap: 6 }}>
+        <Text style={{ color: colors.text, fontSize: 26, fontWeight: "700" }}>{machine.name}</Text>
+        <Text style={{ color: colors.faint, fontSize: 15, lineHeight: 21 }}>
+          {course !== undefined
+            ? "A set distance, timed. Your time is the score."
+            : `${CARDIO_MINUTES} minutes every time. The distance you cover is the score.`}
+        </Text>
+      </View>
+
+      {course !== undefined ? (
+        <CourseEditor
+          cardioId={id}
+          course={course}
+          onNudge={(d) => setState((s) => nudgeCourse(s, id, d))}
         />
       ) : null}
 
-      {open === kind
-        ? rows.map((row) => {
-            const removable = canRemoveConditioning(state, row.id);
-            const confirming = pendingDelete === row.id;
-            const timed = row.course !== undefined;
-            return (
-              <View key={row.id}>
+      <RemoveConditioning id={id} name={machine.name} onRemoved={onRemoved} />
+    </View>
+  );
+}
+
+/** The mobility routines. Tap one to see its holds; Add brings one in. */
+function MobilitySheet({ visible, onClose }: { visible: boolean; onClose: () => void }) {
+  const { state, setState } = useSession();
+  const [editing, setEditing] = useState<string | null>(null);
+  const [adding, setAdding] = useState(false);
+  const routines = mobilityPool(state.hiddenConditioning);
+  const routine = routines.find((m) => m.id === editing);
+
+  const close = () => {
+    setEditing(null);
+    setAdding(false);
+    onClose();
+  };
+
+  return (
+    <Sheet visible={visible} title="Mobility" closeLabel="Done" onClose={close}>
+      <View style={{ gap: 12, paddingTop: 12 }}>
+        {routines.map((m) => (
+          <OpenRow
+            key={m.id}
+            title={m.name}
+            detail={`${plural(m.moves.length, "hold", "holds")} · about ${Math.round(
+              routineSeconds(m) / 60,
+            )} min`}
+            onPress={() => setEditing(m.id)}
+          />
+        ))}
+        <AddLink label="Add routine" onPress={() => setAdding(true)} />
+      </View>
+
+      <Sheet visible={!!routine} title="Routine" closeLabel="Done" onClose={() => setEditing(null)}>
+        {routine ? (
+          <View style={{ gap: 36, paddingTop: 12 }}>
+            <View style={{ gap: 6 }}>
+              <Text style={{ color: colors.text, fontSize: 26, fontWeight: "700" }}>
+                {routine.name}
+              </Text>
+              <Text style={{ color: colors.faint, fontSize: 15 }}>{routine.subtitle}</Text>
+            </View>
+            <View
+              style={{
+                borderRadius: radii.card,
+                borderCurve: "continuous",
+                backgroundColor: colors.surface,
+                paddingHorizontal: 18,
+              }}
+            >
+              {routine.moves.map((move, i) => (
                 <View
+                  key={move.id}
                   style={{
                     flexDirection: "row",
                     alignItems: "center",
                     gap: 10,
-                    minHeight: 48,
+                    minHeight: 56,
+                    borderBottomWidth: i === routine.moves.length - 1 ? 0 : 1,
+                    borderBottomColor: colors.line,
                   }}
                 >
-                  {/* A timed machine opens to change its distance; the rest
-                      have nothing to change. */}
-                  <Pressable
-                    accessibilityRole={timed ? "button" : undefined}
-                    accessibilityState={timed ? { expanded: editing === row.id } : undefined}
-                    disabled={!timed}
-                    onPress={() => setEditing(editing === row.id ? null : row.id)}
-                    style={({ pressed }) => ({
-                      flex: 1,
-                      gap: 1,
-                      minHeight: 48,
-                      justifyContent: "center",
-                      opacity: pressed ? 0.6 : 1,
-                    })}
+                  <Text style={{ flex: 1, color: colors.text, fontSize: 16, fontWeight: "600" }}>
+                    {move.name}
+                  </Text>
+                  <Text
+                    style={{
+                      color: colors.muted,
+                      fontSize: 15,
+                      fontWeight: "700",
+                      fontVariant: ["tabular-nums"],
+                    }}
                   >
-                    <Text
-                      style={{
-                        color: colors.faint,
-                        fontSize: 10,
-                        fontWeight: "800",
-                        letterSpacing: 0.9,
-                        textTransform: "uppercase",
-                      }}
-                    >
-                      {row.detail}
-                    </Text>
-                    <Text
-                      style={{ color: colors.text, fontSize: 15, fontWeight: "600" }}
-                    >
-                      {row.name}
-                    </Text>
-                  </Pressable>
-
-                  {confirming ? (
-                    <View
-                      style={{ flexDirection: "row", alignItems: "center", gap: 4 }}
-                    >
-                      <Pressable
-                        accessibilityRole="button"
-                        onPress={() => setPendingDelete(null)}
-                        style={({ pressed }) => ({
-                          justifyContent: "center",
-                          minHeight: 44,
-                          paddingHorizontal: 12,
-                          opacity: pressed ? 0.5 : 1,
-                        })}
-                      >
-                        <Text
-                          style={{
-                            color: colors.faint,
-                            fontSize: 13,
-                            fontWeight: "700",
-                          }}
-                        >
-                          Cancel
-                        </Text>
-                      </Pressable>
-                      <Pressable
-                        accessibilityRole="button"
-                        accessibilityLabel={`Confirm removing ${row.name}`}
-                        onPress={() => {
-                          setPendingDelete(null);
-                          setState((s) => removeConditioning(s, row.id));
-                        }}
-                        style={({ pressed }) => ({
-                          justifyContent: "center",
-                          minHeight: 44,
-                          paddingHorizontal: 14,
-                          borderRadius: 999,
-                          backgroundColor: colors.bend,
-                          opacity: pressed ? 0.7 : 1,
-                        })}
-                      >
-                        <Text
-                          style={{ color: colors.ink, fontSize: 13, fontWeight: "800" }}
-                        >
-                          Remove
-                        </Text>
-                      </Pressable>
-                    </View>
-                  ) : (
-                    <Pressable
-                      accessibilityRole="button"
-                      accessibilityLabel={`Remove ${row.name}`}
-                      accessibilityState={{ disabled: !removable }}
-                      disabled={!removable}
-                      onPress={() => setPendingDelete(row.id)}
-                      style={({ pressed }) => ({
-                        width: 44,
-                        height: 44,
-                        marginRight: -10,
-                        alignItems: "center",
-                        justifyContent: "center",
-                        // The last machine or routine cannot go: a block of that
-                        // kind would have nothing to offer.
-                        opacity: !removable ? 0.2 : pressed ? 0.5 : 1,
-                      })}
-                    >
-                      <Icon name="minus" size={16} color={colors.faint} />
-                    </Pressable>
-                  )}
+                    {move.seconds}s{move.perSide ? " ×2" : ""}
+                  </Text>
                 </View>
-                {timed && editing === row.id ? (
-                  <CourseEditor
-                    cardioId={row.id}
-                    course={row.course!}
-                    onNudge={(d) => setState((s) => nudgeCourse(s, row.id, d))}
-                  />
-                ) : null}
-              </View>
-            );
-          })
-        : null}
-    </View>
+              ))}
+            </View>
+            <RemoveConditioning
+              id={routine.id}
+              name={routine.name}
+              onRemoved={() => setEditing(null)}
+            />
+          </View>
+        ) : null}
+      </Sheet>
+
+      <Sheet visible={adding} title="Add to Mobility" onClose={() => setAdding(false)}>
+        <AddPanel
+          library={hiddenConditioningList(state)
+            .filter((row) => row.kind === "mobility")
+            .map((row) => ({ id: row.id, name: row.name }))}
+          onTake={(id) => {
+            setState((s) => restoreConditioning(s, id));
+            setAdding(false);
+          }}
+          create={
+            <AddMobility
+              onAdd={(r) => {
+                setAdding(false);
+                setState((s) => addMobility(s, r));
+              }}
+            />
+          }
+        />
+      </Sheet>
+    </Sheet>
   );
+}
+
+/** Two taps to remove a machine or routine; the last of its kind stays. */
+function RemoveConditioning({
+  id,
+  name,
+  onRemoved,
+}: {
+  id: string;
+  name: string;
+  onRemoved: () => void;
+}) {
+  const { state, setState } = useSession();
+  const [confirming, setConfirming] = useState(false);
+  const removable = canRemoveConditioning(state, id);
+  const mine = isCustomConditioning(state, id);
 
   return (
-    <>
-      {section("cardio", "Cardio", cardio.length)}
-      {section("mobility", "Mobility", mobility.length)}
-    </>
+    <View style={{ gap: 8 }}>
+      {confirming ? (
+        <>
+          <BigButton
+            label={`${mine ? "Delete" : "Remove"} ${name}`}
+            danger
+            onPress={() => {
+              setConfirming(false);
+              setState((s) => removeConditioning(s, id));
+              onRemoved();
+            }}
+          />
+          <TextButton label="Keep it" onPress={() => setConfirming(false)} />
+        </>
+      ) : (
+        <BigButton
+          label={mine ? "Delete" : "Remove"}
+          quiet
+          disabled={!removable}
+          onPress={() => setConfirming(true)}
+        />
+      )}
+      <Text style={{ color: colors.faint, fontSize: 13, lineHeight: 19, textAlign: "center" }}>
+        {!removable
+          ? "The last one stays, or the block would have nothing to offer."
+          : mine
+            ? "Deleting it keeps its records."
+            : "Removing puts it back in the library, records and all."}
+      </Text>
+    </View>
   );
 }
 
