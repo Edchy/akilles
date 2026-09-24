@@ -78,18 +78,19 @@ Hold a circle to put it straight back to the target — a stray extra tap on a
 The weight is an input. Type into it or use −/+ to step by one increment,
 any time you want.
 
-**Progression** — only once every set hit its target are you asked how it felt:
+**Progression** — the reps decide it; nothing is asked:
 
 | | |
 |---|---|
-| 👍 | climb the rep ladder — 6 → 8 → 10 |
-| 👍 at the top | weight += increment, back to the bottom rung |
-| 👎 | hold everything, repeat it exactly |
-| 👎 twice in a row | deload 10%, back to the bottom rung |
+| every set on target | climb the rep ladder — 6 → 8 → 10 |
+| on target at the top | weight += increment, back to the bottom rung |
+| short of target | hold everything, repeat it exactly |
+| short twice in a row | deload 10%, back to the bottom rung |
 
-**A short session asks nothing.** If any set came in under target there is no
-thumbs question — missing reps already says the weight was too much, so the
-same prescription simply comes back next time.
+Once every circle is filled, one line above **Next exercise** says which of
+these happens next time. **An unfinished exercise is not a miss**: leave with
+sets still empty and it simply repeats, since running out of time says nothing
+about the weight.
 
 **Rep ranges.** A slot climbs from the bottom of its range to the top in three
 rungs — `6–10` is 6 → 8 → 10, `12–15` is 12 → 14 → 15 — or rep by rep when the
@@ -108,8 +109,7 @@ place in the workout's slot order, keeping any sets already logged against it.
 The partner gets **its own circles**, its own target, and its own weight
 record — a supersetted curl progresses on the same ladder it would have on its
 own. Both sets of circles must be filled before the exercise counts as done,
-and both must hit target for the thumbs question to appear. The single 👍/👎
-then applies to both.
+and each progresses on its own reps.
 
 ## Screens
 
@@ -214,8 +214,8 @@ are written to AsyncStorage after every change and read back on launch. It is
 one small JSON blob; a year of training is around 35KB.
 
 **Nothing is committed to history until the workout ends.** Circle taps, weight
-edits, thumbs and skips all live on the session, so Back can revisit any
-exercise and change what you answered. The single commit happens when you
+edits and skips all live on the session, so Back can revisit any exercise and
+change what you logged. The single commit happens when you
 finish the last exercise or press Leave.
 
 **Leaving before you've trained anything cancels.** If no set was logged and no

@@ -110,13 +110,7 @@ export default function HistoryScreen() {
                   >
                     {st.skippedLast
                       ? "skipped"
-                      : `last ${last!.reps.join(" ")}${
-                          last!.feedback === "up"
-                            ? "  👍"
-                            : last!.feedback === "down"
-                              ? "  👎"
-                              : ""
-                        }`}
+                      : `last ${last!.reps.join(" ")}`}
                   </Text>
                 </View>
               </View>

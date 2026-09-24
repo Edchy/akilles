@@ -61,7 +61,6 @@ import {
   prescribe,
   type Decay,
   type ExerciseState,
-  type Feedback,
   type Prescription,
 } from "@/lib/progression";
 
@@ -69,8 +68,8 @@ import {
  * What kind of block an item is.
  *
  * Lifting is the default and everything about the progression engine assumes
- * it. Cardio and mobility are their own things — no weight, no rep ladder, no
- * thumbs — so they are marked rather than squeezed into the same shape.
+ * it. Cardio and mobility are their own things — no weight, no rep ladder —
+ * so they are marked rather than squeezed into the same shape.
  */
 export type Kind = "lift" | "cardio" | "mobility";
 
@@ -128,8 +127,6 @@ export type Item = Entry & {
   weight: number;
   /** Same, for a folded-in partner. */
   supersetWeight?: number;
-  /** Feedback given for this exercise, pending until the workout ends. */
-  feedback?: Feedback;
   /**
    * Reps logged per set. `null` means the circle is still empty.
    * Length is fixed at the set count when the workout is built.
@@ -212,7 +209,7 @@ export type SessionState = {
    *
    * An exercise done on a strength day and on a volume day is tracked
    * separately: the two sit on different rep ladders at different weights,
-   * so sharing one record would make a volume 👍 bump the strength number.
+   * so sharing one record would make a volume session bump the strength number.
    */
   history: Record<string, ExerciseState>;
   /**
@@ -993,21 +990,28 @@ export const allSetsLogged = (state: SessionState): boolean => {
   return filled(item.logged) && filled(item.supersetLogged);
 };
 
-/**
- * Every set at or above target — the only case where the thumbs question is
- * asked, and the only route to more weight.
- */
+/** Every set at or above target — the only route to more reps or weight. */
 export const madeTarget = (state: SessionState): boolean => {
   const item = state.active?.items[state.active.cursor];
   const p = currentPrescription(state);
   if (!item || !p) return false;
-  // Speed and jump work never asks how it felt: nothing progresses from it.
+  // Speed and jump work has no ladder: nothing progresses from it.
   if (item.derive || p.exercise.unloaded) return false;
   if (!hitTarget(item.logged, p.reps)) return false;
 
   const pp = partnerPrescription(state);
   if (pp && item.supersetLogged) return hitTarget(item.supersetLogged, pp.reps);
   return true;
+};
+
+/**
+ * How many sessions in a row this lift has finished short of target, before
+ * today. With today's miss, a second one in a row drops the weight 10%.
+ */
+export const missesBefore = (state: SessionState): number => {
+  const item = state.active?.items[state.active.cursor];
+  if (!item) return 0;
+  return state.history[key(item.exerciseId, item.scheme)]?.downStreak ?? 0;
 };
 
 /**
@@ -1032,16 +1036,12 @@ export const editWeight = (state: SessionState, weight: number): SessionState =>
  *
  * The result is held on the item, not written to history — the whole session
  * is committed at the end, so Back can revisit and change anything.
- * `feedback` is undefined when the sets fell short of target.
  */
-export const completeExercise = (
-  state: SessionState,
-  feedback?: Feedback,
-): SessionState => {
+export const completeExercise = (state: SessionState): SessionState => {
   if (!state.active) return state;
   // Patch first, then advance off the patched state — spreading the original
   // `active` here would throw the patch away.
-  const patched = patchItem(state, (it) => ({ ...it, feedback, skipped: false }));
+  const patched = patchItem(state, (it) => ({ ...it, skipped: false }));
   return {
     ...patched,
     active: { ...patched.active!, cursor: patched.active!.cursor + 1 },
@@ -1345,11 +1345,11 @@ export const didTrain = (active: SessionState["active"]): boolean =>
  * Finish the workout and advance the cycle. Nothing is owed if it was short.
  *
  * **This is the only place history is written.** Everything during a session —
- * circle taps, weight edits, thumbs, skips — lives on the session's items, so
+ * circle taps, weight edits, skips — lives on the session's items, so
  * you can go Back and change any of it. The commit happens once, here, whether
  * you finished every exercise or left partway through.
  *
- * Anything neither logged nor given feedback counts as skipped: its weight and
+ * Anything with no set logged counts as skipped: its weight and
  * rep ladder are left untouched and it is flagged for next time.
  *
  * A session where nothing was trained at all is cancelled rather than
@@ -1371,7 +1371,6 @@ export const finishWorkout = (
     scheme: Scheme,
     weight: number,
     logged: (number | null)[],
-    feedback: Feedback | undefined,
     performed: boolean,
   ) => {
     const k = key(exerciseId, scheme);
@@ -1380,7 +1379,7 @@ export const finishWorkout = (
     // either way — a skipped exercise simply keeps the number it opened with.
     const base = { ...prior, weight };
     history[k] = performed
-      ? applyResult(base, scheme, logged, feedback, now)
+      ? applyResult(base, scheme, logged, now)
       : markSkipped(base);
   };
 
@@ -1414,7 +1413,7 @@ export const finishWorkout = (
     // at all, so neither has a ladder to climb or a number worth storing.
     if (item.derive || byId(item.exerciseId)!.unloaded) continue;
 
-    commit(item.exerciseId, item.scheme, item.weight, item.logged, item.feedback, performed);
+    commit(item.exerciseId, item.scheme, item.weight, item.logged, performed);
 
     const e = item.supersetEntry;
     if (e) {
@@ -1423,7 +1422,6 @@ export const finishWorkout = (
         e.scheme,
         item.supersetWeight ?? history[key(e.exerciseId, e.scheme)]?.weight ?? 0,
         item.supersetLogged ?? [],
-        item.feedback,
         performed && !!item.supersetLogged?.some((r) => r !== null),
       );
     }

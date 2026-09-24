@@ -4,20 +4,21 @@
  * A set is logged by tapping its circle: the first tap fills it at the target
  * reps, each further tap counts down, and tapping past 1 empties it again.
  *
- * When every set hit its target you're asked how it felt:
+ * The reps decide everything; nothing is asked:
  *
- *   👍  climb the rep ladder     8 → 10 → 12
- *   👍  at the top of the ladder  weight += increment, back to the bottom rung
- *   👎  hold everything, repeat the exact same prescription
- *   👎  twice in a row            deload 10%, back to the bottom rung
+ *   every set on target        climb the rep ladder     8 → 10 → 12
+ *   on target, top of ladder   weight += increment, back to the bottom rung
+ *   short of target            repeat the exact same prescription
+ *   short twice in a row       deload 10%, back to the bottom rung
  *
- * When a set came in UNDER target there is no thumbs question — missing reps
- * already says the weight was too much, so the prescription simply repeats.
+ * A set left empty is not a miss. Running out of time says nothing about the
+ * weight, so an unfinished exercise repeats without counting against it.
  */
 
 import { byId, type Exercise, type Pattern } from "@/data/exercises";
 import { ladderFor, type Scheme } from "@/data/split";
 
+/** How a session felt. No longer asked — kept so older saved records still read. */
 export type Feedback = "up" | "down";
 
 /** What we remember about one exercise. One record per exercise, not per session. */
@@ -26,9 +27,12 @@ export type ExerciseState = {
   weight: number;
   /** Index into the scheme's rep ladder. */
   rung: number;
-  /** Consecutive 👎 since the last 👍. Reset to 0 on 👍 and on deload. */
+  /**
+   * Consecutive sessions finished short of target. Reset on a hit and on
+   * deload. (Named for the 👎 it used to count; older records may carry one.)
+   */
   downStreak: number;
-  /** Deloads since the last 👍. Only used to explain the number on screen. */
+  /** Deloads since the last climb. Only used to explain the number on screen. */
   deloads: number;
   lastFeedback?: Feedback;
   /**
@@ -435,18 +439,14 @@ export const prescribe = (
   decay: state.pendingDecay,
 });
 
-/**
- * Every set logged at or above target. Only then is the thumbs question asked
- * — and only then can the weight go up.
- */
+/** Every set logged at or above target. Only then does the lift move up. */
 export const hitTarget = (reps: (number | null)[], target: number): boolean =>
   reps.length > 0 && reps.every((r) => r !== null && r >= target);
 
 /**
  * Apply a session's outcome. Returns the state to use next time.
  *
- * `feedback` is undefined when the session fell short of target — the
- * prescription then repeats unchanged.
+ * The reps alone decide it — see the table at the top of this file.
  *
  * Pure: same inputs, same output — which makes it testable.
  */
@@ -454,7 +454,6 @@ export const applyResult = (
   state: ExerciseState,
   scheme: Scheme,
   reps: (number | null)[],
-  feedback?: Feedback,
   /** When the session happened. Defaults to now; passed in so it is testable. */
   now: number = Date.now(),
 ): ExerciseState => {
@@ -465,11 +464,8 @@ export const applyResult = (
     weight: state.weight,
     reps: reps.map((r) => r ?? 0),
     target,
-    feedback,
   };
 
-  // Missed the target: repeat exactly. A short session is not a 👎 — it's
-  // already told us the weight was too much.
   // Trained, whatever the outcome: the idle clock restarts and any cut we
   // were explaining is now history. The back-off clock is seeded here on the
   // first session only — after that it belongs to `applyDecay`, so training
@@ -483,11 +479,12 @@ export const applyResult = (
     pendingDecay: undefined,
   };
 
-  if (!hitTarget(reps, target)) {
+  // Left unfinished: repeat exactly, and count nothing against the weight.
+  if (reps.some((r) => r === null)) {
     return { ...trained, skippedLast: false, lastPerformed: performed };
   }
 
-  if (feedback === "up") {
+  if (hitTarget(reps, target)) {
     const atTop = state.rung >= ladder.length - 1;
     return {
       ...trained,
@@ -498,25 +495,23 @@ export const applyResult = (
       downStreak: 0,
       deloads: 0,
       skippedLast: false,
-      lastFeedback: "up",
       lastPerformed: performed,
     };
   }
 
   const downStreak = state.downStreak + 1;
 
-  // First 👎: hold everything and repeat it exactly.
+  // Short of target once: hold everything and repeat it exactly.
   if (downStreak < 2) {
     return {
       ...trained,
       downStreak,
       skippedLast: false,
-      lastFeedback: "down",
       lastPerformed: performed,
     };
   }
 
-  // Second 👎 in a row: deload 10% and restart the ladder.
+  // Short twice in a row: deload 10% and restart the ladder.
   return {
     ...trained,
     weight: roundTo(state.weight * 0.9, exercise.increment),
@@ -524,7 +519,6 @@ export const applyResult = (
     downStreak: 0,
     deloads: state.deloads + 1,
     skippedLast: false,
-    lastFeedback: "down",
     lastPerformed: performed,
   };
 };

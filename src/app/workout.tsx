@@ -51,6 +51,7 @@ import {
   lastScore,
   nudgeScore,
   madeTarget,
+  missesBefore,
   nudgeWeight,
   partnerPrescription,
   previousExercise,
@@ -147,7 +148,7 @@ export default function WorkoutScreen() {
   const item = active.items[active.cursor];
 
   // Cardio and mobility are their own screens: no weight, no rep circles and
-  // no thumbs. They still sit inside the same session, so the bar's Back,
+  // no rep ladder. They still sit inside the same session, so the bar's Back,
   // Leave and Skip work on them exactly as on a lift.
   if (isConditioning(item)) {
     return (
@@ -181,10 +182,18 @@ export default function WorkoutScreen() {
     );
   }
 
-  const next = (feedback?: "up" | "down") => {
+  const next = () => {
     setPicking(false);
-    setState((s) => completeExercise(s, feedback));
+    setState((s) => completeExercise(s));
   };
+  // Said before you move on, so what happens next time is never a surprise.
+  const outcome = noProgression
+    ? null
+    : made
+      ? "On target — a step up next time."
+      : missesBefore(state) >= 1
+        ? "Short again — 10% lighter next time."
+        : "Short of target — same again next time.";
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.bg }}>
@@ -354,25 +363,18 @@ export default function WorkoutScreen() {
         </Sheet>
       </ScrollView>
 
-      {/* The action: one row, only when there is something to answer. */}
+      {/* The action: once every set is logged, one button on. The reps
+          already say how it went, so nothing is asked. */}
       <View style={{ paddingHorizontal: 22, paddingBottom: 14 }}>
         <Column style={{ height: FIXED.action, justifyContent: "flex-end" }}>
-          {logged && made ? (
-            <View style={{ flexDirection: "row", gap: 10 }}>
-              <Feedback label="Felt good" icon="up" fill onPress={() => next("up")} />
-              <Feedback label="Felt heavy" icon="down" onPress={() => next("down")} />
-            </View>
-          ) : logged && noProgression ? (
-            // Speed and jump work: nothing to rate, just move on.
-            <Feedback label="Next exercise" fill onPress={() => next()} />
-          ) : logged ? (
+          {logged ? (
             <View style={{ gap: 10 }}>
-              <Text
-                style={{ textAlign: "center", color: colors.faint, fontSize: 13 }}
-              >
-                Short of target — same again next time.
-              </Text>
-              <Feedback label="Next exercise" fill onPress={() => next()} />
+              {outcome ? (
+                <Text style={{ textAlign: "center", color: colors.faint, fontSize: 13 }}>
+                  {outcome}
+                </Text>
+              ) : null}
+              <Action label="Next exercise" fill onPress={next} />
             </View>
           ) : null}
         </Column>
@@ -587,7 +589,7 @@ function Conditioning({ item }: { item: Item }) {
                 : "Enter the distance when the clock runs out — or skip the block."}
             </Text>
           ) : null}
-          <Feedback
+          <Action
             label={isMobility(item) ? "Finish" : "Done"}
             fill
             disabled={needsScore}
@@ -1130,7 +1132,7 @@ function Warmup({
 
       <View style={{ paddingHorizontal: 22, paddingBottom: 14 }}>
         <Column>
-          <Feedback
+          <Action
             label="Ready"
             fill
             disabled={!allDone}
@@ -1392,11 +1394,9 @@ function Why({ prescription }: { prescription: ReturnType<typeof currentPrescrip
     : skippedLast
     ? "Skipped last time. Same weight and reps as before."
     : deloaded
-      ? "Backed off 10% after two heavy sessions. Build it up again."
+      ? "10% lighter after two sessions short of target. Build it up again."
       : last
-        ? `Last time: ${weightLabel(prescription.exercise, last.weight)} · ${last.reps.join(" ")}${
-            last.feedback ? (last.feedback === "up" ? "  👍" : "  👎") : ""
-          }`
+        ? `Last time: ${weightLabel(prescription.exercise, last.weight)} · ${last.reps.join(" ")}`
         : "First time on this one. Pick a weight you could do two more reps with.";
 
   return (
@@ -1522,7 +1522,7 @@ function SupersetPicker({
   );
 }
 
-function Feedback({
+function Action({
   label,
   icon,
   onPress,
@@ -1607,7 +1607,7 @@ function Finished({ hasSession }: { hasSession: boolean }) {
         </Text>
       </Column>
       <Column>
-        <Feedback label="Close" fill onPress={close} />
+        <Action label="Close" fill onPress={close} />
       </Column>
     </View>
   );
