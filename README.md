@@ -120,7 +120,7 @@ Three tabs, plus the workout itself which takes over the screen.
 | Tab | |
 |---|---|
 | **Today** | The next workout, large and nothing else. **Start**, or **Skip** to move the cycle on without recording anything (with an Undo for a mis-tap). |
-| **History** | Every exercise you've trained, its current weight and next target. |
+| **History** | This week's training days as seven circles, then two views. **Sessions**: every finished workout, newest first, with each set coloured hit or short. **Lifts**: every exercise by muscle group at its current weight, tap for its past sessions; cardio bests too. Backup & restore sits in a sheet at the bottom. |
 | **Plan** | Two segments: **Workouts** (your sessions, their order, and what fills each slot) and **Exercises** (the catalogue of every movement). |
 
 Both segments are accordions — one workout or one category open at a time, so
@@ -289,9 +289,10 @@ session you are in keeps the shape it started with.
 
 - **Your training lives only on this phone.** It survives closing the app and
   restarting the device, but uninstalling, wiping, or moving to a new phone
-  loses it. There is no export and no sync yet.
+  loses it unless you saved a backup (History → Backup & restore). No sync yet.
 - No rest timer between sets.
-- History shows current state per exercise, not a session-by-session log.
+- The session log starts with the version that added it; workouts before that
+  show only in Lifts, not in Sessions.
 - **Starting weights are guesses** (`STARTING_WEIGHT` in `progression.ts`). You
   correct each one on its first session.
 - No way to log what you *actually* did if it differs from the prescription.

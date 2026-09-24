@@ -22,7 +22,7 @@ The app decides and the user performs. It is not a logbook you have to fill in a
 
 ## Operating Context
 
-- Three tabs: **Today** (the next workout, Start or Skip), **History** (every exercise, its weight and next target), **Plan** (Workouts and Exercises segments, both accordions).
+- Three tabs: **Today** (the next workout, Start or Skip), **History** (this week, then Sessions — each workout set by set — and Lifts — each exercise's weight and past), **Plan** (Workouts and Exercises segments, both accordions).
 - The workout screen takes over the whole display: the exercise name and the weight are the surface. You log each set by tapping its circle, and at the end you give a thumbs up or down on how it felt.
 - Cardio blocks open and close each session. A block is either timed minutes scored by distance, or a set distance (the treadmill, 1 km by default, adjustable in 0.5 km steps) scored by time. Mobility runs as a checklist.
 - A persistent bottom bar, mounted once, carries the tabs or the workout actions (Back / Leave / Skip).

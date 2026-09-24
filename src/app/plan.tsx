@@ -1,11 +1,12 @@
 import { useState } from "react";
-import { Pressable, ScrollView, Text, View } from "react-native";
+import { ScrollView, Text } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useBarSpace } from "@/components/bottom-bar";
 import { Catalogue } from "@/components/catalogue";
 import { Modules } from "@/components/modules";
 import { COLUMN } from "@/components/screen";
+import { Segments } from "@/components/segments";
 import { colors, fonts } from "@/constants/theme";
 
 
@@ -51,65 +52,16 @@ export default function PlanScreen() {
         Plan
       </Text>
 
-      <View
-        style={{
-          flexDirection: "row",
-          gap: 4,
-          borderRadius: 999,
-          backgroundColor: colors.surface,
-          padding: 4,
-        }}
-      >
-        <Tab
-          label="Workouts"
-          active={segment === "modules"}
-          onPress={() => setSegment("modules")}
-        />
-        <Tab
-          label="Exercises"
-          active={segment === "exercises"}
-          onPress={() => setSegment("exercises")}
-        />
-      </View>
+      <Segments
+        options={[
+          { value: "modules", label: "Workouts" },
+          { value: "exercises", label: "Exercises" },
+        ]}
+        value={segment}
+        onChange={setSegment}
+      />
 
       {segment === "modules" ? <Modules onDragChange={setDragging} /> : <Catalogue />}
     </ScrollView>
-  );
-}
-
-function Tab({
-  label,
-  active,
-  onPress,
-}: {
-  label: string;
-  active: boolean;
-  onPress: () => void;
-}) {
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityState={{ selected: active }}
-      onPress={onPress}
-      style={({ pressed }) => ({
-        flex: 1,
-        alignItems: "center",
-        justifyContent: "center",
-        minHeight: 44,
-        borderRadius: 999,
-        backgroundColor: active ? colors.cloud : "transparent",
-        opacity: pressed ? 0.8 : 1,
-      })}
-    >
-      <Text
-        style={{
-          color: active ? colors.ink : colors.muted,
-          fontSize: 14,
-          fontWeight: "800",
-        }}
-      >
-        {label}
-      </Text>
-    </Pressable>
   );
 }

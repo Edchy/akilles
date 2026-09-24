@@ -160,6 +160,46 @@ export type CardioRecord = {
   sessions: number;
 };
 
+/**
+ * One exercise as it went, in a finished session's log — see `SessionLog`.
+ *
+ * A lift keeps what was on the bar, the reps in each circle and the target
+ * they were aiming at, so History can colour each set as hit or short
+ * without re-running the progression. `outcome` is null for work that is
+ * not progressed (speed work, jumps).
+ */
+export type LogEntry =
+  | {
+      kind: "lift";
+      exerciseId: string;
+      scheme: Scheme;
+      weight: number;
+      reps: (number | null)[];
+      /** Reps each set was aiming at. Absent where there is no ladder. */
+      target?: number;
+      outcome: Outcome | "skipped" | null;
+    }
+  | {
+      kind: "cardio";
+      exerciseId: string;
+      /** Distance in the minutes, or seconds over `course`. */
+      score: number;
+      course?: number;
+      minutes?: number;
+      /** A new best — or the first go, which is one by definition. */
+      best: boolean;
+    };
+
+/** A finished workout, as it happened. Written once, by `finishWorkout`. */
+export type SessionLog = {
+  workoutId: string;
+  /** The workout's name at the time, so a later rename doesn't rewrite the past. */
+  name: string;
+  startedAt: number;
+  finishedAt: number;
+  entries: LogEntry[];
+};
+
 export type SessionState = {
   /**
    * Your workouts, in cycle order: top to bottom, then round again. Any number
@@ -226,6 +266,13 @@ export type SessionState = {
    * Mobility keeps no record: there is nothing to beat.
    */
   conditioning: Record<string, CardioRecord>;
+  /**
+   * Every finished workout, oldest first. `history` is where each lift
+   * stands now; this is how it got there. A session is a few hundred bytes,
+   * so years of them stay small. Saves from before the log existed simply
+   * start with an empty one.
+   */
+  log: SessionLog[];
   /** The workout currently in progress, or null on the Today screen. */
   active: {
     workoutId: string;
@@ -742,6 +789,7 @@ export const initialState: SessionState = {
   courses: {},
   history: {},
   conditioning: {},
+  log: [],
   active: null,
 };
 
@@ -1502,6 +1550,7 @@ export const finishWorkout = (
 
   const history = { ...state.history };
   const conditioning = { ...state.conditioning };
+  const entries: LogEntry[] = [];
 
   const commit = (
     exerciseId: string,
@@ -1515,9 +1564,26 @@ export const finishWorkout = (
     // The session's weight is what you actually lifted, so it carries over
     // either way — a skipped exercise simply keeps the number it opened with.
     const base = { ...prior, weight };
-    history[k] = performed
-      ? applyResult(base, scheme, logged, now)
-      : markSkipped(base);
+    const after = performed ? applyResult(base, scheme, logged, now) : markSkipped(base);
+    history[k] = after;
+
+    const ladder = ladderFor(scheme);
+    entries.push({
+      kind: "lift",
+      exerciseId,
+      scheme,
+      weight,
+      reps: logged,
+      target: ladder[Math.min(prior.rung, ladder.length - 1)],
+      // The same reading as the verdict on the workout screen.
+      outcome: !performed
+        ? "skipped"
+        : after.deloads > base.deloads
+          ? "drop"
+          : after.rung === base.rung && after.weight === base.weight
+            ? "miss"
+            : "hit",
+    });
   };
 
   for (const item of state.active?.items ?? []) {
@@ -1529,6 +1595,15 @@ export const finishWorkout = (
       if (item.skipped || score === null) continue;
       const k = itemKey(item);
       const prior = conditioning[k];
+      entries.push({
+        kind: "cardio",
+        exerciseId: item.exerciseId,
+        score,
+        ...(item.course !== undefined
+          ? { course: item.course }
+          : { minutes: item.minutes ?? CARDIO_MINUTES }),
+        best: !prior || isBetter(item, score, prior.best),
+      });
       conditioning[k] = {
         cardioId: item.exerciseId,
         ...(item.course !== undefined
@@ -1547,8 +1622,21 @@ export const finishWorkout = (
     const performed = touched && !item.skipped;
 
     // Speed work takes its weight from the heavy day and jumps have no weight
-    // at all, so neither has a ladder to climb or a number worth storing.
-    if (item.derive || byId(item.exerciseId)!.unloaded) continue;
+    // at all, so neither has a ladder to climb or a number worth storing —
+    // but the log still says you did them.
+    if (item.derive || byId(item.exerciseId)!.unloaded) {
+      if (performed) {
+        entries.push({
+          kind: "lift",
+          exerciseId: item.exerciseId,
+          scheme: item.scheme,
+          weight: item.weight,
+          reps: item.logged,
+          outcome: null,
+        });
+      }
+      continue;
+    }
 
     commit(item.exerciseId, item.scheme, item.weight, item.logged, performed);
 
@@ -1564,11 +1652,22 @@ export const finishWorkout = (
     }
   }
 
+  const active = state.active!;
+  const session: SessionLog = {
+    workoutId: active.workoutId,
+    name: workoutById(state, active.workoutId)?.name ?? "Workout",
+    // Very old saves carried no start time.
+    startedAt: typeof active.startedAt === "number" ? active.startedAt : now,
+    finishedAt: now,
+    entries,
+  };
+
   return {
     ...state,
     history,
     conditioning,
-    nextWorkout: following(state, state.active!.workoutId),
+    log: [...(state.log ?? []), session],
+    nextWorkout: following(state, active.workoutId),
     active: null,
   };
 };
