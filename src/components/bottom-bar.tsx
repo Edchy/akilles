@@ -56,7 +56,7 @@ export function BottomBar({ children }: PropsWithChildren) {
       }}
     >
       {GLASS ? (
-        <GlassView glassEffectStyle="regular" colorScheme="dark" style={capsule}>
+        <GlassView glassEffectStyle="regular" colorScheme="light" style={capsule}>
           {children}
         </GlassView>
       ) : (
@@ -120,8 +120,8 @@ export function Slot({
   );
 }
 
-/** Pressed feedback for a slot: a faint light, as glass does. */
-export const PRESSED = "rgba(255, 255, 255, 0.10)";
+/** Pressed feedback for a slot: a wash of the red. */
+export const PRESSED = colors.riseWash;
 
 /** One of the three tabs. The current one sits in a lozenge of rising blue. */
 export function TabButton({
@@ -147,7 +147,7 @@ export function TabButton({
         <Slot
           icon={icon}
           label={label}
-          tint={active ? colors.rise : colors.text}
+          tint={active ? colors.rise : colors.muted}
           fill={active ? colors.riseWash : pressed ? PRESSED : undefined}
         />
       )}

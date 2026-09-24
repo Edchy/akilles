@@ -91,7 +91,8 @@ export function HoldButton({
       <Slot
         icon={icon}
         label={label}
-        tint={colors.text}
+        // Near-black while held: it reads on the blush and on the red alike.
+        tint={holding ? colors.bend : colors.text}
         fill={holding ? PRESSED : undefined}
       >
         <Animated.View
@@ -101,7 +102,7 @@ export function HoldButton({
             right: 0,
             bottom: 0,
             height: fillHeight,
-            backgroundColor: colors.bend,
+            backgroundColor: colors.cloud,
           }}
         />
       </Slot>

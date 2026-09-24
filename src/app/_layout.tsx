@@ -55,7 +55,7 @@ export default function RootLayout() {
   return (
     <SafeAreaProvider>
       <SessionContext.Provider value={{ state, setState }}>
-        <StatusBar style="light" />
+        <StatusBar style="dark" />
         <BarActionsProvider>
           <Shell />
         </BarActionsProvider>
