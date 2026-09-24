@@ -6,6 +6,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Column, COLUMN } from "@/components/screen";
 import { colors, fonts, radii } from "@/constants/theme";
 import { byId } from "@/data/exercises";
+import { TODAY_LINES, fillLine, pickLine, type TodayMood } from "@/data/voice";
 import { decayLabel, type Decay } from "@/lib/progression";
 import { weightLabel } from "@/lib/warmup";
 import type { DecayOffer } from "@/store/session";
@@ -51,6 +52,22 @@ export default function TodayScreen() {
   };
 
   const count = workout.exercises.length;
+
+  // Akilles' remark for today. Seeded by the day and the workout, so it holds
+  // still while you look at it and changes tomorrow or when the workout does.
+  const mood: TodayMood = skipped
+    ? "skipped"
+    : idleDays === null
+      ? "first"
+      : idleDays >= 7
+        ? "back"
+        : idleDays === 0
+          ? "again"
+          : "regular";
+  const remark = fillLine(
+    pickLine(TODAY_LINES[mood], `${new Date().toDateString()}:${workout.id}:${skipped?.id ?? ""}`),
+    { days: idleDays ?? undefined, name: skipped?.name },
+  );
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.bg }}>
@@ -108,6 +125,17 @@ export default function TodayScreen() {
               {count} {count === 1 ? "exercise" : "exercises"}
             </Text>
           </View>
+          <Text
+            style={{
+              marginTop: 22,
+              color: colors.text,
+              fontSize: 19,
+              lineHeight: 25,
+              fontWeight: "700",
+            }}
+          >
+            {remark}
+          </Text>
         </View>
       </ScrollView>
 
