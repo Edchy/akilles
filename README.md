@@ -120,7 +120,7 @@ Three tabs, plus the workout itself which takes over the screen.
 | Tab | |
 |---|---|
 | **Today** | The next workout, large and nothing else. **Start**, or **Skip** to move the cycle on without recording anything (with an Undo for a mis-tap). |
-| **History** | This week's training days as seven circles, then two views. **Sessions**: every finished workout, newest first, with each set coloured hit or short. **Lifts**: every exercise by muscle group at its current weight, tap for its past sessions; cardio bests too. Backup & restore sits in a sheet at the bottom. |
+| **Progress** | This week's training days as seven circles, then three views. **Results**: total weight lifted (put in proportion — "3.8 small cars"), sessions this month, weeks in a row, share of lifts on target, lifts that got stronger, standing records, cardio that got faster or further. **Sessions**: every finished workout, newest first, with each set coloured hit or short. **Lifts**: every exercise by muscle group at its current weight, tap for its past sessions; cardio bests too. Backup & restore sits in a sheet at the bottom. |
 | **Plan** | Two segments: **Workouts** (your sessions, their order, and what fills each slot) and **Exercises** (the catalogue of every movement). |
 
 Both segments are accordions — one workout or one category open at a time, so

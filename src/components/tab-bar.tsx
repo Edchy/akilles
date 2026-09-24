@@ -7,7 +7,7 @@ type Tab = { href: string; label: string; icon: IconName };
 
 const TABS: Tab[] = [
   { href: "/", label: "Today", icon: "today" },
-  { href: "/history", label: "History", icon: "history" },
+  { href: "/history", label: "Progress", icon: "progress" },
   { href: "/plan", label: "Plan", icon: "plan" },
 ];
 

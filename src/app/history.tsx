@@ -5,6 +5,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Backup } from "@/components/backup";
 import { useBarSpace } from "@/components/bottom-bar";
 import { Icon } from "@/components/icon";
+import { Results } from "@/components/results";
 import { COLUMN } from "@/components/screen";
 import { Segments } from "@/components/segments";
 import { Sheet } from "@/components/sheet";
@@ -22,19 +23,20 @@ import {
   type SessionState,
 } from "@/store/session";
 
-type Segment = "sessions" | "lifts";
+type Segment = "results" | "sessions" | "lifts";
 
 /**
- * What you have done, two ways round. Sessions is the diary: each workout as
- * it happened, newest first. Lifts is the scoreboard: where every exercise
- * stands now, and how it got there. The week along the top answers the
- * question you open the tab with — have I been?
+ * Progress: what you have done, three ways round. Results is the good news —
+ * what the work has bought you. Sessions is the diary: each workout as it
+ * happened, newest first. Lifts is the scoreboard: where every exercise stands
+ * now, and how it got there. The week along the top answers the question you
+ * open the tab with — have I been?
  */
 export default function HistoryScreen() {
   const { state } = useSession();
   const insets = useSafeAreaInsets();
   const barSpace = useBarSpace();
-  const [segment, setSegment] = useState<Segment>("sessions");
+  const [segment, setSegment] = useState<Segment>("results");
   const [backup, setBackup] = useState(false);
 
   return (
@@ -59,13 +61,14 @@ export default function HistoryScreen() {
           letterSpacing: 0.3,
         }}
       >
-        History
+        Progress
       </Text>
 
       <Week state={state} />
 
       <Segments
         options={[
+          { value: "results", label: "Results" },
           { value: "sessions", label: "Sessions" },
           { value: "lifts", label: "Lifts" },
         ]}
@@ -73,7 +76,13 @@ export default function HistoryScreen() {
         onChange={setSegment}
       />
 
-      {segment === "sessions" ? <Sessions log={state.log} /> : <Lifts state={state} />}
+      {segment === "results" ? (
+        <Results state={state} />
+      ) : segment === "sessions" ? (
+        <Sessions log={state.log} />
+      ) : (
+        <Lifts state={state} />
+      )}
 
       {/* Backup sits behind one quiet row: it matters, but rarely. */}
       <Pressable

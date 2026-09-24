@@ -6,14 +6,14 @@ import { Text, type ColorValue } from "react-native";
  *
  * Drawn from SF Symbols so they sit on the same baseline and stroke as the
  * rest of iOS. The tabs say plainly what is behind them: Today the dumbbell
- * you pick up, History the clock turned back, Plan the clipboard. The workout
+ * you pick up, Progress the line going up, Plan the clipboard. The workout
  * bar borrows the media controls everyone already knows — previous and next
  * exercise either side of the ×. `glyph` is only a stand-in where SF Symbols
  * do not exist (the web preview); on the phone it is never drawn.
  */
 const ICONS = {
   today: { sf: "dumbbell", glyph: "◎" },
-  history: { sf: "clock.arrow.circlepath", glyph: "↺" },
+  progress: { sf: "chart.line.uptrend.xyaxis", glyph: "↗" },
   plan: { sf: "list.bullet.clipboard", glyph: "☰" },
   previous: { sf: "backward.end.fill", glyph: "⏮" },
   next: { sf: "forward.end.fill", glyph: "⏭" },
