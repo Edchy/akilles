@@ -1,11 +1,13 @@
 import { router } from "expo-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Pressable, ScrollView, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { Icon } from "@/components/icon";
 import { Column, COLUMN } from "@/components/screen";
 import { colors, fonts, radii } from "@/constants/theme";
 import { byId } from "@/data/exercises";
+import type { Workout } from "@/data/split";
 import { TODAY_LINES, fillLine, pickLine, type TodayMood } from "@/data/voice";
 import { decayLabel, type Decay } from "@/lib/progression";
 import { weightLabel } from "@/lib/warmup";
@@ -22,6 +24,7 @@ import {
   trainedToday,
   upNext,
   useSession,
+  workoutPreview,
 } from "@/store/session";
 
 
@@ -52,7 +55,10 @@ export default function TodayScreen() {
     setState((s) => skipWorkout(s));
   };
 
-  const count = workout.exercises.length;
+  // The exercise list, opened by tapping the summary. Closed again whenever
+  // the workout on screen changes.
+  const [showList, setShowList] = useState(false);
+  useEffect(() => setShowList(false), [workout.id]);
 
   // Akilles' remark for today. Seeded by the day and the workout, so it holds
   // still while you look at it and changes tomorrow or when the workout does.
@@ -75,13 +81,13 @@ export default function TodayScreen() {
       <ScrollView
         contentContainerStyle={{
           flexGrow: 1,
-          paddingTop: insets.top + 28,
+          paddingTop: insets.top + 56,
           paddingHorizontal: 22,
           width: "100%",
           maxWidth: COLUMN,
           alignSelf: "center",
           paddingBottom: 28,
-          gap: 26,
+          gap: 28,
         }}
       >
         {offers.length > 0 ? (
@@ -95,16 +101,16 @@ export default function TodayScreen() {
           <DecayBanner adjusted={adjusted} />
         ) : null}
 
-        {/* One thing on the screen: what you are about to do. The exercises
-            are for the workout itself to show, one at a time. */}
-        <View style={{ flex: 1, justifyContent: "center", gap: 10 }}>
+        {/* What you are about to do, at the top where the eye lands. The
+            exercises are one tap away for a look before you commit. */}
+        <View style={{ gap: 8 }}>
           <Text
             style={{
               color: colors.text,
               fontFamily: fonts.display,
-              fontSize: 68,
-              lineHeight: 70,
-              letterSpacing: -1.4,
+              fontSize: 64,
+              lineHeight: 68,
+              letterSpacing: -1.3,
             }}
           >
             {workout.name || "Untitled"}
@@ -114,46 +120,20 @@ export default function TodayScreen() {
               {workout.subtitle}
             </Text>
           ) : null}
-          {/* One clear drop per exercise: the session's rain, not yet fallen. */}
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 7, marginTop: 10 }}>
-            {Array.from({ length: count }, (_, i) => (
-              <View
-                key={i}
-                style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: colors.cloud }}
-              />
-            ))}
-            <Text style={{ color: colors.faint, fontSize: 15, marginLeft: 6 }}>
-              {count} {count === 1 ? "exercise" : "exercises"}
-            </Text>
-          </View>
-          <Text
-            style={{
-              marginTop: 22,
-              color: colors.text,
-              fontSize: 19,
-              lineHeight: 25,
-              fontWeight: "700",
-            }}
-          >
-            {remark}
-          </Text>
         </View>
+
+        <Preview workout={workout} open={showList} onToggle={() => setShowList((v) => !v)} />
       </ScrollView>
 
       <View style={{ paddingHorizontal: 22, paddingBottom: 16 }}>
-        <Column style={{ gap: 12 }}>
-          {skipped ? (
-            <View
-              style={{
-                flexDirection: "row",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: 6,
-              }}
-            >
-              <Text style={{ color: colors.faint, fontSize: 15 }}>
-                Skipped {skipped.name}.
-              </Text>
+        <Column style={{ gap: 14 }}>
+          {/* Akilles has a word, out of the way of the workout itself. After a
+              skip, the remark names it and carries the Undo. */}
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 10, minHeight: 44 }}>
+            <Text style={{ flex: 1, color: colors.muted, fontSize: 16, lineHeight: 22, fontWeight: "600" }}>
+              {remark}
+            </Text>
+            {skipped ? (
               <Pressable
                 accessibilityRole="button"
                 accessibilityLabel={`Undo skipping ${skipped.name}`}
@@ -168,12 +148,10 @@ export default function TodayScreen() {
                   opacity: pressed ? 0.5 : 1,
                 })}
               >
-                <Text style={{ color: colors.rise, fontSize: 15, fontWeight: "800" }}>
-                  Undo
-                </Text>
+                <Text style={{ color: colors.rise, fontSize: 16, fontWeight: "800" }}>Undo</Text>
               </Pressable>
-            </View>
-          ) : null}
+            ) : null}
+          </View>
 
           <View style={{ flexDirection: "row", gap: 12 }}>
             {canSkip ? <BigButton label="Skip" onPress={skip} /> : null}
@@ -182,6 +160,104 @@ export default function TodayScreen() {
         </Column>
       </View>
     </View>
+  );
+}
+
+/**
+ * The workout at a glance, closed: how many lifts and what brackets them.
+ * Open, every lift with the sets, reps and weight you would get today.
+ */
+function Preview({
+  workout,
+  open,
+  onToggle,
+}: {
+  workout: Workout;
+  open: boolean;
+  onToggle: () => void;
+}) {
+  const { state } = useSession();
+  const { before, lifts, after } = workoutPreview(state, workout);
+  const n = lifts.length;
+
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityState={{ expanded: open }}
+      accessibilityLabel={`${n} exercises. ${open ? "Hide" : "Show"} the list.`}
+      onPress={onToggle}
+      style={({ pressed }) => ({
+        borderRadius: radii.card,
+        borderCurve: "continuous",
+        backgroundColor: colors.surface,
+        paddingHorizontal: 20,
+        paddingVertical: 16,
+        opacity: pressed ? 0.85 : 1,
+      })}
+    >
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 10, minHeight: 32 }}>
+        <Text style={{ flex: 1, color: colors.text, fontSize: 18, fontWeight: "700" }}>
+          {n === 0 ? "No lifts" : `${n} ${n === 1 ? "exercise" : "exercises"}`}
+        </Text>
+        <Icon name={open ? "collapse" : "expand"} size={15} color={colors.muted} weight="semibold" />
+      </View>
+      {before ? (
+        <Text style={{ color: colors.faint, fontSize: 14, lineHeight: 20, marginTop: 2 }}>
+          {before} first{after ? `. After: ${after}.` : "."}
+        </Text>
+      ) : null}
+
+      {open && n > 0 ? (
+        <View style={{ marginTop: 10 }}>
+          {lifts.map((l, i) => (
+            <View
+              key={l.id}
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                gap: 12,
+                minHeight: 54,
+                borderTopWidth: 1,
+                borderTopColor: colors.line,
+              }}
+            >
+              <Text
+                style={{
+                  width: 18,
+                  color: colors.faint,
+                  fontSize: 13,
+                  fontWeight: "800",
+                  fontVariant: ["tabular-nums"],
+                }}
+              >
+                {i + 1}
+              </Text>
+              <Text style={{ flex: 1, color: colors.text, fontSize: 16, fontWeight: "600" }}>
+                {l.name}
+              </Text>
+              <View style={{ alignItems: "flex-end" }}>
+                <Text
+                  style={{
+                    color: colors.muted,
+                    fontSize: 14,
+                    fontWeight: "700",
+                    fontVariant: ["tabular-nums"],
+                  }}
+                >
+                  {l.sets} × {l.reps}
+                  {l.timed ? " s" : ""}
+                </Text>
+                {l.weight ? (
+                  <Text style={{ color: colors.faint, fontSize: 13, fontVariant: ["tabular-nums"] }}>
+                    {l.weight}
+                  </Text>
+                ) : null}
+              </View>
+            </View>
+          ))}
+        </View>
+      ) : null}
+    </Pressable>
   );
 }
 

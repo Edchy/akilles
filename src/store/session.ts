@@ -29,6 +29,7 @@ import {
   TIME_STEP,
   cardioById,
   cardioPool,
+  courseLabel,
   hiddenCardio,
   hiddenMobility,
   leanHiddenConditioning,
@@ -433,6 +434,51 @@ export const chosen = (
 
 export const workoutById = (state: SessionState, id: string): Workout | undefined =>
   state.workouts.find((w) => w.id === id);
+
+/**
+ * What a workout will ask of you if you start it now: each lift with the
+ * sets, reps and weight it would prescribe, plus the cardio and mobility
+ * either side. For the Today screen, before anything is built.
+ */
+export const workoutPreview = (
+  state: SessionState,
+  workout: Workout,
+): {
+  before: string;
+  lifts: { id: string; name: string; sets: number; reps: number; weight: string | null; timed?: boolean }[];
+  after: string;
+} => {
+  const lifts = workout.exercises.map((entry) => {
+    const ex = byId(chosen(state, workout.id, entry))!;
+    const st = state.history[key(ex.id, entry.scheme)] ?? freshState(ex);
+    const p = prescribe(st, entry.scheme, setsFor(entry));
+    return {
+      id: entry.id,
+      name: ex.name,
+      sets: p.sets,
+      reps: p.reps,
+      // Speed work takes its weight from another lift on the day; jumps have none.
+      weight: entry.derive || ex.unloaded ? null : weightLabel(ex, st.weight),
+      timed: ex.timed,
+    };
+  });
+  const block = (where: "open" | "close") => {
+    const item = cardioBlock(state, where);
+    const machine = cardioById(item.exerciseId);
+    if (!machine) return "";
+    return item.course !== undefined
+      ? `${machine.name} ${courseLabel(machine, item.course)}`
+      : `${machine.name} ${item.minutes} min`;
+  };
+  const routine = mobilityById(mobilityBlock(state).exerciseId);
+  return {
+    before: block("open"),
+    lifts,
+    after: [block("close"), routine ? `${routine.name.toLowerCase()} mobility` : ""]
+      .filter(Boolean)
+      .join(", then "),
+  };
+};
 
 /** The workout Start will run. Falls back to the first if the id has gone. */
 export const upNext = (state: SessionState): Workout =>
