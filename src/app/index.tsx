@@ -19,6 +19,7 @@ import {
   pendingDecays,
   setNextWorkout,
   skipWorkout,
+  trainedToday,
   upNext,
   useSession,
 } from "@/store/session";
@@ -61,7 +62,7 @@ export default function TodayScreen() {
       ? "first"
       : idleDays >= 7
         ? "back"
-        : idleDays === 0
+        : trainedToday(state)
           ? "again"
           : "regular";
   const remark = fillLine(

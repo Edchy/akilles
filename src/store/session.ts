@@ -738,6 +738,18 @@ export const decayOffers = (
  * headline — "3 weeks since your last workout" is the fact you recognise,
  * not a per-exercise breakdown.
  */
+/**
+ * Whether anything was trained on today's calendar date, in the phone's own
+ * timezone. Not `daysSinceTrained(...) === 0`: that counts whole 24-hour
+ * spans, so last night's session would still read as "today" this morning.
+ */
+export const trainedToday = (state: SessionState, now: number = Date.now()): boolean => {
+  const today = new Date(now).toDateString();
+  return Object.values(state.history).some(
+    (r) => typeof r.lastTrainedAt === "number" && new Date(r.lastTrainedAt).toDateString() === today,
+  );
+};
+
 export const daysSinceTrained = (
   state: SessionState,
   now: number = Date.now(),
