@@ -443,6 +443,13 @@ export const upNext = (state: SessionState): Workout =>
  * that no longer exists — deleted mid-session — hands over to whatever is
  * already queued as next, which the delete moved on for it.
  */
+/** The workout that comes after this session's, once it is finished. */
+export const nextAfterSession = (state: SessionState): Workout | undefined => {
+  if (!state.active) return undefined;
+  const id = following(state, state.active.workoutId);
+  return state.workouts.find((w) => w.id === id);
+};
+
 const following = (state: SessionState, id: string): string => {
   const i = state.workouts.findIndex((w) => w.id === id);
   if (i === -1) return upNext(state).id;
@@ -1028,7 +1035,14 @@ export const nextTime = (
   state: SessionState,
 ): { outcome: Outcome; fact: string } | null => {
   const item = state.active?.items[state.active.cursor];
-  if (!item || isConditioning(item) || item.derive) return null;
+  return item ? verdictFor(state, item) : null;
+};
+
+const verdictFor = (
+  state: SessionState,
+  item: Item,
+): { outcome: Outcome; fact: string } | null => {
+  if (item.skipped || isConditioning(item) || item.derive) return null;
   const exercise = byId(item.exerciseId)!;
   if (exercise.unloaded || item.logged.some((r) => r === null)) return null;
 
@@ -1053,6 +1067,25 @@ export const nextTime = (
         ? `Up to ${weightLabel(exercise, after.weight)} next time.`
         : `${ladder[after.rung]} reps next time.`,
   };
+};
+
+/**
+ * How the whole session went, lift by lift, for the finished screen. Only
+ * lifts that progress are counted; cardio, mobility and speed work are not
+ * scored. `unfinished` is lifts skipped or left with sets empty.
+ */
+export const sessionTally = (
+  state: SessionState,
+): { hit: number; miss: number; drop: number; unfinished: number; lifts: number } => {
+  const tally = { hit: 0, miss: 0, drop: 0, unfinished: 0, lifts: 0 };
+  for (const item of state.active?.items ?? []) {
+    if (isConditioning(item) || item.derive || byId(item.exerciseId)?.unloaded) continue;
+    tally.lifts++;
+    const v = verdictFor(state, item);
+    if (v) tally[v.outcome]++;
+    else tally.unfinished++;
+  }
+  return tally;
 };
 
 /**

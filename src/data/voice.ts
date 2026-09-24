@@ -107,6 +107,49 @@ export type TodayMood = keyof typeof TODAY_LINES;
 export const fillLine = (line: string, vars: { days?: number; name?: string }): string =>
   line.replace("{days}", String(vars.days ?? "")).replace("{name}", vars.name ?? "");
 
+/** The finished screen: how the whole session went. */
+export const FINISHED_LINES = {
+  /** Every lift on target. */
+  perfect: [
+    "Flawless. Don't let it go to your head.",
+    "Every lift, every rep. Suspicious.",
+    "Clean sweep. The weights are scared now.",
+    "Perfect. Next time won't be.",
+    "Achilles, minus the heel.",
+    "Nothing missed. Everything goes up. Enjoy that.",
+  ],
+  /** Some hits, some misses. */
+  mixed: [
+    "Mostly good. Mostly.",
+    "Some wins, some lessons.",
+    "Not bad. Not great. Done.",
+    "The bar took a few rounds. You took more.",
+    "Good enough to come back.",
+    "A draw. Rematch next time.",
+  ],
+  /** More misses than hits, or something dropped 10%. */
+  rough: [
+    "Rough one. You still showed up.",
+    "The weights won today. Rematch booked.",
+    "Survived. That counts.",
+    "Ugly, but done.",
+    "Bad days build good ones. Allegedly.",
+    "Humbling. Come back anyway.",
+  ],
+  /** Left with lifts skipped or unfinished. */
+  partial: [
+    "Half a workout is still a workout.",
+    "Cut it short. Fair.",
+    "Left early. The rest will wait.",
+    "Some is more than none.",
+    "Short and not sweet. Still counts.",
+  ],
+  /** Nothing to score — only cardio, mobility or speed work. */
+  done: ["Done. Go home.", "That's it. Shower.", "Finished. Go eat."],
+} as const;
+
+export type FinishedMood = keyof typeof FINISHED_LINES;
+
 /**
  * One line from a list, chosen by a seed rather than at random, so the same
  * moment always says the same thing — going Back and forward again does not

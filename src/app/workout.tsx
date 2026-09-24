@@ -12,7 +12,7 @@ import { Icon, type IconName } from "@/components/icon";
 import { Sheet } from "@/components/sheet";
 import { colors, fonts, radii } from "@/constants/theme";
 import { byId } from "@/data/exercises";
-import { OUTCOME_LINES, pickLine } from "@/data/voice";
+import { FINISHED_LINES, OUTCOME_LINES, pickLine, type FinishedMood } from "@/data/voice";
 import {
   courseLabel,
   distanceLabel,
@@ -51,7 +51,9 @@ import {
   isTimed,
   lastScore,
   nudgeScore,
+  nextAfterSession,
   nextTime,
+  sessionTally,
   nudgeWeight,
   partnerPrescription,
   previousExercise,
@@ -1577,8 +1579,29 @@ function Action({
 }
 
 function Finished({ hasSession }: { hasSession: boolean }) {
-  const { setState } = useSession();
+  const { state, setState } = useSession();
   const insets = useSafeAreaInsets();
+
+  // How it went, before the session is committed and gone.
+  const t = sessionTally(state);
+  const scored = t.hit + t.miss + t.drop;
+  const mood: FinishedMood =
+    t.lifts === 0
+      ? "done"
+      : t.unfinished * 2 >= t.lifts
+        ? "partial"
+        : t.drop > 0 || t.miss > t.hit
+          ? "rough"
+          : t.miss > 0 || t.unfinished > 0
+            ? "mixed"
+            : "perfect";
+  const quip = pickLine(FINISHED_LINES[mood], String(state.active?.startedAt ?? ""));
+  const nextUp = nextAfterSession(state);
+  const facts = [
+    scored > 0 ? `${t.hit} of ${scored} ${scored === 1 ? "lift" : "lifts"} on target.` : null,
+    t.drop > 0 ? `${t.drop} going 10% lighter.` : null,
+    nextUp ? `Next up: ${nextUp.name || "Untitled"}.` : null,
+  ].filter(Boolean);
 
   const close = () => {
     if (hasSession) setState((s) => finishWorkout(s));
@@ -1609,9 +1632,23 @@ function Finished({ hasSession }: { hasSession: boolean }) {
         >
           Done.
         </Text>
-        <Text style={{ color: colors.muted, fontSize: 16, lineHeight: 24 }}>
-          Next time picks up at the next workout in the cycle.
-        </Text>
+        {hasSession ? (
+          <>
+            <Text
+              style={{
+                color: mood === "perfect" ? colors.rise : colors.text,
+                fontSize: 21,
+                lineHeight: 28,
+                fontWeight: "800",
+              }}
+            >
+              {quip}
+            </Text>
+            <Text style={{ color: colors.muted, fontSize: 16, lineHeight: 24 }}>
+              {facts.join(" ")}
+            </Text>
+          </>
+        ) : null}
       </Column>
       <Column>
         <Action label="Close" fill onPress={close} />
