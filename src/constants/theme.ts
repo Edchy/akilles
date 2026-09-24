@@ -36,15 +36,20 @@ export const colors = {
 };
 
 /**
- * Faces. Quicksand is the garden's voice — light, rounded, floating — and
- * carries the display moments: exercise and workout names, the weight, the
- * score. Sentences and labels stay in the system face, which reads better
- * small. Custom faces ignore `fontWeight` on iOS, so the weight is in the name.
+ * Faces. Barlow Condensed is the gym's own lettering — the stencilled plates
+ * and machine placards — and carries the loud moments: names in capitals,
+ * the weight, the circles, Akilles' remarks. Being narrow, long exercise
+ * names fit on one line at a size you can read at arm's length. Sentences
+ * and labels stay in the system face, which reads better small. Custom faces
+ * ignore `fontWeight` on iOS, so the weight is in the name.
  */
 export const fonts = {
-  display: "Quicksand_600SemiBold",
-  displayBold: "Quicksand_700Bold",
-  displayLight: "Quicksand_500Medium",
+  /** Names and headings, set in capitals. */
+  display: "BarlowCondensed_800ExtraBold",
+  /** Numbers: the weight, the circles, scores. */
+  displayBold: "BarlowCondensed_800ExtraBold",
+  /** Akilles talking: a quip, in sentence case. */
+  voice: "BarlowCondensed_700Bold",
 };
 
 export const radii = {

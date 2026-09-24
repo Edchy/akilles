@@ -108,9 +108,10 @@ export default function TodayScreen() {
             style={{
               color: colors.text,
               fontFamily: fonts.display,
-              fontSize: 64,
-              lineHeight: 68,
-              letterSpacing: -1.3,
+              textTransform: "uppercase",
+              fontSize: 77,
+              lineHeight: 76,
+              letterSpacing: 0.3,
             }}
           >
             {workout.name || "Untitled"}

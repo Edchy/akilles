@@ -1,9 +1,8 @@
 import {
-  Quicksand_500Medium,
-  Quicksand_600SemiBold,
-  Quicksand_700Bold,
+  BarlowCondensed_700Bold,
+  BarlowCondensed_800ExtraBold,
   useFonts,
-} from "@expo-google-fonts/quicksand";
+} from "@expo-google-fonts/barlow-condensed";
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { View } from "react-native";
@@ -41,9 +40,8 @@ export default function RootLayout() {
   // below. A font that fails to load falls back to the system face rather
   // than holding the app on a blank screen.
   const [fontsLoaded, fontError] = useFonts({
-    Quicksand_500Medium,
-    Quicksand_600SemiBold,
-    Quicksand_700Bold,
+    BarlowCondensed_700Bold,
+    BarlowCondensed_800ExtraBold,
   });
 
   // Nothing renders until the saved training is read back, so no screen can

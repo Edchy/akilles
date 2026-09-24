@@ -81,7 +81,7 @@ import {
  */
 const FIXED = {
   /** Two lines of the exercise name; longer names shrink to fit. */
-  name: 68,
+  name: 80,
   /** The "seconds, not reps" line, reserved whether or not it shows. */
   note: 20,
   /** Weight row: the 44pt steppers are the tallest of its forms. */
@@ -220,9 +220,10 @@ export default function WorkoutScreen() {
                 flex: 1,
                 color: colors.text,
                 fontFamily: fonts.display,
-                fontSize: 30,
-                lineHeight: 34,
-                letterSpacing: -0.6,
+                textTransform: "uppercase",
+                fontSize: 36,
+                lineHeight: 38,
+                letterSpacing: 0.3,
               }}
             >
               {p.exercise.name}
@@ -277,8 +278,8 @@ export default function WorkoutScreen() {
               style={{
                 color: colors.rise,
                 fontFamily: fonts.displayBold,
-                fontSize: 40,
-                letterSpacing: -0.8,
+                fontSize: 48,
+                letterSpacing: 0,
                 fontVariant: ["tabular-nums"],
               }}
             >
@@ -372,8 +373,8 @@ export default function WorkoutScreen() {
                     style={{
                       textAlign: "center",
                       color: verdict.outcome === "hit" ? colors.rise : colors.bend,
-                      fontSize: 17,
-                      fontWeight: "800",
+                      fontFamily: fonts.voice,
+                      fontSize: 22,
                     }}
                   >
                     {quip}
@@ -517,9 +518,10 @@ function Conditioning({ item }: { item: Item }) {
                 flex: 1,
                 color: colors.text,
                 fontFamily: fonts.display,
-                fontSize: 40,
-                lineHeight: 44,
-                letterSpacing: -0.8,
+                textTransform: "uppercase",
+                fontSize: 48,
+                lineHeight: 49,
+                letterSpacing: 0.3,
               }}
             >
               {cardio?.name ?? routine?.name ?? ""}
@@ -736,8 +738,8 @@ function CardioBody({
               width: timed ? 214 : 160,
               color: colors.rise,
               fontFamily: fonts.displayBold,
-              fontSize: 62,
-              letterSpacing: -1.2,
+              fontSize: 74,
+              letterSpacing: 0,
               textAlign: timed ? "center" : "right",
               fontVariant: ["tabular-nums"],
             }}
@@ -1061,9 +1063,10 @@ function Warmup({
               style={{
                 color: colors.text,
                 fontFamily: fonts.display,
-                fontSize: 38,
-                lineHeight: 42,
-                letterSpacing: -0.8,
+                textTransform: "uppercase",
+                fontSize: 46,
+                lineHeight: 47,
+                letterSpacing: 0.3,
               }}
             >
               {name}
@@ -1095,8 +1098,8 @@ function Warmup({
                     flex: 1,
                     color: done[i] ? colors.faint : colors.text,
                     fontFamily: fonts.displayBold,
-                    fontSize: 30,
-                    letterSpacing: -0.6,
+                    fontSize: 36,
+                    letterSpacing: 0,
                     fontVariant: ["tabular-nums"],
                     textDecorationLine: done[i] ? "line-through" : "none",
                   }}
@@ -1229,8 +1232,8 @@ function Sets({
             <Text
               style={{
                 color: filled ? colors.ink : colors.faint,
-                fontSize: compact ? 19 : 30,
-                fontWeight: "800",
+                fontFamily: fonts.displayBold,
+                fontSize: compact ? 24 : 38,
                 fontVariant: ["tabular-nums"],
               }}
             >
@@ -1297,8 +1300,8 @@ function WeightControl({
                 textAlign: "center",
                 color: colors.rise,
                 fontFamily: fonts.displayBold,
-                fontSize: 26,
-                letterSpacing: -0.7,
+                fontSize: 31,
+                letterSpacing: 0,
               }}
             >
               Bodyweight
@@ -1318,8 +1321,8 @@ function WeightControl({
             width: 104,
             color: colors.rise,
             fontFamily: fonts.displayBold,
-            fontSize: 40,
-            letterSpacing: -0.8,
+            fontSize: 48,
+            letterSpacing: 0,
             textAlign: "right",
             fontVariant: ["tabular-nums"],
           }}
@@ -1625,9 +1628,10 @@ function Finished({ hasSession }: { hasSession: boolean }) {
           style={{
             color: colors.text,
             fontFamily: fonts.display,
-            fontSize: 46,
-            lineHeight: 49,
-            letterSpacing: -0.9,
+            textTransform: "uppercase",
+            fontSize: 55,
+            lineHeight: 55,
+            letterSpacing: 0.3,
           }}
         >
           Done.
@@ -1637,9 +1641,9 @@ function Finished({ hasSession }: { hasSession: boolean }) {
             <Text
               style={{
                 color: mood === "perfect" ? colors.rise : colors.text,
-                fontSize: 21,
-                lineHeight: 28,
-                fontWeight: "800",
+                fontFamily: fonts.voice,
+                fontSize: 27,
+                lineHeight: 31,
               }}
             >
               {quip}

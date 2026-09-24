@@ -41,8 +41,9 @@ export default function HistoryScreen() {
         style={{
           color: colors.text,
           fontFamily: fonts.display,
-          fontSize: 40,
-          letterSpacing: -0.8,
+          textTransform: "uppercase",
+          fontSize: 48,
+          letterSpacing: 0.3,
         }}
       >
         History
