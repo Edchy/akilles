@@ -8,9 +8,8 @@ import { ACTION_TYPE, BAR_TYPE, colors } from "@/constants/theme";
 const CIRCLE = ACTION_TYPE.icon;
 
 /**
- * Press and hold to confirm. The whole button fills from the bottom up while
- * held — not just the circle, which the thumb doing the holding covers — and
- * drains back if you let go early. Used for leaving a workout, which ends the
+ * Press and hold to confirm. The circle fills from the bottom up while held,
+ * and drains back if you let go early. Used for leaving a workout, which ends the
  * session: too consequential for a stray tap, not worth a dialog.
  */
 export function HoldButton({
@@ -76,11 +75,6 @@ export function HoldButton({
     inputRange: [0, 1],
     outputRange: [0, CIRCLE],
   });
-  // The same progress across the whole button, visible either side of a thumb.
-  const areaHeight = progress.interpolate({
-    inputRange: [0, 1],
-    outputRange: ["0%", "100%"],
-  });
 
   return (
     <Pressable
@@ -90,18 +84,6 @@ export function HoldButton({
       onPressOut={cancel}
       style={{ flex: 1, alignItems: "center", justifyContent: "center", gap: 2 }}
     >
-      <Animated.View
-        pointerEvents="none"
-        style={{
-          position: "absolute",
-          left: 0,
-          right: 0,
-          bottom: 0,
-          height: areaHeight,
-          backgroundColor: colors.bend,
-          opacity: 0.3,
-        }}
-      />
       {/* Stands in for the tab bar's drop, so this label lines up with its neighbours'. */}
       <View style={{ height: 8 }} />
       <View
