@@ -8,6 +8,7 @@ import { useBarActions } from "@/components/bar-actions";
 import { BarButton } from "@/components/bottom-bar";
 import { HoldButton } from "@/components/hold-button";
 import { Icon, type IconName } from "@/components/icon";
+import { Sheet } from "@/components/sheet";
 import { colors, fonts, radii } from "@/constants/theme";
 import { byId } from "@/data/exercises";
 import {
@@ -244,7 +245,7 @@ export default function WorkoutScreen() {
           </Text>
         </View>
 
-        {swapping ? (
+        <Sheet visible={swapping} title="Swap for today" onClose={() => setSwapping(false)}>
           <SwapList
             options={pool}
             taken={currentTaken(state)}
@@ -254,7 +255,7 @@ export default function WorkoutScreen() {
               setState((s) => swapForSession(s, id));
             }}
           />
-        ) : null}
+        </Sheet>
 
         <View style={{ height: FIXED.weight, justifyContent: "center" }}>
         {p.exercise.unloaded ? (
@@ -315,7 +316,7 @@ export default function WorkoutScreen() {
             onTap={(i) => setState((s) => tapSet(s, i, "partner"))}
             onRemove={() => setState((s) => removeSuperset(s))}
           />
-        ) : options.length > 0 && !picking ? (
+        ) : options.length > 0 ? (
           // Offered, not pushed: a quiet link under the circles.
           <Pressable
             accessibilityRole="button"
@@ -338,16 +339,15 @@ export default function WorkoutScreen() {
           </Pressable>
         ) : null}
 
-        {picking ? (
+        <Sheet visible={picking} title="Superset with" onClose={() => setPicking(false)}>
           <SupersetPicker
             options={options}
             onPick={(id) => {
               setPicking(false);
               setState((s) => addSuperset(s, id));
             }}
-            onCancel={() => setPicking(false)}
           />
-        ) : null}
+        </Sheet>
       </ScrollView>
 
       {/* The action: one row, only when there is something to answer. */}
@@ -539,7 +539,11 @@ function Conditioning({ item }: { item: Item }) {
           ) : null}
         </View>
 
-        {swapping ? (
+        <Sheet
+          visible={swapping}
+          title={isCardio(item) ? "Choose a machine" : "Choose a routine"}
+          onClose={() => setSwapping(false)}
+        >
           <ConditioningSwap
             options={pool}
             current={item.exerciseId}
@@ -548,7 +552,7 @@ function Conditioning({ item }: { item: Item }) {
               setState((s) => chooseConditioning(s, item.slot, id));
             }}
           />
-        ) : null}
+        </Sheet>
 
         {cardio && isCardio(item) ? (
           <CardioBody
@@ -1468,11 +1472,9 @@ function Partner({
 function SupersetPicker({
   options,
   onPick,
-  onCancel,
 }: {
   options: { id: string; name: string }[];
   onPick: (id: string) => void;
-  onCancel: () => void;
 }) {
   return (
     <View
@@ -1500,19 +1502,6 @@ function SupersetPicker({
           </Text>
         </Pressable>
       ))}
-      <Pressable
-        onPress={onCancel}
-        style={({ pressed }) => ({
-          justifyContent: "center",
-          minHeight: 48,
-          paddingHorizontal: 14,
-          opacity: pressed ? 0.55 : 1,
-        })}
-      >
-        <Text style={{ color: colors.faint, fontSize: 15, fontWeight: "600" }}>
-          Cancel
-        </Text>
-      </Pressable>
     </View>
   );
 }
