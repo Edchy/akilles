@@ -103,7 +103,7 @@ export default function TodayScreen() {
 
         {/* What you are about to do, at the top where the eye lands. The
             exercises are one tap away for a look before you commit. */}
-        <View style={{ gap: 8 }}>
+        <View>
           <Text
             style={{
               color: colors.text,
@@ -117,7 +117,16 @@ export default function TodayScreen() {
             {workout.name || "Untitled"}
           </Text>
           {workout.subtitle ? (
-            <Text style={{ color: colors.text, fontSize: 26, lineHeight: 32, fontWeight: "600" }}>
+            <Text
+              style={{
+                color: colors.text,
+                fontSize: 26,
+                lineHeight: 30,
+                fontWeight: "600",
+                textTransform: "uppercase",
+                letterSpacing: 0.5,
+              }}
+            >
               {workout.subtitle}
             </Text>
           ) : null}
