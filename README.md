@@ -79,6 +79,13 @@ card, opens a sheet: the picture, three steps, and the one mistake to watch
 for. Guides live in `src/data/guides.ts`; an exercise you added yourself shows
 its own cue instead.
 
+**Photos** come from [free-exercise-db](https://github.com/yuhonas/free-exercise-db),
+public domain under the Unlicense, matched by hand in `src/data/photos.ts`. A
+lift's start and finish frames flip back and forth like a short loop. Where
+their library has no true match — pigeon, 90/90, frog, lizard, doorway, bar
+hang, sleeper, thread the needle, wall angel, cobra, the thoracic opener, the
+ski-erg, the assault bike and the rotary torso machine — a placeholder shows.
+
 **Logging a set** — one circle per set. Tap it and it fills at the target reps;
 tap again and it counts down if you got fewer; tap past 1 and it clears.
 Hold a circle to put it straight back to the target — a stray extra tap on a
