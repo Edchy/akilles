@@ -38,7 +38,7 @@ The app decides and the user performs. It is not a logbook you have to fill in a
 ## Brand Commitments
 
 - The name is **Akilles** (the repository folder is "achilles").
-- The voice is plain, calm and direct. It's written in full sentences, with no hype, exclamation marks or guilt. Encouragement is said only when it's true ("Furthest yet.").
+- Two voices. **Instructions and facts** are plain and direct: what to do, what happens next time, in full sentences. **Akilles itself** talks back: cheeky, blunt, a bit harsh — about the lifting, never about the person. It teases the bar, the reps and the heel; it doesn't call anyone weak or guilt them for skipping. A quip is always paired with the plain fact, so nothing important lives only in the joke. Lines live in `src/data/voice.ts`.
 - The product promise: "Open the app. Do the next useful thing. Leave before you hate it."
 
 ## Evidence on Hand

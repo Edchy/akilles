@@ -12,6 +12,7 @@ import { Icon, type IconName } from "@/components/icon";
 import { Sheet } from "@/components/sheet";
 import { colors, fonts, radii } from "@/constants/theme";
 import { byId } from "@/data/exercises";
+import { OUTCOME_LINES, pickLine } from "@/data/voice";
 import {
   courseLabel,
   distanceLabel,
@@ -50,8 +51,7 @@ import {
   isTimed,
   lastScore,
   nudgeScore,
-  madeTarget,
-  missesBefore,
+  nextTime,
   nudgeWeight,
   partnerPrescription,
   previousExercise,
@@ -88,8 +88,8 @@ const FIXED = {
   circle: 96,
   /** Up to three lines of "last time". */
   why: 57,
-  /** The tallest answer: a one-line note above a 60pt button. */
-  action: 89,
+  /** The tallest answer: a two-line quip and its fact above a 60pt button. */
+  action: 140,
 } as const;
 
 export default function WorkoutScreen() {
@@ -163,10 +163,7 @@ export default function WorkoutScreen() {
   const options = supersetOptions(state);
 
   const logged = allSetsLogged(state);
-  const made = madeTarget(state);
   const warmup = currentWarmup(state);
-  // Speed work and jumps have no ladder, so they are never rated.
-  const noProgression = !!item.derive || !!p.exercise.unloaded;
   // Swapping after the first set is logged would throw that work away.
   const pool = currentPool(state);
   const canSwap = pool.length > 1 && !item.logged.some((r) => r !== null);
@@ -186,14 +183,12 @@ export default function WorkoutScreen() {
     setPicking(false);
     setState((s) => completeExercise(s));
   };
-  // Said before you move on, so what happens next time is never a surprise.
-  const outcome = noProgression
-    ? null
-    : made
-      ? "On target — a step up next time."
-      : missesBefore(state) >= 1
-        ? "Short again — 10% lighter next time."
-        : "Short of target — same again next time.";
+  // Said before you move on, so what happens next time is never a surprise:
+  // a line with some attitude, and the plain fact under it.
+  const verdict = nextTime(state);
+  const quip = verdict
+    ? pickLine(OUTCOME_LINES[verdict.outcome], `${active.startedAt}:${active.cursor}`)
+    : null;
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.bg }}>
@@ -368,11 +363,23 @@ export default function WorkoutScreen() {
       <View style={{ paddingHorizontal: 22, paddingBottom: 14 }}>
         <Column style={{ height: FIXED.action, justifyContent: "flex-end" }}>
           {logged ? (
-            <View style={{ gap: 10 }}>
-              {outcome ? (
-                <Text style={{ textAlign: "center", color: colors.faint, fontSize: 13 }}>
-                  {outcome}
-                </Text>
+            <View style={{ gap: 12 }}>
+              {verdict && quip ? (
+                <View style={{ alignItems: "center", gap: 3 }}>
+                  <Text
+                    style={{
+                      textAlign: "center",
+                      color: verdict.outcome === "hit" ? colors.rise : colors.bend,
+                      fontSize: 17,
+                      fontWeight: "800",
+                    }}
+                  >
+                    {quip}
+                  </Text>
+                  <Text style={{ textAlign: "center", color: colors.faint, fontSize: 13 }}>
+                    {verdict.fact}
+                  </Text>
+                </View>
               ) : null}
               <Action label="Next exercise" fill onPress={next} />
             </View>

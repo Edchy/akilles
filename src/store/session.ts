@@ -42,13 +42,15 @@ import {
   DEFAULT_WORKOUTS,
   SHORT_WORKOUTS,
   defaultScheme,
+  ladderFor,
   newId,
   setsFor,
   type Entry,
   type Scheme,
   type Workout,
 } from "@/data/split";
-import { warmupFor, type WarmupSet } from "@/lib/warmup";
+import { warmupFor, weightLabel, type WarmupSet } from "@/lib/warmup";
+import type { Outcome } from "@/data/voice";
 import {
   applyDecay,
   applyResult,
@@ -1005,13 +1007,40 @@ export const madeTarget = (state: SessionState): boolean => {
 };
 
 /**
- * How many sessions in a row this lift has finished short of target, before
- * today. With today's miss, a second one in a row drops the weight 10%.
+ * What today's logged sets mean for next time, worked out by running the
+ * real progression on them — so the line on screen can never disagree with
+ * what actually happens. Null until every set is logged, and for work that
+ * does not progress.
  */
-export const missesBefore = (state: SessionState): number => {
+export const nextTime = (
+  state: SessionState,
+): { outcome: Outcome; fact: string } | null => {
   const item = state.active?.items[state.active.cursor];
-  if (!item) return 0;
-  return state.history[key(item.exerciseId, item.scheme)]?.downStreak ?? 0;
+  if (!item || isConditioning(item) || item.derive) return null;
+  const exercise = byId(item.exerciseId)!;
+  if (exercise.unloaded || item.logged.some((r) => r === null)) return null;
+
+  const st = state.history[key(item.exerciseId, item.scheme)] ?? freshState(exercise);
+  const before = { ...st, weight: item.weight };
+  const after = applyResult(before, item.scheme, item.logged);
+  const ladder = ladderFor(item.scheme);
+
+  if (after.deloads > before.deloads) {
+    return {
+      outcome: "drop",
+      fact: `10% lighter next time: ${weightLabel(exercise, after.weight)}.`,
+    };
+  }
+  if (after.rung === before.rung && after.weight === before.weight) {
+    return { outcome: "miss", fact: "Same weight and reps next time." };
+  }
+  return {
+    outcome: "hit",
+    fact:
+      after.weight !== before.weight
+        ? `Up to ${weightLabel(exercise, after.weight)} next time.`
+        : `${ladder[after.rung]} reps next time.`,
+  };
 };
 
 /**
