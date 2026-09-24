@@ -117,7 +117,7 @@ export default function TodayScreen() {
             {workout.name || "Untitled"}
           </Text>
           {workout.subtitle ? (
-            <Text style={{ color: colors.muted, fontSize: 20, lineHeight: 26 }}>
+            <Text style={{ color: colors.text, fontSize: 26, lineHeight: 32, fontWeight: "600" }}>
               {workout.subtitle}
             </Text>
           ) : null}
@@ -165,8 +165,9 @@ export default function TodayScreen() {
 }
 
 /**
- * The workout at a glance, closed: how many lifts and what brackets them.
- * Open, every lift with the sets, reps and weight you would get today.
+ * The workout at a glance: how many blocks, tap for the list — cardio, every
+ * lift with the sets, reps and weight you would get today, cardio, mobility,
+ * in the order you will do them.
  */
 function Preview({
   workout,
@@ -178,8 +179,8 @@ function Preview({
   onToggle: () => void;
 }) {
   const { state } = useSession();
-  const { before, lifts, after } = workoutPreview(state, workout);
-  const n = lifts.length;
+  const rows = workoutPreview(state, workout);
+  const n = rows.length;
 
   return (
     <Pressable
@@ -198,21 +199,16 @@ function Preview({
     >
       <View style={{ flexDirection: "row", alignItems: "center", gap: 10, minHeight: 32 }}>
         <Text style={{ flex: 1, color: colors.text, fontSize: 18, fontWeight: "700" }}>
-          {n === 0 ? "No lifts" : `${n} ${n === 1 ? "exercise" : "exercises"}`}
+          {n} {n === 1 ? "exercise" : "exercises"}
         </Text>
         <Icon name={open ? "collapse" : "expand"} size={15} color={colors.muted} weight="semibold" />
       </View>
-      {before ? (
-        <Text style={{ color: colors.faint, fontSize: 14, lineHeight: 20, marginTop: 2 }}>
-          {before} first{after ? `. After: ${after}.` : "."}
-        </Text>
-      ) : null}
 
-      {open && n > 0 ? (
+      {open ? (
         <View style={{ marginTop: 10 }}>
-          {lifts.map((l, i) => (
+          {rows.map((r, i) => (
             <View
-              key={l.id}
+              key={r.id}
               style={{
                 flexDirection: "row",
                 alignItems: "center",
@@ -234,7 +230,7 @@ function Preview({
                 {i + 1}
               </Text>
               <Text style={{ flex: 1, color: colors.text, fontSize: 16, fontWeight: "600" }}>
-                {l.name}
+                {r.name}
               </Text>
               <View style={{ alignItems: "flex-end" }}>
                 <Text
@@ -245,12 +241,11 @@ function Preview({
                     fontVariant: ["tabular-nums"],
                   }}
                 >
-                  {l.sets} × {l.reps}
-                  {l.timed ? " s" : ""}
+                  {r.amount}
                 </Text>
-                {l.weight ? (
+                {r.weight ? (
                   <Text style={{ color: colors.faint, fontSize: 13, fontVariant: ["tabular-nums"] }}>
-                    {l.weight}
+                    {r.weight}
                   </Text>
                 ) : null}
               </View>

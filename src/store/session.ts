@@ -35,6 +35,7 @@ import {
   leanHiddenConditioning,
   mobilityById,
   mobilityPool,
+  routineSeconds,
   setCustomConditioning,
   type CardioExercise,
   type MobilityRoutine,
@@ -436,48 +437,64 @@ export const workoutById = (state: SessionState, id: string): Workout | undefine
   state.workouts.find((w) => w.id === id);
 
 /**
- * What a workout will ask of you if you start it now: each lift with the
- * sets, reps and weight it would prescribe, plus the cardio and mobility
- * either side. For the Today screen, before anything is built.
+ * What a workout will ask of you if you start it now, in the order it runs:
+ * the opening cardio, each lift with the sets, reps and weight it would
+ * prescribe, the closing cardio, then mobility. For the Today screen, before
+ * anything is built.
  */
-export const workoutPreview = (
-  state: SessionState,
-  workout: Workout,
-): {
-  before: string;
-  lifts: { id: string; name: string; sets: number; reps: number; weight: string | null; timed?: boolean }[];
-  after: string;
-} => {
-  const lifts = workout.exercises.map((entry) => {
+export type PreviewRow = {
+  id: string;
+  name: string;
+  /** "3 × 6", "1 km", "5 min", "about 4 min". */
+  amount: string;
+  /** The weight, for a loaded lift. */
+  weight?: string;
+};
+
+export const workoutPreview = (state: SessionState, workout: Workout): PreviewRow[] => {
+  const lifts = workout.exercises.map((entry): PreviewRow => {
     const ex = byId(chosen(state, workout.id, entry))!;
     const st = state.history[key(ex.id, entry.scheme)] ?? freshState(ex);
     const p = prescribe(st, entry.scheme, setsFor(entry));
     return {
       id: entry.id,
       name: ex.name,
-      sets: p.sets,
-      reps: p.reps,
+      amount: `${p.sets} × ${p.reps}${ex.timed ? " s" : ""}`,
       // Speed work takes its weight from another lift on the day; jumps have none.
-      weight: entry.derive || ex.unloaded ? null : weightLabel(ex, st.weight),
-      timed: ex.timed,
+      weight: entry.derive || ex.unloaded ? undefined : weightLabel(ex, st.weight),
     };
   });
-  const block = (where: "open" | "close") => {
+  const block = (where: "open" | "close"): PreviewRow[] => {
     const item = cardioBlock(state, where);
     const machine = cardioById(item.exerciseId);
-    if (!machine) return "";
-    return item.course !== undefined
-      ? `${machine.name} ${courseLabel(machine, item.course)}`
-      : `${machine.name} ${item.minutes} min`;
+    if (!machine) return [];
+    return [
+      {
+        id: item.slot,
+        name: machine.name,
+        amount:
+          item.course !== undefined
+            ? courseLabel(machine, item.course)
+            : `${item.minutes} min`,
+      },
+    ];
   };
-  const routine = mobilityById(mobilityBlock(state).exerciseId);
-  return {
-    before: block("open"),
-    lifts,
-    after: [block("close"), routine ? `${routine.name.toLowerCase()} mobility` : ""]
-      .filter(Boolean)
-      .join(", then "),
-  };
+  const mobility = mobilityBlock(state);
+  const routine = mobilityById(mobility.exerciseId);
+  return [
+    ...block("open"),
+    ...lifts,
+    ...block("close"),
+    ...(routine
+      ? [
+          {
+            id: mobility.slot,
+            name: `${routine.name} mobility`,
+            amount: `about ${Math.round(routineSeconds(routine) / 60)} min`,
+          },
+        ]
+      : []),
+  ];
 };
 
 /** The workout Start will run. Falls back to the first if the id has gone. */
