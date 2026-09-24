@@ -1,6 +1,6 @@
 import * as Haptics from "expo-haptics";
 import { router } from "expo-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Pressable, ScrollView, Text, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -12,7 +12,13 @@ import { Icon, type IconName } from "@/components/icon";
 import { Sheet } from "@/components/sheet";
 import { colors, fonts, radii } from "@/constants/theme";
 import { byId } from "@/data/exercises";
-import { FINISHED_LINES, OUTCOME_LINES, pickLine, type FinishedMood } from "@/data/voice";
+import {
+  FINISHED_LINES,
+  OUTCOME_LINES,
+  pickLine,
+  WARMUP_SKIP_LINES,
+  type FinishedMood,
+} from "@/data/voice";
 import {
   courseLabel,
   distanceLabel,
@@ -103,6 +109,11 @@ export default function WorkoutScreen() {
 
   const active = state.active;
   const done = !active || isComplete(state);
+  const inWarmup = !!active && !done && currentWarmup(state).length > 0;
+  // Skip on a warm-up is refused once, with a word from Akilles; pressed
+  // again it skips the warm-up only, never the exercise behind it.
+  const [skipWarned, setSkipWarned] = useState(false);
+  useEffect(() => setSkipWarned(false), [active?.cursor, inWarmup]);
 
   // The bar itself lives in the root layout; this only swaps its buttons.
   useBarActions(
@@ -134,12 +145,19 @@ export default function WorkoutScreen() {
           label="Skip"
           onPress={() => {
             setPicking(false);
-            setState((s) => skipExercise(s));
+            if (!inWarmup) {
+              setState((s) => skipExercise(s));
+            } else if (!skipWarned) {
+              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+              setSkipWarned(true);
+            } else {
+              setState((s) => dismissWarmup(s));
+            }
           }}
         />
       </>
     ) : null,
-    [active?.cursor, done],
+    [active?.cursor, done, inWarmup, skipWarned],
   );
 
   // Hooks must all run before this: the bar publish above is one of them.
@@ -175,6 +193,7 @@ export default function WorkoutScreen() {
         name={p.exercise.name}
         sets={warmup}
         perHand={p.exercise.perHand}
+        refusal={skipWarned ? pickLine(WARMUP_SKIP_LINES, `${active.startedAt}:${item.slot}`) : null}
         onReady={() => setState((s) => dismissWarmup(s))}
       />
     );
@@ -1023,11 +1042,14 @@ function Warmup({
   name,
   sets,
   perHand,
+  refusal,
   onReady,
 }: {
   name: string;
   sets: { weight: number; reps: number }[];
   perHand?: boolean;
+  /** Akilles' answer to Skip, while it stands. */
+  refusal: string | null;
   onReady: () => void;
 }) {
   const insets = useSafeAreaInsets();
@@ -1144,7 +1166,28 @@ function Warmup({
       </View>
 
       <View style={{ paddingHorizontal: 22, paddingBottom: barSpace + 14 }}>
-        <Column>
+        <Column style={{ gap: 14 }}>
+          {/* Always this tall, empty until Skip is pressed, so the refusal
+              appearing moves nothing under the thumb. */}
+          <View style={{ height: 76, justifyContent: "flex-end", gap: 4 }}>
+            {refusal ? (
+              <>
+                <Text
+                  style={{
+                    textAlign: "center",
+                    color: colors.bend,
+                    fontFamily: fonts.voice,
+                    fontSize: 22,
+                  }}
+                >
+                  {refusal}
+                </Text>
+                <Text style={{ textAlign: "center", color: colors.faint, fontSize: 13 }}>
+                  Press Skip again to go straight to the working sets.
+                </Text>
+              </>
+            ) : null}
+          </View>
           <Action
             label="Ready"
             fill

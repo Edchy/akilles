@@ -59,7 +59,9 @@ so each main lift is trained twice a cycle and progresses on both.
 sets at 40/60/80% of the working weight, for 10/6/3 reps. Tap each one as you
 finish it — **Ready** stays inert until all three are ticked, so the screen
 cannot be tapped past without reading. Nothing here is logged or affects
-progression; bodyweight and timed movements get no ramp at all.
+progression; bodyweight and timed movements get no ramp at all. **Skip** on a
+warm-up is refused once with a word from Akilles; pressed again it skips the
+warm-up only and goes straight to that exercise's working sets.
 
 **Arms and abs close each session**; fold them into an earlier lift's rest
 period as a superset and the session doesn't get longer. They get no warm-up
@@ -193,14 +195,14 @@ While a workout is running the bar carries its buttons instead of the tabs — s
 bar on the other screens, so navigation looks the same everywhere:
 
 ```
-     ←           (×)          →
+     ⏮            ×            ⏭
    Back        Leave        Skip
 ```
 
 Back steps to the previous exercise with its circles still filled, so a
-mis-tap is fixable. Skip moves on.
+mis-tap is fixable. Skip moves on (on a warm-up, see above).
 
-**Leave is press-and-hold.** The circle around the `×` fills from the bottom
+**Leave is press-and-hold.** Its slot fills red from the bottom
 up over a second; let go early and it drains away with nothing changed. Ending
 the session is consequential enough that a stray thumb mid-set should not do
 it, but not so grave that it deserves a confirmation dialog.

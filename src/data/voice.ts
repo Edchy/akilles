@@ -150,6 +150,16 @@ export const FINISHED_LINES = {
 
 export type FinishedMood = keyof typeof FINISHED_LINES;
 
+/** Skip pressed on a warm-up: Akilles refuses, once. */
+export const WARMUP_SKIP_LINES = [
+  "Achilles skipped his warm-up once. Ask him about his heel.",
+  "Cold muscles, hot take.",
+  "Skip the warm-up? Your tendons have filed a complaint.",
+  "The bar can wait a minute. Can your shoulders?",
+  "Straight in cold? Bold. The weight thanks you for the head start.",
+  "Warm-ups are boring. So is physio.",
+];
+
 /**
  * One line from a list, chosen by a seed rather than at random, so the same
  * moment always says the same thing — going Back and forward again does not
