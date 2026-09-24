@@ -54,6 +54,7 @@ import {
   partnerPrescription,
   previousExercise,
   removeSuperset,
+  resetSet,
   scoreOf,
   setScore,
   skipExercise,
@@ -302,6 +303,7 @@ export default function WorkoutScreen() {
             logged={item.logged}
             target={p.reps}
             onTap={(i) => setState((s) => tapSet(s, i))}
+            onReset={(i) => setState((s) => resetSet(s, i))}
           />
           <Why prescription={p} />
         </View>
@@ -314,6 +316,7 @@ export default function WorkoutScreen() {
             timed={partner.timed}
             logged={item.supersetLogged}
             onTap={(i) => setState((s) => tapSet(s, i, "partner"))}
+            onReset={(i) => setState((s) => resetSet(s, i, "partner"))}
             onRemove={() => setState((s) => removeSuperset(s))}
           />
         ) : options.length > 0 ? (
@@ -1146,11 +1149,14 @@ function Sets({
   logged,
   target,
   onTap,
+  onReset,
   compact,
 }: {
   logged: (number | null)[];
   target: number;
   onTap: (index: number) => void;
+  /** Long press: back to the target in one go. */
+  onReset: (index: number) => void;
   /** Shorter circles for a supersetted partner, so the main lift stays primary. */
   compact?: boolean;
 }) {
@@ -1184,7 +1190,10 @@ function Sets({
             key={i}
             accessibilityRole="button"
             accessibilityLabel={`Set ${i + 1}${filled ? `, ${reps} reps` : ", not logged"}`}
+            accessibilityHint="Tap to log or count down. Hold to reset to the target."
             onPress={() => onTap(i)}
+            onLongPress={() => onReset(i)}
+            delayLongPress={400}
             style={({ pressed }) => ({
               width: size,
               height: size,
@@ -1403,6 +1412,7 @@ function Partner({
   timed,
   logged,
   onTap,
+  onReset,
   onRemove,
 }: {
   name: string;
@@ -1411,6 +1421,7 @@ function Partner({
   timed?: boolean;
   logged: (number | null)[];
   onTap: (index: number) => void;
+  onReset: (index: number) => void;
   /** Unpair it: goes back to its own place in the workout, keeping its sets. */
   onRemove: () => void;
 }) {
@@ -1464,7 +1475,7 @@ function Partner({
         </Pressable>
       </View>
 
-      <Sets logged={logged} target={target} onTap={onTap} compact />
+      <Sets logged={logged} target={target} onTap={onTap} onReset={onReset} compact />
     </View>
   );
 }

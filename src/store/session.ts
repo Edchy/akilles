@@ -939,6 +939,27 @@ export const tapSet = (
   state: SessionState,
   setIndex: number,
   which: "main" | "partner" = "main",
+): SessionState =>
+  writeSet(state, setIndex, which, (current, target) =>
+    current === null ? target : current <= 1 ? null : current - 1,
+  );
+
+/**
+ * Long press: straight back to the target. Counting down is one rep per tap,
+ * so a stray double tap on a 15-rep set would otherwise take fourteen more
+ * taps to undo.
+ */
+export const resetSet = (
+  state: SessionState,
+  setIndex: number,
+  which: "main" | "partner" = "main",
+): SessionState => writeSet(state, setIndex, which, (_current, target) => target);
+
+const writeSet = (
+  state: SessionState,
+  setIndex: number,
+  which: "main" | "partner",
+  next: (current: number | null, target: number) => number | null,
 ): SessionState => {
   if (!state.active) return state;
   const p = which === "main" ? currentPrescription(state) : partnerPrescription(state);
@@ -947,9 +968,7 @@ export const tapSet = (
   const log = which === "main" ? items[cursor].logged : items[cursor].supersetLogged;
   if (!log) return state;
 
-  const current = log[setIndex];
-  const next = current === null ? p.reps : current <= 1 ? null : current - 1;
-  const updated = log.map((r, j) => (j === setIndex ? next : r));
+  const updated = log.map((r, j) => (j === setIndex ? next(r, p.reps) : r));
 
   return {
     ...state,

@@ -67,6 +67,8 @@ ramp — by then they are warm.
 
 **Logging a set** — one circle per set. Tap it and it fills at the target reps;
 tap again and it counts down if you got fewer; tap past 1 and it clears.
+Hold a circle to put it straight back to the target — a stray extra tap on a
+15-rep set is undone in one press, not fourteen.
 
 ```
 ( 5 )( 5 )(  )(  )      tap        ( 5 )( 5 )( 5 )(  )
