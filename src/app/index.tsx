@@ -6,13 +6,14 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useBarSpace } from "@/components/bottom-bar";
 import { Icon } from "@/components/icon";
 import { Column, COLUMN } from "@/components/screen";
+import { Sheet, OpenRow } from "@/components/sheet";
 import { colors, fonts, radii } from "@/constants/theme";
 import { byId } from "@/data/exercises";
 import type { Workout } from "@/data/split";
 import { TODAY_LINES, fillLine, pickLine, type TodayMood } from "@/data/voice";
 import { decayLabel, type Decay } from "@/lib/progression";
 import { weightLabel } from "@/lib/warmup";
-import type { DecayOffer } from "@/store/session";
+import type { DecayOffer, SessionState } from "@/store/session";
 import {
   acceptDecay,
   buildWorkout,
@@ -20,7 +21,7 @@ import {
   declineDecay,
   decayOffers,
   pendingDecays,
-  setNextWorkout,
+  postponeWorkout,
   skipWorkout,
   trainedToday,
   upNext,
@@ -37,7 +38,13 @@ export default function TodayScreen() {
   // With one workout there is nothing to skip to.
   const canSkip = state.workouts.length > 1;
   // The workout just skipped, so a mis-tap is one tap to undo.
-  const [skipped, setSkipped] = useState<{ id: string; name: string } | null>(null);
+  const [pickingSkip, setPickingSkip] = useState(false);
+  const [skipped, setSkipped] = useState<{
+    id: string;
+    name: string;
+    postponed: boolean;
+    before: Pick<SessionState, "nextWorkout" | "workoutQueue">;
+  } | null>(null);
 
   // What time WOULD cost, computed fresh each render. Nothing is written
   // until you answer the prompt below.
@@ -52,9 +59,15 @@ export default function TodayScreen() {
     router.push("/workout");
   };
 
-  const skip = () => {
-    setSkipped({ id: workout.id, name: workout.name });
-    setState((s) => skipWorkout(s));
+  const skip = (postponed: boolean) => {
+    setPickingSkip(false);
+    setSkipped({
+      id: workout.id,
+      name: workout.name,
+      postponed,
+      before: { nextWorkout: state.nextWorkout, workoutQueue: state.workoutQueue },
+    });
+    setState((s) => postponed ? postponeWorkout(s) : skipWorkout(s));
   };
 
   // The exercise list, opened by tapping the summary. Closed again whenever
@@ -143,7 +156,7 @@ export default function TodayScreen() {
               skip, the remark names it and carries the Undo. */}
           <View style={{ flexDirection: "row", alignItems: "center", gap: 10, minHeight: 44 }}>
             <Text style={{ flex: 1, color: colors.muted, fontSize: 16, lineHeight: 22, fontWeight: "600" }}>
-              {remark}
+              {skipped?.postponed ? `${skipped.name} is next after ${workout.name}.` : remark}
             </Text>
             {skipped ? (
               <Pressable
@@ -151,7 +164,7 @@ export default function TodayScreen() {
                 accessibilityLabel={`Undo skipping ${skipped.name}`}
                 hitSlop={12}
                 onPress={() => {
-                  setState((s) => setNextWorkout(s, skipped.id));
+                  setState((s) => ({ ...s, ...skipped.before }));
                   setSkipped(null);
                 }}
                 style={({ pressed }) => ({
@@ -166,11 +179,25 @@ export default function TodayScreen() {
           </View>
 
           <View style={{ flexDirection: "row", gap: 12 }}>
-            {canSkip ? <BigButton label="Skip" onPress={skip} /> : null}
+            {canSkip ? <BigButton label="Skip" onPress={() => setPickingSkip(true)} /> : null}
             <BigButton label="Start" primary onPress={start} />
           </View>
         </Column>
       </View>
+      <Sheet visible={pickingSkip} title={workout.name} onClose={() => setPickingSkip(false)}>
+        <View style={{ paddingTop: 12, gap: 12 }}>
+          <OpenRow
+            title="Do this next time"
+            detail={`Do ${upNext(skipWorkout(state)).name} now, then ${workout.name}.`}
+            onPress={() => skip(true)}
+          />
+          <OpenRow
+            title="Skip this round"
+            detail="Move on. This workout returns when the cycle repeats."
+            onPress={() => skip(false)}
+          />
+        </View>
+      </Sheet>
     </View>
   );
 }

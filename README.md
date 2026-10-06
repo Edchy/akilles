@@ -138,7 +138,7 @@ Three tabs, plus the workout itself which takes over the screen.
 
 | Tab | |
 |---|---|
-| **Today** | The next workout, large and nothing else. **Start**, or **Skip** to move the cycle on without recording anything (with an Undo for a mis-tap). |
+| **Today** | The next workout, large and nothing else. **Start**, or **Skip**: **Do this next time** trains the following workout now and returns to this one next session; **Skip this round** leaves it until the cycle repeats. Both offer Undo and record no training. |
 | **Progress** | This week's training days as seven circles, then three views. **Results**: total weight lifted (put in proportion — "3.8 small cars"), sessions this month, weeks in a row, share of lifts on target, lifts that got stronger, standing records, cardio that got faster or further. **Sessions**: every finished workout, newest first, with each set coloured hit or short. **Lifts**: every exercise by muscle group at its current weight, tap for its past sessions; cardio bests too. Backup & restore sits in a sheet at the bottom. |
 | **Plan** | Two segments: **Workouts** (your sessions, their order, and what fills each slot) and **Exercises** (the catalogue of every movement). |
 
@@ -150,7 +150,8 @@ The **Exercises** segment is your catalogue, grouped the way you train:
 exercise is listed by name with its weight step; nothing else.
 
 **Tap an exercise** to rename it or change its **weight step** — how many kg
-one press of − or + moves it (1, 1.25, 2, 2.5, 3, 4, 5 or 10). Edits work on
+one press of − or + moves it. Enter any positive number, including decimals;
+changes save automatically. For dumbbells, the step is per dumbbell. Edits work on
 built-ins too: they are stored alongside, so the exercise keeps its id and its
 history. **Remove** (two taps) puts a built-in back in the library, or deletes
 one of your own — **unless it is the last one of a movement type**, since a

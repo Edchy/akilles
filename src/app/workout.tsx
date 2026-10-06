@@ -337,6 +337,7 @@ export default function WorkoutScreen() {
         {partner && partnerP && item.supersetLogged ? (
           <Partner
             name={partner.name}
+            weight={partner.unloaded ? "No weight — just the reps" : weightLabel(partner, partnerP.weight)}
             sets={partnerP.sets}
             target={partnerP.reps}
             timed={partner.timed}
@@ -1665,9 +1666,10 @@ function Why({ prescription }: { prescription: ReturnType<typeof currentPrescrip
   );
 }
 
-/** The folded-in partner: its own target and its own tappable circles. */
+/** The folded-in partner: its own weight, target and tappable circles. */
 function Partner({
   name,
+  weight,
   sets,
   target,
   timed,
@@ -1677,6 +1679,7 @@ function Partner({
   onRemove,
 }: {
   name: string;
+  weight: string;
   sets: number;
   target: number;
   timed?: boolean;
@@ -1711,6 +1714,16 @@ function Partner({
           </Text>
           <Text style={{ color: colors.text, fontSize: 20, fontWeight: "700" }}>
             {name}
+          </Text>
+          <Text
+            style={{
+              color: colors.rise,
+              fontFamily: fonts.displayBold,
+              fontSize: 28,
+              fontVariant: ["tabular-nums"],
+            }}
+          >
+            {weight}
           </Text>
           <Text style={{ color: colors.muted, fontSize: 13, fontWeight: "600" }}>
             {sets} sets of {target}

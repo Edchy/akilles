@@ -208,11 +208,13 @@ export type SessionState = {
   workouts: Workout[];
   /**
    * Id of the workout that comes next. Advances only on finish, to whichever
-   * workout follows it in `workouts`, or when you pick one with Do next. An id
+   * workout follows it in the temporary queue or `workouts`, or when you pick one with Do next. An id
    * rather than a position, so reordering, adding or deleting other workouts
    * never changes what is next.
    */
   nextWorkout: string;
+  /** One-time remaining order after postponing a workout. The Plan order stays intact. */
+  workoutQueue?: string[];
   /**
    * Built-in workouts you have removed, as they were — edits and all — with
    * the place they sat, so putting one back returns it where it was. One you
@@ -385,7 +387,9 @@ export const editExercise = (
     const name = patch.name.trim();
     if (name) next.name = name;
   }
-  if (patch.increment !== undefined && patch.increment > 0) next.increment = patch.increment;
+  if (patch.increment !== undefined && Number.isFinite(patch.increment) && patch.increment > 0) {
+    next.increment = patch.increment;
+  }
   const exerciseEdits = { ...state.exerciseEdits, [id]: next };
   setExerciseEdits(exerciseEdits);
   return { ...state, exerciseEdits };
@@ -561,9 +565,23 @@ export const nextAfterSession = (state: SessionState): Workout | undefined => {
 };
 
 const following = (state: SessionState, id: string): string => {
+  const queue = state.workoutQueue?.filter((id) => workoutById(state, id));
+  const queuedAt = queue?.indexOf(id) ?? -1;
+  if (queue && queuedAt >= 0 && queuedAt + 1 < queue.length) return queue[queuedAt + 1];
   const i = state.workouts.findIndex((w) => w.id === id);
   if (i === -1) return upNext(state).id;
   return state.workouts[(i + 1) % state.workouts.length].id;
+};
+
+/** Consume a one-time queue only when a workout is finished or explicitly skipped. */
+const advanceWorkout = (state: SessionState, id: string): Pick<SessionState, "nextWorkout" | "workoutQueue"> => {
+  const queue = state.workoutQueue?.filter((id) => workoutById(state, id));
+  const at = queue?.indexOf(id) ?? -1;
+  const remaining = at >= 0 ? queue!.slice(at + 1) : [];
+  return {
+    nextWorkout: following(state, id),
+    workoutQueue: remaining.length > 0 ? remaining : undefined,
+  };
 };
 
 /** Move one element of a list to another index. */
@@ -626,6 +644,7 @@ export const removeWorkout = (state: SessionState, id: string): SessionState => 
     choices,
     workouts: state.workouts.filter((w) => w.id !== id),
     nextWorkout: state.nextWorkout === id ? following(state, id) : state.nextWorkout,
+    workoutQueue: state.workoutQueue?.filter((queued) => queued !== id),
     removedWorkouts: builtIn
       ? [
           ...state.removedWorkouts.filter((r) => r.workout.id !== id),
@@ -664,14 +683,27 @@ export const moveWorkout = (state: SessionState, from: number, to: number): Sess
 /**
  * Skip the next workout without starting it: the cycle moves on to the one
  * after, and nothing is recorded — no exercise is flagged as skipped, since
- * none was ever offered. Undone with `setNextWorkout`.
+ * none was ever offered. Undo restores the previous next id and temporary queue.
  */
 export const skipWorkout = (state: SessionState): SessionState =>
-  state.active ? state : { ...state, nextWorkout: following(state, upNext(state).id) };
+  state.active ? state : { ...state, ...advanceWorkout(state, upNext(state).id) };
+
+/** Train the following workout now, then this one, before resuming the cycle. */
+export const postponeWorkout = (state: SessionState): SessionState => {
+  if (state.active || state.workouts.length < 2) return state;
+  const current = upNext(state).id;
+  const savedQueue = state.workoutQueue?.filter((id) => workoutById(state, id));
+  const at = state.workouts.findIndex((w) => w.id === current);
+  const cycle = [...state.workouts.slice(at), ...state.workouts.slice(0, at)].map((w) => w.id);
+  // A final queued workout can still borrow the next workout from the normal cycle.
+  const queue = savedQueue && savedQueue.length > 1 ? savedQueue : cycle;
+  const [first, second, ...rest] = queue;
+  return { ...state, nextWorkout: second, workoutQueue: [second, first, ...rest] };
+};
 
 /** Make a workout the next one Start runs. */
 export const setNextWorkout = (state: SessionState, id: string): SessionState =>
-  workoutById(state, id) ? { ...state, nextWorkout: id } : state;
+  workoutById(state, id) ? { ...state, nextWorkout: id, workoutQueue: undefined } : state;
 
 /**
  * Movement types a workout could add a slot for: anything with an exercise
@@ -1024,7 +1056,7 @@ export const partnerPrescription = (state: SessionState): Prescription | null =>
   const e = item.supersetEntry;
   const st = state.history[key(e.exerciseId, e.scheme)] ?? freshState(byId(e.exerciseId)!);
   return prescribe(
-    { ...st, weight: item.supersetWeight ?? st.weight },
+    { ...st, weight: item.supersetWeight ?? e.weight },
     e.scheme,
     setsFor(e),
   );
@@ -1369,13 +1401,7 @@ export const skipExercise = (state: SessionState): SessionState => {
     ? [
         {
           ...item.supersetEntry,
-          weight:
-            item.supersetWeight ??
-            (
-              state.history[
-                key(item.supersetEntry.exerciseId, item.supersetEntry.scheme)
-              ] ?? freshState(byId(item.supersetEntry.exerciseId)!)
-            ).weight,
+          weight: item.supersetWeight ?? item.supersetEntry.weight,
           logged:
             item.supersetLogged ??
             Array<number | null>(setsFor(item.supersetEntry)).fill(null),
@@ -1446,6 +1472,7 @@ export const addSuperset = (state: SessionState, exerciseId: string): SessionSta
                 ...it,
                 supersetWith: exerciseId,
                 supersetEntry: partner,
+                supersetWeight: partner.weight,
                 supersetLogged: Array<number | null>(setsFor(partner)).fill(null),
               }
             : it,
@@ -1645,7 +1672,7 @@ export const finishWorkout = (
       commit(
         e.exerciseId,
         e.scheme,
-        item.supersetWeight ?? history[key(e.exerciseId, e.scheme)]?.weight ?? 0,
+        item.supersetWeight ?? e.weight,
         item.supersetLogged ?? [],
         performed && !!item.supersetLogged?.some((r) => r !== null),
       );
@@ -1667,7 +1694,7 @@ export const finishWorkout = (
     history,
     conditioning,
     log: [...(state.log ?? []), session],
-    nextWorkout: following(state, active.workoutId),
+    ...advanceWorkout(state, active.workoutId),
     active: null,
   };
 };

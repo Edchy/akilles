@@ -465,6 +465,3 @@ export const byId = (id: string): Exercise | undefined => {
   const ex = EXERCISES.find((e) => e.id === id) ?? customExercises.find((e) => e.id === id);
   return ex && withEdits(ex);
 };
-
-/** The weight steps an exercise can move by, per press of − or +. */
-export const INCREMENTS = [1, 1.25, 2, 2.5, 3, 4, 5, 10];

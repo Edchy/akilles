@@ -17,7 +17,6 @@ import {
 import {
   CATEGORY_LABEL,
   CATEGORY_ORDER,
-  INCREMENTS,
   PATTERN_LABEL,
   categoriesOf,
   patternsIn,
@@ -326,6 +325,10 @@ function ExerciseSheet({
 function ExerciseEditor({ exercise, onRemoved }: { exercise: Exercise; onRemoved: () => void }) {
   const { state, setState } = useSession();
   const [name, setName] = useState(exercise.name);
+  const [weightStep, setWeightStep] = useState(String(exercise.increment || 2.5));
+  const parsedStep = Number(weightStep.trim().replace(",", "."));
+  const validStep = /^\d*([.,]\d*)?$/.test(weightStep.trim()) &&
+    Number.isFinite(parsedStep) && parsedStep > 0;
   const [confirming, setConfirming] = useState(false);
   const removable = canRemove(state, exercise.id);
   const mine = isCustom(state, exercise.id);
@@ -357,19 +360,39 @@ function ExerciseEditor({ exercise, onRemoved }: { exercise: Exercise; onRemoved
       {exercise.unloaded ? null : (
         <View style={{ gap: 12 }}>
           <SectionLabel>Weight step</SectionLabel>
-          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10 }}>
-            {INCREMENTS.map((step) => (
-              <Chip
-                key={step}
-                label={`${step} kg`}
-                on={(exercise.increment || 2.5) === step}
-                onPress={() => setState((s) => editExercise(s, exercise.id, { increment: step }))}
-              />
-            ))}
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+            <TextInput
+              value={weightStep}
+              onChangeText={(text) => {
+                setWeightStep(text);
+                const normalized = text.trim().replace(",", ".");
+                const step = Number(normalized);
+                if (/^\d*(\.\d*)?$/.test(normalized) && Number.isFinite(step) && step > 0) {
+                  setState((s) => editExercise(s, exercise.id, { increment: step }));
+                }
+              }}
+              onBlur={() => setWeightStep(String(exercise.increment || 2.5))}
+              keyboardType="decimal-pad"
+              selectTextOnFocus
+              accessibilityLabel="Weight step in kilograms"
+              selectionColor={colors.text}
+              style={{
+                flex: 1,
+                minHeight: 64,
+                paddingHorizontal: 16,
+                borderRadius: 16,
+                backgroundColor: colors.surface,
+                color: colors.text,
+                fontSize: 24,
+                fontWeight: "700",
+              }}
+            />
+            <Text style={{ color: colors.muted, fontSize: 17 }}>kg</Text>
           </View>
-          <Text style={{ color: colors.faint, fontSize: 13, lineHeight: 19 }}>
-            How much one press of − or + moves the weight
-            {exercise.perHand ? ", per dumbbell" : ""}.
+          <Text style={{ color: validStep ? colors.muted : colors.bend, fontSize: 13, lineHeight: 19 }}>
+            {validStep
+              ? `How much one press of − or + moves the weight${exercise.perHand ? ", per dumbbell" : ""}. Changes save automatically.`
+              : "Enter a number greater than 0. Your previous step is kept until then."}
           </Text>
         </View>
       )}
