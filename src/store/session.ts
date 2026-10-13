@@ -286,6 +286,8 @@ export type SessionState = {
      * whether a saved session is still today's — see `storage.ts`.
      */
     startedAt: number;
+    /** When a lift set was last logged; persists so rest includes time away. */
+    lastSetAt?: number;
   } | null;
 };
 
@@ -1130,11 +1132,14 @@ const writeSet = (
   if (!log) return state;
 
   const updated = log.map((r, j) => (j === setIndex ? next(r, p.reps) : r));
+  // Rep corrections and clearing a circle are edits, not another finished set.
+  const newlyLogged = log[setIndex] === null && updated[setIndex] != null;
 
   return {
     ...state,
     active: {
       ...state.active,
+      ...(newlyLogged ? { lastSetAt: Date.now() } : {}),
       items: items.map((it, i) =>
         i === cursor
           ? which === "main"

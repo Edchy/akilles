@@ -18,6 +18,7 @@ export function Sheet({
   onClose,
   closeLabel = "Cancel",
   scrollEnabled = true,
+  swipeToDismiss = false,
   children,
 }: PropsWithChildren<{
   visible: boolean;
@@ -27,12 +28,15 @@ export function Sheet({
   closeLabel?: string;
   /** Frozen while a row inside is being dragged, or the drag scrolls the sheet. */
   scrollEnabled?: boolean;
+  /** Let iOS dismiss this sheet with a downward swipe. */
+  swipeToDismiss?: boolean;
 }>) {
   return (
     <Modal
       visible={visible}
       animationType="slide"
       presentationStyle="pageSheet"
+      allowSwipeDismissal={swipeToDismiss}
       onRequestClose={onClose}
     >
       <View style={{ flex: 1, backgroundColor: colors.bg }}>

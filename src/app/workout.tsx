@@ -12,6 +12,7 @@ import { Icon, type IconName } from "@/components/icon";
 import { GuideButton } from "@/components/guide";
 import { Illustration } from "@/components/illustration";
 import { Sheet } from "@/components/sheet";
+import { RestTimer } from "@/components/rest-timer";
 import { colors, fonts, radii } from "@/constants/theme";
 import { byId } from "@/data/exercises";
 import {
@@ -84,7 +85,7 @@ import {
  *
  * Mid-workout you tap without really looking, so nothing may move under the
  * thumb: each block is sized for its largest case — a two-line name, a
- * 68pt weight, three lines of "last time", the tallest action — and smaller
+ * 68pt weight and three lines of "last time" — and smaller
  * content sits inside that space rather than shrinking it.
  */
 const FIXED = {
@@ -98,13 +99,10 @@ const FIXED = {
   circle: 96,
   /** Up to three lines of "last time". */
   why: 57,
-  /** The tallest answer: a two-line quip and its fact above a 60pt button. */
-  action: 140,
 } as const;
 
 export default function WorkoutScreen() {
   const { state, setState } = useSession();
-  const insets = useSafeAreaInsets();
   const barSpace = useBarSpace();
   const [picking, setPicking] = useState(false);
   const [swapping, setSwapping] = useState(false);
@@ -116,6 +114,24 @@ export default function WorkoutScreen() {
   // again it skips the warm-up only, never the exercise behind it.
   const [skipWarned, setSkipWarned] = useState(false);
   useEffect(() => setSkipWarned(false), [active?.cursor, inWarmup]);
+
+  const currentItem = active?.items[active.cursor];
+  const resultKey = active && !done && !inWarmup && currentItem && !isConditioning(currentItem)
+    ? `${active.startedAt}:${currentItem.slot}`
+    : null;
+  const logged = resultKey !== null && allSetsLogged(state);
+  const [resultFor, setResultFor] = useState<string | null>(null);
+  const previousResult = useRef<{ key: string | null; logged: boolean }>({ key: null, logged: false });
+  useEffect(() => {
+    // Open on completion, not on every rep correction after dismissal.
+    const previous = previousResult.current;
+    if (logged && (previous.key !== resultKey || !previous.logged)) {
+      setResultFor(resultKey);
+    } else if (!logged || previous.key !== resultKey) {
+      setResultFor(null);
+    }
+    previousResult.current = { key: resultKey, logged };
+  }, [resultKey, logged]);
 
   // The bar itself lives in the root layout; this only swaps its buttons.
   useBarActions(
@@ -180,7 +196,6 @@ export default function WorkoutScreen() {
   const partnerP = partnerPrescription(state);
   const options = supersetOptions(state);
 
-  const logged = allSetsLogged(state);
   const warmup = currentWarmup(state);
   // Swapping after the first set is logged would throw that work away.
   const pool = currentPool(state);
@@ -200,6 +215,7 @@ export default function WorkoutScreen() {
 
   const next = () => {
     setPicking(false);
+    setResultFor(null);
     setState((s) => completeExercise(s));
   };
   // Said before you move on, so what happens next time is never a surprise:
@@ -211,13 +227,13 @@ export default function WorkoutScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.bg }}>
-      <Header />
+      <Header showRest />
 
       <ScrollView
         contentContainerStyle={{
           flexGrow: 1,
           paddingHorizontal: 22,
-          paddingBottom: 12,
+          paddingBottom: barSpace + 14,
           width: "100%",
           maxWidth: COLUMN,
           alignSelf: "center",
@@ -322,9 +338,14 @@ export default function WorkoutScreen() {
         )}
         </View>
 
-        {/* The circles are the screen: centred in whatever room is left, so
-            they sit in the same place on every exercise. */}
-        <View style={{ flex: 1, minHeight: FIXED.circle + FIXED.why + 60, justifyContent: "center", gap: 18 }}>
+        {/* Keep a single lift centred; paired lifts use a compact stack so
+            both sets of controls get the room above the floating bar. */}
+        <View style={{
+          flex: partner ? 0 : 1,
+          minHeight: FIXED.circle + FIXED.why + (partner ? 18 : 60),
+          justifyContent: "center",
+          gap: 18,
+        }}>
           <Sets
             logged={item.logged}
             target={p.reps}
@@ -369,6 +390,10 @@ export default function WorkoutScreen() {
           </Pressable>
         ) : null}
 
+        {logged ? (
+          <Action label="View result" onPress={() => setResultFor(resultKey)} />
+        ) : null}
+
         <Sheet visible={picking} title="Superset with" onClose={() => setPicking(false)}>
           <SupersetPicker
             options={options}
@@ -380,34 +405,37 @@ export default function WorkoutScreen() {
         </Sheet>
       </ScrollView>
 
-      {/* The action: once every set is logged, one button on. The reps
-          already say how it went, so nothing is asked. */}
-      <View style={{ paddingHorizontal: 22, paddingBottom: barSpace + 14 }}>
-        <Column style={{ height: FIXED.action, justifyContent: "flex-end" }}>
-          {logged ? (
-            <View style={{ gap: 12 }}>
-              {verdict && quip ? (
-                <View style={{ alignItems: "center", gap: 3 }}>
-                  <Text
-                    style={{
-                      textAlign: "center",
-                      color: verdict.outcome === "hit" ? colors.rise : colors.bend,
-                      fontFamily: fonts.voice,
-                      fontSize: 22,
-                    }}
-                  >
-                    {quip}
-                  </Text>
-                  <Text style={{ textAlign: "center", color: colors.faint, fontSize: 13 }}>
-                    {verdict.fact}
-                  </Text>
-                </View>
-              ) : null}
-              <Action label="Next exercise" fill onPress={next} />
+      <Sheet
+        visible={logged && resultFor === resultKey}
+        title={partner ? "Superset complete" : "Exercise complete"}
+        closeLabel="Close"
+        swipeToDismiss
+        onClose={() => setResultFor(null)}
+      >
+        <View style={{ gap: 24, paddingVertical: 24 }}>
+          {verdict && quip ? (
+            <View style={{ alignItems: "center", gap: 8 }}>
+              <Text style={{
+                textAlign: "center",
+                color: verdict.outcome === "hit" ? colors.rise : colors.bend,
+                fontFamily: fonts.voice,
+                fontSize: 28,
+              }}>
+                {quip}
+              </Text>
+              <Text style={{ textAlign: "center", color: colors.muted, fontSize: 17, lineHeight: 24 }}>
+                {verdict.fact}
+              </Text>
             </View>
-          ) : null}
-        </Column>
-      </View>
+          ) : (
+            <Text style={{ textAlign: "center", color: colors.muted, fontSize: 17 }}>
+              All sets logged.
+            </Text>
+          )}
+          <Action label="Next exercise" fill onPress={next} />
+          <Action label="Review sets" onPress={() => setResultFor(null)} />
+        </View>
+      </Sheet>
 
     </View>
   );
@@ -419,7 +447,7 @@ export default function WorkoutScreen() {
  * Shared by the lifting screen and the conditioning ones so the bar of
  * progress does not jump or reset when the session moves between them.
  */
-function Header() {
+function Header({ showRest = false }: { showRest?: boolean }) {
   const { state } = useSession();
   const insets = useSafeAreaInsets();
   const active = state.active;
@@ -430,17 +458,21 @@ function Header() {
       style={{ paddingTop: insets.top + 14, paddingHorizontal: 22, paddingBottom: 14 }}
     >
       <Column style={{ gap: 12 }}>
-        <Text
-          style={{
-            color: colors.muted,
-            fontSize: 12,
-            fontWeight: "800",
-            letterSpacing: 1.3,
-            textTransform: "uppercase",
-          }}
-        >
-          {currentWorkout(state).name}
-        </Text>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+          <Text
+            style={{
+              flex: 1,
+              color: colors.muted,
+              fontSize: 12,
+              fontWeight: "800",
+              letterSpacing: 1.3,
+              textTransform: "uppercase",
+            }}
+          >
+            {currentWorkout(state).name}
+          </Text>
+          {showRest ? <RestTimer startedAt={active.lastSetAt} /> : null}
+        </View>
 
         {/* One segment per exercise, weighted: a paired screen holds two
             exercises, so it is twice as wide and the total never changes
@@ -696,8 +728,9 @@ function CardioBody({
             </View>
             <Text style={{ color: colors.faint, fontSize: 13, lineHeight: 19 }}>
               {timed ? "Fastest" : "Furthest"} {label(record.best)} · {record.sessions}{" "}
-              {record.sessions === 1 ? "session" : "sessions"}
-              {timed ? ` over ${courseLabel(cardio, item.course!)}.` : " on this machine."}
+              {timed
+                ? `× ${courseLabel(cardio, item.course!)} ${record.sessions === 1 ? "run" : "runs"} recorded.`
+                : `${record.sessions === 1 ? "session" : "sessions"} on this machine.`}
             </Text>
           </>
         ) : (
