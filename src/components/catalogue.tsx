@@ -3,6 +3,7 @@ import { Pressable, Text, TextInput, View } from "react-native";
 
 import { Icon } from "@/components/icon";
 import { BigButton, OpenRow, SectionLabel, Sheet, TextButton } from "@/components/sheet";
+import { WeightField, parseWeight } from "@/components/weight-field";
 import { colors, radii } from "@/constants/theme";
 import {
   CARDIO_MINUTES,
@@ -305,8 +306,8 @@ function AddPanel({
 }
 
 /**
- * One exercise: its name and how far − and + move its weight, and a way to
- * remove it. Edits apply as you make them.
+ * One exercise: its name, the weight it opens at, how far − and + move that
+ * weight, and a way to remove it. Edits apply as you make them.
  */
 function ExerciseSheet({
   exercise,
@@ -356,6 +357,8 @@ function ExerciseEditor({ exercise, onRemoved }: { exercise: Exercise; onRemoved
           fontWeight: "700",
         }}
       />
+
+      <WeightField exerciseId={exercise.id} />
 
       {exercise.unloaded ? null : (
         <View style={{ gap: 12 }}>
@@ -438,6 +441,7 @@ const EQUIPMENT: { label: string; increment: number; perHand?: boolean; bodyweig
   [
     { label: "Barbell", increment: 2.5 },
     { label: "Dumbbells", increment: 2, perHand: true },
+    { label: "Kettlebell", increment: 4 },
     { label: "Machine", increment: 5 },
     { label: "Bodyweight", increment: 2.5, bodyweight: true },
   ];
@@ -456,13 +460,16 @@ function CreateExercise({
   // Which movement types it counts as. A group holds several — Push has
   // presses, flyes, raises and triceps — so this has to be asked.
   const [picked, setPicked] = useState<Pattern[]>([types[0]]);
+  // Left blank, it starts from a guess for its movement type.
+  const [start, setStart] = useState("");
+  const startWeight = parseWeight(start);
+  const gear = EQUIPMENT[kind];
 
-  const ready = !!name.trim() && picked.length > 0;
+  const ready = !!name.trim() && picked.length > 0 && (!start.trim() || startWeight !== null);
 
   const submit = () => {
     if (!ready) return;
     const trimmed = name.trim();
-    const gear = EQUIPMENT[kind];
     onCreate({
       // Prefixed so a custom exercise can never collide with a built-in id.
       id: `custom_${trimmed.toLowerCase().replace(/[^a-z0-9]+/g, "_")}`,
@@ -471,9 +478,11 @@ function CreateExercise({
       increment: gear.increment,
       perHand: gear.perHand,
       bodyweight: gear.bodyweight,
+      ...(startWeight !== null ? { startWeight } : {}),
     });
     setName("");
     setPicked([types[0]]);
+    setStart("");
   };
 
   return (
@@ -501,6 +510,28 @@ function CreateExercise({
           <Chip key={g.label} label={g.label} on={kind === i} onPress={() => setKind(i)} />
         ))}
       </View>
+
+      <TextInput
+        value={start}
+        onChangeText={setStart}
+        keyboardType="decimal-pad"
+        accessibilityLabel="Starting weight in kilograms"
+        placeholder={
+          gear.bodyweight
+            ? "Added weight in kg, if any"
+            : `Starting weight in kg${gear.perHand ? ", per dumbbell" : ""}`
+        }
+        placeholderTextColor={colors.faint}
+        style={{
+          minHeight: 48,
+          paddingHorizontal: 14,
+          borderRadius: 12,
+          backgroundColor: colors.surface,
+          color: start.trim() && startWeight === null ? colors.bend : colors.text,
+          fontSize: 16,
+          fontWeight: "600",
+        }}
+      />
 
       {types.length > 1 ? (
         <View style={{ gap: 8 }}>

@@ -229,7 +229,7 @@ export type SessionState = {
   choices: Record<string, string>;
   /** Exercises you have added to the catalogue. */
   custom: Exercise[];
-  /** Your renames and weight steps, by exercise id — built-in or yours. */
+  /** Your renames, weight steps and starting weights, by exercise id — built-in or yours. */
   exerciseEdits: Record<string, ExerciseEdit>;
   /** Cardio machines and mobility routines you have added. */
   customCardio: CardioExercise[];
@@ -395,6 +395,60 @@ export const editExercise = (
   const exerciseEdits = { ...state.exerciseEdits, [id]: next };
   setExerciseEdits(exerciseEdits);
   return { ...state, exerciseEdits };
+};
+
+/**
+ * The weight an exercise opens at next time: where its most recently trained
+ * record stands, else where it starts.
+ */
+export const nextWeight = (state: SessionState, id: string): number => {
+  const latest = Object.values(state.history)
+    .filter((r) => r.exerciseId === id)
+    .sort((a, b) => (b.lastTrainedAt ?? 0) - (a.lastTrainedAt ?? 0))[0];
+  const ex = lookup(state, id);
+  return latest?.weight ?? (ex ? freshState(ex).weight : 0);
+};
+
+/**
+ * Set the weight an exercise opens at. Before any history it is the starting
+ * weight; after, every record of it moves too — you know better than the
+ * ladder did. A workout in progress picks it up on anything not yet started,
+ * so you can step out to Plan mid-session and come back to the new number.
+ */
+export const setExerciseWeight = (
+  state: SessionState,
+  id: string,
+  weight: number,
+): SessionState => {
+  const ex = lookup(state, id);
+  if (!ex || !Number.isFinite(weight)) return state;
+  const w = clampWeight(ex, weight);
+  const exerciseEdits = {
+    ...state.exerciseEdits,
+    [id]: { ...state.exerciseEdits[id], startWeight: w },
+  };
+  setExerciseEdits(exerciseEdits);
+  const history = Object.fromEntries(
+    Object.entries(state.history).map(([k, r]) => [
+      k,
+      // Your number now, so a cut or deload no longer explains it.
+      r.exerciseId === id ? { ...r, weight: w, deloads: 0, pendingDecay: undefined } : r,
+    ]),
+  );
+  const untouched = (log?: (number | null)[]) => !log || log.every((r) => r === null);
+  const active = state.active && {
+    ...state.active,
+    items: state.active.items.map((it) => {
+      if (isConditioning(it) || it.derive) return it;
+      let next = it;
+      if (it.exerciseId === id && untouched(it.logged)) next = { ...next, weight: w };
+      if (it.supersetEntry?.exerciseId === id && untouched(it.supersetLogged)) {
+        next = { ...next, supersetWeight: w };
+      }
+      return next;
+    }),
+  };
+  return { ...state, exerciseEdits, history, active };
 };
 
 /**
@@ -722,7 +776,7 @@ export const addablePatterns = (state: SessionState, workoutId: string): Pattern
 /**
  * Add a slot for a movement type at the bottom of a workout, filled with the
  * first exercise of that type the workout is not already using. It opens on
- * the middle rep range; everything about it can be changed afterwards.
+ * 6–12; everything about it can be changed afterwards.
  */
 export const addEntry = (
   state: SessionState,

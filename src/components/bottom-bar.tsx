@@ -98,7 +98,7 @@ export function Slot({
   label: string;
   tint: string;
   fill?: string;
-  /** Drawn behind the glyph, inside the lozenge — the Leave fill. */
+  /** Drawn behind the glyph, inside the lozenge. */
   children?: ReactNode;
 }) {
   return (
@@ -155,7 +155,7 @@ export function TabButton({
   );
 }
 
-/** A workout action — Back or Skip. Leave is `HoldButton`, in the same slot. */
+/** A workout action — Back, Leave or Skip. */
 export function ActionButton({
   icon,
   label,

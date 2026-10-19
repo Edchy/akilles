@@ -389,7 +389,10 @@ const cutWeight = (
 const roundTo = (value: number, step: number) =>
   step <= 0 ? value : Math.max(step, Math.round(value / step) * step);
 
-/** Reasonable opening weight when there's no history. You'll correct it once. */
+/**
+ * Reasonable opening weight when there's no history and you have not set one
+ * — see `startWeight`. You'll correct it once.
+ */
 const STARTING_WEIGHT: Partial<Record<Pattern, number>> = {
   horizontal_push: 40,
   vertical_push: 30,
@@ -411,12 +414,14 @@ export const freshState = (ex: Exercise): ExerciseState => ({
   exerciseId: ex.id,
   // A per-hand exercise stores the weight of one dumbbell, so the opening
   // guess is halved — 40kg of bench is a pair of 20s.
-  weight: ex.bodyweight
-    ? 0
-    : roundTo(
-        (STARTING_WEIGHT[ex.patterns[0]] ?? 20) / (ex.perHand ? 2 : 1),
-        ex.increment,
-      ),
+  weight:
+    ex.startWeight ??
+    (ex.bodyweight
+      ? 0
+      : roundTo(
+          (STARTING_WEIGHT[ex.patterns[0]] ?? 20) / (ex.perHand ? 2 : 1),
+          ex.increment,
+        )),
   rung: 0,
   downStreak: 0,
   deloads: 0,

@@ -17,9 +17,13 @@ import type { DecayOffer, SessionState } from "@/store/session";
 import {
   acceptDecay,
   buildWorkout,
+  currentWorkout,
   daysSinceTrained,
   declineDecay,
   decayOffers,
+  didTrain,
+  exerciseCount,
+  finishWorkout,
   pendingDecays,
   postponeWorkout,
   skipWorkout,
@@ -34,11 +38,16 @@ export default function TodayScreen() {
   const { state, setState } = useSession();
   const insets = useSafeAreaInsets();
   const barSpace = useBarSpace();
-  const workout = upNext(state);
+  // A workout you stepped out of is still yours to finish: it stays on Today
+  // until you continue it or end it — or open the app on a later day, which
+  // closes it out (see `storage.ts`).
+  const inProgress = !!state.active;
+  const workout = inProgress ? currentWorkout(state) : upNext(state);
   // With one workout there is nothing to skip to.
-  const canSkip = state.workouts.length > 1;
+  const canSkip = !inProgress && state.workouts.length > 1;
   // The workout just skipped, so a mis-tap is one tap to undo.
   const [pickingSkip, setPickingSkip] = useState(false);
+  const [ending, setEnding] = useState(false);
   const [skipped, setSkipped] = useState<{
     id: string;
     name: string;
@@ -55,8 +64,14 @@ export default function TodayScreen() {
 
   const start = () => {
     setSkipped(null);
-    setState((s) => buildWorkout(s));
+    // Never over the top of one in progress — that would throw its sets away.
+    setState((s) => (s.active ? s : buildWorkout(s)));
     router.push("/workout");
+  };
+
+  const end = () => {
+    setEnding(false);
+    setState((s) => finishWorkout(s));
   };
 
   const skip = (postponed: boolean) => {
@@ -105,7 +120,7 @@ export default function TodayScreen() {
           gap: 28,
         }}
       >
-        {offers.length > 0 ? (
+        {inProgress ? null : offers.length > 0 ? (
           <DecayPrompt
             offers={offers}
             idleDays={idleDays}
@@ -156,7 +171,11 @@ export default function TodayScreen() {
               skip, the remark names it and carries the Undo. */}
           <View style={{ flexDirection: "row", alignItems: "center", gap: 10, minHeight: 44 }}>
             <Text style={{ flex: 1, color: colors.muted, fontSize: 16, lineHeight: 22, fontWeight: "600" }}>
-              {skipped?.postponed ? `${skipped.name} is next after ${workout.name}.` : remark}
+              {inProgress
+                ? `In progress: ${exerciseCount(state, "done")} of ${exerciseCount(state, "total")} done.`
+                : skipped?.postponed
+                  ? `${skipped.name} is next after ${workout.name}.`
+                  : remark}
             </Text>
             {skipped ? (
               <Pressable
@@ -179,8 +198,9 @@ export default function TodayScreen() {
           </View>
 
           <View style={{ flexDirection: "row", gap: 12 }}>
+            {inProgress ? <BigButton label="End" onPress={() => setEnding(true)} /> : null}
             {canSkip ? <BigButton label="Skip" onPress={() => setPickingSkip(true)} /> : null}
-            <BigButton label="Start" primary onPress={start} />
+            <BigButton label={inProgress ? "Continue" : "Start"} primary onPress={start} />
           </View>
         </Column>
       </View>
@@ -195,6 +215,19 @@ export default function TodayScreen() {
             title="Skip this round"
             detail="Move on. This workout returns when the cycle repeats."
             onPress={() => skip(false)}
+          />
+        </View>
+      </Sheet>
+      <Sheet visible={ending} title={workout.name} onClose={() => setEnding(false)}>
+        <View style={{ paddingTop: 12, gap: 12 }}>
+          <OpenRow
+            title="End workout"
+            detail={
+              didTrain(state.active)
+                ? "What you logged counts. The rest is marked skipped and the cycle moves on."
+                : `Nothing logged yet, so ${workout.name} stays next.`
+            }
+            onPress={end}
           />
         </View>
       </Sheet>

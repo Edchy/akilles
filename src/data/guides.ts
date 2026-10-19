@@ -99,6 +99,14 @@ const LIFTS: Record<string, Guide> = {
     ],
     "Arching the lower back off the seat to finish a rep.",
   ),
+  kb_press: g(
+    [
+      "Clean the bell to the shoulder, resting on the back of the forearm.",
+      "Squeeze the glutes and press straight up, biceps by the ear.",
+      "Lower under control back to the rack. Switch arms.",
+    ],
+    "Leaning away from the bell to get it up.",
+  ),
   machine_shoulder: g(
     [
       "Seat so the handles start around shoulder height.",
@@ -195,6 +203,14 @@ const LIFTS: Record<string, Guide> = {
     ],
     "Heels lifting — widen the stance if they do.",
   ),
+  kb_goblet_squat: g(
+    [
+      "Hold the bell by the horns at the chest, elbows down.",
+      "Squat down between the knees, elbows brushing inside them.",
+      "Stand up through the whole foot, chest tall.",
+    ],
+    "The bell drifting away from the chest and pulling you forward.",
+  ),
   hack_squat: g(
     [
       "Back flat on the pad, feet shoulder width mid-platform.",
@@ -226,6 +242,14 @@ const LIFTS: Record<string, Guide> = {
       "Stop at a big hamstring stretch, then drive the hips forward.",
     ],
     "Turning it into a squat by bending the knees more.",
+  ),
+  kb_swing: g(
+    [
+      "Feet a little wider than the hips, bell a foot in front of you.",
+      "Hike it back between the legs, then snap the hips forward.",
+      "Let it float to chest height and fall back into the next hinge.",
+    ],
+    "Squatting it up or lifting with the arms — it is a hip snap.",
   ),
   good_morning: g(
     [

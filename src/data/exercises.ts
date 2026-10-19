@@ -7,7 +7,7 @@
  *
  * `increment` is the smallest weight jump you can actually make on that
  * equipment: 2.5 for a barbell (2 x 1.25 plates), 2 for a dumbbell pair,
- * 5 for most machine stacks.
+ * 4 for kettlebells, 5 for most machine stacks.
  */
 
 export type Pattern =
@@ -88,6 +88,12 @@ export type Exercise = {
   unloaded?: boolean;
   /** Set false to bench an exercise without losing its history. */
   enabled?: boolean;
+  /**
+   * The weight it opens at before there is any history, in the same units as
+   * `weight` — one dumbbell for a per-hand lift. Absent means a guess by
+   * movement type; see `freshState`.
+   */
+  startWeight?: number;
   /** Shown once, on the first screen of the exercise. Keep it short. */
   cue?: string;
 };
@@ -111,6 +117,7 @@ export const EXERCISES: Exercise[] = [
   { id: "ohp", name: "Overhead press", patterns: ["vertical_push"], increment: 2.5, cue: "Squeeze glutes, ribs down." },
   { id: "db_shoulder", name: "Dumbbell shoulder press", patterns: ["vertical_push"], increment: 2.5, perHand: true },
   { id: "machine_shoulder", name: "Machine shoulder press", patterns: ["vertical_push"], increment: 5 },
+  { id: "kb_press", name: "Kettlebell press", patterns: ["vertical_push"], increment: 4, cue: "One bell, each arm in turn. Ribs down, press straight up." },
 
   // ---------- vertical pull ----------
   { id: "pullup", name: "Pull-up", patterns: ["vertical_pull"], increment: 2.5, bodyweight: true, assistable: true, cue: "Chest to bar, full hang each rep." },
@@ -128,6 +135,7 @@ export const EXERCISES: Exercise[] = [
   { id: "back_squat", name: "Back squat", patterns: ["squat"], increment: 2.5, cue: "Knees track over toes." },
   { id: "front_squat", name: "Front squat", patterns: ["squat"], increment: 2.5 },
   { id: "goblet_squat", name: "Goblet squat", patterns: ["squat"], increment: 2.5 },
+  { id: "kb_goblet_squat", name: "Kettlebell goblet squat", patterns: ["squat"], increment: 4, cue: "Bell held by the horns at the chest. Elbows inside the knees." },
   // Squat-pattern machines: they fill a Squat slot as well as quad work.
   { id: "hack_squat", name: "Hack squat", patterns: ["squat", "quads"], increment: 5 },
   { id: "leg_press", name: "Leg press", patterns: ["squat", "quads"], increment: 5 },
@@ -140,6 +148,7 @@ export const EXERCISES: Exercise[] = [
   { id: "back_ext", name: "Back extension", patterns: ["hinge", "hamstrings"], increment: 2.5, bodyweight: true },
   { id: "db_rdl", name: "Dumbbell Romanian deadlift", patterns: ["hamstrings", "hinge"], increment: 2.5, perHand: true, cue: "Hips back, dumbbells close to the legs." },
   { id: "nordic_curl", name: "Nordic curl", patterns: ["hamstrings"], increment: 2.5, bodyweight: true },
+  { id: "kb_swing", name: "Kettlebell swing", patterns: ["hinge"], increment: 4, cue: "Snap the hips, arms just guide the bell." },
 
   // ---------- lunge / single leg ----------
   { id: "bulgarian", name: "Bulgarian split squat", patterns: ["lunge", "quads"], increment: 2.5, perHand: true },
@@ -443,11 +452,11 @@ export const setCustomExercises = (list: Exercise[]) => {
 };
 
 /**
- * Your changes to an exercise — its name, its weight step — kept apart from
+ * Your changes to an exercise — its name, its weight step, where it starts — kept apart from
  * the definition, so a built-in keeps its id and history and its original
  * values stay underneath. Kept in sync by the store, like the custom list.
  */
-export type ExerciseEdit = { name?: string; increment?: number };
+export type ExerciseEdit = { name?: string; increment?: number; startWeight?: number };
 
 let exerciseEdits: Record<string, ExerciseEdit> = {};
 

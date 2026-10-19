@@ -493,6 +493,7 @@ function Lifts({ state }: { state: SessionState }) {
               key={r.key}
               row={r}
               log={state.log}
+              history={state.history}
               first={i === 0}
               open={open === r.key}
               onToggle={() => toggle(r.key)}
@@ -516,12 +517,14 @@ function Lifts({ state }: { state: SessionState }) {
 function LiftRowView({
   row,
   log,
+  history,
   first,
   open,
   onToggle,
 }: {
   row: LiftRow;
   log: SessionLog[];
+  history: SessionState["history"];
   first: boolean;
   open: boolean;
   onToggle: () => void;
@@ -530,18 +533,22 @@ function LiftRowView({
   const ladder = ladderFor(scheme);
   const target = ladder[Math.min(st.rung, ladder.length - 1)];
 
-  // This lift's past, newest first, from the log.
+  // This lift's past, newest first, from the log — including sessions on a
+  // range it no longer has a record for, which were folded into this one.
   const past = log
     .flatMap((s) =>
       s.entries
         .filter(
           (e): e is LiftEntry =>
-            e.kind === "lift" && e.exerciseId === exercise.id && e.scheme === scheme,
+            e.kind === "lift" &&
+            e.exerciseId === exercise.id &&
+            (e.scheme === scheme || !history[`${e.exerciseId}:${e.scheme}`]),
         )
         .map((e) => ({ at: s.startedAt, e })),
     )
     .reverse();
-  const oldest = past.at(-1);
+  // "Up from" compares like with like: the same range only.
+  const oldest = past.filter(({ e }) => e.scheme === scheme).at(-1);
   const since =
     oldest && oldest.e.weight !== st.weight
       ? `${st.weight > oldest.e.weight ? "Up" : "Down"} from ${weightLabel(exercise, oldest.e.weight)} on ${shortDate(oldest.at)}`

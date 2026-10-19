@@ -24,11 +24,13 @@ They are a starting point, not a fixture — see
 
 | | | Main lifts | Arms & abs |
 |---|---|---|---|
-| 1 | **Push A** · chest focus | DB bench `3x6–10` · DB shoulder press `3x8–12` · cable crossover `3x12–15` · dips `3x6–12` | hanging leg raise `3x10–15` |
-| 2 | **Pull A** · vertical pull focus | pull-ups `3x5–10` · barbell row `3x6–10` · row machine `3x10–12` | barbell curl `3x8–12` · rotary torso machine `3x12–15` |
-| 3 | **Legs** | back squat `3x6–10` · RDL `3x8–10` · Bulgarian split squat `2x8–10` | hanging leg raise `3x10–15` |
-| 4 | **Push B** · shoulder focus | DB shoulder press `3x6–10` · DB bench `3x10–12` · cable crossover `3x12–15` | pushdown `3x10–15` · rotary torso machine `3x12–15` |
-| 5 | **Pull B** · row focus | lat pulldown `3x8–12` · DB row `3x8–12` · row machine `3x10–12` | DB curl `3x10–12` · hanging leg raise `3x10–15` |
+| 1 | **Push A** · chest focus | DB bench `3x` · DB shoulder press `3x` · cable crossover `3x` · dips `3x` | hanging leg raise `2x` |
+| 2 | **Pull A** · vertical pull focus | pull-ups `3x` · barbell row `3x` · row machine `3x` | barbell curl `3x` · rotary torso machine `2x` |
+| 3 | **Legs** | back squat `3x` · RDL `3x` · Bulgarian split squat `2x` | hanging leg raise `2x` |
+| 4 | **Push B** · shoulder focus | DB shoulder press `3x` · DB bench `3x` · cable crossover `3x` | pushdown `3x` · rotary torso machine `2x` |
+| 5 | **Pull B** · row focus | lat pulldown `3x` · DB row `3x` · row machine `3x` | DB curl `3x` · hanging leg raise `2x` |
+
+Every lift climbs **6 → 8 → 10 → 12** reps. Abs are always two sets.
 
 Pull-ups and dips are "as many as you can" in spirit. Here they climb a rep
 range like everything else, and topping it out adds weight — or takes
@@ -51,9 +53,8 @@ bench and you get dumbbell bench's own weight and ladder, not bench's numbers
 applied to dumbbells; swap back weeks later and barbell bench resumes exactly
 where it left off.
 
-**The same lifts come back at different rep ranges.** DB bench is `6–10` on
-Push A and `10–12` on Push B, on *independent ladders at independent weights*,
-so each main lift is trained twice a cycle and progresses on both.
+**The same lifts come back twice a cycle.** DB bench on Push A and Push B is
+*one* ladder at one weight, so both days move it along.
 
 **Warm-ups** run before the first exercise of each muscle group: three ramping
 sets at 40/60/80% of the working weight, for 10/6/3 reps. Tap each one as you
@@ -103,22 +104,23 @@ any time you want.
 
 | | |
 |---|---|
-| every set on target | climb the rep ladder — 6 → 8 → 10 |
+| every set on target | climb the rep ladder — 6 → 8 → 10 → 12 |
 | on target at the top | weight += increment, back to the bottom rung |
 | short of target | hold everything, repeat it exactly |
 | short twice in a row | deload 10%, back to the bottom rung |
 
-Once every circle is filled, one line above **Next exercise** says which of
-these happens next time. **An unfinished exercise is not a miss**: leave with
+Once every circle is filled, a sheet says which of these happens next time,
+with **Next exercise** under it. It waits two seconds after your last tap, so
+the last circle can still be tapped down if you came up short. **An unfinished exercise is not a miss**: leave with
 sets still empty and it simply repeats, since running out of time says nothing
 about the weight.
 
-**Rep ranges.** A slot climbs from the bottom of its range to the top in three
-rungs — `6–10` is 6 → 8 → 10, `12–15` is 12 → 14 → 15 — or rep by rep when the
-range is too narrow for that: `8–10` is 8 → 9 → 10. Each exercise is tracked
-**separately per rep range**: bench at 6–10 and bench at 10–12 sit on their
-own ladders at their own weights, and changing a slot's range starts that lift
-on a new record.
+**Rep ranges.** Every target is 6, 8, 10 or 12 — reps climb two at a time,
+never to an 11 or a 13. Slots start on 6–12; one can be narrowed (8–12,
+10–12) in Plan. Each exercise is tracked **separately per rep range**, so
+narrowing a slot's range starts that lift on a new record — set its weight
+in the same sheet. Saves from before the even steps were moved onto 6–12 with
+each lift's heaviest recent weight, at the rung nearest the reps it was on.
 
 **Superset** folds any lift from later in the workout into the current one,
 removing it from further down so it isn't done twice. What to pair is your
@@ -138,7 +140,7 @@ Three tabs, plus the workout itself which takes over the screen.
 
 | Tab | |
 |---|---|
-| **Today** | The next workout, large and nothing else. **Start**, or **Skip**: **Do this next time** trains the following workout now and returns to this one next session; **Skip this round** leaves it until the cycle repeats. Both offer Undo and record no training. |
+| **Today** | The next workout, large and nothing else. **Start**, or **Skip**: **Do this next time** trains the following workout now and returns to this one next session; **Skip this round** leaves it until the cycle repeats. Both offer Undo and record no training. With a workout in progress, **Continue** and **End** instead. |
 | **Progress** | This week's training days as seven circles, then three views. **Results**: total weight lifted (put in proportion — "3.8 small cars"), sessions this month, weeks in a row, share of lifts on target, lifts that got stronger, standing records, cardio that got faster or further. **Sessions**: every finished workout, newest first, with each set coloured hit or short. **Lifts**: every exercise by muscle group at its current weight, tap for its past sessions; cardio bests too. Backup & restore sits in a sheet at the bottom. |
 | **Plan** | Two segments: **Workouts** (your sessions, their order, and what fills each slot) and **Exercises** (the catalogue of every movement). |
 
@@ -149,7 +151,9 @@ The **Exercises** segment is your catalogue, grouped the way you train:
 **Push, Pull, Legs, Core** — then cardio machines and mobility routines. Each
 exercise is listed by name with its weight step; nothing else.
 
-**Tap an exercise** to rename it or change its **weight step** — how many kg
+**Tap an exercise** to rename it, set its **weight** — where it starts before
+you have trained it, the weight it opens at next time after — or change its
+**weight step** — how many kg
 one press of − or + moves it. Enter any positive number, including decimals;
 changes save automatically. For dumbbells, the step is per dumbbell. Edits work on
 built-ins too: they are stored alongside, so the exercise keeps its id and its
@@ -160,7 +164,8 @@ history is kept, so adding it back later resumes where it left off.
 
 **+ on a group adds.** First the **library** — built-in exercises you are not
 using, one tap to add — then **Create your own**: name it, pick the equipment
-(barbell, dumbbells, machine, bodyweight — which sets a sensible weight step),
+(barbell, dumbbells, kettlebell, machine, bodyweight — which sets a sensible
+weight step), give it a starting weight if you know it,
 and say what it counts as. The catalogue starts with the program's exercises
 plus a common alternative or two for each job; everything else waits in the
 library rather than cluttering the list.
@@ -222,10 +227,10 @@ bar on the other screens, so navigation looks the same everywhere:
 Back steps to the previous exercise with its circles still filled, so a
 mis-tap is fixable. Skip moves on (on a warm-up, see above).
 
-**Leave is press-and-hold.** Its slot fills red from the bottom
-up over a second; let go early and it drains away with nothing changed. Ending
-the session is consequential enough that a stray thumb mid-set should not do
-it, but not so grave that it deserves a confirmation dialog.
+**Leave steps out without ending anything.** The session stays exactly where
+it is — circles, weights, the exercise you were on — while you change a
+weight in Plan or check Progress. Today then offers **Continue**, which picks
+up where you left it, or **End**, which commits it.
 
 Every control is at least the 44pt platform minimum — the bar is 72pt tall to
 hold a full-size target plus its label.
@@ -238,17 +243,18 @@ one small JSON blob; a year of training is around 35KB.
 **Nothing is committed to history until the workout ends.** Circle taps, weight
 edits and skips all live on the session, so Back can revisit any exercise and
 change what you logged. The single commit happens when you
-finish the last exercise or press Leave.
+finish the last exercise or press End on Today.
 
-**Leaving before you've trained anything cancels.** If no set was logged and no
-distance entered, Leave simply closes the workout: the same one stays next and
+**Ending before you've trained anything cancels.** If no set was logged and no
+distance entered, End simply closes the workout: the same one stays next and
 nothing is flagged as skipped. Starting and bailing should not drop a workout
 from the rotation.
 
 **A workout in progress survives until the end of the day it was started.**
-Close the app mid-session, or have the OS kill it, and reopening puts you back
-on the same exercise with your circles still filled. Come back the next day and
-the session is closed out as if you had pressed Leave — what you trained counts,
+Close the app mid-session, or have the OS kill it, and Today offers to
+continue it on the same exercise with your circles still filled. Open the app
+on a later day and the session is closed out as if you had pressed End — what
+you trained counts,
 the rest is skipped, and the cycle moves on — so a dead phone never costs you a
 session's progress. It is a calendar day in the phone's own timezone, not
 twenty-four hours: a workout begun at 9pm is stale by the next morning, not by
@@ -257,7 +263,7 @@ the next evening.
 **A skip records nothing** — the weight and rep ladder come back next time
 exactly as they were. The flag is written when the workout *ends*, not when
 you tap Skip, so a skip you undo with Back leaves no trace. Anything you never
-reached because you left early counts the same way. Skips show in History and
+reached because you ended early counts the same way. Skips show in History and
 in the line under the weight, so a lift you keep avoiding becomes visible
 rather than silently stalling.
 
@@ -288,16 +294,18 @@ after every change, so it survives reloads and restarts. It is lost only if
 Expo Go's data is cleared or the app is uninstalled.
 
 **Exercises inside a workout.** Tap a workout open, then tap an exercise to
-see what it can be swapped for; tap one and it's swapped. **Sets & reps**
-under the list changes the set count and rep range (any bottom and top, 1–30),
-and **Remove** takes it out of the workout.
+see what it can be swapped for; tap one and it's swapped. Under it, its
+**weight**, then **Sets & reps**: the set count and the rep range (bottom and
+top, 6–12 in steps of two). **Remove** takes it out of the workout.
 
 **+ Add exercise** adds a slot by movement type, filled with the first exercise
 of that type the workout is not already using. **Hold and drag** a slot to
 reorder it within the workout.
 
 Edits to a workout that is in progress take effect from its next run; the
-session you are in keeps the shape it started with.
+session you are in keeps the shape it started with. A weight is the exception:
+set one while a workout is in progress and any of its exercises not yet
+started pick it up.
 
 | What | Where |
 |---|---|
@@ -313,8 +321,8 @@ session you are in keeps the shape it started with.
 - No rest timer between sets.
 - The session log starts with the version that added it; workouts before that
   show only in Lifts, not in Sessions.
-- **Starting weights are guesses** (`STARTING_WEIGHT` in `progression.ts`). You
-  correct each one on its first session.
+- **Starting weights are guesses** (`STARTING_WEIGHT` in `progression.ts`)
+  unless you set one in Plan, or when creating the exercise.
 - No way to log what you *actually* did if it differs from the prescription.
 
 Product direction and research notes live in [PRODUCT_STRATEGY.md](./PRODUCT_STRATEGY.md).

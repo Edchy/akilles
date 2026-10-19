@@ -14,11 +14,15 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 
 import { setCustomConditioning } from "@/data/conditioning";
 import { leanHiddenExercises, setCustomExercises, setExerciseEdits } from "@/data/exercises";
-import { DEFAULT_WORKOUTS } from "@/data/split";
+import { DEFAULT_SCHEME, DEFAULT_WORKOUTS, ladderFor, type Entry, type Scheme } from "@/data/split";
+import { progressScore, type ExerciseState } from "@/lib/progression";
 import {
   CONDITIONING_ID,
   finishWorkout,
   initialState,
+  isConditioning,
+  key,
+  type Item,
   type SessionState,
 } from "@/store/session";
 
@@ -56,8 +60,11 @@ const KEY = "achilles/state";
  * 8 — the default pool gained an alternative for every slot that had none
  *     (squat, hinge, single leg, chest fly); those are added to the
  *     catalogue. Nothing is removed.
+ * 9 — every slot climbs 6 → 8 → 10 → 12, and abs are two sets. A lift's
+ *     records on its old ranges are folded into one on the new range — see
+ *     `toEvenRanges` — so no weight goes back to a guess.
  */
-const VERSION = 8;
+const VERSION = 9;
 
 /** What actually goes to disk. Older blobs carry a cycle position, not an id. */
 type Saved = {
@@ -84,6 +91,92 @@ const isToday = (startedAt: number | undefined): boolean => {
     then.getMonth() === now.getMonth() &&
     then.getDate() === now.getDate()
   );
+};
+
+const DAY = 24 * 60 * 60 * 1000;
+
+/**
+ * Version 9: every slot onto 6–12, and each lift's records onto that range.
+ *
+ * A lift trained on two ranges — heavy bench on Push A, lighter on Push B —
+ * becomes one record. It takes the heavier weight, at the rung nearest the
+ * reps it was on: 6 → 8 → 10 → 12 starts at 6, so the heavy day's weight is
+ * the one to keep. A range left idle for three weeks or more is passed over,
+ * since its weight is no longer the one you lift. Speed work has no range
+ * and is left alone.
+ */
+const toEvenRanges = (state: SessionState): SessionState => {
+  const retune = <T extends Entry>(e: T): T => ({
+    ...e,
+    ...(e.scheme === "speed" || e.derive ? {} : { scheme: DEFAULT_SCHEME }),
+    ...(e.pattern === "abs" ? { sets: 2 } : {}),
+  });
+  const retuneItem = (it: Item): Item =>
+    isConditioning(it) || it.derive || it.scheme === "speed"
+      ? it
+      : {
+          ...it,
+          scheme: DEFAULT_SCHEME,
+          supersetEntry: it.supersetEntry && retuneItem(it.supersetEntry),
+        };
+
+  type Held = { k: string; scheme: Scheme; record: ExerciseState };
+  const byExercise = new Map<string, Held[]>();
+  for (const [k, record] of Object.entries(state.history)) {
+    const scheme = k.slice(k.indexOf(":") + 1) as Scheme;
+    if (scheme === "speed") continue;
+    byExercise.set(record.exerciseId, [...(byExercise.get(record.exerciseId) ?? []), { k, scheme, record }]);
+  }
+
+  const ladder = ladderFor(DEFAULT_SCHEME);
+  const target = ({ scheme, record }: Held) => {
+    const own = ladderFor(scheme);
+    return own[Math.min(record.rung, own.length - 1)];
+  };
+  const history = { ...state.history };
+  for (const [id, held] of byExercise) {
+    const times = held.flatMap((h) => (typeof h.record.lastTrainedAt === "number" ? [h.record.lastTrainedAt] : []));
+    const newest = times.length > 0 ? Math.max(...times) : undefined;
+    const current = held.filter(
+      (h) => newest === undefined || (h.record.lastTrainedAt ?? newest) >= newest - 21 * DAY,
+    );
+    const source = current.reduce((a, b) =>
+      b.record.weight > a.record.weight ||
+      (b.record.weight === a.record.weight && target(b) > target(a))
+        ? b
+        : a,
+    );
+    const rung = Math.max(0, ladder.filter((reps) => reps <= target(source)).length - 1);
+    const moved: ExerciseState = { ...source.record, rung };
+    const merged: ExerciseState = {
+      ...moved,
+      lastTrainedAt: newest,
+      bestWeight: Math.max(...held.map((h) => Math.max(h.record.bestWeight ?? h.record.weight, h.record.weight))),
+      // The routine back-off compares progress against a baseline. Carry over
+      // how far it had moved, not the number, which was on the old ladder.
+      backOffScore:
+        typeof source.record.backOffScore === "number"
+          ? progressScore(moved, DEFAULT_SCHEME) -
+            (progressScore(source.record, source.scheme) - source.record.backOffScore)
+          : undefined,
+    };
+    for (const h of held) delete history[h.k];
+    history[key(id, DEFAULT_SCHEME)] = merged;
+  }
+
+  return {
+    ...state,
+    workouts: state.workouts.map((w) => ({ ...w, exercises: w.exercises.map(retune) })),
+    removedWorkouts: state.removedWorkouts.map((r) => ({
+      ...r,
+      workout: { ...r.workout, exercises: r.workout.exercises.map(retune) },
+    })),
+    history,
+    active: state.active && {
+      ...state.active,
+      items: state.active.items.map(retuneItem),
+    },
+  };
 };
 
 /**
@@ -159,21 +252,23 @@ export const fromSaved = (raw: string): SessionState | Unreadable => {
     }
     // `byId`, `cardioById` and `mobilityById` resolve custom entries through
     // module-level lists, so those have to be repopulated before anything
-    // looks one up — including the commit below.
+    // looks one up — including the migration and the commit below.
     setCustomExercises(restored.custom);
     setExerciseEdits(restored.exerciseEdits);
     setCustomConditioning(restored.customCardio, restored.customMobility);
+
+    const migrated = saved.version < 9 ? toEvenRanges(restored) : restored;
 
     // Yesterday's abandoned workout is not resumed. It is closed out exactly
     // as if you had pressed Leave: whatever you trained counts, the rest is
     // skipped, and the cycle moves on — a dead phone should not cost you a
     // session's progress. If nothing was trained, `finishWorkout` just drops
     // it and the same workout comes up again.
-    if (restored.active && !isToday(restored.active.startedAt)) {
-      const startedAt = restored.active.startedAt;
-      return finishWorkout(restored, typeof startedAt === "number" ? startedAt : Date.now());
+    if (migrated.active && !isToday(migrated.active.startedAt)) {
+      const startedAt = migrated.active.startedAt;
+      return finishWorkout(migrated, typeof startedAt === "number" ? startedAt : Date.now());
     }
-    return restored;
+    return migrated;
   } catch {
     return "invalid";
   }

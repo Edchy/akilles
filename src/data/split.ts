@@ -16,8 +16,8 @@ import type { Pattern } from "@/data/exercises";
 /**
  * Which rep ladder an exercise climbs before adding weight.
  *
- * Either one of the named schemes, or any rep range of your own written
- * "min-max" — "6-10" climbs 6 → 8 → 10, then adds weight and starts again.
+ * Either one of the named schemes, or a rep range of your own written
+ * "min-max" — "6-12" climbs 6 → 8 → 10 → 12, then adds weight and starts again.
  *
  * The same lift can appear on more than one scheme — heavy bench one day,
  * lighter bench another — and each scheme keeps its own weight and its own
@@ -45,18 +45,38 @@ export const SETS: Record<NamedScheme, number> = {
 /** Sets for a rep range of your own, unless the slot says otherwise. */
 const DEFAULT_SETS = 3;
 
+/** Abs are small and trained often: two sets is plenty. */
+const ABS_SETS = 2;
+
 const isNamed = (scheme: Scheme): scheme is NamedScheme => scheme in LADDERS;
 
-/** Fewest and most reps a range can span. */
-export const REPS_RANGE = { min: 1, max: 30 } as const;
+/**
+ * Fewest and most reps a range can span, and the step between rungs. Every
+ * target is one of 6, 8, 10 or 12 — never an 11 or a 13.
+ */
+export const REPS_RANGE = { min: 6, max: 12 } as const;
+export const REP_STEP = 2;
+
+/** The range every slot starts on: 6 → 8 → 10 → 12. */
+export const DEFAULT_SCHEME: Scheme = `${REPS_RANGE.min}-${REPS_RANGE.max}`;
+
+/** Snap a rep count onto the range's even steps. */
+const onStep = (reps: number): number =>
+  Math.max(
+    REPS_RANGE.min,
+    Math.min(
+      REPS_RANGE.max,
+      REPS_RANGE.min + Math.round((reps - REPS_RANGE.min) / REP_STEP) * REP_STEP,
+    ),
+  );
 
 /**
  * The scheme for a rep range. A range matching a named scheme's ends IS that
  * scheme — 8–12 is volume — so the lift keeps the history it already has.
  */
 export const rangeScheme = (min: number, max: number): Scheme => {
-  const lo = Math.max(REPS_RANGE.min, Math.min(min, max));
-  const hi = Math.min(REPS_RANGE.max, Math.max(min, max));
+  const lo = onStep(Math.min(min, max));
+  const hi = onStep(Math.max(min, max));
   for (const name of ["strength", "volume", "pump"] as const) {
     const ladder = LADDERS[name];
     if (ladder[0] === lo && ladder[ladder.length - 1] === hi) return name;
@@ -65,15 +85,17 @@ export const rangeScheme = (min: number, max: number): Scheme => {
 };
 
 /**
- * The rungs a scheme climbs. A range of your own gets three — bottom,
- * middle, top — or every rep when it is too narrow for that: 8–10 climbs
- * 8 → 9 → 10, 6–10 climbs 6 → 8 → 10.
+ * The rungs a scheme climbs. A range of your own climbs two reps at a time:
+ * 6–12 is 6 → 8 → 10 → 12, 10–12 is 10 → 12. The top is always a rung, so a
+ * range kept from before the even steps still finishes where it said.
  */
 export const ladderFor = (scheme: Scheme): number[] => {
   if (isNamed(scheme)) return LADDERS[scheme];
   const [lo, hi] = scheme.split("-").map(Number);
   if (!(lo > 0) || !(hi >= lo)) return LADDERS.volume;
-  return [...new Set([lo, Math.round((lo + hi) / 2), hi])];
+  const rungs: number[] = [];
+  for (let reps = lo; reps < hi; reps += REP_STEP) rungs.push(reps);
+  return [...rungs, hi];
 };
 
 /** The ends of a scheme's ladder. */
@@ -120,9 +142,8 @@ export type Entry = {
    */
   derive?: { from: string; scheme: Scheme; fraction: number };
   /**
-   * Override the scheme's set count for this entry.
-   * Used to keep the daily arms/abs work at 2 sets so it doesn't outweigh
-   * the compound lifts over a week.
+   * Override the scheme's set count for this entry. Abs default to 2 without
+   * one — see `setsFor`.
    */
   sets?: number;
 };
@@ -143,21 +164,21 @@ const FULL_CYCLE: Authored[] = [
    * Push, pull, legs, push, pull. Each slot names its exercise; the swap
    * button offers everything else in the catalogue of the same movement type.
    *
-   * Progression follows the exercise AND its rep range: bench at 6–10 on Push
-   * A and at 10–12 on Push B are two records at two weights. Pull-ups and dips
-   * are "as many as you can" on paper — here they climb a range like
-   * anything else, and hitting the top adds weight or takes off assistance.
+   * Every slot climbs 6 → 8 → 10 → 12, so a lift on two days is one record
+   * at one weight, progressed by both. Pull-ups and dips are "as many as you
+   * can" on paper — here they climb the range like anything else, and
+   * hitting the top adds weight or takes off assistance.
    */
   {
     id: "push_a",
     name: "Push A",
     subtitle: "chest focus",
     exercises: [
-      { slot: "Horizontal press", pattern: "horizontal_push", options: ["db_bench"], scheme: "6-10" },
-      { slot: "Vertical press", pattern: "vertical_push", options: ["db_shoulder"], scheme: "volume" },
-      { slot: "Chest fly", pattern: "chest_iso", options: ["cable_crossover"], scheme: "12-15" },
-      { slot: "Dips", pattern: "triceps", options: ["dips"], scheme: "6-12" },
-      { slot: "Abs", pattern: "abs", options: ["hanging_leg_raise"], scheme: "10-15" },
+      { slot: "Horizontal press", pattern: "horizontal_push", options: ["db_bench"], scheme: DEFAULT_SCHEME },
+      { slot: "Vertical press", pattern: "vertical_push", options: ["db_shoulder"], scheme: DEFAULT_SCHEME },
+      { slot: "Chest fly", pattern: "chest_iso", options: ["cable_crossover"], scheme: DEFAULT_SCHEME },
+      { slot: "Dips", pattern: "triceps", options: ["dips"], scheme: DEFAULT_SCHEME },
+      { slot: "Abs", pattern: "abs", options: ["hanging_leg_raise"], scheme: DEFAULT_SCHEME },
     ],
   },
   {
@@ -165,11 +186,11 @@ const FULL_CYCLE: Authored[] = [
     name: "Pull A",
     subtitle: "vertical pull focus",
     exercises: [
-      { slot: "Vertical pull", pattern: "vertical_pull", options: ["pullup"], scheme: "5-10" },
-      { slot: "Heavy row", pattern: "horizontal_pull", options: ["bb_row"], scheme: "6-10" },
-      { slot: "Machine row", pattern: "horizontal_pull", options: ["machine_row"], scheme: "10-12" },
-      { slot: "Biceps", pattern: "biceps", options: ["bb_curl"], scheme: "volume" },
-      { slot: "Abs", pattern: "abs", options: ["ab_machine"], scheme: "12-15" },
+      { slot: "Vertical pull", pattern: "vertical_pull", options: ["pullup"], scheme: DEFAULT_SCHEME },
+      { slot: "Heavy row", pattern: "horizontal_pull", options: ["bb_row"], scheme: DEFAULT_SCHEME },
+      { slot: "Machine row", pattern: "horizontal_pull", options: ["machine_row"], scheme: DEFAULT_SCHEME },
+      { slot: "Biceps", pattern: "biceps", options: ["bb_curl"], scheme: DEFAULT_SCHEME },
+      { slot: "Abs", pattern: "abs", options: ["ab_machine"], scheme: DEFAULT_SCHEME },
     ],
   },
   {
@@ -177,10 +198,10 @@ const FULL_CYCLE: Authored[] = [
     name: "Legs",
     subtitle: "squat, hinge, split squat",
     exercises: [
-      { slot: "Squat", pattern: "squat", options: ["back_squat"], scheme: "6-10" },
-      { slot: "Hinge", pattern: "hinge", options: ["rdl"], scheme: "8-10" },
-      { slot: "Single leg", pattern: "lunge", options: ["bulgarian"], scheme: "8-10", sets: 2 },
-      { slot: "Abs", pattern: "abs", options: ["hanging_leg_raise"], scheme: "10-15" },
+      { slot: "Squat", pattern: "squat", options: ["back_squat"], scheme: DEFAULT_SCHEME },
+      { slot: "Hinge", pattern: "hinge", options: ["rdl"], scheme: DEFAULT_SCHEME },
+      { slot: "Single leg", pattern: "lunge", options: ["bulgarian"], scheme: DEFAULT_SCHEME, sets: 2 },
+      { slot: "Abs", pattern: "abs", options: ["hanging_leg_raise"], scheme: DEFAULT_SCHEME },
     ],
   },
   {
@@ -188,11 +209,11 @@ const FULL_CYCLE: Authored[] = [
     name: "Push B",
     subtitle: "shoulder focus",
     exercises: [
-      { slot: "Vertical press", pattern: "vertical_push", options: ["db_shoulder"], scheme: "6-10" },
-      { slot: "Horizontal press", pattern: "horizontal_push", options: ["db_bench"], scheme: "10-12" },
-      { slot: "Chest fly", pattern: "chest_iso", options: ["cable_crossover"], scheme: "12-15" },
-      { slot: "Triceps", pattern: "triceps", options: ["pushdown"], scheme: "10-15" },
-      { slot: "Abs", pattern: "abs", options: ["ab_machine"], scheme: "12-15" },
+      { slot: "Vertical press", pattern: "vertical_push", options: ["db_shoulder"], scheme: DEFAULT_SCHEME },
+      { slot: "Horizontal press", pattern: "horizontal_push", options: ["db_bench"], scheme: DEFAULT_SCHEME },
+      { slot: "Chest fly", pattern: "chest_iso", options: ["cable_crossover"], scheme: DEFAULT_SCHEME },
+      { slot: "Triceps", pattern: "triceps", options: ["pushdown"], scheme: DEFAULT_SCHEME },
+      { slot: "Abs", pattern: "abs", options: ["ab_machine"], scheme: DEFAULT_SCHEME },
     ],
   },
   {
@@ -200,11 +221,11 @@ const FULL_CYCLE: Authored[] = [
     name: "Pull B",
     subtitle: "row focus",
     exercises: [
-      { slot: "Vertical pull", pattern: "vertical_pull", options: ["lat_pulldown"], scheme: "volume" },
-      { slot: "Single-arm row", pattern: "horizontal_pull", options: ["db_row"], scheme: "volume" },
-      { slot: "Machine row", pattern: "horizontal_pull", options: ["machine_row"], scheme: "10-12" },
-      { slot: "Biceps", pattern: "biceps", options: ["db_curl"], scheme: "10-12" },
-      { slot: "Abs", pattern: "abs", options: ["hanging_leg_raise"], scheme: "10-15" },
+      { slot: "Vertical pull", pattern: "vertical_pull", options: ["lat_pulldown"], scheme: DEFAULT_SCHEME },
+      { slot: "Single-arm row", pattern: "horizontal_pull", options: ["db_row"], scheme: DEFAULT_SCHEME },
+      { slot: "Machine row", pattern: "horizontal_pull", options: ["machine_row"], scheme: DEFAULT_SCHEME },
+      { slot: "Biceps", pattern: "biceps", options: ["db_curl"], scheme: DEFAULT_SCHEME },
+      { slot: "Abs", pattern: "abs", options: ["hanging_leg_raise"], scheme: DEFAULT_SCHEME },
     ],
   },
 ];
@@ -233,11 +254,16 @@ export const newId = (prefix: string): string =>
 
 /**
  * The scheme a new slot of a movement type starts on. Jumps are speed work —
- * low reps, no ladder — and everything else opens in the middle of the range.
+ * low reps, no ladder — and everything else climbs 6 → 8 → 10 → 12.
  */
 export const defaultScheme = (pattern: Pattern): Scheme =>
-  pattern === "jump" ? "speed" : "volume";
+  pattern === "jump" ? "speed" : DEFAULT_SCHEME;
 
-/** Set count for an entry: its own override, else the scheme default. */
+/** Set count for an entry: its own override, else two for abs, else the scheme default. */
 export const setsFor = (entry: Entry): number =>
-  entry.sets ?? (isNamed(entry.scheme) ? SETS[entry.scheme] : DEFAULT_SETS);
+  entry.sets ??
+  (entry.pattern === "abs"
+    ? ABS_SETS
+    : isNamed(entry.scheme)
+      ? SETS[entry.scheme]
+      : DEFAULT_SETS);

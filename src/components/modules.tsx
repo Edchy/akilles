@@ -4,10 +4,12 @@ import { Pressable, Text, TextInput, View } from "react-native";
 import { DragList, type Drag } from "@/components/drag-list";
 import { Icon, type IconName } from "@/components/icon";
 import { BigButton, SectionLabel, Sheet, TextButton } from "@/components/sheet";
+import { WeightField } from "@/components/weight-field";
 import { colors, radii } from "@/constants/theme";
 import { PATTERN_LABEL, PATTERN_ORDER, byId } from "@/data/exercises";
 import {
   REPS_RANGE,
+  REP_STEP,
   newId,
   rangeScheme,
   repLabel,
@@ -624,6 +626,8 @@ function SlotSheet({
           )}
         </View>
 
+        {entry.derive ? null : <WeightField key={exerciseId} exerciseId={exerciseId} />}
+
         <View style={{ gap: 12 }}>
           <SectionLabel>Sets and reps</SectionLabel>
           <View
@@ -666,14 +670,14 @@ function SlotSheet({
                     icon="minus"
                     label="Lower the bottom of the rep range"
                     disabled={reps.min <= REPS_RANGE.min}
-                    onPress={() => update({ scheme: rangeScheme(reps.min - 1, reps.max) })}
+                    onPress={() => update({ scheme: rangeScheme(reps.min - REP_STEP, reps.max) })}
                   />
                   <Count value={reps.min} />
                   <Step
                     icon="plus"
                     label="Raise the bottom of the rep range"
                     disabled={reps.min >= reps.max}
-                    onPress={() => update({ scheme: rangeScheme(reps.min + 1, reps.max) })}
+                    onPress={() => update({ scheme: rangeScheme(reps.min + REP_STEP, reps.max) })}
                   />
                 </Setting>
                 <Setting label="Most reps" last>
@@ -681,14 +685,14 @@ function SlotSheet({
                     icon="minus"
                     label="Lower the top of the rep range"
                     disabled={reps.max <= reps.min}
-                    onPress={() => update({ scheme: rangeScheme(reps.min, reps.max - 1) })}
+                    onPress={() => update({ scheme: rangeScheme(reps.min, reps.max - REP_STEP) })}
                   />
                   <Count value={reps.max} />
                   <Step
                     icon="plus"
                     label="Raise the top of the rep range"
                     disabled={reps.max >= REPS_RANGE.max}
-                    onPress={() => update({ scheme: rangeScheme(reps.min, reps.max + 1) })}
+                    onPress={() => update({ scheme: rangeScheme(reps.min, reps.max + REP_STEP) })}
                   />
                 </Setting>
               </>
@@ -696,7 +700,7 @@ function SlotSheet({
           </View>
           {fixedRange ? null : (
             <Text style={{ color: colors.faint, fontSize: 13, lineHeight: 19 }}>
-              Reps climb from the fewest to the most, then the weight goes up.
+              Reps climb two at a time from the fewest to the most, then the weight goes up.
             </Text>
           )}
         </View>

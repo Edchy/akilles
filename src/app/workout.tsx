@@ -7,7 +7,6 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Column, COLUMN } from "@/components/screen";
 import { useBarActions } from "@/components/bar-actions";
 import { ActionButton, useBarSpace } from "@/components/bottom-bar";
-import { HoldButton } from "@/components/hold-button";
 import { Icon, type IconName } from "@/components/icon";
 import { GuideButton } from "@/components/guide";
 import { Illustration } from "@/components/illustration";
@@ -101,6 +100,12 @@ const FIXED = {
   why: 57,
 } as const;
 
+/**
+ * How long the result waits after the last circle is filled. Long enough to
+ * tap that circle again and count it down — each tap restarts the wait.
+ */
+const RESULT_DELAY_MS = 2000;
+
 export default function WorkoutScreen() {
   const { state, setState } = useSession();
   const barSpace = useBarSpace();
@@ -120,18 +125,31 @@ export default function WorkoutScreen() {
     ? `${active.startedAt}:${currentItem.slot}`
     : null;
   const logged = resultKey !== null && allSetsLogged(state);
+  const reps = JSON.stringify([currentItem?.logged, currentItem?.supersetLogged]);
   const [resultFor, setResultFor] = useState<string | null>(null);
   const previousResult = useRef<{ key: string | null; logged: boolean }>({ key: null, logged: false });
+  // Completed on this screen and not yet shown.
+  const pending = useRef(false);
   useEffect(() => {
-    // Open on completion, not on every rep correction after dismissal.
     const previous = previousResult.current;
-    if (logged && (previous.key !== resultKey || !previous.logged)) {
-      setResultFor(resultKey);
-    } else if (!logged || previous.key !== resultKey) {
-      setResultFor(null);
-    }
     previousResult.current = { key: resultKey, logged };
-  }, [resultKey, logged]);
+    // Arriving at a finished exercise — Back, or reopening the app — shows
+    // nothing: View result is there if you want it.
+    if (!logged || previous.key !== resultKey) {
+      pending.current = false;
+      setResultFor(null);
+      return;
+    }
+    // Open on completion, not on every rep correction after dismissal.
+    if (!previous.logged) pending.current = true;
+    if (!pending.current) return;
+    const timer = setTimeout(() => {
+      if (!pending.current) return;
+      pending.current = false;
+      setResultFor(resultKey);
+    }, RESULT_DELAY_MS);
+    return () => clearTimeout(timer);
+  }, [resultKey, logged, reps]);
 
   // The bar itself lives in the root layout; this only swaps its buttons.
   useBarActions(
@@ -146,15 +164,13 @@ export default function WorkoutScreen() {
             setState((s) => previousExercise(s));
           }}
         />
-        <HoldButton
+        <ActionButton
           icon="close"
           label="Leave"
-          onHold={() => {
-            // Leaving ends the session: whatever went unlogged is recorded as
-            // skipped, and the cycle moves on. Nothing is owed. Leaving before
-            // anything was logged cancels instead — see `finishWorkout`. Held
-            // rather than tapped so a stray thumb mid-set can't end the workout.
-            setState((s) => finishWorkout(s));
+          onPress={() => {
+            // Leaving steps out without ending anything: the session stays
+            // where it is, and Today offers to continue it or end it.
+            setPicking(false);
             router.replace("/");
           }}
         />
@@ -391,7 +407,13 @@ export default function WorkoutScreen() {
         ) : null}
 
         {logged ? (
-          <Action label="View result" onPress={() => setResultFor(resultKey)} />
+          <Action
+            label="View result"
+            onPress={() => {
+              pending.current = false;
+              setResultFor(resultKey);
+            }}
+          />
         ) : null}
 
         <Sheet visible={picking} title="Superset with" onClose={() => setPicking(false)}>
