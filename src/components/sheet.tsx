@@ -82,6 +82,8 @@ export function Sheet({
         <ScrollView
           scrollEnabled={scrollEnabled}
           keyboardShouldPersistTaps="handled"
+          // Keeps a field low in the sheet — a note under the weight — above the keyboard.
+          automaticallyAdjustKeyboardInsets
           contentContainerStyle={{ paddingHorizontal: 22, paddingBottom: 40 }}
         >
           <Column>{children}</Column>

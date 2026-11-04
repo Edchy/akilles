@@ -242,9 +242,11 @@ export type SessionState = {
    */
   postponed?: string[];
   /**
-   * Built-in workouts you have removed, as they were — edits and all — with
-   * the place they sat, so putting one back returns it where it was. One you
-   * created yourself is deleted outright instead, like a custom exercise.
+   * Paused workouts: out of the loop, kept as they were — edits and all —
+   * with the place they sat, so resuming one puts it back where it was.
+   * Any workout can be paused, built in or yours; only a paused one can be
+   * deleted for good. (Saved under this name since before pausing covered
+   * workouts you made, which used to be deleted outright.)
    */
   removedWorkouts: { workout: Workout; at: number }[];
   /**
@@ -257,6 +259,13 @@ export type SessionState = {
   custom: Exercise[];
   /** Your renames, weight steps and starting weights, by exercise id — built-in or yours. */
   exerciseEdits: Record<string, ExerciseEdit>;
+  /**
+   * A note to yourself per exercise or machine — "speed 10.5, incline 1",
+   * "seat on 4" — shown wherever it comes up until you change it. Keyed by
+   * `noteKey`. Absent from saves made before notes existed, which simply
+   * start with none.
+   */
+  notes: Record<string, string>;
   /** Cardio machines and mobility routines you have added. */
   customCardio: CardioExercise[];
   customMobility: MobilityRoutine[];
@@ -390,6 +399,39 @@ export const canRemove = (state: SessionState, id: string): boolean => {
   return ex.patterns.every(
     (p) => list.filter((e) => isPattern(e, p)).length > 1,
   );
+};
+
+/** Longest a note can be: a line or two under the name, not a diary. */
+export const NOTE_MAX = 140;
+
+/**
+ * Where a note is kept: a lift by its id, a machine under `cardio/`, so a
+ * lift and a machine you both named "Sled" keep notes of their own.
+ */
+const noteKey = (id: string, kind: "lift" | "cardio") =>
+  kind === "cardio" ? `cardio/${id}` : id;
+
+/** Your note on an exercise or machine, or "" if there is none. */
+export const noteFor = (
+  state: SessionState,
+  id: string,
+  kind: "lift" | "cardio" = "lift",
+): string => state.notes[noteKey(id, kind)]?.trim() ?? "";
+
+/**
+ * Write a note, as typed — it saves as you go, so spaces are kept until you
+ * are done. Cleared to nothing, it is gone.
+ */
+export const setNote = (
+  state: SessionState,
+  id: string,
+  text: string,
+  kind: "lift" | "cardio" = "lift",
+): SessionState => {
+  const k = noteKey(id, kind);
+  const { [k]: _old, ...rest } = state.notes;
+  const note = text.slice(0, NOTE_MAX);
+  return { ...state, notes: note.trim() ? { ...rest, [k]: note } : rest };
 };
 
 /** Look up an exercise anywhere: built-in or one of yours. */
@@ -771,57 +813,88 @@ export const addWorkout = (state: SessionState, id: string, name: string): Sessi
   workouts: [...state.workouts, { id, name, subtitle: "", exercises: [] }],
 });
 
+/**
+ * Add a copy of a workout — running or paused — at the bottom of the cycle:
+ * the same exercises, the same choice in every slot, the same cardio and
+ * stretch, named "Legs 2". The template is a workout you already have.
+ */
+export const copyWorkout = (state: SessionState, fromId: string, id: string): SessionState => {
+  const paused = state.removedWorkouts.map((r) => r.workout);
+  const from = [...state.workouts, ...paused].find((w) => w.id === fromId);
+  if (!from) return state;
+  const taken = new Set([...state.workouts, ...paused].map((w) => w.name));
+  const base = from.name || "Workout";
+  let n = 2;
+  while (taken.has(`${base} ${n}`)) n++;
+  // Slot choices are keyed by workout, so the copy gets its own set.
+  const choices = { ...state.choices };
+  for (const [key, exerciseId] of Object.entries(state.choices)) {
+    if (key.startsWith(`${fromId}/`)) choices[`${id}/${key.slice(fromId.length + 1)}`] = exerciseId;
+  }
+  return {
+    ...state,
+    choices,
+    workouts: [...state.workouts, { ...from, id, name: `${base} ${n}` }],
+  };
+};
+
 export const renameWorkout = (
   state: SessionState,
   id: string,
   patch: { name?: string; subtitle?: string },
 ): SessionState => patchWorkout(state, id, (w) => ({ ...w, ...patch }));
 
-/** Whether a workout can be deleted. The last one stays: a cycle needs something in it. */
-export const canRemoveWorkout = (state: SessionState): boolean => state.workouts.length > 1;
+/** Whether a workout can be paused. The last one stays: the loop needs something in it. */
+export const canPauseWorkout = (state: SessionState): boolean => state.workouts.length > 1;
 
 /** Whether a workout is one of the starting program's, rather than one you created. */
 export const isBuiltInWorkout = (id: string): boolean =>
   DEFAULT_WORKOUTS.some((w) => w.id === id);
 
 /**
- * Remove a workout. If it was next, the one after it becomes next, so the
- * cycle carries on from the same place. Training history is per exercise, not
- * per workout, so nothing you lifted is lost.
- *
- * A built-in goes to the Removed list with its exercise choices kept, so it
- * comes back exactly as it was. One you created is deleted for good.
+ * Pause a workout: it leaves the loop and waits, exactly as it was — its
+ * exercises, its choices, its place. If it was next, the one after it becomes
+ * next, so the loop carries on from the same place. Training history is per
+ * exercise, not per workout, so nothing you lifted is touched either way.
  */
-export const removeWorkout = (state: SessionState, id: string): SessionState => {
-  if (!canRemoveWorkout(state)) return state;
+export const pauseWorkout = (state: SessionState, id: string): SessionState => {
+  if (!canPauseWorkout(state)) return state;
   const at = state.workouts.findIndex((w) => w.id === id);
   if (at === -1) return state;
-  const builtIn = isBuiltInWorkout(id);
-  const choices = { ...state.choices };
-  if (!builtIn) {
-    for (const k of Object.keys(choices)) if (k.startsWith(`${id}/`)) delete choices[k];
-  }
   return {
     ...state,
-    choices,
     workouts: state.workouts.filter((w) => w.id !== id),
     nextWorkout: state.nextWorkout === id ? following(state, id) : state.nextWorkout,
     workoutQueue: state.workoutQueue?.filter((queued) => queued !== id),
     postponed: state.postponed?.filter((waiting) => waiting !== id),
-    removedWorkouts: builtIn
-      ? [
-          ...state.removedWorkouts.filter((r) => r.workout.id !== id),
-          { workout: state.workouts[at], at },
-        ]
-      : state.removedWorkouts,
+    removedWorkouts: [
+      ...state.removedWorkouts.filter((r) => r.workout.id !== id),
+      { workout: state.workouts[at], at },
+    ],
   };
 };
 
 /**
- * Put a removed built-in back where it sat, or at the bottom if the cycle has
+ * Delete a paused workout for good, with its slot choices. Only a paused one:
+ * pausing first means nothing in the loop vanishes in one move. The lifts'
+ * history stays — it belongs to the exercises.
+ */
+export const deleteWorkout = (state: SessionState, id: string): SessionState => {
+  if (!state.removedWorkouts.some((r) => r.workout.id === id)) return state;
+  const choices = { ...state.choices };
+  for (const k of Object.keys(choices)) if (k.startsWith(`${id}/`)) delete choices[k];
+  return {
+    ...state,
+    choices,
+    removedWorkouts: state.removedWorkouts.filter((r) => r.workout.id !== id),
+  };
+};
+
+/**
+ * Put a paused workout back where it sat, or at the bottom if the loop has
  * since got shorter. What is next does not change.
  */
-export const restoreWorkout = (state: SessionState, id: string): SessionState => {
+export const resumeWorkout = (state: SessionState, id: string): SessionState => {
   const entry = state.removedWorkouts.find((r) => r.workout.id === id);
   if (!entry || workoutById(state, id)) return state;
   const workouts = [...state.workouts];
@@ -1057,6 +1130,7 @@ export const initialState: SessionState = {
   choices: {},
   custom: [],
   exerciseEdits: {},
+  notes: {},
   customCardio: [],
   customMobility: [],
   mobilityEdits: {},

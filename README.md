@@ -106,6 +106,13 @@ for. A lift's sheet also says how to **own it** — the position to hold for a
 second, or the part to slow down. Guides live in `src/data/guides.ts`; an
 exercise you added yourself shows its own cue instead.
 
+**Notes to yourself** — the ✎ beside a lift or machine writes one: the
+treadmill's speed, the seat height, which grip. It shows under the name every
+time that exercise comes up, in any workout, until you change it; tap it to
+edit, clear it to remove it. One note per exercise or machine, not one per
+session, and nothing shows until there is one. The same note is under **Note**
+when you tap an exercise or machine in Plan.
+
 **Photos** come from [free-exercise-db](https://github.com/yuhonas/free-exercise-db),
 public domain under the Unlicense, matched by hand in `src/data/photos.ts`. A
 lift's start and finish frames flip back and forth like a short loop; a

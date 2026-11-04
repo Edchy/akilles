@@ -3,6 +3,7 @@ import { Pressable, View } from "react-native";
 import { Text, TextInput } from "@/components/text";
 
 import { Icon } from "@/components/icon";
+import { NoteField } from "@/components/note";
 import { RoutineEditor } from "@/components/routine";
 import { BigButton, OpenRow, SectionLabel, Sheet, TextButton } from "@/components/sheet";
 import { WeightField, parseWeight } from "@/components/weight-field";
@@ -410,6 +411,11 @@ function ExerciseEditor({ exercise, onRemoved }: { exercise: Exercise; onRemoved
         </View>
       )}
 
+      <View style={{ gap: 12 }}>
+        <SectionLabel>Note</SectionLabel>
+        <NoteField id={exercise.id} hint="Shows under the name when you lift it, until you change it." />
+      </View>
+
       <View style={{ gap: 8 }}>
         {confirming ? (
           <>
@@ -661,6 +667,15 @@ function MachineEditor({ id, onRemoved }: { id: string; onRemoved: () => void })
         <Text style={{ color: colors.faint, fontSize: 15, lineHeight: 21 }}>
           To change how far or how long, open a workout under Workouts.
         </Text>
+      </View>
+
+      <View style={{ gap: 12 }}>
+        <SectionLabel>Note</SectionLabel>
+        <NoteField
+          id={id}
+          kind="cardio"
+          hint="Shows under the name when you run on it, until you change it."
+        />
       </View>
 
       <RemoveConditioning id={id} name={machine.name} onRemoved={onRemoved} />

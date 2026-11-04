@@ -94,8 +94,8 @@ test("manual Do next replaces the temporary queue; deletion removes queued worko
   const chosen = store.setNextWorkout(postponed, ids[0]);
   assert.equal(chosen.workoutQueue, undefined);
   assert.deepEqual(order(chosen, 3), [ids[0], ids[1], ids[2]]);
-  assert.deepEqual(order(store.removeWorkout(postponed, ids[2]), 4), [ids[3], ids[4], ids[0], ids[1]]);
-  assert.equal(next(store.removeWorkout(postponed, ids[3])), ids[2]);
+  assert.deepEqual(order(store.pauseWorkout(postponed, ids[2]), 4), [ids[3], ids[4], ids[0], ids[1]]);
+  assert.equal(next(store.pauseWorkout(postponed, ids[3])), ids[2]);
 });
 
 test("postponing twice never swaps back to the workout just put off", () => {

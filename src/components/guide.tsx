@@ -57,10 +57,29 @@ export function GuideButton({
         <Icon name="info" size={size * 0.5} color={onPicture ? colors.text : field.text} />
       </Pressable>
 
-      <Sheet visible={open} title={name} closeLabel="Done" onClose={() => setOpen(false)}>
-        <Guide id={id} cue={cue} />
-      </Sheet>
+      <GuideSheet visible={open} id={id} name={name} cue={cue} onClose={() => setOpen(false)} />
     </>
+  );
+}
+
+/** The how-to on its own, for opening from elsewhere: the lift screen's ⋯. */
+export function GuideSheet({
+  visible,
+  id,
+  name,
+  cue,
+  onClose,
+}: {
+  visible: boolean;
+  id: string;
+  name: string;
+  cue?: string;
+  onClose: () => void;
+}) {
+  return (
+    <Sheet visible={visible} title={name} closeLabel="Done" onClose={onClose}>
+      <Guide id={id} cue={cue} />
+    </Sheet>
   );
 }
 

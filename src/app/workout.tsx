@@ -1,8 +1,27 @@
 import * as Haptics from "expo-haptics";
 import { router } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { Children, useEffect, useRef, useState, type PropsWithChildren } from "react";
-import { Pressable, ScrollView, View, type TextStyle, type ViewStyle } from "react-native";
+import {
+  Children,
+  useEffect,
+  useRef,
+  useState,
+  type PropsWithChildren,
+  type RefObject,
+} from "react";
+import {
+  Animated,
+  Easing,
+  Keyboard,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  useWindowDimensions,
+  View,
+  type TextInput as NativeTextInput,
+  type TextStyle,
+  type ViewStyle,
+} from "react-native";
 import { Text, TextInput } from "@/components/text";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -12,7 +31,8 @@ import { ActionButton, useBarSpace } from "@/components/bottom-bar";
 import { Field, useColors } from "@/components/field";
 import { Icon, type IconName } from "@/components/icon";
 import { Mark } from "@/components/mark";
-import { GuideButton } from "@/components/guide";
+import { NoteLine, NoteSheet } from "@/components/note";
+import { GuideButton, GuideSheet } from "@/components/guide";
 import { Illustration } from "@/components/illustration";
 import { Sheet } from "@/components/sheet";
 import { RestTimer } from "@/components/rest-timer";
@@ -68,6 +88,7 @@ import {
   nudgeScore,
   nextAfterSession,
   nextTime,
+  noteFor,
   sessionTally,
   nudgeWeight,
   partnerPrescription,
@@ -89,9 +110,10 @@ import {
 
 
 /**
- * The lift screen's rhythm, top to bottom: the name with how-to and swap
- * under it, the weight, the circles, a line on last time, and room for a
- * superset — the gaps between them, and each block's height.
+ * The lift screen's rhythm, top to bottom: the name, the weight, the circles
+ * and a line on last time — the gaps between them, and each block's height.
+ * Everything else about the lift (how-to, swap, a note, a superset) waits
+ * behind the ⋯ beside the name, so these four have the screen to themselves.
  *
  * Mid-workout you tap without really looking, so nothing may move under the
  * thumb: each block is sized for its largest case — a two-line remark, a
@@ -100,9 +122,15 @@ import {
  * drawn tighter to fit both above the bar.
  */
 const LAYOUT = {
-  solo: { name: 28, weight: 42, number: 84, sets: 40, under: 84, underGap: 20 },
+  solo: { name: 36, weight: 52, number: 96, sets: 48, under: 84, underGap: 28 },
   paired: { name: 18, weight: 22, number: 64, sets: 22, under: 58, underGap: 10 },
 } as const;
+
+/**
+ * Cardio's name sits where a lift's does, but its round buttons still sit
+ * in a row under it, so its gap down to the number is its own.
+ */
+const CARDIO_WEIGHT = 42;
 
 /**
  * Set circles: a lift on its own; the main lift once a partner is folded in,
@@ -120,6 +148,17 @@ export default function WorkoutScreen() {
   const barSpace = useBarSpace();
   const [picking, setPicking] = useState(false);
   const [swapping, setSwapping] = useState(false);
+  const [guiding, setGuiding] = useState(false);
+  // The ⋯ menu, open under the button it came from.
+  const [menu, setMenu] = useState<Anchor | null>(null);
+  const root = useRef<View>(null);
+  // The weight, while it is being changed, closes on a tap anywhere else.
+  const tapAway = useRef<TapAway>({ close: null, inside: false });
+  // The exercise whose note is open — this lift's, or its superset partner's.
+  const [noting, setNoting] = useState<string | null>(null);
+  // What sits under the name — a word in italics, your note — measured, so
+  // the gap above the weight gives way to it rather than the circles moving.
+  const [underName, setUnderName] = useState<number | null>(null);
 
   const active = state.active;
   const done = !active || isComplete(state);
@@ -139,6 +178,7 @@ export default function WorkoutScreen() {
           disabled={active.cursor === 0}
           onPress={() => {
             setPicking(false);
+            setMenu(null);
             setState((s) => previousExercise(s));
           }}
         />
@@ -149,6 +189,7 @@ export default function WorkoutScreen() {
             // Leaving steps out without ending anything: the session stays
             // where it is, and Today offers to continue it or end it.
             setPicking(false);
+            setMenu(null);
             router.replace("/");
           }}
         />
@@ -157,6 +198,7 @@ export default function WorkoutScreen() {
           label="Skip"
           onPress={() => {
             setPicking(false);
+            setMenu(null);
             if (!inWarmup) {
               setState((s) => skipExercise(s));
             } else if (!skipWarned) {
@@ -213,6 +255,17 @@ export default function WorkoutScreen() {
   const pool = currentPool(state);
   const canSwap = pool.length > 1 && !item.logged.some((r) => r !== null);
 
+  // Your note on this lift: shown under the name until you change it.
+  const myNote = noteFor(state, p.exercise.id);
+  const noteSheet = (
+    <NoteSheet
+      visible={noting !== null}
+      id={noting ?? p.exercise.id}
+      name={byId(noting ?? p.exercise.id)?.name ?? ""}
+      onClose={() => setNoting(null)}
+    />
+  );
+
   if (warmup.length > 0) {
     return (
       <OnField family={family}>
@@ -221,9 +274,12 @@ export default function WorkoutScreen() {
           name={p.exercise.name}
           sets={warmup}
           perHand={p.exercise.perHand}
+          note={myNote}
+          onNote={() => setNoting(p.exercise.id)}
           refusal={skipWarned ? pickLine(WARMUP_SKIP_LINES, `${active.startedAt}:${item.slot}`) : null}
           onReady={() => setState((s) => dismissWarmup(s))}
         />
+        {noteSheet}
       </OnField>
     );
   }
@@ -234,6 +290,7 @@ export default function WorkoutScreen() {
   const after = nextItemName(state);
   const next = () => {
     setPicking(false);
+    setMenu(null);
     setState((s) => completeExercise(s));
   };
   // Said before you move on, so what happens next time is never a surprise:
@@ -247,7 +304,7 @@ export default function WorkoutScreen() {
       }
     : null;
 
-  // Said in italics beside the buttons under the name, where it applies.
+  // Said in italics under the name, where it applies.
   const note = [
     p.reload ? "reload" : null,
     p.exercise.timed ? "seconds, not reps" : null,
@@ -258,12 +315,50 @@ export default function WorkoutScreen() {
     .filter(Boolean)
     .join(" · ");
 
+  // Opens the ⋯ menu under its button, in this screen's coordinates.
+  const openMenu = (button: View) =>
+    button.measureInWindow((x, y, width, height) =>
+      root.current?.measureInWindow((rx, ry) => setMenu({ x: x - rx, y: y - ry, width, height })),
+    );
+  const tools: Tool[] = [
+    { icon: "info", label: "How to do it", onPress: () => setGuiding(true) },
+    canSwap ? { icon: "swap", label: "Swap for today", onPress: () => setSwapping(true) } : null,
+    {
+      icon: "note",
+      label: myNote ? "Change your note" : "Add a note",
+      onPress: () => setNoting(p.exercise.id),
+    },
+    !partner && options.length > 0
+      ? { icon: "plus", label: "Add superset", onPress: () => setPicking(true) }
+      : null,
+  ].filter((t): t is Tool => t !== null);
+
+  // Before it is measured, a fair guess at what sits under the name.
+  const under = underName ?? (note ? 28 : 0) + (myNote ? 39 : 0);
+
   return (
     <OnField family={family}>
-    <View style={{ flex: 1, backgroundColor: colors.bg }}>
+    <View
+      ref={root}
+      onStartShouldSetResponderCapture={() => {
+        const away = tapAway.current;
+        if (away.close) {
+          away.inside = false;
+          // Once the touch has reached whatever it landed on, which marks it
+          // if it landed on the weight.
+          Promise.resolve().then(() => {
+            if (!away.inside) away.close?.();
+          });
+        }
+        return false;
+      }}
+      style={{ flex: 1, backgroundColor: colors.bg }}
+    >
       <Header showRest />
 
       <ScrollView
+        // With the number pad up, a tap on a circle or − and + still counts.
+        keyboardShouldPersistTaps="handled"
         contentContainerStyle={{
           flexGrow: 1,
           paddingHorizontal: 22,
@@ -273,27 +368,49 @@ export default function WorkoutScreen() {
           alignSelf: "center",
         }}
       >
-        {/* What, and how to: read once, then left alone. */}
-        <Title family={family} name={p.exercise.name} note={note} style={{ marginTop: L.name }}>
-          <GuideButton id={p.exercise.id} name={p.exercise.name} cue={p.exercise.cue} size={40} />
-          {canSwap ? (
-            <ToolButton icon="swap" label="Choose a different exercise" onPress={() => setSwapping(true)} />
+        <LiftTitle
+          family={family}
+          name={p.exercise.name}
+          onMore={openMenu}
+          style={{ marginTop: L.name }}
+        >
+          {note || myNote ? (
+            <View onLayout={(e) => setUnderName(e.nativeEvent.layout.height)}>
+              {note ? (
+                <Text
+                  numberOfLines={1}
+                  style={{
+                    marginTop: 4,
+                    textAlign: "center",
+                    color: colors.text,
+                    fontFamily: fonts.italic,
+                    fontSize: 19,
+                  }}
+                >
+                  {note}
+                </Text>
+              ) : null}
+              {myNote ? (
+                <View style={{ paddingTop: 8 }}>
+                  <NoteLine
+                    text={myNote}
+                    lines={partner ? 1 : 2}
+                    center
+                    onPress={() => setNoting(p.exercise.id)}
+                  />
+                </View>
+              ) : null}
+            </View>
           ) : null}
-        </Title>
+        </LiftTitle>
 
-        <Sheet visible={swapping} title="Swap for today" onClose={() => setSwapping(false)}>
-          <SwapList
-            options={pool}
-            taken={currentTaken(state)}
-            current={item.exerciseId}
-            onPick={(id) => {
-              setSwapping(false);
-              setState((s) => swapForSession(s, id));
-            }}
-          />
-        </Sheet>
-
-        <View style={{ height: L.number, marginTop: L.weight, justifyContent: "center" }}>
+        <View
+          style={{
+            height: L.number,
+            marginTop: note || myNote ? Math.max(10, L.weight - under) : L.weight,
+            justifyContent: "center",
+          }}
+        >
           {p.exercise.unloaded ? (
             <Text style={{ textAlign: "center", color: colors.text, fontFamily: fonts.regular, fontSize: 24 }}>
               No weight — just the reps
@@ -305,11 +422,13 @@ export default function WorkoutScreen() {
             </View>
           ) : (
             <WeightControl
+              key={item.slot}
               weight={p.weight}
               bodyweight={p.exercise.bodyweight}
               holds={p.exercise.holds}
               perHand={p.exercise.perHand}
               size={L.number}
+              tapAway={tapAway}
               onNudge={(d) => setState((s) => nudgeWeight(s, d))}
               onSet={(w) => setState((s) => editWeight(s, w))}
             />
@@ -344,46 +463,14 @@ export default function WorkoutScreen() {
             sets={partnerP.sets}
             target={partnerP.reps}
             timed={partner.timed}
+            note={noteFor(state, partner.id)}
+            onNote={() => setNoting(partner.id)}
             logged={item.supersetLogged}
             onTap={(i) => setState((s) => tapSet(s, i, "partner"))}
             onReset={(i) => setState((s) => resetSet(s, i, "partner"))}
             onRemove={() => setState((s) => removeSuperset(s))}
           />
-        ) : options.length > 0 ? (
-          // An extra, so a soft pill: the solid button below is the way on.
-          <Pressable
-            accessibilityRole="button"
-            onPress={() => setPicking(true)}
-            style={({ pressed }) => ({
-              alignSelf: "center",
-              flexDirection: "row",
-              alignItems: "center",
-              gap: 6,
-              height: 44,
-              marginTop: 14,
-              paddingHorizontal: 18,
-              borderRadius: 22,
-              borderCurve: "continuous",
-              backgroundColor: colors.surface,
-              opacity: pressed ? 0.7 : 1,
-            })}
-          >
-            <Icon name="plus" size={16} color={colors.text} weight="semibold" />
-            <Text style={{ color: colors.text, fontFamily: fonts.regular, fontSize: 19 }}>
-              Add superset
-            </Text>
-          </Pressable>
         ) : null}
-
-        <Sheet visible={picking} title="Superset with" onClose={() => setPicking(false)}>
-          <SupersetPicker
-            options={options}
-            onPick={(id) => {
-              setPicking(false);
-              setState((s) => addSuperset(s, id));
-            }}
-          />
-        </Sheet>
       </ScrollView>
 
       {/* Pinned where the warm-up's Ready and cardio's Done sit, so the way on
@@ -401,6 +488,37 @@ export default function WorkoutScreen() {
           />
         </Column>
       </View>
+
+      {menu ? <ToolsMenu anchor={menu} tools={tools} onClose={() => setMenu(null)} /> : null}
+
+      <GuideSheet
+        visible={guiding}
+        id={p.exercise.id}
+        name={p.exercise.name}
+        cue={p.exercise.cue}
+        onClose={() => setGuiding(false)}
+      />
+      <Sheet visible={swapping} title="Swap for today" onClose={() => setSwapping(false)}>
+        <SwapList
+          options={pool}
+          taken={currentTaken(state)}
+          current={item.exerciseId}
+          onPick={(id) => {
+            setSwapping(false);
+            setState((s) => swapForSession(s, id));
+          }}
+        />
+      </Sheet>
+      <Sheet visible={picking} title="Superset with" onClose={() => setPicking(false)}>
+        <SupersetPicker
+          options={options}
+          onPick={(id) => {
+            setPicking(false);
+            setState((s) => addSuperset(s, id));
+          }}
+        />
+      </Sheet>
+      {noteSheet}
     </View>
     </OnField>
   );
@@ -521,6 +639,164 @@ function Title({
   );
 }
 
+/**
+ * The lift's name, centred over the number and circles below it: the
+ * family's shape, the name — a long one ends in an ellipsis rather than
+ * wrapping — and ⋯ for everything else about the lift. Under it, whatever
+ * applies (a word in italics, your note).
+ */
+function LiftTitle({
+  family,
+  name,
+  onMore,
+  style,
+  children,
+}: PropsWithChildren<{
+  family: Family;
+  name: string;
+  /** Opens the menu under the ⋯, which is handed over to anchor it. */
+  onMore: (button: View) => void;
+  style?: ViewStyle;
+}>) {
+  const colors = useColors();
+  const more = useRef<View>(null);
+  return (
+    <View style={style}>
+      <View
+        style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10, height: 40 }}
+      >
+        <Mark family={family} size={24} color={colors.text} />
+        <Text
+          accessibilityRole="header"
+          numberOfLines={1}
+          style={{
+            flexShrink: 1,
+            color: colors.text,
+            fontFamily: fonts.medium,
+            fontSize: 27,
+            lineHeight: 33,
+          }}
+        >
+          {name}
+        </Text>
+        <Pressable
+          ref={more}
+          accessibilityRole="button"
+          accessibilityLabel="More for this exercise"
+          onPress={() => more.current && onMore(more.current)}
+          hitSlop={4}
+          style={({ pressed }) => ({
+            width: 36,
+            height: 36,
+            marginLeft: 2,
+            alignItems: "center",
+            justifyContent: "center",
+            borderRadius: 999,
+            backgroundColor: colors.surface,
+            opacity: pressed ? 0.7 : 1,
+          })}
+        >
+          <Icon name="more" size={20} color={colors.text} weight="semibold" />
+        </Pressable>
+      </View>
+      {children}
+    </View>
+  );
+}
+
+/** Where the ⋯ is on screen, so its menu opens under it. */
+type Anchor = { x: number; y: number; width: number; height: number };
+type Tool = { icon: IconName; label: string; onPress: () => void };
+
+/**
+ * What used to sit in round buttons around the lift — how-to, swap, a note,
+ * a superset — in one small card off the ⋯. Each is wanted once a session at
+ * most, so they wait a tap away rather than crowd the weight and circles.
+ * White whatever the field, like the sheets they open; a tap anywhere else
+ * closes it.
+ */
+function ToolsMenu({
+  anchor,
+  tools,
+  onClose,
+}: {
+  anchor: Anchor;
+  tools: Tool[];
+  onClose: () => void;
+}) {
+  const { width: screen } = useWindowDimensions();
+  const shown = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    Animated.timing(shown, {
+      toValue: 1,
+      duration: 160,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true,
+    }).start();
+  }, [shown]);
+
+  const width = 250;
+  // Its right edge on the button's, kept inside the screen's margins.
+  const left = Math.max(22, Math.min(screen - 22 - width, anchor.x + anchor.width - width));
+
+  return (
+    <View style={StyleSheet.absoluteFill}>
+      <Pressable
+        accessibilityLabel="Close menu"
+        onPress={onClose}
+        style={StyleSheet.absoluteFill}
+      />
+      <Animated.View
+        accessibilityViewIsModal
+        style={{
+          position: "absolute",
+          top: anchor.y + anchor.height + 8,
+          left,
+          width,
+          paddingVertical: 6,
+          borderRadius: 22,
+          borderCurve: "continuous",
+          backgroundColor: colors.bg,
+          boxShadow: "0 10px 30px rgba(8, 28, 60, 0.28)",
+          opacity: shown,
+          transformOrigin: "top right",
+          transform: [{ scale: shown.interpolate({ inputRange: [0, 1], outputRange: [0.92, 1] }) }],
+        }}
+      >
+        {tools.map((tool, i) => (
+          <View key={tool.label}>
+            {i > 0 ? (
+              <View
+                style={{ height: StyleSheet.hairlineWidth, marginLeft: 52, backgroundColor: colors.line }}
+              />
+            ) : null}
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => {
+                onClose();
+                tool.onPress();
+              }}
+              style={({ pressed }) => ({
+                flexDirection: "row",
+                alignItems: "center",
+                gap: 14,
+                minHeight: 52,
+                paddingHorizontal: 18,
+                backgroundColor: pressed ? colors.surface : "transparent",
+              })}
+            >
+              <Icon name={tool.icon} size={20} color={colors.text} />
+              <Text style={{ color: colors.text, fontFamily: fonts.regular, fontSize: 19 }}>
+                {tool.label}
+              </Text>
+            </Pressable>
+          </View>
+        ))}
+      </Animated.View>
+    </View>
+  );
+}
+
 /** A small round button under the name, in a tint of the field. */
 function ToolButton({ icon, label, onPress }: { icon: IconName; label: string; onPress: () => void }) {
   const colors = useColors();
@@ -566,7 +842,25 @@ function unitFor(
 }
 
 /** The weight and its unit, on one baseline. */
-function Weight({ weight, unit, size }: { weight: number; unit: string; size: number }) {
+function Weight({
+  weight,
+  unit,
+  size,
+  line,
+  faint,
+  caret,
+}: {
+  /** A number, or what is being typed in its place. */
+  weight: number | string;
+  unit: string;
+  size: number;
+  /** Can be changed: dashes under the figures, a solid line while it is being changed. */
+  line?: "dashed" | "solid";
+  /** Held back like a placeholder: the weight before you type a new one. */
+  faint?: boolean;
+  /** Being typed: where the caret blinks. */
+  caret?: "start" | "end";
+}) {
   const colors = useColors();
   const text = String(weight);
   // A five-character weight (102.5) is set a size down, so it and its unit
@@ -574,19 +868,102 @@ function Weight({ weight, unit, size }: { weight: number; unit: string; size: nu
   const fit = text.length > 4 ? Math.round(size * 0.84) : size;
   return (
     <View style={{ flexDirection: "row", alignItems: "baseline", gap: 10 }}>
-      <Text
-        style={{
-          color: colors.text,
-          fontFamily: fonts.semibold,
-          fontSize: fit,
-          letterSpacing: -fit * 0.02,
-          fontVariant: ["lining-nums", "tabular-nums"],
-        }}
-      >
-        {text}
-      </Text>
+      <Underline size={fit} line={line} caret={caret}>
+        <Text
+          style={{
+            color: colors.text,
+            opacity: faint ? 0.4 : 1,
+            fontFamily: fonts.semibold,
+            fontSize: fit,
+            letterSpacing: -fit * 0.02,
+            fontVariant: ["lining-nums", "tabular-nums"],
+          }}
+        >
+          {text}
+        </Text>
+      </Underline>
       <Text style={{ color: colors.text, fontFamily: fonts.regular, fontSize: 22 }}>{unit}</Text>
     </View>
+  );
+}
+
+/**
+ * Under whatever it wraps, as wide as it is and just below the baseline: a
+ * row of short dashes, which says a number can be changed without drawing a
+ * box round it, or a solid line while it is being changed. With a caret, the
+ * text is being typed.
+ */
+function Underline({
+  size,
+  line,
+  caret,
+  children,
+}: PropsWithChildren<{ size: number; line?: "dashed" | "solid"; caret?: "start" | "end" }>) {
+  const colors = useColors();
+  const [width, setWidth] = useState(0);
+  const dash = 9;
+  const gap = 5;
+  const count = Math.max(1, Math.floor((width + gap) / (dash + gap)));
+  return (
+    <View onLayout={(e) => setWidth(e.nativeEvent.layout.width)}>
+      {children}
+      {line && width > 0 ? (
+        <View
+          style={{
+            position: "absolute",
+            left: 0,
+            right: 0,
+            // Garamond's figures stand almost on the bottom of the line:
+            // this puts the line a small gap under them.
+            bottom: -Math.round(size * 0.07),
+            flexDirection: "row",
+            justifyContent: "space-between",
+            opacity: line === "solid" ? 1 : 0.55,
+          }}
+        >
+          {line === "solid" ? (
+            <View style={{ flex: 1, height: 2, borderRadius: 1, backgroundColor: colors.text }} />
+          ) : (
+            Array.from({ length: count }, (_, i) => (
+              <View
+                key={i}
+                style={{ width: dash, height: 2, borderRadius: 1, backgroundColor: colors.text }}
+              />
+            ))
+          )}
+        </View>
+      ) : null}
+      {caret ? <Caret size={size} at={caret} /> : null}
+    </View>
+  );
+}
+
+/** The text cursor, blinking the way iOS's does: before a placeholder, after typing. */
+function Caret({ size, at }: { size: number; at: "start" | "end" }) {
+  const colors = useColors();
+  const on = useRef(new Animated.Value(1)).current;
+  useEffect(() => {
+    const step = (toValue: number) =>
+      Animated.timing(on, { toValue, duration: 0, useNativeDriver: true });
+    const blink = Animated.loop(
+      Animated.sequence([Animated.delay(530), step(0), Animated.delay(530), step(1)]),
+    );
+    blink.start();
+    return () => blink.stop();
+  }, [on]);
+  return (
+    <Animated.View
+      style={{
+        position: "absolute",
+        [at === "start" ? "left" : "right"]: -Math.max(5, Math.round(size * 0.06)),
+        bottom: Math.round(size * 0.02),
+        width: Math.max(2, Math.round(size * 0.03)),
+        height: Math.round(size * 0.7),
+        borderRadius: 2,
+        backgroundColor: colors.text,
+        opacity: on,
+      }}
+    />
   );
 }
 
@@ -596,9 +973,14 @@ function Conditioning({ item }: { item: Item }) {
   const barSpace = useBarSpace();
   const { state, setState } = useSession();
   const [swapping, setSwapping] = useState(false);
+  const [noting, setNoting] = useState(false);
+  // One line of note until it is measured, so the weight does not jump.
+  const [noteHeight, setNoteHeight] = useState(31);
 
   const cardio = currentCardio(state);
   const pool = conditioningPool(state, item);
+  // "Speed 10.5, incline 1": kept per machine, whatever the distance.
+  const note = cardio ? noteFor(state, cardio.id, "cardio") : "";
 
   const advance = () => {
     setSwapping(false);
@@ -631,7 +1013,28 @@ function Conditioning({ item }: { item: Item }) {
           {pool.length > 1 ? (
             <ToolButton icon="swap" label="Choose a different machine" onPress={() => setSwapping(true)} />
           ) : null}
+          {cardio && !note ? (
+            <ToolButton icon="note" label="Add a note" onPress={() => setNoting(true)} />
+          ) : null}
         </Title>
+
+        {note ? (
+          <View
+            style={{ marginLeft: 36, paddingTop: 8 }}
+            onLayout={(e) => setNoteHeight(e.nativeEvent.layout.height)}
+          >
+            <NoteLine text={note} onPress={() => setNoting(true)} />
+          </View>
+        ) : null}
+        {cardio ? (
+          <NoteSheet
+            visible={noting}
+            id={cardio.id}
+            kind="cardio"
+            name={cardio.name}
+            onClose={() => setNoting(false)}
+          />
+        ) : null}
 
         <Sheet
           visible={swapping}
@@ -649,7 +1052,11 @@ function Conditioning({ item }: { item: Item }) {
         </Sheet>
 
         {cardio ? (
-          <View style={{ marginTop: LAYOUT.solo.weight }}>
+          <View
+            style={{
+              marginTop: note ? Math.max(10, CARDIO_WEIGHT - noteHeight) : CARDIO_WEIGHT,
+            }}
+          >
           <CardioBody
             cardio={cardio}
             item={item}
@@ -1217,6 +1624,8 @@ function Warmup({
   name,
   sets,
   perHand,
+  note,
+  onNote,
   refusal,
   onReady,
 }: {
@@ -1224,6 +1633,9 @@ function Warmup({
   name: string;
   sets: { weight: number; reps: number }[];
   perHand?: boolean;
+  /** Your note on the lift — the seat height is worth knowing before the first set. */
+  note: string;
+  onNote: () => void;
   /** Akilles' answer to Skip, while it stands. */
   refusal: string | null;
   onReady: () => void;
@@ -1247,7 +1659,16 @@ function Warmup({
         }}
       >
         <Column style={{ gap: 26 }}>
-          <Title family={family} name={name} note="warm-up sets" />
+          <View style={{ gap: 8 }}>
+            <Title family={family} name={name} note="warm-up sets">
+              {note ? null : <ToolButton icon="note" label="Add a note" onPress={onNote} />}
+            </Title>
+            {note ? (
+              <View style={{ marginLeft: 36 }}>
+                <NoteLine text={note} onPress={onNote} />
+              </View>
+            ) : null}
+          </View>
 
           <View>
             {sets.map((set, i) => (
@@ -1446,8 +1867,30 @@ function Sets({
 }
 
 /**
- * The weight, editable at any time: step it with − and +, or tap the number
- * to type one.
+ * Hears every touch on the lift screen before anything else does, so a
+ * control can put itself away on a tap anywhere but on it: the control marks
+ * the touches that land on it, and once a touch has been handed out an
+ * unmarked one closes it.
+ */
+type TapAway = { close: (() => void) | null; inside: boolean };
+
+/** Keeps decimals only, with a dot whichever separator you type. */
+function cleanNumber(typed: string) {
+  const [whole, ...rest] = typed.replace(",", ".").replace(/[^0-9.]/g, "").split(".");
+  return (rest.length > 0 ? `${whole}.${rest.join("").slice(0, 2)}` : whole).slice(0, 6);
+}
+
+/**
+ * The weight. Akilles sets it and you rarely change it, so it stands alone,
+ * its figures underlined in dashes to say they can be changed.
+ *
+ * Tap it and it is being changed, all at once: the number pad comes up, the
+ * dashes turn to a solid line, and − and + come in at the row's ends. Until
+ * you type, the weight is held back like a placeholder, with the caret before
+ * it; what you type is drawn in its place at the same size, so nothing
+ * jumps. − and + still step it while the pad is up. A tap on the number or
+ * anywhere else keeps what you typed and puts it all away.
+ * VoiceOver steps it with a swipe up or down without opening anything.
  */
 function WeightControl({
   weight,
@@ -1455,6 +1898,7 @@ function WeightControl({
   holds,
   perHand,
   size,
+  tapAway,
   onNudge,
   onSet,
 }: {
@@ -1466,80 +1910,171 @@ function WeightControl({
   perHand?: boolean;
   /** How big the number is drawn — see `LAYOUT`. */
   size: number;
+  tapAway: RefObject<TapAway>;
   onNudge: (direction: 1 | -1) => void;
   onSet: (weight: number) => void;
 }) {
   const colors = useColors();
-  const [draft, setDraft] = useState<string | null>(null);
-  const unit = unitFor({ perHand, bodyweight, holds }, weight);
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState("");
+  // Finishing runs once, whichever way it comes: a tap on the number or
+  // anywhere else, or Return on a hardware keyboard. Not on the pad going down: iOS reports that as soon
+  // as a field takes focus with no pad to show (a hardware keyboard).
+  const open = useRef(false);
+  const input = useRef<NativeTextInput>(null);
+  const shown = useRef(new Animated.Value(0)).current;
 
-  const commit = () => {
-    if (draft !== null) {
-      const parsed = parseFloat(draft.replace(",", "."));
-      if (!Number.isNaN(parsed)) onSet(parsed);
-    }
-    setDraft(null);
+  useEffect(() => {
+    Animated.timing(shown, {
+      toValue: editing ? 1 : 0,
+      duration: editing ? 160 : 200,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true,
+    }).start();
+  }, [editing, shown]);
+
+  const keep = () => {
+    const typed = parseFloat(draft);
+    if (draft !== "" && !Number.isNaN(typed)) onSet(typed);
+    setDraft("");
+  };
+  const start = () => {
+    open.current = true;
+    setDraft("");
+    setEditing(true);
+  };
+  const finish = () => {
+    if (!open.current) return;
+    open.current = false;
+    keep();
+    setEditing(false);
+  };
+  const close = () => {
+    finish();
+    Keyboard.dismiss();
+  };
+  // A step keeps what you typed, then steps from it; the pad stays up, and
+  // the field keeps the keys (a click on the web moves focus off it).
+  const nudge = (direction: 1 | -1) => {
+    keep();
+    onNudge(direction);
+    input.current?.focus();
   };
 
-  return (
-    <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
-      <Step label="−" onPress={() => onNudge(-1)} />
+  useEffect(() => {
+    const away = tapAway.current;
+    if (!editing || !away) return;
+    away.close = close;
+    return () => {
+      away.close = null;
+    };
+  });
 
-      {draft !== null ? (
-        // Typing: the number becomes a field with the number pad up. The
-        // input needs an explicit width: on web a TextInput has an intrinsic
-        // size that ignores flex and overflows its row.
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
-          <TextInput
-            autoFocus
-            value={draft}
-            onChangeText={setDraft}
-            onBlur={commit}
-            onSubmitEditing={commit}
-            keyboardType="decimal-pad"
-            selectTextOnFocus
-            accessibilityLabel={holds ? "Hold in seconds" : "Weight in kilograms"}
-            style={{
-              width: Math.round(size * 2.1),
-              padding: 0,
-              color: colors.text,
-              fontFamily: fonts.semibold,
-              fontSize: size,
-              letterSpacing: -size * 0.02,
-              textAlign: "right",
-              fontVariant: ["lining-nums", "tabular-nums"],
-            }}
-          />
-          <Text style={{ color: colors.text, fontFamily: fonts.regular, fontSize: 22 }}>{unit}</Text>
-        </View>
-      ) : (
+  // A touch on the number or on − and + is the weight's own; anything else,
+  // even the empty ends of its row, puts it away.
+  const mine = () => {
+    if (tapAway.current) tapAway.current.inside = true;
+    return false;
+  };
+
+  const typed = editing && draft !== "";
+  const typedNumber = parseFloat(draft);
+  const unit = unitFor(
+    { perHand, bodyweight, holds },
+    typed && !Number.isNaN(typedNumber) ? typedNumber : weight,
+  );
+  const line = editing ? "solid" : "dashed";
+  const caret = editing ? (typed ? "end" : "start") : undefined;
+  // An unloaded bodyweight lift has no number worth showing — a bare "0 kg"
+  // reads as an error — until you type a load (belt, dumbbell).
+  const label = !typed && bodyweight && weight === 0;
+  const half = Math.round(size * 0.5);
+
+  return (
+    <View style={{ height: size, alignItems: "center", justifyContent: "center" }}>
+      <View onStartShouldSetResponderCapture={mine}>
         <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={
-            bodyweight && weight === 0
-              ? holds
-                ? "Bodyweight, no hold. Tap to type a hold in seconds"
-                : "Bodyweight. Tap to add load"
-              : `${weight} ${unit}. Tap to type ${holds ? "a hold" : "a weight"}`
-          }
-          onPress={() => setDraft(String(weight))}
-          hitSlop={8}
-          style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}
+          accessibilityRole="adjustable"
+          accessibilityLabel={holds ? "Hold" : "Weight"}
+          accessibilityValue={{
+            text: label ? (holds ? "Bodyweight, no hold" : "Bodyweight") : `${weight} ${unit}`,
+          }}
+          accessibilityHint={holds ? "Tap to type a hold" : "Tap to type a weight"}
+          accessibilityActions={[{ name: "increment" }, { name: "decrement" }]}
+          onAccessibilityAction={(e) => onNudge(e.nativeEvent.actionName === "increment" ? 1 : -1)}
+          onPress={() => (editing ? close() : start())}
+          hitSlop={12}
+          style={({ pressed }) => ({ opacity: pressed && !editing ? 0.6 : 1 })}
         >
-          {bodyweight && weight === 0 ? (
-            // An unloaded bodyweight lift has no number worth showing — a
-            // bare "0 kg" reads as an error. Tap it to add weight (belt,
-            // dumbbell).
-            <Text style={{ color: colors.text, fontFamily: fonts.medium, fontSize: Math.round(size * 0.5) }}>
-              Bodyweight
-            </Text>
+          {label ? (
+            <Underline size={half} line={line} caret={caret}>
+              <Text
+                style={{
+                  color: colors.text,
+                  opacity: editing ? 0.4 : 1,
+                  fontFamily: fonts.medium,
+                  fontSize: half,
+                }}
+              >
+                Bodyweight
+              </Text>
+            </Underline>
           ) : (
-            <Weight weight={weight} unit={unit} size={size} />
+            <Weight
+              weight={typed ? draft : weight}
+              unit={unit}
+              size={size}
+              line={line}
+              faint={editing && !typed}
+              caret={caret}
+            />
           )}
         </Pressable>
-      )}
+      </View>
 
-      <Step label="+" onPress={() => onNudge(1)} />
+      {/* The field you type into is never seen: the number above draws what
+          you type, so it stays exactly where it was. */}
+      {editing ? (
+        <TextInput
+          ref={input}
+          autoFocus
+          value={draft}
+          onChangeText={(t) => setDraft(cleanNumber(t))}
+          onSubmitEditing={close}
+          keyboardType="decimal-pad"
+          returnKeyType="done"
+          caretHidden
+          contextMenuHidden
+          accessibilityLabel={holds ? "Hold in seconds" : "Weight in kilograms"}
+          style={{
+            position: "absolute",
+            width: 1,
+            height: 1,
+            opacity: 0,
+            pointerEvents: "none",
+          }}
+        />
+      ) : null}
+
+      {/* At the row's ends, each on its own so the number between them
+          stays tappable. */}
+      {([-1, 1] as const).map((direction) => (
+        <Animated.View
+          key={direction}
+          onStartShouldSetResponderCapture={mine}
+          accessibilityElementsHidden={!editing}
+          importantForAccessibility={editing ? "auto" : "no-hide-descendants"}
+          style={{
+            position: "absolute",
+            top: (size - 48) / 2,
+            [direction < 0 ? "left" : "right"]: 0,
+            opacity: shown,
+            pointerEvents: editing ? "auto" : "none",
+          }}
+        >
+          <Step label={direction < 0 ? "−" : "+"} onPress={() => nudge(direction)} />
+        </Animated.View>
+      ))}
     </View>
   );
 }
@@ -1709,6 +2244,8 @@ function Partner({
   sets,
   target,
   timed,
+  note,
+  onNote,
   logged,
   onTap,
   onReset,
@@ -1721,6 +2258,9 @@ function Partner({
   sets: number;
   target: number;
   timed?: boolean;
+  /** Your note on the partner, if you wrote one. */
+  note: string;
+  onNote: () => void;
   logged: (number | null)[];
   onTap: (index: number) => void;
   onReset: (index: number) => void;
@@ -1782,6 +2322,9 @@ function Partner({
           {weight}
         </Text>
       </View>
+
+      {/* One line, and only when there is one: the pair still has to fit. */}
+      {note ? <NoteLine text={note} lines={1} size={15} onPress={onNote} /> : null}
 
       <Sets logged={logged} target={target} onTap={onTap} onReset={onReset} role="partner" />
     </View>

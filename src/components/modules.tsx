@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { Pressable, View } from "react-native";
 import { Text, TextInput } from "@/components/text";
 
@@ -38,23 +38,24 @@ import {
 import {
   SETS_RANGE,
   addWorkout,
-  canRemoveWorkout,
+  canPauseWorkout,
   cardioAmount,
   cardioPlan,
   chooseCardio,
   chooseExercise,
   copyRoutineFor,
-  isBuiltInWorkout,
+  copyWorkout,
   chosen,
+  deleteWorkout,
   mobilityPlan,
   moveEntry,
   moveWorkout,
   nudgeCardio,
+  pauseWorkout,
   poolFor,
   removeEntry,
-  removeWorkout,
   renameWorkout,
-  restoreWorkout,
+  resumeWorkout,
   routineMinutes,
   setCardio,
   setCardioMode,
@@ -103,13 +104,20 @@ export function Modules({ onDragChange }: { onDragChange: (dragging: boolean) =>
     setEditing(id);
   };
 
+  const copy = (fromId: string) => {
+    const id = newId("w");
+    setState((s) => copyWorkout(s, fromId, id));
+    setFresh(id);
+    setEditing(id);
+  };
+
   const workout = state.workouts.find((w) => w.id === editing);
 
   return (
     <View style={{ gap: 24 }}>
       <Text style={{ color: colors.muted, fontSize: 15, lineHeight: 22 }}>
         Your workouts run top to bottom, then start again. Tap one to change
-        it, hold and drag to reorder, swipe left to remove.
+        it, hold and drag to reorder, swipe left to pause.
       </Text>
 
       <DragList
@@ -131,9 +139,46 @@ export function Modules({ onDragChange }: { onDragChange: (dragging: boolean) =>
         )}
       />
 
+      <NewWorkout onBlank={create} onCopy={copy} />
+
+      <PausedWorkouts />
+
+      {/* Rendered once, for whichever workout is open. A workout paused
+          from inside its own sheet closes it by disappearing. */}
+      <WorkoutSheet
+        workout={workout}
+        isNext={workout?.id === next}
+        naming={!!workout && fresh === workout.id}
+        onClose={() => {
+          setEditing(null);
+          setFresh(null);
+        }}
+      />
+    </View>
+  );
+}
+
+/**
+ * New workout: start blank, or from a copy of one you have — the copy is the
+ * template. Opens in place rather than as a sheet, so the new workout's own
+ * sheet can slide straight up after it.
+ */
+function NewWorkout({
+  onBlank,
+  onCopy,
+}: {
+  onBlank: () => void;
+  onCopy: (fromId: string) => void;
+}) {
+  const { state } = useSession();
+  const [open, setOpen] = useState(false);
+  const sources = [...state.workouts, ...state.removedWorkouts.map((r) => r.workout)];
+
+  if (!open) {
+    return (
       <Pressable
         accessibilityRole="button"
-        onPress={create}
+        onPress={() => setOpen(true)}
         style={({ pressed }) => ({
           flexDirection: "row",
           alignItems: "center",
@@ -151,117 +196,174 @@ export function Modules({ onDragChange }: { onDragChange: (dragging: boolean) =>
         <Icon name="plus" size={16} color={colors.muted} weight="semibold" />
         <Text style={{ color: colors.muted, fontSize: 16, fontWeight: "700" }}>New workout</Text>
       </Pressable>
-
-      <RemovedWorkouts />
-
-      {/* Rendered once, for whichever workout is open. A workout removed
-          from inside its own sheet closes it by disappearing. */}
-      <WorkoutSheet
-        workout={workout}
-        isNext={workout?.id === next}
-        naming={!!workout && fresh === workout.id}
-        onClose={() => {
-          setEditing(null);
-          setFresh(null);
-        }}
-      />
-    </View>
-  );
-}
-
-/**
- * Built-in workouts you have removed, one tap from coming back — the same
- * idea, and the same look, as removed exercises in the catalogue.
- */
-function RemovedWorkouts() {
-  const { state, setState } = useSession();
-  const [open, setOpen] = useState(false);
-  const rows = state.removedWorkouts.map((r) => r.workout);
-  if (rows.length === 0) return null;
+    );
+  }
 
   return (
     <View
       style={{
-        gap: 6,
+        gap: 14,
+        padding: 16,
         borderRadius: radii.card,
         borderCurve: "continuous",
-        backgroundColor: open ? colors.surface : "transparent",
-        borderWidth: 1,
-        borderColor: open ? colors.surface : colors.line,
-        padding: 16,
+        backgroundColor: colors.surface,
       }}
     >
-      <Pressable
-        accessibilityRole="button"
-        accessibilityState={{ expanded: open }}
-        onPress={() => setOpen((v) => !v)}
-        style={({ pressed }) => ({
-          flexDirection: "row",
-          alignItems: "center",
-          gap: 8,
-          height: 44,
-          opacity: pressed ? 0.6 : 1,
-        })}
+      <Pill
+        onPress={() => {
+          setOpen(false);
+          onBlank();
+        }}
       >
-        <Text style={{ flex: 1, color: colors.muted, fontSize: 19, fontWeight: "700" }}>
-          Removed
-        </Text>
-        <Text
-          style={{
-            color: colors.faint,
-            fontSize: 11,
-            fontWeight: "800",
-            fontVariant: ["tabular-nums"],
-          }}
-        >
-          {rows.length}
-        </Text>
-        <Icon name={open ? "collapse" : "expand"} size={14} color={colors.faint} />
-      </Pressable>
+        <Icon name="plus" size={14} color={colors.text} weight="semibold" />
+        <Text style={{ color: colors.text, fontSize: 16, fontWeight: "600" }}>Start blank</Text>
+      </Pill>
+      <Text style={{ color: colors.muted, fontSize: 15, fontStyle: "italic" }}>Or copy one</Text>
+      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+        {sources.map((w) => (
+          <Pill
+            key={w.id}
+            label={`Copy ${w.name || "Untitled"}`}
+            onPress={() => {
+              setOpen(false);
+              onCopy(w.id);
+            }}
+          >
+            <Mark family={workoutFamily(state, w)} size={12} />
+            <Text style={{ color: colors.text, fontSize: 16 }}>{w.name || "Untitled"}</Text>
+          </Pill>
+        ))}
+      </View>
+      <TextButton label="Cancel" onPress={() => setOpen(false)} />
+    </View>
+  );
+}
 
-      {open ? (
-        <>
-          <Text style={{ color: colors.faint, fontSize: 13, lineHeight: 19 }}>
-            Kept, not deleted. Put one back and it returns where it was, exactly
-            as you left it.
-          </Text>
+/** A white pill on the grey: one choice in New workout. */
+function Pill({
+  label,
+  onPress,
+  children,
+}: {
+  label?: string;
+  onPress: () => void;
+  children: ReactNode;
+}) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      onPress={onPress}
+      style={({ pressed }) => ({
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: 8,
+        minHeight: 44,
+        paddingHorizontal: 16,
+        borderRadius: radii.action,
+        backgroundColor: colors.bg,
+        opacity: pressed ? 0.6 : 1,
+      })}
+    >
+      {children}
+    </Pressable>
+  );
+}
 
-          {rows.map((w) => (
+/**
+ * Paused workouts: out of the loop, kept exactly as they are, one tap from
+ * coming back to where they sat. Outlined rather than washed — they are not
+ * part of the run of colours you train through. Swipe one left to delete it
+ * for good.
+ */
+function PausedWorkouts() {
+  const { state, setState } = useSession();
+  const rows = state.removedWorkouts.map((r) => r.workout);
+  if (rows.length === 0) return null;
+
+  return (
+    <View style={{ gap: 10 }}>
+      <View style={{ gap: 4, paddingBottom: 2 }}>
+        <SectionLabel>Paused</SectionLabel>
+        <Text style={{ color: colors.muted, fontSize: 15, lineHeight: 22 }}>
+          Out of the loop and kept as they are. Swipe left to delete one for good.
+        </Text>
+      </View>
+      {rows.map((w) => {
+        const name = w.name || "Untitled";
+        return (
+          <Swipe
+            key={w.id}
+            label="Delete"
+            radius={radii.card}
+            onAction={() => setState((s) => deleteWorkout(s, w.id))}
+          >
             <View
-              key={w.id}
-              style={{ flexDirection: "row", alignItems: "center", gap: 10, minHeight: 48 }}
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                gap: 14,
+                minHeight: 76,
+                paddingLeft: 18,
+                paddingRight: 12,
+                paddingVertical: 12,
+                borderRadius: radii.card,
+                borderCurve: "continuous",
+                borderWidth: 1,
+                borderColor: colors.line,
+              }}
             >
+              <View style={{ width: 26, alignItems: "center", opacity: 0.4 }}>
+                <Mark family={workoutFamily(state, w)} size={20} />
+              </View>
               <View style={{ flex: 1, gap: 1 }}>
-                <Text style={{ color: colors.muted, fontSize: 15, fontWeight: "600" }}>
-                  {w.name || "Untitled"}
+                <Text
+                  numberOfLines={1}
+                  style={{
+                    color: colors.muted,
+                    fontFamily: fonts.display,
+                    fontSize: 23,
+                    lineHeight: 29,
+                  }}
+                >
+                  {name}
                 </Text>
                 {w.subtitle ? (
-                  <Text style={{ color: colors.faint, fontSize: 12 }}>{w.subtitle}</Text>
+                  <Text
+                    numberOfLines={1}
+                    style={{ color: colors.faint, fontSize: 15, fontStyle: "italic" }}
+                  >
+                    {w.subtitle}
+                  </Text>
                 ) : null}
               </View>
               <Pressable
                 accessibilityRole="button"
-                accessibilityLabel={`Put ${w.name} back`}
-                onPress={() => setState((s) => restoreWorkout(s, w.id))}
-                hitSlop={8}
+                accessibilityLabel={`Resume ${name}`}
+                accessibilityActions={[{ name: "delete", label: `Delete ${name} for good` }]}
+                onAccessibilityAction={(e) => {
+                  if (e.nativeEvent.actionName === "delete") {
+                    setState((s) => deleteWorkout(s, w.id));
+                  }
+                }}
+                onPress={() => setState((s) => resumeWorkout(s, w.id))}
+                hitSlop={6}
                 style={({ pressed }) => ({
                   justifyContent: "center",
                   minHeight: 44,
-                  marginRight: -6,
-                  paddingHorizontal: 14,
-                  borderRadius: 999,
-                  backgroundColor: colors.raised,
+                  paddingHorizontal: 18,
+                  borderRadius: radii.action,
+                  backgroundColor: colors.surface,
                   opacity: pressed ? 0.6 : 1,
                 })}
               >
-                <Text style={{ color: colors.text, fontSize: 13, fontWeight: "800" }}>
-                  Put back
-                </Text>
+                <Text style={{ color: colors.text, fontSize: 16, fontWeight: "600" }}>Resume</Text>
               </Pressable>
             </View>
-          ))}
-        </>
-      ) : null}
+          </Swipe>
+        );
+      })}
     </View>
   );
 }
@@ -269,7 +371,7 @@ function RemovedWorkouts() {
 /**
  * One workout in the list, the way Today shows it: its shape, its name, what
  * it trains, on a wash of its colour — so the plan reads as the run of
- * colours you will train through. Swipe left to remove it.
+ * colours you will train through. Swipe left to pause it.
  */
 function WorkoutRow({
   workout,
@@ -285,15 +387,13 @@ function WorkoutRow({
   const { state, setState } = useSession();
   const family = workoutFamily(state, workout);
   const count = workout.exercises.length;
-  // A built-in goes to Removed and can be put back; one of yours is gone for good.
-  const builtIn = isBuiltInWorkout(workout.id);
   return (
     <Swipe
-      label={builtIn ? "Remove" : "Delete"}
-      // The last workout cannot go: the cycle needs something in it.
-      disabled={!canRemoveWorkout(state) || drag.active}
+      label="Pause"
+      // The last workout cannot go: the loop needs something in it.
+      disabled={!canPauseWorkout(state) || drag.active}
       radius={radii.card}
-      onAction={() => setState((s) => removeWorkout(s, workout.id))}
+      onAction={() => setState((s) => pauseWorkout(s, workout.id))}
     >
       <Pressable
         accessibilityRole="button"
@@ -329,14 +429,19 @@ function WorkoutRow({
           >
             {workout.name || "Untitled"}
           </Text>
-          <Text numberOfLines={1} style={{ color: colors.muted, fontSize: 16, fontStyle: "italic" }}>
+          <Text
+            numberOfLines={1}
+            style={{ color: colors.muted, fontSize: 16, fontStyle: "italic" }}
+          >
             {[workout.subtitle, `${count} exercise${count === 1 ? "" : "s"}`]
               .filter(Boolean)
               .join(" · ")}
           </Text>
         </View>
         {isNext ? (
-          <Text style={{ color: colors.text, fontSize: 16, fontStyle: "italic", fontWeight: "500" }}>
+          <Text
+            style={{ color: colors.text, fontSize: 16, fontStyle: "italic", fontWeight: "500" }}
+          >
             Next
           </Text>
         ) : null}
@@ -370,22 +475,18 @@ function WorkoutSheet({
   const [slot, setSlot] = useState<string | null>(null);
   const [block, setBlock] = useState<Block | null>(null);
   const [adding, setAdding] = useState(false);
-  const [confirming, setConfirming] = useState(false);
   const [dragging, setDragging] = useState(false);
 
   const close = () => {
     setSlot(null);
     setBlock(null);
     setAdding(false);
-    setConfirming(false);
     onClose();
   };
 
   if (!workout) return <Sheet visible={false} title="" onClose={close} />;
 
-  const removable = canRemoveWorkout(state);
-  // A built-in goes to Removed and can be put back; one of yours is gone for good.
-  const builtIn = isBuiltInWorkout(workout.id);
+  const pausable = canPauseWorkout(state);
   const entry = workout.exercises.find((e) => e.id === slot);
 
   return (
@@ -461,36 +562,21 @@ function WorkoutSheet({
             />
           )}
 
-          {confirming ? (
-            <BigButton
-              label={`${builtIn ? "Remove" : "Delete"} ${workout.name || "this workout"}`}
-              danger
-              onPress={() => {
-                setConfirming(false);
-                setState((s) => removeWorkout(s, workout.id));
-                close();
-              }}
-            />
-          ) : (
-            <BigButton
-              label={builtIn ? "Remove workout" : "Delete workout"}
-              quiet
-              // The last workout cannot go: the cycle needs something in it.
-              disabled={!removable}
-              onPress={() => setConfirming(true)}
-            />
-          )}
-          {confirming ? (
-            <TextButton label="Keep it" onPress={() => setConfirming(false)} />
-          ) : !removable ? (
-            <Text style={{ color: colors.faint, fontSize: 13, textAlign: "center" }}>
-              The last workout stays — the cycle needs something in it.
-            </Text>
-          ) : builtIn ? (
-            <Text style={{ color: colors.faint, fontSize: 13, textAlign: "center" }}>
-              Removed workouts can be put back later, exactly as they were.
-            </Text>
-          ) : null}
+          <BigButton
+            label="Pause workout"
+            quiet
+            // The last workout cannot go: the loop needs something in it.
+            disabled={!pausable}
+            onPress={() => {
+              setState((s) => pauseWorkout(s, workout.id));
+              close();
+            }}
+          />
+          <Text style={{ color: colors.faint, fontSize: 13, textAlign: "center" }}>
+            {pausable
+              ? "It waits under the loop, exactly as it is, until you resume it."
+              : "The last workout stays — the loop needs something in it."}
+          </Text>
         </View>
       </View>
 

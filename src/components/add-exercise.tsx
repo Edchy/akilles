@@ -100,7 +100,14 @@ export function AddExerciseSheet({
           {found ? (
             <View style={{ gap: 4 }}>
               {found.length === 0 ? (
-                <Text style={{ color: colors.muted, fontSize: 17, fontStyle: "italic", paddingBottom: 8 }}>
+                <Text
+                  style={{
+                    color: colors.muted,
+                    fontSize: 17,
+                    fontStyle: "italic",
+                    paddingBottom: 8,
+                  }}
+                >
                   Nothing called “{typed}” yet.
                 </Text>
               ) : (
@@ -134,7 +141,15 @@ export function AddExerciseSheet({
 const FAMILIES: Family[] = ["push", "pull", "legs", "core"];
 
 /** Plain rows on white with a hairline between: the shape, the name. */
-function Rows({ list, inIt, onPick }: { list: Exercise[]; inIt: Set<string>; onPick: (id: string) => void }) {
+function Rows({
+  list,
+  inIt,
+  onPick,
+}: {
+  list: Exercise[];
+  inIt: Set<string>;
+  onPick: (id: string) => void;
+}) {
   return (
     <View>
       {list.map((e, i) => {
@@ -173,8 +188,12 @@ function Rows({ list, inIt, onPick }: { list: Exercise[]; inIt: Set<string>; onP
                 borderColor: colors.surface,
               }}
             >
-              <Text style={{ flex: 1, color: used ? colors.faint : colors.text, fontSize: 18 }}>{e.name}</Text>
-              {used ? <Text style={{ color: colors.faint, fontSize: 14, fontStyle: "italic" }}>in it</Text> : null}
+              <Text style={{ flex: 1, color: used ? colors.faint : colors.text, fontSize: 18 }}>
+                {e.name}
+              </Text>
+              {used ? (
+                <Text style={{ color: colors.faint, fontSize: 14, fontStyle: "italic" }}>in it</Text>
+              ) : null}
             </View>
           </Pressable>
         );
@@ -395,7 +414,9 @@ function Chip({ label, on, onPress }: { label: string; on: boolean; onPress: () 
         opacity: pressed ? 0.7 : 1,
       })}
     >
-      <Text style={{ color: on ? colors.bg : colors.text, fontSize: 16, fontWeight: on ? "600" : "400" }}>
+      <Text
+        style={{ color: on ? colors.bg : colors.text, fontSize: 16, fontWeight: on ? "600" : "400" }}
+      >
         {label}
       </Text>
     </Pressable>

@@ -32,6 +32,8 @@ const ICONS = {
   info: { sf: "info.circle", glyph: "ⓘ" },
   timer: { sf: "stopwatch", glyph: "⏱" },
   search: { sf: "magnifyingglass", glyph: "⌕" },
+  note: { sf: "pencil", glyph: "✎" },
+  more: { sf: "ellipsis", glyph: "⋯" },
 } as const satisfies Record<string, { sf: SymbolViewProps["name"]; glyph: string }>;
 
 export type IconName = keyof typeof ICONS;

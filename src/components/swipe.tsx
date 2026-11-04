@@ -80,7 +80,11 @@ export function Swipe({
           bottom: 0,
           right: 0,
           width: OPEN - 10,
-          opacity: x.interpolate({ inputRange: [-40, 0], outputRange: [1, 0], extrapolate: "clamp" }),
+          opacity: x.interpolate({
+            inputRange: [-40, 0],
+            outputRange: [1, 0],
+            extrapolate: "clamp",
+          }),
         }}
       >
         <Pressable
