@@ -1,4 +1,4 @@
-import { createContext, forwardRef, useContext } from "react";
+import { createContext, forwardRef, useContext, type ReactNode } from "react";
 import {
   StyleSheet,
   Text as NativeText,
@@ -9,6 +9,7 @@ import {
 } from "react-native";
 
 import { fonts } from "@/constants/theme";
+import { noOrphan } from "@/lib/typography";
 
 /**
  * Every word in the app is EB Garamond. These stand in for React Native's
@@ -67,12 +68,31 @@ function serif(style: TextProps["style"], parent: Face | null): { style: TextPro
   return { style: [style, extra], face };
 }
 
+/**
+ * No word left alone on a paragraph's last line — see `noOrphan`. Applied to
+ * the text the paragraph ends on: a plain string, or the last thing said in
+ * a mix like "<italic>Own it:</italic> pause at the bottom…".
+ */
+function settle(children: ReactNode): ReactNode {
+  if (typeof children === "string") return noOrphan(children);
+  if (!Array.isArray(children)) return children;
+  for (let i = children.length - 1; i >= 0; i--) {
+    const child = children[i];
+    if (child === null || child === undefined || typeof child === "boolean" || child === "") continue;
+    if (typeof child !== "string") return children;
+    const tied = noOrphan(child);
+    return tied === child ? children : children.map((c, j) => (j === i ? tied : c));
+  }
+  return children;
+}
+
 export const Text = forwardRef<NativeText, TextProps>(function Text({ style, children, ...rest }, ref) {
   const parent = useContext(Parent);
   const { style: next, face } = serif(style, parent);
+  const text = settle(children);
   return (
     <NativeText ref={ref} style={next} {...rest}>
-      {face ? <Parent.Provider value={face}>{children}</Parent.Provider> : children}
+      {face ? <Parent.Provider value={face}>{text}</Parent.Provider> : text}
     </NativeText>
   );
 });
