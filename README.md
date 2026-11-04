@@ -5,6 +5,12 @@ A workout app with one job: open it and know exactly what to do.
 No planning, no picking, no thinking. One exercise on screen at a time with the
 weight and reps already decided.
 
+**Own the weight.** Most gym apps count how much you lift. Akilles counts how
+much you own. A rep counts when you lower it under control, hold it where it is
+hardest, and lift it without a swing or a bounce — so start lighter than your
+ego wants and log only the reps you owned. Progress is slow on purpose: every
+lift [reloads](#reloads) as it climbs, so form keeps up with the number.
+
 ## Run
 
 ```bash
@@ -73,22 +79,44 @@ per side where a stretch has two: the picture, the name, a line on how, and a
 countdown. One big button does everything — Start, Pause, Resume, then Next
 once the hold runs out (the phone buzzes), and Finish on the last card. Swipe
 to move between cards at any time; swiping away mid-hold pauses it. Nothing
-is recorded. The illustrations are placeholders until the set is made.
+is recorded.
+
+**Cardio and mobility belong to each workout.** Out of the box every workout
+opens on the treadmill (1 km, timed), finishes on the ski-erg (5 minutes, for
+distance), and ends on the **everyday stretch**: couch stretch, world's
+greatest stretch, figure-four, seated hamstring, a chest and shoulder opener
+and child's pose — about seven minutes. Open a workout in **Plan** to change
+any of it: the machine, a set distance or a set time and how long, the
+routine — or take a block out altogether. Each length keeps its own record, so
+a 2 km run on leg day never competes with the 1 km on push day. A swap with
+`⇄` mid-workout is for today only, as with lifts.
+
+**Routines are yours to change**, from a workout's Mobility sheet or from
+Exercises → Mobility: add stretches, take them out, hold and drag to reorder,
+tap one to change its time or hold it on each side. Stretches are added from a
+list of fourteen, each with a photo and a guide (`STRETCHES` in
+`src/data/conditioning.ts`); one you type in yourself has neither. A routine is
+shared by every workout that ends on it — the sheet says which — and **Make a
+copy just for …** gives one workout its own. An edited built-in can be put back
+as it was. A new routine starts as a copy of the everyday stretch.
 
 **How to do it** — the ⓘ beside any lift or machine, and on every mobility
 card, opens a sheet: the picture, three steps, and the one mistake to watch
-for. Guides live in `src/data/guides.ts`; an exercise you added yourself shows
-its own cue instead.
+for. A lift's sheet also says how to **own it** — the position to hold for a
+second, or the part to slow down. Guides live in `src/data/guides.ts`; an
+exercise you added yourself shows its own cue instead.
 
 **Photos** come from [free-exercise-db](https://github.com/yuhonas/free-exercise-db),
 public domain under the Unlicense, matched by hand in `src/data/photos.ts`. A
-lift's start and finish frames flip back and forth like a short loop. Where
-their library has no true match — pigeon, 90/90, frog, lizard, doorway, bar
-hang, sleeper, thread the needle, wall angel, cobra, the thoracic opener, the
-ski-erg, the assault bike and the rotary torso machine — a placeholder shows.
+lift's start and finish frames flip back and forth like a short loop; a
+stretch shows the one frame of the hold. Only stretches with a photo are
+offered; the couch stretch borrows the kneeling hip-flexor stretch, its nearest
+match. Where their library has no true match — the ski-erg, the assault bike
+and the rotary torso machine — a placeholder shows.
 
 **Logging a set** — one circle per set. Tap it and it fills at the target reps;
-tap again and it counts down if you got fewer; tap past 1 and it clears.
+tap again and it counts down if you got fewer — and a rep you swung, bounced or
+cut short is one you got fewer of. Tap past 1 and it clears.
 Hold a circle to put it straight back to the target — a stray extra tap on a
 15-rep set is undone in one press, not fourteen.
 
@@ -106,14 +134,42 @@ any time you want.
 |---|---|
 | every set on target | climb the rep ladder — 6 → 8 → 10 → 12 |
 | on target at the top | weight += increment, back to the bottom rung |
+| …after two steps up | **reload**: same weight, back to 10 reps, the top climbed again |
 | short of target | hold everything, repeat it exactly |
 | short twice in a row | deload 10%, back to the bottom rung |
 
-Once every circle is filled, a sheet says which of these happens next time,
-with **Next exercise** under it. It waits two seconds after your last tap, so
-the last circle can still be tapped down if you came up short. **An unfinished exercise is not a miss**: leave with
+The line under the circles follows the exercise through. Before the first set
+it says where today's number came from — last time's weight and reps, or why it
+changed. Between sets it says how to own the next one: "Own it: pause with the
+bar on your chest." Once every circle is filled, it says which of these happens
+next time, and changes as you tap a circle down. Nothing moves you on by
+itself: **Next** — named for what comes next, "Next: Dips" — sits pinned above
+the bar where the warm-up's Ready does, and wakes up once every circle (the
+partner's too) is filled, so a rep or a weight can still be fixed first. To
+move on before that, use Skip. **An unfinished exercise is not a miss**: leave with
 sets still empty and it simply repeats, since running out of time says nothing
 about the weight.
+
+<a id="reloads"></a>**Reloads.** Two steps up, then a reload: the lift tops out at 12 reps, the
+weight stays, and it goes back to 10 — a lighter day that is still work — then
+12 again to prove it. Then it goes up. On 20 kg dumbbells that is 20 → 22.5 →
+25, then 25 × 10 and 25 × 12 once more, then 27.5. Not back to 6: six reps at a
+weight you just did twelve with is a wasted session, and a whole second climb
+would keep one weight for eight sessions. On a narrower range the reload is
+the last two rungs all the same, so 10 → 12 on 8–12 and the whole of 10–12.
+
+The reload is called by progress, never by the calendar, and it is counted in
+steps rather than kilograms, so it means the same thing on a dumbbell (5 kg),
+a machine stack (10 kg) or a kettlebell (8 kg). It adds two sessions to every
+two steps: a dumbbell bench takes 10 sessions to gain 5 kg instead of 8.
+Waiting for three or four steps would barely be quicker, since the ladder is
+what takes the time, but a light lift would be 40–50% heavier before it ever
+stopped to consolidate. A reload is a hit, not a setback: Today announces it,
+the lift screen marks it, and Akilles treats it as one.
+
+The one rule that reads the calendar is the **layoff**: three weeks or more
+away from a lift, and Today offers to ease it back 5–30% before you start.
+That is about time away, not pace, and it waits for your yes.
 
 **Rep ranges.** Every target is 6, 8, 10 or 12 — reps climb two at a time,
 never to an 11 or a 13. Slots start on 6–12; one can be narrowed (8–12,
@@ -122,9 +178,10 @@ narrowing a slot's range starts that lift on a new record — set its weight
 in the same sheet. Saves from before the even steps were moved onto 6–12 with
 each lift's heaviest recent weight, at the rung nearest the reps it was on.
 
-**Superset** folds any lift from later in the workout into the current one,
+**Add superset** folds any lift from later in the workout into the current one,
 removing it from further down so it isn't done twice. What to pair is your
-call: every lift still ahead is offered.
+call: every lift still ahead is offered, each with its ⓘ so you can check how
+it is done first, and the partner card keeps that ⓘ.
 
 A `×` on the partner card undoes the pairing: the exercise goes back to its own
 place in the workout's slot order, keeping any sets already logged against it.
@@ -142,7 +199,7 @@ Three tabs, plus the workout itself which takes over the screen.
 |---|---|
 | **Today** | The next workout, large and nothing else. **Start**, or **Skip**: **Do this next time** trains the following workout now and returns to this one next session; **Skip this round** leaves it until the cycle repeats. Both offer Undo and record no training. With a workout in progress, **Continue** and **End** instead. |
 | **Progress** | This week's training days as seven circles, then three views. **Results**: total weight lifted (put in proportion — "3.8 small cars"), sessions this month, weeks in a row, share of lifts on target, lifts that got stronger, standing records, cardio that got faster or further. **Sessions**: every finished workout, newest first, with each set coloured hit or short. **Lifts**: every exercise by muscle group at its current weight, tap for its past sessions; cardio bests too. Backup & restore sits in a sheet at the bottom. |
-| **Plan** | Two segments: **Workouts** (your sessions, their order, and what fills each slot) and **Exercises** (the catalogue of every movement). |
+| **Plan** | Two segments: **Workouts** (your sessions, their order, what fills each slot, and the cardio and mobility either side) and **Exercises** (the catalogue of every movement). |
 
 Both segments are accordions — one workout or one category open at a time, so
 the whole list fits on a screen.
@@ -165,7 +222,7 @@ history is kept, so adding it back later resumes where it left off.
 **+ on a group adds.** First the **library** — built-in exercises you are not
 using, one tap to add — then **Create your own**: name it, pick the equipment
 (barbell, dumbbells, kettlebell, machine, bodyweight — which sets a sensible
-weight step), give it a starting weight if you know it,
+weight step, or holds for bodyweight), give it a starting weight if you know it,
 and say what it counts as. The catalogue starts with the program's exercises
 plus a common alternative or two for each job; everything else waits in the
 library rather than cluttering the list.
@@ -196,8 +253,29 @@ on an assist machine, so their weight runs below zero:
 ```
 
 Progress is the assistance shrinking toward zero, then load being added past
-it — one continuous scale, one number. Everything else still floors at zero,
-since a barbell cannot weigh less than nothing.
+it — one continuous scale, one number, with a dip belt above bodyweight. Back
+extensions keep kilograms too: you hold a plate. Everything else still floors
+at zero, since a barbell cannot weigh less than nothing.
+
+**Bodyweight movements you cannot load progress by holding.** Nobody straps a
+plate to a hanging leg raise or puts one on their own back for a push-up. So
+on those — push-up, inverted row, bench dip, Nordic curl, hanging and lying
+leg raise, captain's chair, ab wheel, and any bodyweight exercise you create —
+the number is **seconds held at the hardest point of every rep**:
+
+```
+Bodyweight × 12   →   1 s hold × 6 … × 12   →   2 s hold   …   5 s hold × 12
+```
+
+Topping out adds a second where a loaded lift would add 2.5 kg. Reloads,
+misses and deloads work exactly the same (two misses take a second off). At
+five seconds the lift has gone as far as it goes and stays at twelve reps
+there. The lift screen's **Own it** line says where and for how long: *hold
+the legs up for 2 seconds. No swing.*
+
+**Planks count real seconds.** A timed hold climbs the same ladder five
+seconds a rep — 30 → 40 → 50 → 60 seconds — and stays at a minute. Tapping a
+set's circle counts down five seconds at a time when one gives out early.
 
 **The bottom bar is one persistent element.** It is mounted once in the root
 layout and never animates — screens slide in from the right underneath it, and

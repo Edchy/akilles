@@ -2,8 +2,11 @@
  * Cardio and mobility: the work that bookends the lifting.
  *
  * These are pools, not programmes. A session opens with one cardio block and
- * closes with another plus mobility; which machine or which routine fills
- * each is swapped the same way a lift is, and remembered per slot.
+ * closes with another plus mobility. Each workout says which machine and
+ * routine fill its blocks, and how long each cardio block runs — see
+ * `CardioBlock` and `Workout` in `split.ts`. Out of the box every workout
+ * opens on the treadmill, finishes on the ski-erg and ends on the everyday
+ * stretch.
  *
  * Neither kind climbs a rep ladder. Cardio progresses by covering more ground
  * in the same fixed minutes, or — on a machine with a set distance — by
@@ -34,7 +37,8 @@ export type CardioExercise = {
   cue?: string;
   /**
    * Run a set distance and time it, rather than a set time and measure it.
-   * In the machine's own unit; changeable from Plan → Exercises.
+   * In the machine's own unit. Only the default: each workout can change it,
+   * or switch the block to the clock.
    */
   distance?: number;
   /** Set false to bench a machine without losing its records. */
@@ -56,17 +60,106 @@ export const CARDIO: CardioExercise[] = [
   { id: "elliptical", name: "Elliptical", metric: KM },
 ];
 
-/** The machine each cardio slot opens with until you swap it. */
-export const CARDIO_DEFAULT = {
+/** The two ends of a session a cardio block can sit at. */
+export type CardioEnd = "open" | "close";
+
+/** The machine each end of a workout uses until you choose another. */
+export const CARDIO_DEFAULT: Record<CardioEnd, string> = {
   open: "treadmill",
   close: "ski_erg",
-} as const;
+};
 
-/** How long a cardio block runs, in minutes. The same every session. */
+/** How long a cardio block on the clock runs, in minutes, unless a workout says otherwise. */
 export const CARDIO_MINUTES = 5;
 
-export type MobilityMove = {
+/** How far − and + move a block's minutes, and the most it can run. */
+export const MINUTES_STEP = 1;
+export const MINUTES_MAX = 60;
+
+/**
+ * One cardio block as a workout has it: the machine, and how long.
+ *
+ * Leave both lengths out and the machine's own default is used — its set
+ * distance if it has one, else `CARDIO_MINUTES` on the clock. Set `course`
+ * to time a distance, or `minutes` to measure one; `course` wins if both are.
+ */
+export type CardioBlock = {
+  machine: string;
+  /** Timed over this distance, in the machine's unit. */
+  course?: number;
+  /** Or: the distance covered in this many minutes is the score. */
+  minutes?: number;
+};
+
+/** A block's length, worked out: exactly one of the two is set. */
+export type CardioLength = { course: number; minutes?: undefined } | { minutes: number; course?: undefined };
+
+/** How long a block on this machine runs — its own setting, else the machine's default. */
+export const lengthOf = (
+  machine: CardioExercise,
+  block?: Pick<CardioBlock, "course" | "minutes">,
+): CardioLength => {
+  if (block?.course !== undefined) return { course: block.course };
+  if (block?.minutes !== undefined) return { minutes: block.minutes };
+  return machine.distance !== undefined ? { course: machine.distance } : { minutes: CARDIO_MINUTES };
+};
+
+/**
+ * The distance a block starts on when switched from the clock to a set
+ * distance: the machine's own, else a round number in its unit.
+ */
+export const defaultCourse = (machine: CardioExercise): number =>
+  machine.distance ?? (machine.metric.unit === "km" ? 1 : 1000);
+
+/**
+ * A stretch the app knows: a photo, a how-to guide — both keyed by this id —
+ * and the hold it starts with when added to a routine.
+ *
+ * Only stretches with a real photo belong here (see `data/photos.ts`); one you
+ * type in yourself is just a name and a time, and shows a placeholder.
+ */
+export type Stretch = {
   id: string;
+  name: string;
+  /** Seconds to hold when first added. Per side, when `perSide`. */
+  seconds: number;
+  perSide?: boolean;
+  /** One line on the card. Keep it short. */
+  cue?: string;
+};
+
+/** Every stretch on offer, roughly hips first and upper body last. */
+export const STRETCHES: Stretch[] = [
+  { id: "couch", name: "Couch stretch", seconds: 60, perSide: true, cue: "Squeeze the glute to feel the front of the hip." },
+  { id: "worlds_greatest", name: "World's greatest stretch", seconds: 30, perSide: true, cue: "Elbow down to the instep, then turn the chest open." },
+  { id: "figure_four", name: "Figure-four stretch", seconds: 45, perSide: true, cue: "Ankle over the knee, pull the bottom leg in." },
+  { id: "seated_hamstring", name: "Seated hamstring stretch", seconds: 30, perSide: true, cue: "Fold from the hips, not the back." },
+  { id: "standing_hip_flexor", name: "Standing hip flexor stretch", seconds: 30, perSide: true, cue: "Tuck the pelvis and shift forward." },
+  { id: "forward_fold", name: "Standing forward fold", seconds: 45, cue: "Let the head and arms hang." },
+  { id: "calf_wall", name: "Calf stretch", seconds: 30, perSide: true, cue: "Back heel down, back knee straight." },
+  { id: "supine_twist", name: "Lying twist", seconds: 45, perSide: true, cue: "Knee across, shoulders stay down." },
+  { id: "knees_to_chest", name: "Knees to chest", seconds: 45, cue: "Hands under the knees, not over." },
+  { id: "cat_cow", name: "Cat–cow", seconds: 60, cue: "Slow. One breath per position." },
+  { id: "childs_pose", name: "Child's pose", seconds: 60, cue: "Breathe into the back of the ribs." },
+  { id: "chest_opener", name: "Chest and shoulder opener", seconds: 45, cue: "A stick or empty bar, wide grip, up and back." },
+  { id: "lat_wall", name: "Lat stretch on a wall", seconds: 30, perSide: true, cue: "Forearm on the wall, sink the chest away." },
+  { id: "cross_body", name: "Cross-body shoulder stretch", seconds: 30, perSide: true, cue: "Pull the arm across at chest height." },
+];
+
+export const stretchById = (id: string): Stretch | undefined => STRETCHES.find((s) => s.id === id);
+
+/** How far − and + move a hold, and the range it stays within. */
+export const HOLD_STEP = 15;
+export const HOLD_RANGE = { min: 15, max: 180 } as const;
+
+export type MobilityMove = {
+  /** Unique within its routine. */
+  id: string;
+  /**
+   * The stretch this is, for its photo and guide. Absent for one you typed in
+   * yourself, which shows a placeholder.
+   */
+  stretch?: string;
   name: string;
   /** Seconds to hold. Doubled in effect when `perSide` — it is per side. */
   seconds: number;
@@ -74,6 +167,27 @@ export type MobilityMove = {
   perSide?: boolean;
   cue?: string;
 };
+
+/** The id a move's photo and guide are found under. */
+export const pictureOf = (move: MobilityMove): string => move.stretch ?? move.id;
+
+/** A stretch from the library as a hold in a routine, with its own times unless told otherwise. */
+export const holdOf = (
+  stretch: Stretch,
+  id: string = stretch.id,
+  overrides: Partial<Pick<MobilityMove, "seconds" | "perSide">> = {},
+): MobilityMove => ({
+  id,
+  stretch: stretch.id,
+  name: stretch.name,
+  seconds: stretch.seconds,
+  ...(stretch.perSide ? { perSide: true } : {}),
+  ...(stretch.cue ? { cue: stretch.cue } : {}),
+  ...overrides,
+});
+
+const hold = (id: string, overrides?: Partial<Pick<MobilityMove, "seconds" | "perSide">>) =>
+  holdOf(stretchById(id)!, id, overrides);
 
 export type MobilityRoutine = {
   id: string;
@@ -84,75 +198,40 @@ export type MobilityRoutine = {
   enabled?: boolean;
 };
 
+/** Your changes to a built-in routine: its name, its holds. Kept beside it, so it can be put back. */
+export type MobilityEdit = { name?: string; moves?: MobilityMove[] };
+
+/** The routine every workout ends on until you choose another. */
+export const DEFAULT_MOBILITY = "everyday";
+
 /**
- * The mobility pool. One routine per slot, swapped like any other exercise —
- * so a hip-heavy day can end on hips and a pressing day on shoulders.
+ * The built-in routines: one, and a good one. The best of the stretches for
+ * someone who lifts — hips, hamstrings, glutes, chest and back — in about seven
+ * minutes. Every hold has a photo and a guide. Change it in Plan, or make
+ * routines of your own for particular days.
  */
 export const MOBILITY: MobilityRoutine[] = [
   {
-    id: "full_body",
-    name: "Full body",
-    subtitle: "a bit of everything",
+    id: DEFAULT_MOBILITY,
+    name: "Everyday stretch",
+    subtitle: "hips, hamstrings, chest and back",
     moves: [
-      { id: "fb_couch", name: "Couch stretch", seconds: 45, perSide: true, cue: "Squeeze the glute to feel the front of the hip." },
-      { id: "fb_pigeon", name: "Pigeon pose", seconds: 45, perSide: true },
-      { id: "fb_ham", name: "Seated hamstring fold", seconds: 45 },
-      { id: "fb_thoracic", name: "Thoracic opener over a bench", seconds: 45 },
-      { id: "fb_child", name: "Child's pose", seconds: 60, cue: "Breathe into the back of the ribs." },
-    ],
-  },
-  {
-    id: "hips",
-    name: "Hips & hamstrings",
-    subtitle: "after squats and hinges",
-    moves: [
-      { id: "hp_90", name: "90/90 hip switch hold", seconds: 45, perSide: true },
-      { id: "hp_couch", name: "Couch stretch", seconds: 60, perSide: true },
-      { id: "hp_frog", name: "Frog stretch", seconds: 60, cue: "Rock back slowly, do not force it." },
-      { id: "hp_ham", name: "Standing hamstring fold", seconds: 45 },
-      { id: "hp_lizard", name: "Lizard lunge", seconds: 45, perSide: true },
-    ],
-  },
-  {
-    id: "shoulders",
-    name: "Shoulders & chest",
-    subtitle: "after pressing",
-    moves: [
-      { id: "sh_doorway", name: "Doorway pec stretch", seconds: 45, perSide: true },
-      { id: "sh_hang", name: "Passive bar hang", seconds: 30, cue: "Let the shoulders come up around the ears." },
-      { id: "sh_sleeper", name: "Sleeper stretch", seconds: 45, perSide: true },
-      { id: "sh_thread", name: "Thread the needle", seconds: 45, perSide: true },
-      { id: "sh_wall", name: "Wall angel hold", seconds: 45 },
-    ],
-  },
-  {
-    id: "spine",
-    name: "Spine & lower back",
-    subtitle: "after deadlifts",
-    moves: [
-      { id: "sp_cat", name: "Cat–cow", seconds: 60, cue: "Slow. One breath per position." },
-      { id: "sp_twist", name: "Supine spinal twist", seconds: 45, perSide: true },
-      { id: "sp_cobra", name: "Cobra", seconds: 45 },
-      { id: "sp_knees", name: "Knees to chest", seconds: 45 },
-      { id: "sp_child", name: "Child's pose", seconds: 60 },
-    ],
-  },
-  {
-    id: "quick",
-    name: "Quick reset",
-    subtitle: "three minutes, no floor",
-    moves: [
-      { id: "qk_hang", name: "Passive bar hang", seconds: 30 },
-      { id: "qk_doorway", name: "Doorway pec stretch", seconds: 30, perSide: true },
-      { id: "qk_lunge", name: "Standing lunge stretch", seconds: 30, perSide: true },
-      { id: "qk_fold", name: "Standing forward fold", seconds: 45 },
+      hold("couch"),
+      hold("worlds_greatest"),
+      hold("figure_four"),
+      hold("seated_hamstring"),
+      hold("chest_opener"),
+      hold("childs_pose"),
     ],
   },
 ];
 
+/** Routines earlier versions shipped, all retired for `everyday`. Read only by the save migration. */
+export const RETIRED_MOBILITY = ["full_body", "hips", "shoulders", "spine", "quick"];
+
 /**
  * The lean starting pools: the two machines the blocks default to plus one
- * alternative, and three routines.
+ * alternative, and the one routine.
  *
  * Kept a little wider than the lifting catalogue because a conditioning block
  * has no equipment fallback — if the treadmill is taken you want a second
@@ -161,7 +240,7 @@ export const MOBILITY: MobilityRoutine[] = [
  * Everything else ships removed and is one tap from coming back.
  */
 export const LEAN_CARDIO: string[] = ["treadmill", "ski_erg", "row"];
-export const LEAN_MOBILITY: string[] = ["full_body", "hips", "shoulders"];
+export const LEAN_MOBILITY: string[] = [DEFAULT_MOBILITY];
 
 /** Built-in machines and routines that start out removed. */
 export const leanHiddenConditioning = (): string[] => [
@@ -180,6 +259,7 @@ export const leanHiddenConditioning = (): string[] => [
  */
 let customCardio: CardioExercise[] = [];
 let customMobility: MobilityRoutine[] = [];
+let mobilityEdits: Record<string, MobilityEdit> = {};
 
 export const setCustomConditioning = (
   cardio: CardioExercise[],
@@ -189,11 +269,24 @@ export const setCustomConditioning = (
   customMobility = mobility;
 };
 
+/** Your changes to the built-in routines, as `exerciseEdits` is for lifts. */
+export const setMobilityEdits = (edits: Record<string, MobilityEdit>) => {
+  mobilityEdits = edits;
+};
+
+/** A built-in routine as you have changed it. */
+const withMobilityEdits = (routine: MobilityRoutine): MobilityRoutine => {
+  const edit = mobilityEdits[routine.id];
+  return edit ? { ...routine, ...edit } : routine;
+};
+
 export const cardioById = (id: string): CardioExercise | undefined =>
   CARDIO.find((c) => c.id === id) ?? customCardio.find((c) => c.id === id);
 
-export const mobilityById = (id: string): MobilityRoutine | undefined =>
-  MOBILITY.find((m) => m.id === id) ?? customMobility.find((m) => m.id === id);
+export const mobilityById = (id: string): MobilityRoutine | undefined => {
+  const builtIn = MOBILITY.find((m) => m.id === id);
+  return builtIn ? withMobilityEdits(builtIn) : customMobility.find((m) => m.id === id);
+};
 
 /**
  * Everything currently on offer, in authored order: the built-ins first, then
@@ -206,7 +299,7 @@ export const cardioPool = (hidden: string[] = []): CardioExercise[] => [
 ];
 
 export const mobilityPool = (hidden: string[] = []): MobilityRoutine[] => [
-  ...MOBILITY.filter((m) => m.enabled !== false && !hidden.includes(m.id)),
+  ...MOBILITY.filter((m) => m.enabled !== false && !hidden.includes(m.id)).map(withMobilityEdits),
   ...customMobility,
 ];
 
@@ -215,7 +308,7 @@ export const hiddenCardio = (hidden: string[]): CardioExercise[] =>
   CARDIO.filter((c) => hidden.includes(c.id));
 
 export const hiddenMobility = (hidden: string[]): MobilityRoutine[] =>
-  MOBILITY.filter((m) => hidden.includes(m.id));
+  MOBILITY.filter((m) => hidden.includes(m.id)).map(withMobilityEdits);
 
 /** The units a machine can measure in, offered when you add one. */
 export const METRICS: { label: string; metric: CardioMetric }[] = [

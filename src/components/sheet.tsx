@@ -1,6 +1,8 @@
 import type { PropsWithChildren } from "react";
-import { Modal, Pressable, ScrollView, Text, View } from "react-native";
+import { Modal, Pressable, ScrollView, View } from "react-native";
+import { Text } from "@/components/text";
 
+import { Plain } from "@/components/field";
 import { Column } from "@/components/screen";
 import { Icon } from "@/components/icon";
 import { colors, radii } from "@/constants/theme";
@@ -39,6 +41,8 @@ export function Sheet({
       allowSwipeDismissal={swipeToDismiss}
       onRequestClose={onClose}
     >
+      {/* White, whatever colour the screen behind it is. */}
+      <Plain>
       <View style={{ flex: 1, backgroundColor: colors.bg }}>
         <Column
           style={{
@@ -83,6 +87,7 @@ export function Sheet({
           <Column>{children}</Column>
         </ScrollView>
       </View>
+      </Plain>
     </Modal>
   );
 }
@@ -93,10 +98,8 @@ export function SectionLabel({ children }: { children: string }) {
     <Text
       style={{
         color: colors.faint,
-        fontSize: 13,
-        fontWeight: "800",
-        letterSpacing: 1,
-        textTransform: "uppercase",
+        fontSize: 15,
+        fontStyle: "italic",
       }}
     >
       {children}
@@ -226,10 +229,8 @@ export function OpenRow({
         <Text
           style={{
             color: colors.rise,
-            fontSize: 12,
-            fontWeight: "800",
-            letterSpacing: 1,
-            textTransform: "uppercase",
+            fontSize: 15,
+            fontStyle: "italic",
           }}
         >
           {tag}

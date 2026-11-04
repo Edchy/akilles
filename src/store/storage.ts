@@ -12,12 +12,36 @@
 
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
-import { setCustomConditioning } from "@/data/conditioning";
-import { leanHiddenExercises, setCustomExercises, setExerciseEdits } from "@/data/exercises";
-import { DEFAULT_SCHEME, DEFAULT_WORKOUTS, ladderFor, type Entry, type Scheme } from "@/data/split";
-import { progressScore, type ExerciseState } from "@/lib/progression";
 import {
+  CARDIO_DEFAULT,
+  DEFAULT_MOBILITY,
+  RETIRED_MOBILITY,
+  mobilityById,
+  setCustomConditioning,
+  setMobilityEdits,
+  type CardioBlock,
+  type CardioEnd,
+} from "@/data/conditioning";
+import {
+  LEAN,
+  leanHiddenExercises,
+  setCustomExercises,
+  setExerciseEdits,
+  type Exercise,
+} from "@/data/exercises";
+import {
+  DEFAULT_SCHEME,
+  DEFAULT_WORKOUTS,
+  ladderFor,
+  type Entry,
+  type Scheme,
+  type Workout,
+} from "@/data/split";
+import { HOLD_MAX, type ExerciseState } from "@/lib/progression";
+import {
+  CARDIO_SLOTS,
   CONDITIONING_ID,
+  MOBILITY_SLOT,
   finishWorkout,
   initialState,
   isConditioning,
@@ -63,13 +87,53 @@ const KEY = "achilles/state";
  * 9 — every slot climbs 6 → 8 → 10 → 12, and abs are two sets. A lift's
  *     records on its old ranges are folded into one on the new range — see
  *     `toEvenRanges` — so no weight goes back to a guess.
+ * 10 — cardio and mobility belong to each workout, instead of one choice
+ *     shared by all, and the five built-in routines are replaced by one,
+ *     the everyday stretch, whose routines can be edited. The shared
+ *     machines and distances are written into every workout — see
+ *     `toWorkoutConditioning`.
+ * 11 — 59 more built-in exercises, so the lifts found in any gym are there.
+ *     The most common join the catalogue; the rest go to the library, as on
+ *     a fresh install — see `ADDED_IN_11`. Nothing already there moves.
+ * 12 — bodyweight movements you cannot load progress by holding instead:
+ *     their number is seconds held at the hardest point of a rep, not kg.
+ *     Kilograms already earned on them become seconds — see `toHolds`.
  */
-const VERSION = 9;
+const VERSION = 12;
+
+/**
+ * Version 11: the built-ins added in this version.
+ *
+ * `hidden` lists what was hidden when the save was written, so a lift that did
+ * not exist then is in nobody's `hidden` — without this, every one of them
+ * would land in every existing catalogue. Those in `LEAN` are meant to; the
+ * rest are hidden, so they start in the library just as they would on a fresh
+ * install. Frozen: a built-in added later needs a version of its own.
+ */
+const ADDED_IN_11: string[] = [
+  // Push
+  "push_up", "decline_bench", "close_grip_bench", "smith_bench", "smith_incline_press",
+  "incline_machine_press", "pec_deck", "db_fly", "incline_db_fly", "arnold_press",
+  "smith_shoulder_press", "cable_lateral_raise", "machine_lateral_raise", "front_raise",
+  "upright_row", "reverse_fly_machine", "cable_rear_delt_fly", "db_shrug", "bb_shrug",
+  "rope_pushdown", "cable_overhead_ext", "seated_dip", "bench_dip",
+  // Pull
+  "close_grip_pulldown", "machine_pulldown", "straight_arm_pulldown", "tbar_row",
+  "inverted_row", "preacher_curl", "ez_bar_curl", "incline_db_curl", "concentration_curl",
+  "machine_curl", "cable_hammer_curl", "reverse_curl",
+  // Legs
+  "smith_squat", "sumo_deadlift", "trap_bar_deadlift", "glute_bridge", "cable_pull_through",
+  "single_leg_rdl", "reverse_lunge", "split_squat", "seated_leg_curl", "hip_abduction",
+  "hip_adduction", "cable_kickback", "single_leg_calf_raise", "med_ball_slam",
+  // Core
+  "crunch", "machine_crunch", "decline_situp", "ab_wheel", "lying_leg_raise",
+  "captains_chair", "russian_twist", "side_plank", "pallof_press", "woodchop",
+];
 
 /** What actually goes to disk. Older blobs carry a cycle position, not an id. */
 type Saved = {
   version: number;
-  state: SessionState & { cycleIndex?: number };
+  state: SessionState & { cycleIndex?: number; courses?: Record<string, number> };
 };
 
 /**
@@ -148,18 +212,7 @@ const toEvenRanges = (state: SessionState): SessionState => {
     );
     const rung = Math.max(0, ladder.filter((reps) => reps <= target(source)).length - 1);
     const moved: ExerciseState = { ...source.record, rung };
-    const merged: ExerciseState = {
-      ...moved,
-      lastTrainedAt: newest,
-      bestWeight: Math.max(...held.map((h) => Math.max(h.record.bestWeight ?? h.record.weight, h.record.weight))),
-      // The routine back-off compares progress against a baseline. Carry over
-      // how far it had moved, not the number, which was on the old ladder.
-      backOffScore:
-        typeof source.record.backOffScore === "number"
-          ? progressScore(moved, DEFAULT_SCHEME) -
-            (progressScore(source.record, source.scheme) - source.record.backOffScore)
-          : undefined,
-    };
+    const merged: ExerciseState = { ...moved, lastTrainedAt: newest };
     for (const h of held) delete history[h.k];
     history[key(id, DEFAULT_SCHEME)] = merged;
   }
@@ -178,6 +231,140 @@ const toEvenRanges = (state: SessionState): SessionState => {
     },
   };
 };
+
+/**
+ * Version 10: cardio and mobility move into each workout.
+ *
+ * Before, one machine opened every session, one finished it, and each timed
+ * machine ran one distance everywhere. Those carry into every workout, so
+ * nothing about the cardio changes. The old built-in routines are retired
+ * for the everyday stretch; a routine of your own that you had picked is
+ * kept, on every workout. A session in progress on a retired routine is
+ * dealt the everyday stretch instead.
+ */
+const toWorkoutConditioning = (
+  state: SessionState & { courses?: Record<string, number> },
+): SessionState => {
+  const { courses = {}, ...rest } = state;
+  const legacy = (slot: string): string | undefined => rest.choices[`${CONDITIONING_ID}/${slot}`];
+
+  const block = (where: CardioEnd): CardioBlock | undefined => {
+    const picked = legacy(CARDIO_SLOTS[where]);
+    const machine = picked ?? CARDIO_DEFAULT[where];
+    const course = courses[machine];
+    // Nothing chosen and nothing changed: the default still says it.
+    if (picked === undefined && course === undefined) return undefined;
+    return course === undefined ? { machine } : { machine, course };
+  };
+  const open = block("open");
+  const close = block("close");
+  const routine = legacy(MOBILITY_SLOT);
+  const mine = routine && rest.customMobility.some((m) => m.id === routine) ? routine : undefined;
+
+  const move = (w: Workout): Workout => ({
+    ...w,
+    ...(open || close ? { cardio: { ...(open && { open }), ...(close && { close }) } } : {}),
+    ...(mine ? { mobility: mine } : {}),
+  });
+
+  const everyday = mobilityById(DEFAULT_MOBILITY)!;
+  return {
+    ...rest,
+    workouts: rest.workouts.map(move),
+    removedWorkouts: rest.removedWorkouts.map((r) => ({ ...r, workout: move(r.workout) })),
+    choices: Object.fromEntries(
+      Object.entries(rest.choices).filter(([k]) => !k.startsWith(`${CONDITIONING_ID}/`)),
+    ),
+    hiddenConditioning: rest.hiddenConditioning.filter((id) => !RETIRED_MOBILITY.includes(id)),
+    active: rest.active && {
+      ...rest.active,
+      items: rest.active.items.map((it) =>
+        it.kind === "mobility" && !mobilityById(it.exerciseId)
+          ? { ...it, exerciseId: everyday.id, moves: everyday.moves.map(() => false) }
+          : it,
+      ),
+    },
+  };
+};
+
+/**
+ * Version 12: the built-ins that became holds lifts. Frozen, like
+ * `ADDED_IN_11`: a lift moved to holds later needs a version of its own.
+ */
+const HOLDS_IN_12: string[] = [
+  "push_up", "inverted_row", "nordic_curl", "bench_dip", "hanging_leg_raise",
+  "ab_wheel", "lying_leg_raise", "captains_chair",
+];
+
+/**
+ * Version 12: kilograms to seconds on every lift that now progresses by
+ * holding — those above, and every bodyweight exercise of your own that a
+ * machine cannot assist, which is what the Bodyweight choice now makes.
+ *
+ * A step earned is a step kept: each 2.5 kg became one second, and anything
+ * above nothing is at least one, up to `HOLD_MAX`. The log is converted too,
+ * so History never reads "2.5 s hold". A weight step set on one of them is
+ * dropped — a hold steps a second at a time.
+ */
+const toHolds = (state: SessionState): SessionState => {
+  const mine = (ex: Exercise) =>
+    ex.bodyweight && !ex.assistable && !ex.timed && !ex.unloaded && !ex.holds;
+  const custom = state.custom.map((ex) =>
+    mine(ex)
+      ? {
+          ...ex,
+          holds: true,
+          increment: 1,
+          ...(ex.startWeight !== undefined ? { startWeight: seconds(ex.startWeight) } : {}),
+        }
+      : ex,
+  );
+  const ids = new Set([...HOLDS_IN_12, ...state.custom.filter(mine).map((ex) => ex.id)]);
+
+  const exerciseEdits = Object.fromEntries(
+    Object.entries(state.exerciseEdits).map(([id, edit]) => {
+      if (!ids.has(id)) return [id, edit];
+      const { increment: _step, startWeight, ...rest } = edit;
+      return [id, startWeight === undefined ? rest : { ...rest, startWeight: seconds(startWeight) }];
+    }),
+  );
+  const history = Object.fromEntries(
+    Object.entries(state.history).map(([k, r]) => [
+      k,
+      ids.has(r.exerciseId) ? { ...r, weight: seconds(r.weight) } : r,
+    ]),
+  );
+  const item = (it: Item): Item => ({
+    ...it,
+    ...(ids.has(it.exerciseId) ? { weight: seconds(it.weight) } : {}),
+    ...(it.supersetEntry
+      ? {
+          supersetEntry: item(it.supersetEntry),
+          ...(it.supersetWeight !== undefined && ids.has(it.supersetEntry.exerciseId)
+            ? { supersetWeight: seconds(it.supersetWeight) }
+            : {}),
+        }
+      : {}),
+  });
+
+  return {
+    ...state,
+    custom,
+    exerciseEdits,
+    history,
+    log: state.log.map((s) => ({
+      ...s,
+      entries: s.entries.map((e) =>
+        e.kind === "lift" && ids.has(e.exerciseId) ? { ...e, weight: seconds(e.weight) } : e,
+      ),
+    })),
+    active: state.active && { ...state.active, items: state.active.items.map(item) },
+  };
+};
+
+/** 2.5 kg a second, at least one if anything was added, never past the longest hold. */
+const seconds = (kg: number): number =>
+  kg > 0 ? Math.min(HOLD_MAX, Math.max(1, Math.round(kg / 2.5))) : 0;
 
 /**
  * Why a saved blob could not be read: not ours at all, or written by a newer
@@ -250,14 +437,25 @@ export const fromSaved = (raw: string): SessionState | Unreadable => {
       const added = ["goblet_squat", "db_rdl", "walking_lunge", "cable_fly"];
       restored.hidden = restored.hidden.filter((id) => !added.includes(id));
     }
+    if (saved.version < 11) {
+      // Already hidden if version 7 just rebuilt the list from today's lean pool.
+      const library = ADDED_IN_11.filter(
+        (id) => !LEAN.includes(id) && !restored.hidden.includes(id),
+      );
+      restored.hidden = [...restored.hidden, ...library];
+    }
+    // Before the custom list is registered below, so its holds lifts resolve as such.
+    const held = saved.version < 12 ? toHolds(restored) : restored;
     // `byId`, `cardioById` and `mobilityById` resolve custom entries through
     // module-level lists, so those have to be repopulated before anything
     // looks one up — including the migration and the commit below.
-    setCustomExercises(restored.custom);
-    setExerciseEdits(restored.exerciseEdits);
-    setCustomConditioning(restored.customCardio, restored.customMobility);
+    setCustomExercises(held.custom);
+    setExerciseEdits(held.exerciseEdits);
+    setCustomConditioning(held.customCardio, held.customMobility);
+    setMobilityEdits(held.mobilityEdits);
 
-    const migrated = saved.version < 9 ? toEvenRanges(restored) : restored;
+    const ranged = saved.version < 9 ? toEvenRanges(held) : held;
+    const migrated = saved.version < 10 ? toWorkoutConditioning(ranged) : ranged;
 
     // Yesterday's abandoned workout is not resumed. It is closed out exactly
     // as if you had pressed Leave: whatever you trained counts, the rest is

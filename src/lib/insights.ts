@@ -127,7 +127,7 @@ export const hitRate = (log: SessionLog[], now = Date.now()) => {
 export type Gain = {
   exerciseId: string;
   name: string;
-  /** "+7.5 kg", "+5 kg per hand" or "10 kg less assist". */
+  /** "+7.5 kg", "+5 kg per hand", "10 kg less assist" or "+2 s hold". */
   label: string;
   /** "since 12 Aug". */
   since: string;
@@ -156,8 +156,9 @@ export const strengthGains = (state: SessionState): Gain[] => {
     if (!now || !ex || ex.unloaded) continue;
     const diff = now.weight - from.weight;
     if (diff <= 0) continue;
-    const label =
-      ex.assistable && now.weight <= 0
+    const label = ex.holds
+      ? `+${diff} s hold`
+      : ex.assistable && now.weight <= 0
         ? `${diff} kg less assist`
         : `+${diff} kg${ex.perHand ? " per hand" : ""}`;
     const gain: Gain = {

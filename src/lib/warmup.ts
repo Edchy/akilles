@@ -17,6 +17,8 @@ export type WarmupSet = { weight: number; reps: number };
 export const weightLabel = (exercise: Exercise, weight: number): string => {
   if (exercise.bodyweight) {
     if (weight === 0) return "Bodyweight";
+    // A holds lift's number is seconds held at the hardest point of a rep.
+    if (exercise.holds) return `${weight} s hold`;
     // Negative is assistance from a machine; positive is added load.
     return weight < 0 ? `−${Math.abs(weight)} kg assist` : `+${weight} kg`;
   }

@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { ScrollView, Text } from "react-native";
+import { ScrollView } from "react-native";
+import { Text } from "@/components/text";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useBarSpace } from "@/components/bottom-bar";
@@ -44,9 +45,7 @@ export default function PlanScreen() {
         style={{
           color: colors.text,
           fontFamily: fonts.display,
-          textTransform: "uppercase",
           fontSize: 48,
-          letterSpacing: 0.3,
         }}
       >
         Plan

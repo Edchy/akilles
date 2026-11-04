@@ -1,5 +1,6 @@
 /**
- * How to do each movement well: a few steps and the one mistake to watch for.
+ * How to do each movement well: a few steps, how to own it, and the one
+ * mistake to watch for.
  *
  * Written to be read in the gym, between sets — short lines, plain words, the
  * cues a good coach would actually say. Keyed by exercise, machine or pose id.
@@ -12,6 +13,8 @@ export type Guide = {
   steps: string[];
   /** The most common way it goes wrong. */
   avoid: string;
+  /** Lifts only: the position to hold, or the part to slow down — see `OWN`. */
+  own?: string;
 };
 
 const g = (steps: string[], avoid: string): Guide => ({ steps, avoid });
@@ -67,6 +70,54 @@ const LIFTS: Record<string, Guide> = {
     ],
     "Sinking so deep the shoulders roll forward and ache.",
   ),
+  push_up: g(
+    [
+      "Hands just wider than the shoulders, body in one straight line.",
+      "Lower until the chest is a fist from the floor, elbows about 45°.",
+      "Push the floor away to straight arms.",
+    ],
+    "Hips sagging or piking — the body moves as one piece.",
+  ),
+  decline_bench: g(
+    [
+      "Legs hooked in, shoulder blades pinched back and down.",
+      "Lower to the bottom of the chest, elbows about 45°.",
+      "Press straight up over the shoulders.",
+    ],
+    "Letting the bar drift toward the neck on the way down.",
+  ),
+  close_grip_bench: g(
+    [
+      "Hands about shoulder width, elbows tucked close to the sides.",
+      "Lower to the low chest, forearms vertical.",
+      "Press up by straightening the elbows hard.",
+    ],
+    "A grip so narrow the wrists bend back and ache.",
+  ),
+  smith_bench: g(
+    [
+      "Set the bench so the bar comes down on the low chest.",
+      "Shoulder blades back and down, then twist the bar off the hooks.",
+      "Lower to the chest and press straight up.",
+    ],
+    "Lying too far up the bench, so the bar comes down toward the neck.",
+  ),
+  smith_incline_press: g(
+    [
+      "Bench at about 30°, set so the bar lands on the upper chest.",
+      "Shoulder blades back, twist the bar off the hooks.",
+      "Touch just under the collarbone, then press straight up.",
+    ],
+    "Elbows flaring straight out to the sides at the bottom.",
+  ),
+  incline_machine_press: g(
+    [
+      "Seat so the handles start level with the upper chest.",
+      "Shoulder blades against the pad, press up and out.",
+      "Lower slowly until you feel the stretch.",
+    ],
+    "Letting the weights touch down and rest between reps.",
+  ),
   cable_fly: g(
     [
       "Pulleys low, bench on an incline between them.",
@@ -82,6 +133,30 @@ const LIFTS: Record<string, Guide> = {
       "Let them open slowly back to a stretch.",
     ],
     "Heavy weight pulling you off balance — go lighter and feel the chest.",
+  ),
+  pec_deck: g(
+    [
+      "Seat so the handles are at chest height, back flat on the pad.",
+      "Soft bend in the elbows, sweep the hands together in front.",
+      "Open slowly until the chest stretches.",
+    ],
+    "Pushing with the hands instead of hugging with the arms.",
+  ),
+  db_fly: g(
+    [
+      "Lie back with the dumbbells over the chest, palms facing.",
+      "Soft elbows, open the arms wide until the chest stretches.",
+      "Sweep them back up and together, as if hugging a barrel.",
+    ],
+    "Going so deep the shoulders take over — stop at a good stretch.",
+  ),
+  incline_db_fly: g(
+    [
+      "Bench at about 30°, dumbbells over the upper chest, palms facing.",
+      "Soft elbows, open out wide to a stretch.",
+      "Sweep them back up and together over the chest.",
+    ],
+    "Bending the elbows more as it gets heavy, until it's a press.",
   ),
   ohp: g(
     [
@@ -115,6 +190,22 @@ const LIFTS: Record<string, Guide> = {
     ],
     "Shrugging the shoulders up to the ears as you press.",
   ),
+  arnold_press: g(
+    [
+      "Sit tall, dumbbells at the shoulders, palms facing you.",
+      "Press up, turning the palms forward as you go.",
+      "Lower and turn them back to the start.",
+    ],
+    "Rushing the turn and letting the dumbbells swing.",
+  ),
+  smith_shoulder_press: g(
+    [
+      "Seat under the bar so it comes down just in front of the face.",
+      "Back flat on the pad, twist it off the hooks and press to straight arms.",
+      "Lower to chin height under control.",
+    ],
+    "Sitting so far back that the bar comes down on your face.",
+  ),
   pullup: g(
     [
       "Hang from an overhand grip a little wider than shoulders.",
@@ -138,6 +229,30 @@ const LIFTS: Record<string, Guide> = {
       "Lower slowly all the way to straight arms.",
     ],
     "Kicking the legs to get the last reps.",
+  ),
+  close_grip_pulldown: g(
+    [
+      "Close-grip handle on the pulldown, thighs under the pad.",
+      "Lean back slightly and pull the handle to the top of the chest.",
+      "Let it rise until the arms are straight and the lats stretch.",
+    ],
+    "Leaning so far back that it turns into a row.",
+  ),
+  machine_pulldown: g(
+    [
+      "Seat so the handles are just in reach, thighs under the pad.",
+      "Pull the elbows down toward the ribs.",
+      "Let the handles rise until the arms are straight.",
+    ],
+    "Cutting the top short — let the arms straighten every rep.",
+  ),
+  straight_arm_pulldown: g(
+    [
+      "High pulley, bar or rope, hinge slightly forward.",
+      "Arms straight, sweep the bar down to the thighs.",
+      "Let it rise to head height under control.",
+    ],
+    "Bending the elbows and turning it into a pushdown.",
   ),
   bb_row: g(
     [
@@ -178,6 +293,22 @@ const LIFTS: Record<string, Guide> = {
       "Lower to a straight arm and a stretch.",
     ],
     "Twisting the torso open to heave the weight.",
+  ),
+  tbar_row: g(
+    [
+      "Straddle the bar, hinge until the torso is about 45°, back flat.",
+      "Pull the handle to the lower chest, elbows back.",
+      "Lower to straight arms without standing up.",
+    ],
+    "Jerking it up with the hips and lower back.",
+  ),
+  inverted_row: g(
+    [
+      "Hang under a bar at waist height, body straight, heels down.",
+      "Pull the chest to the bar, elbows back.",
+      "Lower to straight arms.",
+    ],
+    "Hips sagging, so the chest never reaches the bar.",
   ),
   back_squat: g(
     [
@@ -226,6 +357,14 @@ const LIFTS: Record<string, Guide> = {
       "Press away without snapping the knees straight.",
     ],
     "Going so deep the hips curl off the seat.",
+  ),
+  smith_squat: g(
+    [
+      "Bar on the upper back, feet a little in front of it.",
+      "Twist it off the hooks, brace and sit down, knees tracking the toes.",
+      "Hips to knee level or lower, then drive up through the whole foot.",
+    ],
+    "Cutting the depth short — the rails make it easy to stop high.",
   ),
   deadlift: g(
     [
@@ -291,6 +430,46 @@ const LIFTS: Record<string, Guide> = {
     ],
     "Bending at the hips — keep knees to head in one line.",
   ),
+  sumo_deadlift: g(
+    [
+      "Wide stance, toes out, shins against the bar.",
+      "Grip inside the knees, chest up, knees pushed out.",
+      "Push the floor apart and stand tall.",
+    ],
+    "Hips shooting up first, so it becomes a stiff-legged pull.",
+  ),
+  trap_bar_deadlift: g(
+    [
+      "Stand in the middle of the bar, hands on the handles.",
+      "Hips back and down, chest up, back flat.",
+      "Push the floor away and stand tall.",
+    ],
+    "Yanking it off the floor before the back is set.",
+  ),
+  glute_bridge: g(
+    [
+      "Lie on your back, knees bent, feet flat near the hips.",
+      "Drive through the heels and lift the hips until the body is straight.",
+      "Squeeze the glutes, then lower slowly.",
+    ],
+    "Pushing through the toes — keep the heels down.",
+  ),
+  cable_pull_through: g(
+    [
+      "Low pulley, rope between the legs, face away and step out.",
+      "Push the hips back, the rope following between the thighs, back flat.",
+      "Drive the hips forward to stand and squeeze the glutes.",
+    ],
+    "Squatting down instead of pushing the hips back.",
+  ),
+  single_leg_rdl: g(
+    [
+      "A dumbbell in each hand, standing on one leg, knee soft.",
+      "Hinge forward as the free leg reaches back, hips square.",
+      "Stretch, then drive the hip through to stand.",
+    ],
+    "The hip opening toward the ceiling — keep both hips facing the floor.",
+  ),
   bulgarian: g(
     [
       "Back foot on a bench, front foot far enough out.",
@@ -315,6 +494,22 @@ const LIFTS: Record<string, Guide> = {
     ],
     "Bouncing off the floor foot to get up.",
   ),
+  reverse_lunge: g(
+    [
+      "Dumbbells at your sides, feet hip width.",
+      "Step back and lower until the back knee nearly touches.",
+      "Drive through the front heel to step back up.",
+    ],
+    "Stepping back so short that the front heel lifts.",
+  ),
+  split_squat: g(
+    [
+      "Long split stance, dumbbells at your sides, back heel up.",
+      "Drop the back knee straight down.",
+      "Drive up through the front heel, feet staying put.",
+    ],
+    "Pushing off the back foot instead of the front leg.",
+  ),
   leg_ext: g(
     [
       "Knees in line with the machine's pivot.",
@@ -330,6 +525,38 @@ const LIFTS: Record<string, Guide> = {
       "Return slowly to straight.",
     ],
     "Hips lifting off the pad to finish the rep.",
+  ),
+  seated_leg_curl: g(
+    [
+      "Knees in line with the pivot, thigh pad snug, lower pad above the heels.",
+      "Curl the heels down and back as far as you can.",
+      "Return slowly to straight legs.",
+    ],
+    "Letting the pad fly back up instead of lowering it.",
+  ),
+  hip_abduction: g(
+    [
+      "Sit back, pads on the outside of the knees.",
+      "Push the knees out as wide as you can.",
+      "Let them come back together slowly.",
+    ],
+    "Letting the weights slam together between reps.",
+  ),
+  hip_adduction: g(
+    [
+      "Sit back, pads on the inside of the knees, legs open.",
+      "Squeeze the knees together.",
+      "Open slowly back to a comfortable stretch.",
+    ],
+    "Setting it wider than is comfortable — the stretch should never be sharp.",
+  ),
+  cable_kickback: g(
+    [
+      "Ankle strap on a low pulley, hands on the frame.",
+      "Hinge forward a little and kick the leg straight back.",
+      "Return slowly, knee coming forward under the hip.",
+    ],
+    "Arching the lower back to get the leg higher.",
   ),
   lateral_raise: g(
     [
@@ -354,6 +581,70 @@ const LIFTS: Record<string, Guide> = {
       "Finish with the hands beside the ears, then return.",
     ],
     "Going heavy and turning it into a row.",
+  ),
+  cable_lateral_raise: g(
+    [
+      "Low pulley, stand side-on, handle in the far hand.",
+      "Raise the arm out to the side to shoulder height, elbow soft.",
+      "Lower slowly back across the body.",
+    ],
+    "Leaning away from the stack to swing it up.",
+  ),
+  machine_lateral_raise: g(
+    [
+      "Seat so the shoulders line up with the machine's pivot.",
+      "Pads on the outside of the arms, raise to shoulder height.",
+      "Lower slowly — slower than you raised.",
+    ],
+    "Shrugging the shoulders up to lift the pads.",
+  ),
+  front_raise: g(
+    [
+      "Dumbbells in front of the thighs, palms down.",
+      "Raise to shoulder height, elbows soft.",
+      "Lower slowly.",
+    ],
+    "Leaning back and swinging the weight up.",
+  ),
+  upright_row: g(
+    [
+      "Bar in front of the thighs, hands about shoulder width.",
+      "Pull up along the body, elbows leading, to chest height.",
+      "Lower under control to straight arms.",
+    ],
+    "Pulling up to the chin — stop at chest height if the shoulders pinch.",
+  ),
+  reverse_fly_machine: g(
+    [
+      "Face the pad, handles at shoulder height, arms long.",
+      "Sweep the arms back and out until they line up with the body.",
+      "Return slowly to the front.",
+    ],
+    "Bending the elbows so it turns into a row.",
+  ),
+  cable_rear_delt_fly: g(
+    [
+      "Two pulleys at shoulder height, cables crossed, a handle in each hand.",
+      "Arms long, sweep them out and back into a T.",
+      "Return slowly, crossing in front.",
+    ],
+    "Shrugging up toward the ears as you pull.",
+  ),
+  db_shrug: g(
+    [
+      "Dumbbells at your sides, stand tall.",
+      "Shrug the shoulders straight up toward the ears.",
+      "Lower all the way down to a stretch.",
+    ],
+    "Rolling the shoulders in circles — straight up, straight down.",
+  ),
+  bb_shrug: g(
+    [
+      "Bar in front of the thighs, grip just outside the legs.",
+      "Shrug straight up toward the ears, arms long.",
+      "Lower all the way to a stretch.",
+    ],
+    "Bending the elbows to help — the arms are just hooks.",
   ),
   db_curl: g(
     [
@@ -395,6 +686,62 @@ const LIFTS: Record<string, Guide> = {
     ],
     "Cutting the bottom half short.",
   ),
+  preacher_curl: g(
+    [
+      "Armpits snug to the top of the pad, upper arms flat on it.",
+      "Curl the bar up toward the shoulders.",
+      "Lower slowly until the arms are almost straight.",
+    ],
+    "Letting the bar drop into the bottom — lower it, don't fall into it.",
+  ),
+  ez_bar_curl: g(
+    [
+      "Grip the angled part of the bar, elbows at your sides.",
+      "Curl up without moving the elbows.",
+      "Lower slowly to straight arms.",
+    ],
+    "Leaning back to get the bar moving.",
+  ),
+  incline_db_curl: g(
+    [
+      "Bench at 45–60°, lie back, arms hanging straight down.",
+      "Curl up without the elbows moving forward.",
+      "Lower all the way to a stretch.",
+    ],
+    "Sitting up off the bench as the set gets hard.",
+  ),
+  concentration_curl: g(
+    [
+      "Sit, elbow braced against the inside of the thigh.",
+      "Curl the dumbbell up toward the shoulder.",
+      "Lower slowly to a straight arm, then switch.",
+    ],
+    "Lifting the elbow off the thigh to swing it up.",
+  ),
+  machine_curl: g(
+    [
+      "Seat so the elbows line up with the machine's pivot.",
+      "Upper arms flat on the pad, curl up to the shoulders.",
+      "Lower slowly to straight arms.",
+    ],
+    "Lifting the elbows off the pad to finish the rep.",
+  ),
+  cable_hammer_curl: g(
+    [
+      "Rope on a low pulley, palms facing in, elbows at your sides.",
+      "Curl up toward the shoulders.",
+      "Lower slowly against the pull of the cable.",
+    ],
+    "Elbows drifting forward as the set gets hard.",
+  ),
+  reverse_curl: g(
+    [
+      "Overhand grip, shoulder width, elbows at your sides.",
+      "Curl the bar up, wrists straight.",
+      "Lower slowly to straight arms.",
+    ],
+    "Letting the wrists bend back as the forearms tire.",
+  ),
   pushdown: g(
     [
       "High pulley, elbows tucked at your sides.",
@@ -427,6 +774,38 @@ const LIFTS: Record<string, Guide> = {
     ],
     "The upper arm dropping as you tire.",
   ),
+  rope_pushdown: g(
+    [
+      "Rope on a high pulley, elbows tucked at your sides.",
+      "Push down and spread the rope at the bottom.",
+      "Let the hands rise to chest height, elbows still.",
+    ],
+    "Leaning over the rope and pushing with the body.",
+  ),
+  cable_overhead_ext: g(
+    [
+      "Rope on a pulley behind you, face away, one foot forward.",
+      "Elbows up by the head, straighten the arms overhead.",
+      "Lower behind the head to a deep stretch.",
+    ],
+    "Elbows drifting apart and down — keep them by the head.",
+  ),
+  seated_dip: g(
+    [
+      "Seat so the handles sit at your sides, just below the chest.",
+      "Push down until the arms are straight.",
+      "Let the handles rise slowly until the elbows reach 90°.",
+    ],
+    "Letting the shoulders roll forward as the handles come up.",
+  ),
+  bench_dip: g(
+    [
+      "Hands on the edge of a bench behind you, fingers forward.",
+      "Bend the elbows straight back until the upper arms are level.",
+      "Push back up to straight arms.",
+    ],
+    "Sinking too deep — the front of the shoulders takes the strain.",
+  ),
   calf_raise: g(
     [
       "Balls of the feet on the edge, heels hanging.",
@@ -450,6 +829,14 @@ const LIFTS: Record<string, Guide> = {
       "Let the heels come back to a stretch.",
     ],
     "Bending the knees to help.",
+  ),
+  single_leg_calf_raise: g(
+    [
+      "One foot on a step, heel hanging, a hand on something for balance.",
+      "Rise as high as you can on that foot.",
+      "Lower slowly into a full stretch. Switch.",
+    ],
+    "Bending the knee to help push up.",
   ),
   box_jump: g(
     [
@@ -482,6 +869,14 @@ const LIFTS: Record<string, Guide> = {
       "Land softly and reset before the next one.",
     ],
     "Chaining reps so fast they lose height.",
+  ),
+  med_ball_slam: g(
+    [
+      "Ball overhead, arms long, up on the toes.",
+      "Slam it into the floor as hard as you can.",
+      "Squat down to pick it up and reset.",
+    ],
+    "Throwing with the arms only — the whole body drives it down.",
   ),
   speed_squat: g(
     [
@@ -538,6 +933,86 @@ const LIFTS: Record<string, Guide> = {
       "Breathe and hold.",
     ],
     "Hips sagging toward the floor.",
+  ),
+  crunch: g(
+    [
+      "Lie on your back, knees bent, hands by the head.",
+      "Curl the ribs toward the hips, shoulder blades off the floor.",
+      "Lower slowly.",
+    ],
+    "Pulling on the head with the hands.",
+  ),
+  machine_crunch: g(
+    [
+      "Seat so the pads sit on the chest or shoulders, feet hooked in.",
+      "Curl the ribs down toward the hips.",
+      "Return slowly without letting the stack rest.",
+    ],
+    "Pulling with the arms instead of crunching.",
+  ),
+  decline_situp: g(
+    [
+      "Feet hooked in on a decline bench, arms across the chest.",
+      "Curl up until the chest is over the knees.",
+      "Lower slowly, back rounding down to the bench.",
+    ],
+    "Yanking up with momentum and dropping back down.",
+  ),
+  ab_wheel: g(
+    [
+      "Kneel, wheel under the shoulders, glutes tight.",
+      "Roll out slowly as far as you can keep the back flat.",
+      "Pull back in with the abs, not the hips.",
+    ],
+    "The lower back sagging at the far end — stop before it does.",
+  ),
+  lying_leg_raise: g(
+    [
+      "Lie flat, hands under the hips, legs straight.",
+      "Raise the legs to vertical, lower back pressed down.",
+      "Lower slowly until the heels hover off the floor.",
+    ],
+    "The lower back arching off the floor as the legs come down.",
+  ),
+  captains_chair: g(
+    [
+      "Back against the pad, forearms on the rests, legs hanging.",
+      "Raise the knees toward the chest, curling the pelvis up.",
+      "Lower slowly without swinging.",
+    ],
+    "Only lifting the knees — curl the pelvis up too.",
+  ),
+  russian_twist: g(
+    [
+      "Sit, knees bent, lean back with a flat back.",
+      "Hold the weight at the chest and turn it to one side.",
+      "Turn through the middle to the other side.",
+    ],
+    "Moving only the arms — turn the ribs, not just the hands.",
+  ),
+  side_plank: g(
+    [
+      "On one forearm, elbow under the shoulder, feet stacked.",
+      "Lift the hips until the body is in one line.",
+      "Breathe and hold. Switch sides.",
+    ],
+    "Hips drifting back behind the shoulders.",
+  ),
+  pallof_press: g(
+    [
+      "Stand side-on to a cable at chest height, handle at the chest.",
+      "Press it straight out without letting it pull you round.",
+      "Bring it back to the chest under control.",
+    ],
+    "Twisting toward the stack — the job is not to turn.",
+  ),
+  woodchop: g(
+    [
+      "Pulley high, stand side-on, both hands on the handle.",
+      "Pull it down and across the body, turning from the ribs.",
+      "Return slowly, arms long.",
+    ],
+    "Pulling with the arms — they stay long, the trunk turns.",
   ),
 };
 
@@ -604,124 +1079,81 @@ const CARDIO: Record<string, Guide> = {
 
 // ---- mobility ----
 
-const COUCH = g(
-  [
-    "Back knee against a wall or bench, shin up it.",
-    "Front foot flat, torso upright.",
-    "Squeeze the glute of the back leg and hold.",
-  ],
-  "Arching the lower back to get upright — tuck the pelvis instead.",
-);
-const CHILD = g(
-  [
-    "Kneel, big toes together, knees wide.",
-    "Sink the hips back to the heels.",
-    "Arms long in front, breathe into the back.",
-  ],
-  "Holding the breath — slow breaths let it open.",
-);
-const HANG = g(
-  [
-    "Hang from a bar with an overhand grip.",
-    "Let the shoulders rise toward the ears.",
-    "Relax and breathe.",
-  ],
-  "Gripping so hard the shoulders stay tense.",
-);
-const DOORWAY = g(
-  [
-    "Forearm on the doorframe, elbow at shoulder height.",
-    "Step through until the chest stretches.",
-    "Hold, then switch.",
-  ],
-  "Pushing so far the front of the shoulder pinches.",
-);
-const HAMSTRING = g(
-  [
-    "Legs straight, hinge at the hips.",
-    "Reach for the shins or toes.",
-    "Let the head hang and breathe.",
-  ],
-  "Rounding hard through the back instead of folding at the hips.",
-);
-
+/** One per stretch in `STRETCHES`, by its id. */
 const MOBILITY: Record<string, Guide> = {
-  fb_couch: COUCH,
-  hp_couch: COUCH,
-  fb_child: CHILD,
-  sp_child: CHILD,
-  sh_hang: HANG,
-  qk_hang: HANG,
-  sh_doorway: DOORWAY,
-  qk_doorway: DOORWAY,
-  fb_ham: HAMSTRING,
-  hp_ham: HAMSTRING,
-  qk_fold: HAMSTRING,
-  fb_pigeon: g(
+  couch: g(
     [
-      "Front shin across the body, back leg long behind.",
-      "Square the hips toward the floor.",
-      "Fold forward over the front leg.",
+      "Back knee down by a wall or bench, shin and foot up against it.",
+      "Front foot flat, knee over the ankle, torso upright.",
+      "Squeeze the glute of the back leg and hold.",
     ],
-    "Letting the hips tip to one side.",
+    "Arching the lower back to get upright — tuck the pelvis instead.",
   ),
-  fb_thoracic: g(
+  worlds_greatest: g(
     [
-      "Kneel with elbows on a bench, hands together.",
-      "Sink the chest toward the floor.",
-      "Hold and breathe into the upper back.",
+      "Step into a long lunge, back knee off the floor.",
+      "Both hands down inside the front foot; sink the elbow toward the instep.",
+      "Turn the chest open and reach the inside arm to the ceiling.",
     ],
-    "Arching the lower back instead of the upper.",
+    "Letting the back knee drop and the hips sag — keep the back leg long.",
   ),
-  hp_90: g(
+  figure_four: g(
     [
-      "Sit with both knees bent at 90°, one in front and one to the side.",
-      "Sit tall over the front shin.",
-      "Hold, then rotate the knees to the other side.",
+      "Lie on your back, knees bent, feet on the floor.",
+      "Cross one ankle over the opposite knee.",
+      "Hold behind the bottom thigh and pull both legs toward the chest.",
     ],
-    "Slumping backward — sit up tall.",
+    "Lifting the head and shoulders — let them rest on the floor.",
   ),
-  hp_frog: g(
+  seated_hamstring: g(
     [
-      "On all fours, knees wide, ankles in line with the knees.",
-      "Rock the hips slowly back.",
-      "Stop at a strong stretch in the inner thighs.",
+      "Sit with one leg straight, the other foot against its inner thigh.",
+      "Hinge forward from the hips over the straight leg.",
+      "Reach for the shin or ankle and breathe.",
     ],
-    "Forcing it deeper than feels safe.",
+    "Rounding hard through the back instead of folding at the hips.",
   ),
-  hp_lizard: g(
+  standing_hip_flexor: g(
     [
-      "Lunge forward, hands inside the front foot.",
-      "Let the hips sink toward the floor.",
-      "Hold, then switch sides.",
+      "Stand in a long split stance, back heel up.",
+      "Tuck the pelvis under and bend both knees a little.",
+      "Shift forward until the front of the back hip stretches.",
     ],
-    "The back knee locked out — let it rest down.",
+    "Arching the back instead of tucking — no floor needed, so no excuses.",
   ),
-  sh_sleeper: g(
+  forward_fold: g(
     [
-      "Lie on your side, lower arm out at 90°.",
-      "Use the other hand to press the forearm toward the floor.",
-      "Stop at a gentle stretch at the back of the shoulder.",
+      "Feet hip-width, knees soft.",
+      "Fold forward from the hips and let the upper body hang.",
+      "Let the arms and head drop and breathe.",
     ],
-    "Pressing hard enough to pinch the front of the shoulder.",
+    "Bouncing to reach further — hang and let it come.",
   ),
-  sh_thread: g(
+  calf_wall: g(
     [
-      "On all fours, slide one arm under the body.",
-      "Rest the shoulder and cheek on the floor.",
-      "Breathe into the upper back.",
+      "Hands on a wall, one foot well behind the other.",
+      "Back leg straight, heel pressed to the floor.",
+      "Lean into the wall until the calf stretches.",
     ],
-    "Letting the hips swing out to one side.",
+    "Letting the back heel lift off the floor.",
   ),
-  sh_wall: g(
+  supine_twist: g(
     [
-      "Back against a wall, arms in a W.",
-      "Keep the wrists and elbows on the wall.",
-      "Hold where you can keep contact.",
+      "Lie on your back with one leg straight.",
+      "Bend the other knee and draw it across the body to the floor.",
+      "Hold the knee down, other arm out wide, look away from it.",
     ],
-    "Arching the lower back away from the wall.",
+    "Letting the far shoulder lift — keep both shoulder blades down.",
   ),
-  sp_cat: g(
+  knees_to_chest: g(
+    [
+      "Lie on your back.",
+      "Hug both knees in, hands under the knees, not over.",
+      "Rock gently side to side if it helps.",
+    ],
+    "Lifting the head — let it rest.",
+  ),
+  cat_cow: g(
     [
       "On all fours, hands under the shoulders.",
       "Round the back up, then let it sag.",
@@ -729,41 +1161,208 @@ const MOBILITY: Record<string, Guide> = {
     ],
     "Rushing through it.",
   ),
-  sp_twist: g(
+  childs_pose: g(
     [
-      "Lie back, drop both knees to one side.",
-      "Arms wide, look the other way.",
-      "Let the shoulders stay on the floor.",
+      "Kneel, big toes together, knees wide.",
+      "Sink the hips back to the heels.",
+      "Arms long in front, breathe into the back.",
     ],
-    "Forcing the knees all the way down.",
+    "Holding the breath — slow breaths let it open.",
   ),
-  sp_cobra: g(
+  chest_opener: g(
     [
-      "Lie face down, hands under the shoulders.",
-      "Press the chest up, hips on the floor.",
-      "Keep the shoulders down away from the ears.",
+      "Hold a stick or empty bar, hands well wider than the shoulders.",
+      "Arms straight, raise it overhead.",
+      "Take it back behind the head until the chest and shoulders stretch.",
     ],
-    "Pushing into pain in the lower back — go only as high as feels good.",
+    "Forcing it with a narrow grip — go wider before you go further back.",
   ),
-  sp_knees: g(
+  lat_wall: g(
     [
-      "Lie on your back.",
-      "Hug both knees to the chest.",
-      "Rock gently side to side if it helps.",
+      "Stand side-on to a wall, forearm on it above your head.",
+      "Lean into the wall and let the chest sink away from the arm.",
+      "Hold, then switch.",
     ],
-    "Lifting the head — let it rest.",
+    "Shrugging the shoulder up to the ear.",
   ),
-  qk_lunge: g(
+  cross_body: g(
     [
-      "Stand in a long split stance.",
-      "Tuck the pelvis and shift forward.",
-      "Feel the front of the back hip, then switch.",
+      "Bring one arm straight across the chest.",
+      "Hold it at the elbow with the other hand.",
+      "Pull it in gently, shoulder kept down.",
     ],
-    "Arching the back instead of tucking.",
+    "Pulling at the wrist or twisting the body with it.",
   ),
 };
+
+// ---- owning it ----
+
+/**
+ * What owning each lift looks like: the position to hold for a second, or the
+ * part to slow down. The app's standard for a rep that counts — lowered under
+ * control, held where it is hardest, no swing and no bounce — made concrete
+ * for the movement. Shown in its guide, and on the lift screen between sets.
+ */
+const OWN: Record<string, string> = {
+  bench: "Pause with the bar on your chest. No bounce.",
+  db_bench: "Pause for a second in the stretch at the bottom.",
+  incline_bench: "Pause on the upper chest. No bounce.",
+  machine_chest: "Pause in the stretch before each press.",
+  incline_db_press: "Pause for a second in the stretch at the bottom.",
+  dips: "Pause at the bottom, upper arms level.",
+  push_up: "Pause with your chest just off the floor.",
+  decline_bench: "Pause on the lower chest. No bounce.",
+  close_grip_bench: "Pause on the chest, elbows tucked. No bounce.",
+  smith_bench: "Pause with the bar on your chest. No bounce.",
+  smith_incline_press: "Pause on the upper chest. No bounce.",
+  incline_machine_press: "Pause in the stretch before each press.",
+  cable_fly: "Hold the hands together at the top for a second.",
+  cable_crossover: "Hold the hands together at the bottom for a second.",
+  pec_deck: "Hold the hands together for a second.",
+  db_fly: "Pause for a second in the stretch at the bottom.",
+  incline_db_fly: "Pause for a second in the stretch at the bottom.",
+  ohp: "Hold the lockout overhead for a second, ribs down.",
+  db_shoulder: "Pause at the bottom, dumbbells by your ears.",
+  kb_press: "Pause in the rack, then press. No dip from the legs.",
+  machine_shoulder: "Pause at the bottom without resting the stack.",
+  arnold_press: "Pause at the bottom, palms facing you.",
+  smith_shoulder_press: "Pause at the bottom without resting the bar.",
+  pullup: "Hold your chin over the bar for a second.",
+  lat_pulldown: "Hold the bar at your upper chest for a second.",
+  chinup: "Hold your chin over the bar for a second.",
+  close_grip_pulldown: "Hold the handle at your upper chest for a second.",
+  machine_pulldown: "Hold the handles at your shoulders for a second.",
+  straight_arm_pulldown: "Hold the bar at your thighs for a second.",
+  bb_row: "Hold the bar at your stomach for a second. Torso still.",
+  cable_row: "Hold the handle at your stomach for a second.",
+  chest_supported_row: "Hold the squeeze at the top for a second.",
+  machine_row: "Hold the squeeze at the top for a second.",
+  db_row: "Hold the dumbbell at your hip for a second.",
+  tbar_row: "Hold the handle at your chest for a second. Torso still.",
+  inverted_row: "Hold your chest at the bar for a second.",
+  back_squat: "Pause at the bottom, staying tight. Then stand.",
+  front_squat: "Pause at the bottom, elbows high. Then stand.",
+  goblet_squat: "Pause at the bottom, chest up.",
+  kb_goblet_squat: "Pause at the bottom, chest up.",
+  hack_squat: "Pause at the bottom. No bounce out of it.",
+  leg_press: "Pause at the bottom. No bounce out of it.",
+  smith_squat: "Pause at the bottom, staying tight. Then stand.",
+  deadlift: "Stand tall for a second, then lower it under control.",
+  rdl: "Pause in the stretch, back flat.",
+  kb_swing: "Hold the top for a beat: glutes tight, body straight.",
+  good_morning: "Pause in the stretch, back flat.",
+  hip_thrust: "Hold the top for a second, glutes squeezed.",
+  back_ext: "Hold the top for a second, body in a line.",
+  db_rdl: "Pause in the stretch, back flat.",
+  nordic_curl: "Lower as slowly as you can. That is the rep.",
+  sumo_deadlift: "Stand tall for a second, then lower it under control.",
+  trap_bar_deadlift: "Stand tall for a second, then lower it under control.",
+  glute_bridge: "Hold the top for a second, glutes squeezed.",
+  cable_pull_through: "Hold the top for a second, glutes squeezed.",
+  single_leg_rdl: "Pause in the stretch, hips square.",
+  bulgarian: "Pause at the bottom, front heel down.",
+  walking_lunge: "Pause with the back knee just off the floor.",
+  step_up: "Stand tall on the box for a second. No push from the back foot.",
+  reverse_lunge: "Pause with the back knee just off the floor.",
+  split_squat: "Pause at the bottom, front heel down.",
+  leg_ext: "Hold the legs straight for a second.",
+  leg_curl: "Hold the squeeze for a second.",
+  seated_leg_curl: "Hold the squeeze for a second.",
+  hip_abduction: "Hold the knees wide for a second.",
+  hip_adduction: "Hold the knees together for a second.",
+  cable_kickback: "Hold the leg back for a second, glute squeezed.",
+  lateral_raise: "Hold at shoulder height for a second.",
+  rear_delt_fly: "Hold the arms out wide for a second.",
+  face_pull: "Hold the rope by your ears for a second.",
+  cable_lateral_raise: "Hold at shoulder height for a second.",
+  machine_lateral_raise: "Hold at shoulder height for a second.",
+  front_raise: "Hold at shoulder height for a second.",
+  upright_row: "Hold at chest height for a second, elbows high.",
+  reverse_fly_machine: "Hold the arms out wide for a second.",
+  cable_rear_delt_fly: "Hold the arms out wide for a second.",
+  db_shrug: "Hold the top for a second, shoulders by the ears.",
+  bb_shrug: "Hold the top for a second, shoulders by the ears.",
+  db_curl: "Hold at the top for a second, elbows still.",
+  bb_curl: "Hold at the top for a second, elbows still.",
+  hammer_curl: "Hold at the top for a second, elbows still.",
+  cable_curl: "Hold at the top for a second, elbows still.",
+  spider_curl: "Hold at the top for a second.",
+  preacher_curl: "Lower slowly and pause just short of straight.",
+  ez_bar_curl: "Hold at the top for a second, elbows still.",
+  incline_db_curl: "Pause in the stretch at the bottom.",
+  concentration_curl: "Hold at the top for a second.",
+  machine_curl: "Hold at the top for a second.",
+  cable_hammer_curl: "Hold at the top for a second, elbows still.",
+  reverse_curl: "Hold at the top for a second, wrists straight.",
+  pushdown: "Hold the lockout for a second, elbows pinned.",
+  overhead_ext: "Pause in the stretch behind your head.",
+  skullcrusher: "Lower slowly and pause just above your forehead.",
+  kickback: "Hold the arm straight for a second.",
+  rope_pushdown: "Hold the lockout for a second, rope spread.",
+  cable_overhead_ext: "Pause in the stretch behind your head.",
+  seated_dip: "Hold the lockout for a second.",
+  bench_dip: "Pause at the bottom, upper arms level.",
+  calf_raise: "Pause in the stretch at the bottom. Hold the top.",
+  seated_calf: "Pause in the stretch at the bottom. Hold the top.",
+  leg_press_calf: "Pause in the stretch at the bottom. Hold the top.",
+  single_leg_calf_raise: "Pause in the stretch at the bottom. Hold the top.",
+  box_jump: "Stick every landing for a second before stepping down.",
+  broad_jump: "Stick every landing for a second.",
+  depth_jump: "Land quiet and balanced, every time.",
+  jump_squat: "Land soft and stick it before the next one.",
+  med_ball_slam: "Stand tall and reset before every slam.",
+  speed_squat: "Down slow and controlled. Only the way up is fast.",
+  speed_deadlift: "Set your position every rep. Speed comes after.",
+  hanging_leg_raise: "Hold the legs up for a second. No swing.",
+  rotation_machine: "Pause at the end of each turn.",
+  cable_crunch: "Hold the crunch for a second.",
+  ab_machine: "Pause at the end of each turn.",
+  plank: "Still and quiet. Breathe.",
+  crunch: "Hold the crunch for a second.",
+  machine_crunch: "Hold the crunch for a second.",
+  decline_situp: "Lower slowly. No dropping back to the bench.",
+  ab_wheel: "Pause at the far end, back flat.",
+  lying_leg_raise: "Hold the heels just off the floor for a second.",
+  captains_chair: "Hold the knees up for a second. No swing.",
+  russian_twist: "Pause at the end of each turn.",
+  side_plank: "Still and quiet. Breathe.",
+  pallof_press: "Hold the arms out for a second, chest square.",
+  woodchop: "Pause at the end of each turn.",
+};
+
+/** The standard itself, for a movement with no line of its own. */
+const OWN_ANY = "Lower it slowly and hold where it's hardest.";
+
+/**
+ * Where a holds lift is held, with `{s}` for how long: "2 seconds". Once its
+ * hold is above nothing, this replaces the line above — the hold IS how the
+ * lift gets harder, so the line says exactly how long.
+ */
+const HOLD: Record<string, string> = {
+  push_up: "Pause for {s} with your chest just off the floor.",
+  inverted_row: "Hold your chest at the bar for {s}.",
+  nordic_curl: "Pause halfway down for {s}, hips straight.",
+  bench_dip: "Pause at the bottom for {s}, upper arms level.",
+  hanging_leg_raise: "Hold the legs up for {s}. No swing.",
+  ab_wheel: "Hold at the far end for {s}, back flat.",
+  lying_leg_raise: "Hold the heels just off the floor for {s}.",
+  captains_chair: "Hold the knees up for {s}. No swing.",
+};
+
+/** A holds lift of your own: the hold, wherever its hardest point is. */
+const HOLD_ANY = "Hold where it's hardest for {s}.";
+
+/**
+ * How to own this movement, for the lift screen between sets. A holds lift
+ * given a hold of `seconds` says where to hold and for how long.
+ */
+export const ownCue = (id: string, seconds = 0): string =>
+  seconds > 0
+    ? (HOLD[id] ?? HOLD_ANY).replace("{s}", seconds === 1 ? "1 second" : `${seconds} seconds`)
+    : (OWN[id] ?? OWN_ANY);
 
 const GUIDES: Record<string, Guide> = { ...LIFTS, ...CARDIO, ...MOBILITY };
 
 /** The guide for an exercise, machine or pose, if one has been written. */
-export const guideFor = (id: string): Guide | undefined => GUIDES[id];
+export const guideFor = (id: string): Guide | undefined =>
+  GUIDES[id] && OWN[id] ? { ...GUIDES[id], own: OWN[id] } : GUIDES[id];

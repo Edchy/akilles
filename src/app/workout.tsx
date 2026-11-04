@@ -1,19 +1,25 @@
 import * as Haptics from "expo-haptics";
 import { router } from "expo-router";
-import { useEffect, useRef, useState } from "react";
-import { Pressable, ScrollView, Text, TextInput, View } from "react-native";
+import { StatusBar } from "expo-status-bar";
+import { Children, useEffect, useRef, useState, type PropsWithChildren } from "react";
+import { Pressable, ScrollView, View, type TextStyle, type ViewStyle } from "react-native";
+import { Text, TextInput } from "@/components/text";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { Column, COLUMN } from "@/components/screen";
 import { useBarActions } from "@/components/bar-actions";
 import { ActionButton, useBarSpace } from "@/components/bottom-bar";
+import { Field, useColors } from "@/components/field";
 import { Icon, type IconName } from "@/components/icon";
+import { Mark } from "@/components/mark";
 import { GuideButton } from "@/components/guide";
 import { Illustration } from "@/components/illustration";
 import { Sheet } from "@/components/sheet";
 import { RestTimer } from "@/components/rest-timer";
-import { colors, fonts, radii } from "@/constants/theme";
+import { colors, FAMILY, fieldColors, fonts, radii } from "@/constants/theme";
 import { byId } from "@/data/exercises";
+import { ownCue } from "@/data/guides";
+import type { Family } from "@/data/families";
 import {
   FINISHED_LINES,
   OUTCOME_LINES,
@@ -25,6 +31,7 @@ import {
   courseLabel,
   distanceLabel,
   parseTime,
+  pictureOf,
   timeLabel,
   type CardioExercise,
   type MobilityMove,
@@ -36,7 +43,6 @@ import {
   addSuperset,
   allSetsLogged,
   cardioRecord,
-  chooseConditioning,
   completeCardio,
   completeExercise,
   conditioningPool,
@@ -55,6 +61,7 @@ import {
   isBetter,
   isComplete,
   isConditioning,
+  itemFamily,
   isMobility,
   isTimed,
   lastScore,
@@ -71,8 +78,10 @@ import {
   setScore,
   skipExercise,
   supersetOptions,
+  swapConditioning,
   swapForSession,
   tapSet,
+  nextItemName,
   completeMove,
   useSession,
   type Item,
@@ -80,31 +89,31 @@ import {
 
 
 /**
- * Fixed heights for everything on the exercise screen whose content varies.
+ * The lift screen's rhythm, top to bottom: the name with how-to and swap
+ * under it, the weight, the circles, a line on last time, and room for a
+ * superset — the gaps between them, and each block's height.
  *
  * Mid-workout you tap without really looking, so nothing may move under the
- * thumb: each block is sized for its largest case — a two-line name, a
- * 68pt weight and three lines of "last time" — and smaller
- * content sits inside that space rather than shrinking it.
+ * thumb: each block is sized for its largest case — a two-line remark, a
+ * five-figure weight — and smaller content sits inside that space rather than
+ * shrinking it. A superset folds a second lift in, so the same blocks are
+ * drawn tighter to fit both above the bar.
  */
-const FIXED = {
-  /** Two lines of the exercise name; longer names shrink to fit. */
-  name: 80,
-  /** The "seconds, not reps" line, reserved whether or not it shows. */
-  note: 20,
-  /** Weight row: the 44pt steppers are the tallest of its forms. */
-  weight: 56,
-  /** Set circles never grow past this, so two sets are as tall as four. */
-  circle: 96,
-  /** Up to three lines of "last time". */
-  why: 57,
+const LAYOUT = {
+  solo: { name: 28, weight: 42, number: 84, sets: 40, under: 84, underGap: 20 },
+  paired: { name: 18, weight: 22, number: 64, sets: 22, under: 58, underGap: 10 },
 } as const;
 
 /**
- * How long the result waits after the last circle is filled. Long enough to
- * tap that circle again and count it down — each tap restarts the wait.
+ * Set circles: a lift on its own; the main lift once a partner is folded in,
+ * a little smaller so both fit above the bar on a phone; and the partner,
+ * smaller again so the main lift stays primary.
  */
-const RESULT_DELAY_MS = 2000;
+const CIRCLES = {
+  solo: { full: 92, gap: 22, font: 50 },
+  main: { full: 80, gap: 16, font: 44 },
+  partner: { full: 52, gap: 12, font: 28 },
+} as const;
 
 export default function WorkoutScreen() {
   const { state, setState } = useSession();
@@ -120,37 +129,6 @@ export default function WorkoutScreen() {
   const [skipWarned, setSkipWarned] = useState(false);
   useEffect(() => setSkipWarned(false), [active?.cursor, inWarmup]);
 
-  const currentItem = active?.items[active.cursor];
-  const resultKey = active && !done && !inWarmup && currentItem && !isConditioning(currentItem)
-    ? `${active.startedAt}:${currentItem.slot}`
-    : null;
-  const logged = resultKey !== null && allSetsLogged(state);
-  const reps = JSON.stringify([currentItem?.logged, currentItem?.supersetLogged]);
-  const [resultFor, setResultFor] = useState<string | null>(null);
-  const previousResult = useRef<{ key: string | null; logged: boolean }>({ key: null, logged: false });
-  // Completed on this screen and not yet shown.
-  const pending = useRef(false);
-  useEffect(() => {
-    const previous = previousResult.current;
-    previousResult.current = { key: resultKey, logged };
-    // Arriving at a finished exercise — Back, or reopening the app — shows
-    // nothing: View result is there if you want it.
-    if (!logged || previous.key !== resultKey) {
-      pending.current = false;
-      setResultFor(null);
-      return;
-    }
-    // Open on completion, not on every rep correction after dismissal.
-    if (!previous.logged) pending.current = true;
-    if (!pending.current) return;
-    const timer = setTimeout(() => {
-      if (!pending.current) return;
-      pending.current = false;
-      setResultFor(resultKey);
-    }, RESULT_DELAY_MS);
-    return () => clearTimeout(timer);
-  }, [resultKey, logged, reps]);
-
   // The bar itself lives in the root layout; this only swaps its buttons.
   useBarActions(
     active && !done ? (
@@ -165,7 +143,7 @@ export default function WorkoutScreen() {
           }}
         />
         <ActionButton
-          icon="close"
+          icon="leave"
           label="Leave"
           onPress={() => {
             // Leaving steps out without ending anything: the session stays
@@ -202,15 +180,33 @@ export default function WorkoutScreen() {
 
   // Cardio and mobility are their own screens: no weight, no rep circles and
   // no rep ladder. They still sit inside the same session, so the bar's Back,
-  // Leave and Skip work on them exactly as on a lift.
-  if (isMobility(item)) return <Mobility key={item.slot} item={item} />;
-  if (isConditioning(item)) return <Conditioning key={item.slot} item={item} />;
+  // Leave and Skip work on them exactly as on a lift. Each is drawn on its
+  // family's colour, like a lift.
+  if (isMobility(item)) {
+    return (
+      <OnField family="mobility">
+        <Mobility key={item.slot} item={item} />
+      </OnField>
+    );
+  }
+  if (isConditioning(item)) {
+    return (
+      <OnField family="cardio">
+        <Conditioning key={item.slot} item={item} />
+      </OnField>
+    );
+  }
+
+  const family = itemFamily(item);
+  // This screen sits on the family's colour: see `fieldColors`.
+  const colors = fieldColors(family);
 
   const p = currentPrescription(state)!;
   const partner = item.supersetWith ? byId(item.supersetWith) : undefined;
   // The partner keeps its own scheme, set count and set log when folded in.
   const partnerP = partnerPrescription(state);
   const options = supersetOptions(state);
+  const L = partner ? LAYOUT.paired : LAYOUT.solo;
 
   const warmup = currentWarmup(state);
   // Swapping after the first set is logged would throw that work away.
@@ -219,29 +215,51 @@ export default function WorkoutScreen() {
 
   if (warmup.length > 0) {
     return (
-      <Warmup
-        name={p.exercise.name}
-        sets={warmup}
-        perHand={p.exercise.perHand}
-        refusal={skipWarned ? pickLine(WARMUP_SKIP_LINES, `${active.startedAt}:${item.slot}`) : null}
-        onReady={() => setState((s) => dismissWarmup(s))}
-      />
+      <OnField family={family}>
+        <Warmup
+          family={family}
+          name={p.exercise.name}
+          sets={warmup}
+          perHand={p.exercise.perHand}
+          refusal={skipWarned ? pickLine(WARMUP_SKIP_LINES, `${active.startedAt}:${item.slot}`) : null}
+          onReady={() => setState((s) => dismissWarmup(s))}
+        />
+      </OnField>
     );
   }
 
+  // Moving on is always your call: filling the last circle changes nothing
+  // but this button, so a rep or a weight can still be fixed before you go.
+  const logged = allSetsLogged(state);
+  const after = nextItemName(state);
   const next = () => {
     setPicking(false);
-    setResultFor(null);
     setState((s) => completeExercise(s));
   };
   // Said before you move on, so what happens next time is never a surprise:
-  // a line with some attitude, and the plain fact under it.
+  // a line with some attitude, and the plain fact under it. It updates as
+  // you correct a circle.
   const verdict = nextTime(state);
-  const quip = verdict
-    ? pickLine(OUTCOME_LINES[verdict.outcome], `${active.startedAt}:${active.cursor}`)
+  const result = verdict
+    ? {
+        ...verdict,
+        quip: pickLine(OUTCOME_LINES[verdict.say], `${active.startedAt}:${active.cursor}`),
+      }
     : null;
 
+  // Said in italics beside the buttons under the name, where it applies.
+  const note = [
+    p.reload ? "reload" : null,
+    p.exercise.timed ? "seconds, not reps" : null,
+    item.derive
+      ? `${Math.round(item.derive.fraction * 100)}% of ${byId(item.derive.from)!.name.toLowerCase()}`
+      : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+
   return (
+    <OnField family={family}>
     <View style={{ flex: 1, backgroundColor: colors.bg }}>
       <Header showRest />
 
@@ -249,60 +267,19 @@ export default function WorkoutScreen() {
         contentContainerStyle={{
           flexGrow: 1,
           paddingHorizontal: 22,
-          paddingBottom: barSpace + 14,
+          paddingBottom: 8,
           width: "100%",
           maxWidth: COLUMN,
           alignSelf: "center",
-          gap: 14,
         }}
       >
-        {/* What and how heavy: compact, at the top. Read once, then left alone. */}
-        <View style={{ gap: 2 }}>
-          <View
-            style={{ height: FIXED.name, flexDirection: "row", alignItems: "center", gap: 10 }}
-          >
-            <Text
-              numberOfLines={2}
-              adjustsFontSizeToFit
-              minimumFontScale={0.7}
-              style={{
-                flex: 1,
-                color: colors.text,
-                fontFamily: fonts.display,
-                textTransform: "uppercase",
-                fontSize: 36,
-                lineHeight: 38,
-                letterSpacing: 0.3,
-              }}
-            >
-              {p.exercise.name}
-            </Text>
-            <GuideButton id={p.exercise.id} name={p.exercise.name} cue={p.exercise.cue} />
-            {canSwap ? (
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="Choose a different exercise"
-                onPress={() => setSwapping((v) => !v)}
-                style={({ pressed }) => ({
-                  width: 44,
-                  height: 44,
-                  alignItems: "center",
-                  justifyContent: "center",
-                  borderRadius: 999,
-                  backgroundColor: swapping ? colors.cloud : colors.raised,
-                  opacity: pressed ? 0.7 : 1,
-                })}
-              >
-                <Icon name="swap" size={20} color={swapping ? colors.ink : colors.muted} />
-              </Pressable>
-            ) : null}
-          </View>
-          <Text
-            style={{ height: FIXED.note, color: colors.muted, fontSize: 15, fontWeight: "600" }}
-          >
-            {p.exercise.timed ? "seconds, not reps" : ""}
-          </Text>
-        </View>
+        {/* What, and how to: read once, then left alone. */}
+        <Title family={family} name={p.exercise.name} note={note} style={{ marginTop: L.name }}>
+          <GuideButton id={p.exercise.id} name={p.exercise.name} cue={p.exercise.cue} size={40} />
+          {canSwap ? (
+            <ToolButton icon="swap" label="Choose a different exercise" onPress={() => setSwapping(true)} />
+          ) : null}
+        </Title>
 
         <Sheet visible={swapping} title="Swap for today" onClose={() => setSwapping(false)}>
           <SwapList
@@ -316,65 +293,54 @@ export default function WorkoutScreen() {
           />
         </Sheet>
 
-        <View style={{ height: FIXED.weight, justifyContent: "center" }}>
-        {p.exercise.unloaded ? (
-          <Text style={{ textAlign: "center", color: colors.faint, fontSize: 17, fontWeight: "700" }}>
-            No weight — just the reps
-          </Text>
-        ) : item.derive ? (
-          // Derived from the heavy day's weight, so there is nothing to edit.
-          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8 }}>
-            <Text
-              style={{
-                color: colors.rise,
-                fontFamily: fonts.displayBold,
-                fontSize: 48,
-                letterSpacing: 0,
-                fontVariant: ["tabular-nums"],
-              }}
-            >
-              {p.weight}
+        <View style={{ height: L.number, marginTop: L.weight, justifyContent: "center" }}>
+          {p.exercise.unloaded ? (
+            <Text style={{ textAlign: "center", color: colors.text, fontFamily: fonts.regular, fontSize: 24 }}>
+              No weight — just the reps
             </Text>
-            <Text style={{ color: colors.muted, fontSize: 18, fontWeight: "700" }}>
-              {p.exercise.perHand ? "kg ×2" : "kg"}
-            </Text>
-            <Text style={{ color: colors.faint, fontSize: 13, marginLeft: 6 }}>
-              {Math.round(item.derive.fraction * 100)}% of{" "}
-              {byId(item.derive.from)!.name.toLowerCase()}
-            </Text>
-          </View>
-        ) : (
-          <WeightControl
-            weight={p.weight}
-            bodyweight={p.exercise.bodyweight}
-            perHand={p.exercise.perHand}
-            onNudge={(d) => setState((s) => nudgeWeight(s, d))}
-            onSet={(w) => setState((s) => editWeight(s, w))}
-          />
-        )}
+          ) : item.derive ? (
+            // Taken from the heavy day's weight, so there is nothing to edit.
+            <View style={{ alignItems: "center" }}>
+              <Weight weight={p.weight} unit={unitFor(p.exercise, p.weight)} size={L.number} />
+            </View>
+          ) : (
+            <WeightControl
+              weight={p.weight}
+              bodyweight={p.exercise.bodyweight}
+              holds={p.exercise.holds}
+              perHand={p.exercise.perHand}
+              size={L.number}
+              onNudge={(d) => setState((s) => nudgeWeight(s, d))}
+              onSet={(w) => setState((s) => editWeight(s, w))}
+            />
+          )}
         </View>
 
-        {/* Keep a single lift centred; paired lifts use a compact stack so
-            both sets of controls get the room above the floating bar. */}
-        <View style={{
-          flex: partner ? 0 : 1,
-          minHeight: FIXED.circle + FIXED.why + (partner ? 18 : 60),
-          justifyContent: "center",
-          gap: 18,
-        }}>
+        <View style={{ marginTop: L.sets }}>
           <Sets
             logged={item.logged}
             target={p.reps}
+            role={partner ? "main" : "solo"}
             onTap={(i) => setState((s) => tapSet(s, i))}
             onReset={(i) => setState((s) => resetSet(s, i))}
           />
-          <Why prescription={p} />
+        </View>
+
+        <View style={{ height: L.under, marginTop: L.underGap }}>
+          <Why
+            prescription={p}
+            result={logged ? result : null}
+            started={item.logged.some((r) => r !== null)}
+            compact={!!partner}
+          />
         </View>
 
         {partner && partnerP && item.supersetLogged ? (
           <Partner
+            id={partner.id}
             name={partner.name}
-            weight={partner.unloaded ? "No weight — just the reps" : weightLabel(partner, partnerP.weight)}
+            cue={partner.cue}
+            weight={partner.unloaded ? "No weight" : weightLabel(partner, partnerP.weight)}
             sets={partnerP.sets}
             target={partnerP.reps}
             timed={partner.timed}
@@ -384,36 +350,29 @@ export default function WorkoutScreen() {
             onRemove={() => setState((s) => removeSuperset(s))}
           />
         ) : options.length > 0 ? (
-          // Offered, not pushed: a quiet link under the circles.
+          // An extra, so a soft pill: the solid button below is the way on.
           <Pressable
             accessibilityRole="button"
             onPress={() => setPicking(true)}
-            hitSlop={8}
             style={({ pressed }) => ({
               alignSelf: "center",
               flexDirection: "row",
               alignItems: "center",
               gap: 6,
-              minHeight: 44,
-              paddingHorizontal: 12,
-              opacity: pressed ? 0.6 : 1,
+              height: 44,
+              marginTop: 14,
+              paddingHorizontal: 18,
+              borderRadius: 22,
+              borderCurve: "continuous",
+              backgroundColor: colors.surface,
+              opacity: pressed ? 0.7 : 1,
             })}
           >
-            <Icon name="plus" size={14} color={colors.muted} weight="semibold" />
-            <Text style={{ color: colors.muted, fontSize: 14, fontWeight: "700" }}>
-              Superset
+            <Icon name="plus" size={16} color={colors.text} weight="semibold" />
+            <Text style={{ color: colors.text, fontFamily: fonts.regular, fontSize: 19 }}>
+              Add superset
             </Text>
           </Pressable>
-        ) : null}
-
-        {logged ? (
-          <Action
-            label="View result"
-            onPress={() => {
-              pending.current = false;
-              setResultFor(resultKey);
-            }}
-          />
         ) : null}
 
         <Sheet visible={picking} title="Superset with" onClose={() => setPicking(false)}>
@@ -427,115 +386,213 @@ export default function WorkoutScreen() {
         </Sheet>
       </ScrollView>
 
-      <Sheet
-        visible={logged && resultFor === resultKey}
-        title={partner ? "Superset complete" : "Exercise complete"}
-        closeLabel="Close"
-        swipeToDismiss
-        onClose={() => setResultFor(null)}
-      >
-        <View style={{ gap: 24, paddingVertical: 24 }}>
-          {verdict && quip ? (
-            <View style={{ alignItems: "center", gap: 8 }}>
-              <Text style={{
-                textAlign: "center",
-                color: verdict.outcome === "hit" ? colors.rise : colors.bend,
-                fontFamily: fonts.voice,
-                fontSize: 28,
-              }}>
-                {quip}
-              </Text>
-              <Text style={{ textAlign: "center", color: colors.muted, fontSize: 17, lineHeight: 24 }}>
-                {verdict.fact}
-              </Text>
-            </View>
-          ) : (
-            <Text style={{ textAlign: "center", color: colors.muted, fontSize: 17 }}>
-              All sets logged.
-            </Text>
-          )}
-          <Action label="Next exercise" fill onPress={next} />
-          <Action label="Review sets" onPress={() => setResultFor(null)} />
-        </View>
-      </Sheet>
-
+      {/* Pinned where the warm-up's Ready and cardio's Done sit, so the way on
+          is always under the same thumb and never scrolled away. It wakes up
+          once every circle — the partner's too — is filled; moving on before
+          that is Skip's job. */}
+      <View style={{ paddingHorizontal: 22, paddingBottom: barSpace + 14 }}>
+        <Column>
+          <Action
+            label={after ? `Next: ${after}` : "Finish workout"}
+            arrow
+            fill
+            disabled={!logged}
+            onPress={next}
+          />
+        </Column>
+      </View>
     </View>
+    </OnField>
   );
 }
 
 /**
- * Where you are in the session: the module's name, and one segment per block.
+ * Draws everything inside on the family's colour, with the status bar to
+ * match: light over the dark fields, dark over the light ones.
+ */
+function OnField({ family, children }: PropsWithChildren<{ family: Family }>) {
+  return (
+    <Field family={family}>
+      <StatusBar style={FAMILY[family].dark ? "light" : "dark"} />
+      {children}
+    </Field>
+  );
+}
+
+/**
+ * Where you are in the session: the workout's name and how far in, the rest
+ * since your last set, and one segment per block — the current one at full
+ * strength, the ones behind you a step down.
  *
  * Shared by the lifting screen and the conditioning ones so the bar of
  * progress does not jump or reset when the session moves between them.
  */
 function Header({ showRest = false }: { showRest?: boolean }) {
+  const colors = useColors();
   const { state } = useSession();
   const insets = useSafeAreaInsets();
   const active = state.active;
   if (!active) return null;
 
   return (
-    <View
-      style={{ paddingTop: insets.top + 14, paddingHorizontal: 22, paddingBottom: 14 }}
-    >
-      <Column style={{ gap: 12 }}>
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
-          <Text
-            style={{
-              flex: 1,
-              color: colors.muted,
-              fontSize: 12,
-              fontWeight: "800",
-              letterSpacing: 1.3,
-              textTransform: "uppercase",
-            }}
-          >
+    <View style={{ paddingTop: insets.top + 6, paddingHorizontal: 22 }}>
+      <Column>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 12, height: 32 }}>
+          <Text numberOfLines={1} style={{ flex: 1, color: colors.text, fontFamily: fonts.medium, fontSize: 19 }}>
             {currentWorkout(state).name}
+            {"  "}
+            <Text style={{ fontFamily: fonts.italic }}>
+              {exerciseCount(state, "done") + 1}/{exerciseCount(state, "total")}
+            </Text>
           </Text>
           {showRest ? <RestTimer startedAt={active.lastSetAt} /> : null}
         </View>
 
-        {/* One segment per exercise, weighted: a paired screen holds two
-            exercises, so it is twice as wide and the total never changes
-            when you superset. */}
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
-          <View style={{ flex: 1, flexDirection: "row", gap: 3 }}>
-            {active.items.map((it, i) => (
-              <View
-                key={i}
-                style={{
-                  flex: it.supersetWith ? 2 : 1,
-                  height: 3,
-                  borderRadius: 999,
-                  backgroundColor:
-                    i < active.cursor
-                      ? colors.rise
-                      : i === active.cursor
-                        ? colors.muted
-                        : colors.line,
-                }}
-              />
-            ))}
-          </View>
-          <Text
-            style={{
-              color: colors.faint,
-              fontSize: 11,
-              fontWeight: "800",
-              fontVariant: ["tabular-nums"],
-            }}
-          >
-            {exerciseCount(state, "done") + 1}/{exerciseCount(state, "total")}
-          </Text>
+        {/* The day's shape: one segment per exercise in its family's colour,
+            filling in as you go and pale until you get there. Weighted — a
+            paired screen holds two exercises, so it is twice as wide and the
+            total never changes when you superset. On a white track, since
+            the family colours sit too close to each other to read on a
+            field; on white each one keeps its hue and 3:1. */}
+        <View
+          accessibilityElementsHidden
+          importantForAccessibility="no-hide-descendants"
+          style={{ flexDirection: "row", gap: 2, marginTop: 10, padding: 2, borderRadius: 4, backgroundColor: colors.white }}
+        >
+          {active.items.map((it, i) => (
+            <View
+              key={i}
+              style={{
+                flex: it.supersetWith ? 2 : 1,
+                height: 4,
+                borderRadius: 2,
+                backgroundColor: FAMILY[itemFamily(it)].mark,
+                opacity: i <= active.cursor ? 1 : 0.28,
+              }}
+            />
+          ))}
         </View>
       </Column>
     </View>
   );
 }
 
-/** A cardio block: heading, swap button, the score, one action. */
+/**
+ * What you are doing: the family's shape and the name on one line at full
+ * width — a long name ends in an ellipsis rather than wrapping — with its
+ * small round buttons (how-to, swap) right under it, and a word in italics
+ * beside them where one applies.
+ */
+function Title({
+  family,
+  name,
+  note,
+  style,
+  children,
+}: PropsWithChildren<{ family: Family; name: string; note?: string; style?: ViewStyle }>) {
+  const colors = useColors();
+  const tools = Children.toArray(children).length > 0 || !!note;
+  return (
+    <View style={style}>
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 12, height: 34 }}>
+        <Mark family={family} size={24} color={colors.text} />
+        <Text
+          accessibilityRole="header"
+          numberOfLines={1}
+          style={{ flex: 1, color: colors.text, fontFamily: fonts.medium, fontSize: 27, lineHeight: 33 }}
+        >
+          {name}
+        </Text>
+      </View>
+      {tools ? (
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 10, height: 40, marginTop: 10, marginLeft: 36 }}>
+          {children}
+          {note ? (
+            <Text
+              numberOfLines={1}
+              style={{ flex: 1, marginLeft: 4, color: colors.text, fontFamily: fonts.italic, fontSize: 19 }}
+            >
+              {note}
+            </Text>
+          ) : null}
+        </View>
+      ) : null}
+    </View>
+  );
+}
+
+/** A small round button under the name, in a tint of the field. */
+function ToolButton({ icon, label, onPress }: { icon: IconName; label: string; onPress: () => void }) {
+  const colors = useColors();
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      onPress={onPress}
+      hitSlop={4}
+      style={({ pressed }) => ({
+        width: 40,
+        height: 40,
+        alignItems: "center",
+        justifyContent: "center",
+        borderRadius: 999,
+        backgroundColor: colors.surface,
+        opacity: pressed ? 0.7 : 1,
+      })}
+    >
+      <Icon name={icon} size={20} color={colors.text} />
+    </Pressable>
+  );
+}
+
+/**
+ * What the number is in: "kg"; "kg ×2" for a dumbbell in each hand; "kg
+ * added" on a bodyweight lift with a belt or a dumbbell; "kg assist" where a
+ * negative number is the machine's help, so it never reads as an error; and
+ * "s hold" on a lift that progresses by holding, where it is seconds.
+ */
+function unitFor(
+  { perHand, bodyweight, holds }: { perHand?: boolean; bodyweight?: boolean; holds?: boolean },
+  weight: number,
+) {
+  if (holds) return "s hold";
+  return [
+    "kg",
+    perHand ? "×2" : null,
+    weight < 0 ? "assist" : bodyweight && weight > 0 ? "added" : null,
+  ]
+    .filter(Boolean)
+    .join(" ");
+}
+
+/** The weight and its unit, on one baseline. */
+function Weight({ weight, unit, size }: { weight: number; unit: string; size: number }) {
+  const colors = useColors();
+  const text = String(weight);
+  // A five-character weight (102.5) is set a size down, so it and its unit
+  // still fit between the steppers.
+  const fit = text.length > 4 ? Math.round(size * 0.84) : size;
+  return (
+    <View style={{ flexDirection: "row", alignItems: "baseline", gap: 10 }}>
+      <Text
+        style={{
+          color: colors.text,
+          fontFamily: fonts.semibold,
+          fontSize: fit,
+          letterSpacing: -fit * 0.02,
+          fontVariant: ["lining-nums", "tabular-nums"],
+        }}
+      >
+        {text}
+      </Text>
+      <Text style={{ color: colors.text, fontFamily: fonts.regular, fontSize: 22 }}>{unit}</Text>
+    </View>
+  );
+}
+
+/** A cardio block: the machine, how long, the score, one action. */
 function Conditioning({ item }: { item: Item }) {
+  const colors = useColors();
   const barSpace = useBarSpace();
   const { state, setState } = useSession();
   const [swapping, setSwapping] = useState(false);
@@ -562,64 +619,23 @@ function Conditioning({ item }: { item: Item }) {
           width: "100%",
           maxWidth: COLUMN,
           alignSelf: "center",
-          gap: 22,
         }}
       >
-        <View style={{ gap: 6 }}>
-          <Text
-            style={{
-              color: colors.rise,
-              fontSize: 12,
-              fontWeight: "800",
-              letterSpacing: 1.4,
-              textTransform: "uppercase",
-            }}
-          >
-            {isTimed(item) && cardio ? courseLabel(cardio, item.course!) : `${item.minutes} minutes`}
-          </Text>
-
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
-            <Text
-              style={{
-                flex: 1,
-                color: colors.text,
-                fontFamily: fonts.display,
-                textTransform: "uppercase",
-                fontSize: 48,
-                lineHeight: 49,
-                letterSpacing: 0.3,
-              }}
-            >
-              {cardio?.name ?? ""}
-            </Text>
-
-            {cardio ? <GuideButton id={cardio.id} name={cardio.name} cue={cardio.cue} /> : null}
-
-            {pool.length > 1 ? (
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="Choose a different machine"
-                onPress={() => setSwapping((v) => !v)}
-                style={({ pressed }) => ({
-                  width: 44,
-                  height: 44,
-                  alignItems: "center",
-                  justifyContent: "center",
-                  borderRadius: 999,
-                  backgroundColor: swapping ? colors.cloud : colors.raised,
-                  opacity: pressed ? 0.7 : 1,
-                })}
-              >
-                <Icon name="swap" size={20} color={swapping ? colors.ink : colors.muted} />
-              </Pressable>
-            ) : null}
-          </View>
-
-        </View>
+        <Title
+          style={{ marginTop: LAYOUT.solo.name }}
+          family="cardio"
+          name={cardio?.name ?? ""}
+          note={isTimed(item) && cardio ? courseLabel(cardio, item.course!) : `${item.minutes} minutes`}
+        >
+          {cardio ? <GuideButton id={cardio.id} name={cardio.name} cue={cardio.cue} size={40} /> : null}
+          {pool.length > 1 ? (
+            <ToolButton icon="swap" label="Choose a different machine" onPress={() => setSwapping(true)} />
+          ) : null}
+        </Title>
 
         <Sheet
           visible={swapping}
-          title="Choose a machine"
+          title="Swap for today"
           onClose={() => setSwapping(false)}
         >
           <ConditioningSwap
@@ -627,12 +643,13 @@ function Conditioning({ item }: { item: Item }) {
             current={item.exerciseId}
             onPick={(id) => {
               setSwapping(false);
-              setState((s) => chooseConditioning(s, item.slot, id));
+              setState((s) => swapConditioning(s, id));
             }}
           />
         </Sheet>
 
         {cardio ? (
+          <View style={{ marginTop: LAYOUT.solo.weight }}>
           <CardioBody
             cardio={cardio}
             item={item}
@@ -641,19 +658,14 @@ function Conditioning({ item }: { item: Item }) {
             onNudge={(d) => setState((s) => nudgeScore(s, d))}
             onSet={(v) => setState((s) => setScore(s, v))}
           />
+          </View>
         ) : null}
 
       </ScrollView>
 
       <View style={{ paddingHorizontal: 22, paddingBottom: barSpace + 14 }}>
-        <Column style={{ gap: 10 }}>
-          {needsScore ? (
-            <Text style={{ textAlign: "center", color: colors.faint, fontSize: 13 }}>
-              {isTimed(item)
-                ? "Enter your time when you finish — or skip the block."
-                : "Enter the distance when the clock runs out — or skip the block."}
-            </Text>
-          ) : null}
+        {/* Waits for a first score; the line under the number says so. */}
+        <Column>
           <Action
             label="Done"
             fill
@@ -667,7 +679,8 @@ function Conditioning({ item }: { item: Item }) {
 }
 
 /**
- * Your score, and the mark to beat.
+ * Your score, and the mark to beat — laid out like a lift: the number between
+ * − and +, a line on last time under it, and the machine's cue.
  *
  * One side of the block is fixed — the minutes, or the distance — so the only
  * number that moves is the other: how far you got, or how long it took. That
@@ -689,12 +702,15 @@ function CardioBody({
   onNudge: (direction: 1 | -1) => void;
   onSet: (score: number | null) => void;
 }) {
+  const colors = useColors();
   const [draft, setDraft] = useState<string | null>(null);
   const timed = isTimed(item);
   const score = scoreOf(item);
   const { decimals, unit } = cardio.metric;
+  // Untouched, the box holds last time's score: that is what Done records.
+  const shown = score ?? last;
 
-  // The box shows a bare number; the card around it says what it means.
+  // The box shows a bare number; the line under it says what it means.
   const show = (v: number) => (timed ? timeLabel(v) : v.toFixed(decimals));
   const label = (v: number) => (timed ? timeLabel(v) : distanceLabel(cardio, v));
 
@@ -708,139 +724,100 @@ function CardioBody({
 
   const beat = record && score !== null && isBetter(item, score, record.last);
   const isBest = record && score !== null && isBetter(item, score, record.best);
+  const line = { textAlign: "center", color: colors.text, fontFamily: fonts.regular, fontSize: 19, lineHeight: 24 } as const;
+  const number: TextStyle = {
+    fontFamily: fonts.semibold,
+    fontSize: 76,
+    letterSpacing: -1.5,
+    fontVariant: ["lining-nums", "tabular-nums"],
+  };
 
   return (
-    <View style={{ gap: 22 }}>
-      {/* The target: what you did last time on this machine, over this same
-          length. Absent the first time — there is nothing to chase yet. */}
-      <View
-        style={{
-          gap: 10,
-          borderRadius: radii.card,
-          borderCurve: "continuous",
-          backgroundColor: colors.surface,
-          padding: 18,
-        }}
-      >
-        {record ? (
-          <>
-            <View style={{ flexDirection: "row", alignItems: "baseline", gap: 10 }}>
-              <Text
-                style={{
-                  color: colors.faint,
-                  fontSize: 11,
-                  fontWeight: "800",
-                  letterSpacing: 1.2,
-                  textTransform: "uppercase",
-                }}
-              >
-                To beat
-              </Text>
-              <Text
-                style={{
-                  color: colors.text,
-                  fontSize: 24,
-                  fontWeight: "800",
-                  letterSpacing: -0.8,
-                  fontVariant: ["tabular-nums"],
-                }}
-              >
-                {label(record.last)}
-              </Text>
-            </View>
-            <Text style={{ color: colors.faint, fontSize: 13, lineHeight: 19 }}>
-              {timed ? "Fastest" : "Furthest"} {label(record.best)} · {record.sessions}{" "}
-              {timed
-                ? `× ${courseLabel(cardio, item.course!)} ${record.sessions === 1 ? "run" : "runs"} recorded.`
-                : `${record.sessions === 1 ? "session" : "sessions"} on this machine.`}
-            </Text>
-          </>
-        ) : (
-          <Text style={{ color: colors.faint, fontSize: 13, lineHeight: 19 }}>
-            {timed
-              ? `First ${courseLabel(cardio, item.course!)} on the ${cardio.name.toLowerCase()}. Your time becomes the mark to beat next time.`
-              : `First ${item.minutes} minutes on the ${cardio.name.toLowerCase()}. Whatever you cover becomes the mark to beat next time.`}
-          </Text>
-        )}
-      </View>
-
-      {/* The score, entered the same way a weight is: type it or step it. */}
-      <View
-        style={{
-          flexDirection: "row",
-          alignItems: "center",
-          justifyContent: "space-between",
-        }}
-      >
+    <View>
+      {/* The score, entered the way a weight is: step it, or tap to type. */}
+      <View style={{ height: 84, flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
         <Step label="−" onPress={() => onNudge(-1)} />
 
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-          <TextInput
-            value={draft ?? (score === null ? "" : show(score))}
-            // Last time's score until you change it, dimmed so it reads as
-            // a starting point rather than something already logged.
-            placeholder={show(last ?? 0)}
-            placeholderTextColor={last === null ? colors.faint : colors.muted}
-            onChangeText={setDraft}
-            onFocus={() => setDraft((score ?? last) === null ? "" : show((score ?? last)!))}
-            onBlur={commit}
-            onSubmitEditing={commit}
-            // A number pad on both: a time types as 4.52 or 452 and reads back as 4:52.
-            keyboardType="decimal-pad"
-            selectTextOnFocus
-            style={{
-              // A time has no unit beside it, so it takes the unit's room.
-              width: timed ? 214 : 160,
-              color: colors.rise,
-              fontFamily: fonts.displayBold,
-              fontSize: 74,
-              letterSpacing: 0,
-              textAlign: timed ? "center" : "right",
-              fontVariant: ["tabular-nums"],
-            }}
-          />
-          {timed ? null : (
-            <View style={{ width: 48 }}>
-              <Text style={{ color: colors.muted, fontSize: 20, fontWeight: "700" }}>
-                {unit}
+        {draft !== null ? (
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+            <TextInput
+              autoFocus
+              value={draft}
+              onChangeText={setDraft}
+              onBlur={commit}
+              onSubmitEditing={commit}
+              // A number pad on both: a time types as 4.52 or 452 and reads back as 4:52.
+              keyboardType="decimal-pad"
+              selectTextOnFocus
+              accessibilityLabel={timed ? "Your time" : `Distance in ${unit}`}
+              style={[number, { width: timed ? 190 : 150, padding: 0, color: colors.text, textAlign: timed ? "center" : "right" }]}
+            />
+            {timed ? null : <Text style={{ color: colors.text, fontFamily: fonts.regular, fontSize: 22 }}>{unit}</Text>}
+          </View>
+        ) : (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={`${shown === null ? "Nothing entered" : label(shown)}. Tap to type ${timed ? "your time" : "the distance"}`}
+            onPress={() => setDraft(shown === null ? "" : show(shown))}
+            hitSlop={8}
+            style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}
+          >
+            <View style={{ flexDirection: "row", alignItems: "baseline", gap: 8 }}>
+              {/* Last time's score until you change it, a shade back so it
+                  reads as a starting point rather than something entered.
+                  With nothing to start from, a dash: a 0 would read as a
+                  score of nothing. */}
+              <Text style={[number, { color: score === null ? colors.dim : colors.text }]}>
+                {shown === null ? "—" : show(shown)}
               </Text>
+              {timed ? null : <Text style={{ color: colors.text, fontFamily: fonts.regular, fontSize: 22 }}>{unit}</Text>}
             </View>
-          )}
-        </View>
+          </Pressable>
+        )}
 
         <Step label="+" onPress={() => onNudge(1)} />
       </View>
 
-      {/* Said only when it is true — a line that always shows says nothing. */}
-      {isBest ? (
-        <Text
-          style={{
-            textAlign: "center",
-            color: colors.rise,
-            fontSize: 14,
-            fontWeight: "800",
-          }}
-        >
-          {timed ? "Fastest yet." : "Furthest yet."}
-        </Text>
-      ) : beat ? (
-        <Text
-          style={{
-            textAlign: "center",
-            color: colors.rise,
-            fontSize: 14,
-            fontWeight: "800",
-          }}
-        >
-          {timed ? "Faster than last time." : "Past last time."}
-        </Text>
-      ) : null}
+      {/* What to beat, or what this first go is for. Fixed height, so the
+          "yet" line arriving moves nothing. */}
+      <View style={{ height: 96, marginTop: 40, alignItems: "center", gap: 4 }}>
+        {record ? (
+          <>
+            <View
+              accessible
+              accessibilityLabel={`To beat: ${label(record.last)}`}
+              style={{ flexDirection: "row", alignItems: "center", gap: 10, height: 30 }}
+            >
+              <Text style={{ color: colors.text, fontFamily: fonts.italic, fontSize: 19 }}>To beat</Text>
+              <Text style={{ color: colors.text, fontFamily: fonts.medium, fontSize: 19 }}>{label(record.last)}</Text>
+            </View>
+            <Text numberOfLines={1} style={line}>
+              {timed ? "Fastest" : "Furthest"} {label(record.best)} · {record.sessions}{" "}
+              {record.sessions === 1 ? "time" : "times"}
+            </Text>
+          </>
+        ) : (
+          <Text numberOfLines={3} style={line}>
+            {timed
+              ? `First ${courseLabel(cardio, item.course!)} on the ${cardio.name.toLowerCase()}. Enter your time when you finish — it becomes the mark to beat.`
+              : `First ${item.minutes} minutes on the ${cardio.name.toLowerCase()}. Enter the distance when the clock runs out — it becomes the mark to beat.`}
+          </Text>
+        )}
+        {/* Said only when it is true — a line that always shows says nothing. */}
+        {isBest || beat ? (
+          <Text style={{ color: colors.text, fontFamily: fonts.italic, fontSize: 22 }}>
+            {isBest
+              ? timed ? "Fastest yet." : "Furthest yet."
+              : timed ? "Faster than last time." : "Past last time."}
+          </Text>
+        ) : null}
+      </View>
 
-      <Text style={{ color: colors.faint, fontSize: 13, lineHeight: 19 }}>
+      <Text style={[line, { marginTop: 12, fontSize: 17, lineHeight: 23 }]}>
         {cardio.cue ??
           (timed
-            ? "Same distance every session — the time is the score."
-            : "Same minutes every session — the distance is the score.")}
+            ? "Same distance each time — the time is the score."
+            : "Same minutes each time — the distance is the score.")}
       </Text>
     </View>
   );
@@ -860,6 +837,7 @@ function Mobility({ item }: { item: Item }) {
   const barSpace = useBarSpace();
   const { state, setState } = useSession();
   const [swapping, setSwapping] = useState(false);
+  const colors = useColors();
   const routine = currentRoutine(state);
   const pool = conditioningPool(state, item);
   if (!routine) return null;
@@ -868,68 +846,31 @@ function Mobility({ item }: { item: Item }) {
     <View style={{ flex: 1, backgroundColor: colors.bg }}>
       <Header />
 
-      <View style={{ paddingHorizontal: 22 }}>
-        <Column style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
-          <View style={{ flex: 1, gap: 2 }}>
-            <Text
-              style={{
-                color: colors.rise,
-                fontSize: 12,
-                fontWeight: "800",
-                letterSpacing: 1.4,
-                textTransform: "uppercase",
-              }}
-            >
-              Mobility
-            </Text>
-            <Text
-              numberOfLines={1}
-              style={{
-                color: colors.text,
-                fontFamily: fonts.display,
-                textTransform: "uppercase",
-                fontSize: 30,
-                letterSpacing: 0.3,
-              }}
-            >
-              {routine.name}
-            </Text>
-          </View>
-          {pool.length > 1 ? (
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Choose a different routine"
-              onPress={() => setSwapping(true)}
-              style={({ pressed }) => ({
-                width: 44,
-                height: 44,
-                alignItems: "center",
-                justifyContent: "center",
-                borderRadius: 999,
-                backgroundColor: colors.raised,
-                opacity: pressed ? 0.7 : 1,
-              })}
-            >
-              <Icon name="swap" size={20} color={colors.muted} />
-            </Pressable>
-          ) : null}
+      <View style={{ paddingHorizontal: 22, paddingTop: 24 }}>
+        <Column>
+          <Title family="mobility" name={routine.name}>
+            {pool.length > 1 ? (
+              <ToolButton icon="swap" label="Choose a different routine" onPress={() => setSwapping(true)} />
+            ) : null}
+          </Title>
         </Column>
       </View>
 
-      <Sheet visible={swapping} title="Choose a routine" onClose={() => setSwapping(false)}>
+      <Sheet visible={swapping} title="Swap for today" onClose={() => setSwapping(false)}>
         <ConditioningSwap
           options={pool}
           current={item.exerciseId}
           onPick={(id) => {
             setSwapping(false);
-            setState((s) => chooseConditioning(s, item.slot, id));
+            setState((s) => swapConditioning(s, id));
           }}
         />
       </Sheet>
 
-      {/* Keyed by routine: a swap deals a fresh deck with fresh timers. */}
+      {/* Keyed by routine and its holds: a swap, or an edit in Plan, deals a
+          fresh deck with fresh timers. */}
       <MobilityDeck
-        key={routine.id}
+        key={`${routine.id}:${routine.moves.map((m) => `${m.id}/${m.seconds}/${m.perSide ? 2 : 1}`).join(",")}`}
         routine={routine}
         barSpace={barSpace}
         onMoveDone={(i) => setState((s) => completeMove(s, i))}
@@ -952,6 +893,7 @@ function MobilityDeck({
   onMoveDone: (index: number) => void;
   onFinish: () => void;
 }) {
+  const colors = useColors();
   const cards = routine.moves.flatMap((move, index): Card[] =>
     move.perSide
       ? [
@@ -1062,7 +1004,7 @@ function MobilityDeck({
       <View style={{ paddingHorizontal: 22, paddingTop: 12, paddingBottom: barSpace + 14 }}>
         <Column style={{ gap: 8 }}>
           {/* Always laid out, so the hint appearing moves nothing. */}
-          <Text style={{ height: 18, textAlign: "center", color: colors.faint, fontSize: 13 }}>
+          <Text style={{ height: 22, textAlign: "center", color: colors.text, fontFamily: fonts.regular, fontSize: 17 }}>
             {done && !last ? "Swipe for the next stretch" : ""}
           </Text>
           <Action label={action.label} fill onPress={action.onPress} />
@@ -1073,6 +1015,7 @@ function MobilityDeck({
 }
 
 function MobilityCard({ card, left, position }: { card: Card; left: number; position: string }) {
+  const colors = useColors();
   const { move, side } = card;
   const done = left <= 0;
   const progress = 1 - left / move.seconds;
@@ -1082,56 +1025,40 @@ function MobilityCard({ card, left, position }: { card: Card; left: number; posi
       style={{
         flex: 1,
         overflow: "hidden",
-        borderRadius: radii.card,
+        borderRadius: 24,
         borderCurve: "continuous",
         backgroundColor: colors.surface,
       }}
     >
       <View style={{ flex: 1 }}>
-        <Illustration id={move.id} style={{ flex: 1 }} />
+        <Illustration id={pictureOf(move)} style={{ flex: 1 }} />
         <View style={{ position: "absolute", top: 12, right: 12 }}>
-          <GuideButton id={move.id} name={move.name} cue={move.cue} onPicture />
+          <GuideButton id={pictureOf(move)} name={move.name} cue={move.cue} onPicture />
         </View>
       </View>
 
       <View style={{ gap: 6, paddingHorizontal: 18, paddingTop: 16, paddingBottom: 18 }}>
         <View style={{ flexDirection: "row", alignItems: "center" }}>
-          <Text
-            style={{
-              flex: 1,
-              color: colors.rise,
-              fontSize: 12,
-              fontWeight: "800",
-              letterSpacing: 1.2,
-              textTransform: "uppercase",
-            }}
-          >
+          <Text style={{ flex: 1, color: colors.text, fontFamily: fonts.italic, fontSize: 19 }}>
             {side ?? "Hold"}
           </Text>
-          <Text style={{ color: colors.faint, fontSize: 12, fontWeight: "800" }}>{position}</Text>
+          <Text style={{ color: colors.text, fontFamily: fonts.regular, fontSize: 17 }}>{position}</Text>
         </View>
 
         <View style={{ flexDirection: "row", alignItems: "flex-end", gap: 12 }}>
           <Text
-            style={{
-              flex: 1,
-              color: colors.text,
-              fontFamily: fonts.display,
-              textTransform: "uppercase",
-              fontSize: 32,
-              lineHeight: 33,
-              letterSpacing: 0.3,
-            }}
+            numberOfLines={2}
+            style={{ flex: 1, color: colors.text, fontFamily: fonts.medium, fontSize: 26, lineHeight: 30 }}
           >
             {move.name}
           </Text>
           <Text
             style={{
-              color: done ? colors.rise : colors.text,
-              fontFamily: fonts.displayBold,
+              color: colors.text,
+              fontFamily: fonts.semibold,
               fontSize: 52,
-              lineHeight: 52,
-              fontVariant: ["tabular-nums"],
+              lineHeight: 56,
+              fontVariant: ["lining-nums", "tabular-nums"],
             }}
           >
             {done ? "Done" : timeLabel(Math.ceil(left))}
@@ -1139,18 +1066,19 @@ function MobilityCard({ card, left, position }: { card: Card; left: number; posi
         </View>
 
         {/* Two lines kept whether or not there is a cue, so cards line up. */}
-        <Text numberOfLines={2} style={{ minHeight: 40, color: colors.muted, fontSize: 14, lineHeight: 20 }}>
+        <Text numberOfLines={2} style={{ minHeight: 44, color: colors.text, fontFamily: fonts.regular, fontSize: 17, lineHeight: 22 }}>
           {move.cue ?? "Ease in, breathe slowly, and stop when the tension fades."}
         </Text>
       </View>
 
-      {/* The hold, filling along the foot of the card. */}
-      <View style={{ height: 6, backgroundColor: colors.raised }}>
+      {/* The hold, filling along the foot of the card once the clock runs —
+          an empty track would read as a ledge under the card. */}
+      <View style={{ height: 6, backgroundColor: progress > 0 ? colors.line : "transparent" }}>
         <View
           style={{
             width: `${Math.min(1, Math.max(0, progress)) * 100}%`,
             height: 6,
-            backgroundColor: colors.rise,
+            backgroundColor: colors.text,
           }}
         />
       </View>
@@ -1271,17 +1199,7 @@ function SwapList({
               {byId(id)!.name}
             </Text>
             {used ? (
-              <Text
-                style={{
-                  color: colors.faint,
-                  fontSize: 10,
-                  fontWeight: "800",
-                  letterSpacing: 0.8,
-                  textTransform: "uppercase",
-                }}
-              >
-                In use
-              </Text>
+              <Text style={{ color: colors.faint, fontSize: 13, fontStyle: "italic" }}>in use</Text>
             ) : null}
           </Pressable>
         );
@@ -1295,12 +1213,14 @@ function SwapList({
  * logged or progressed — it exists to get you ready to lift the real weight.
  */
 function Warmup({
+  family,
   name,
   sets,
   perHand,
   refusal,
   onReady,
 }: {
+  family: Family;
   name: string;
   sets: { weight: number; reps: number }[];
   perHand?: boolean;
@@ -1308,6 +1228,7 @@ function Warmup({
   refusal: string | null;
   onReady: () => void;
 }) {
+  const colors = useColors();
   const insets = useSafeAreaInsets();
   const barSpace = useBarSpace();
   // Local: a warm-up is never recorded, so this only exists to stop you
@@ -1326,33 +1247,9 @@ function Warmup({
         }}
       >
         <Column style={{ gap: 26 }}>
-          <View style={{ gap: 6 }}>
-            <Text
-              style={{
-                color: colors.rise,
-                fontSize: 12,
-                fontWeight: "800",
-                letterSpacing: 1.4,
-                textTransform: "uppercase",
-              }}
-            >
-              Warm up
-            </Text>
-            <Text
-              style={{
-                color: colors.text,
-                fontFamily: fonts.display,
-                textTransform: "uppercase",
-                fontSize: 46,
-                lineHeight: 47,
-                letterSpacing: 0.3,
-              }}
-            >
-              {name}
-            </Text>
-          </View>
+          <Title family={family} name={name} note="warm-up sets" />
 
-          <View style={{ gap: 2 }}>
+          <View>
             {sets.map((set, i) => (
               <Pressable
                 key={i}
@@ -1368,18 +1265,18 @@ function Warmup({
                   gap: 14,
                   borderBottomWidth: i === sets.length - 1 ? 0 : 1,
                   borderBottomColor: colors.line,
-                  paddingVertical: 16,
+                  paddingVertical: 14,
                   opacity: pressed ? 0.6 : 1,
                 })}
               >
                 <Text
                   style={{
                     flex: 1,
-                    color: done[i] ? colors.faint : colors.text,
-                    fontFamily: fonts.displayBold,
+                    color: colors.text,
+                    opacity: done[i] ? 0.6 : 1,
+                    fontFamily: fonts.semibold,
                     fontSize: 36,
-                    letterSpacing: 0,
-                    fontVariant: ["tabular-nums"],
+                    fontVariant: ["lining-nums", "tabular-nums"],
                     textDecorationLine: done[i] ? "line-through" : "none",
                   }}
                 >
@@ -1387,10 +1284,10 @@ function Warmup({
                 </Text>
                 <Text
                   style={{
-                    color: colors.muted,
-                    fontSize: 18,
-                    fontWeight: "700",
-                    fontVariant: ["tabular-nums"],
+                    color: colors.text,
+                    fontFamily: fonts.regular,
+                    fontSize: 22,
+                    fontVariant: ["lining-nums", "tabular-nums"],
                   }}
                 >
                   × {set.reps}
@@ -1398,23 +1295,23 @@ function Warmup({
 
                 <View
                   style={{
-                    width: 28,
-                    height: 28,
+                    width: 32,
+                    height: 32,
                     alignItems: "center",
                     justifyContent: "center",
                     borderRadius: 999,
-                    borderWidth: done[i] ? 0 : 1.5,
-                    borderColor: colors.line,
-                    backgroundColor: done[i] ? colors.rise : "transparent",
+                    borderWidth: done[i] ? 0 : 2,
+                    borderColor: colors.text,
+                    backgroundColor: done[i] ? colors.cloud : "transparent",
                   }}
                 >
-                  {done[i] ? <Icon name="check" size={15} color={colors.ink} weight="bold" /> : null}
+                  {done[i] ? <Icon name="check" size={16} color={colors.ink} weight="bold" /> : null}
                 </View>
               </Pressable>
             ))}
           </View>
 
-          <Text style={{ color: colors.faint, fontSize: 13, lineHeight: 19 }}>
+          <Text style={{ color: colors.text, fontFamily: fonts.regular, fontSize: 19, lineHeight: 25 }}>
             Tap each set as you finish it. Not counted — move well and stop
             short of effort.
           </Text>
@@ -1431,14 +1328,14 @@ function Warmup({
                 <Text
                   style={{
                     textAlign: "center",
-                    color: colors.bend,
-                    fontFamily: fonts.voice,
-                    fontSize: 22,
+                    color: colors.text,
+                    fontFamily: fonts.italic,
+                    fontSize: 24,
                   }}
                 >
                   {refusal}
                 </Text>
-                <Text style={{ textAlign: "center", color: colors.faint, fontSize: 13 }}>
+                <Text style={{ textAlign: "center", color: colors.text, fontFamily: fonts.regular, fontSize: 17 }}>
                   Press Skip again to go straight to the working sets.
                 </Text>
               </>
@@ -1457,35 +1354,38 @@ function Warmup({
 }
 
 /**
- * One circle per set. Empty until tapped, then filled at the target reps,
- * counting down on each further tap and clearing when it passes 1.
+ * One circle per set. An empty circle is an outline with the target in it;
+ * tapped, it fills solid at the target reps, counting down on each further
+ * tap and clearing when it passes 1. A set short of the target fills with a
+ * tint instead, so a miss reads at a glance without shouting.
  */
 function Sets({
   logged,
   target,
   onTap,
   onReset,
-  compact,
+  role = "solo",
 }: {
   logged: (number | null)[];
   target: number;
   onTap: (index: number) => void;
   /** Long press: back to the target in one go. */
   onReset: (index: number) => void;
-  /** Shorter circles for a supersetted partner, so the main lift stays primary. */
-  compact?: boolean;
+  /** Which lift these are for — see `CIRCLES`. */
+  role?: keyof typeof CIRCLES;
 }) {
+  const colors = useColors();
   // Every circle is the same fixed size, centred as a group, and the row
   // is always the same height — two sets must not make bigger circles than
   // four, or the screen changes shape from one exercise to the next. Only
   // when there are too many to fit do they shrink, and then inside the same
   // row height.
   const [width, setWidth] = useState(0);
-  const full = compact ? 56 : FIXED.circle;
-  const gap = compact ? 12 : 16;
+  const { full, gap, font } = CIRCLES[role];
   const n = logged.length;
   const fits = width > 0 ? (width - gap * (n - 1)) / n : full;
   const size = Math.max(36, Math.min(full, fits));
+  const fontSize = Math.round((font * size) / full);
   return (
     <View
       onLayout={(e) => setWidth(e.nativeEvent.layout.width)}
@@ -1504,7 +1404,7 @@ function Sets({
           <Pressable
             key={i}
             accessibilityRole="button"
-            accessibilityLabel={`Set ${i + 1}${filled ? `, ${reps} reps` : ", not logged"}`}
+            accessibilityLabel={`Set ${i + 1}${filled ? `, ${reps} reps` : `, target ${target}, not logged`}`}
             accessibilityHint="Tap to log or count down. Hold to reset to the target."
             onPress={() => onTap(i)}
             onLongPress={() => {
@@ -1519,22 +1419,21 @@ function Sets({
               alignItems: "center",
               justifyContent: "center",
               borderRadius: 999,
-              borderWidth: filled ? 0 : 2,
-              borderColor: colors.line,
-              backgroundColor: filled
-                ? short
-                  ? colors.bend
-                  : colors.rise
-                : "transparent",
+              borderWidth: filled ? 0 : role === "partner" ? 2 : 3,
+              borderColor: colors.text,
+              backgroundColor: filled ? (short ? colors.raised : colors.cloud) : "transparent",
               opacity: pressed ? 0.7 : 1,
             })}
           >
             <Text
               style={{
-                color: filled ? colors.ink : colors.faint,
-                fontFamily: fonts.displayBold,
-                fontSize: compact ? 24 : 38,
-                fontVariant: ["tabular-nums"],
+                // Garamond's figures sit a touch low in a circle: lift them
+                // to its optical centre.
+                marginTop: -Math.round(fontSize * 0.08),
+                color: filled && !short ? colors.ink : colors.text,
+                fontFamily: fonts.semibold,
+                fontSize,
+                fontVariant: ["lining-nums", "tabular-nums"],
               }}
             >
               {filled ? reps : target}
@@ -1546,22 +1445,33 @@ function Sets({
   );
 }
 
-/** Weight, editable at any time: type into it or step it by one increment. */
+/**
+ * The weight, editable at any time: step it with − and +, or tap the number
+ * to type one.
+ */
 function WeightControl({
   weight,
   bodyweight,
+  holds,
   perHand,
+  size,
   onNudge,
   onSet,
 }: {
   weight: number;
   bodyweight?: boolean;
+  /** Progresses by holding: the number is seconds, from bodyweight up. */
+  holds?: boolean;
   /** Held in each hand: the number shown is one dumbbell, marked ×2. */
   perHand?: boolean;
+  /** How big the number is drawn — see `LAYOUT`. */
+  size: number;
   onNudge: (direction: 1 | -1) => void;
   onSet: (weight: number) => void;
 }) {
+  const colors = useColors();
   const [draft, setDraft] = useState<string | null>(null);
+  const unit = unitFor({ perHand, bodyweight, holds }, weight);
 
   const commit = () => {
     if (draft !== null) {
@@ -1572,131 +1482,152 @@ function WeightControl({
   };
 
   return (
-    <View
-      style={{
-        flexDirection: "row",
-        alignItems: "center",
-        justifyContent: "center",
-        gap: 14,
-      }}
-    >
-      <Step label="−" small onPress={() => onNudge(-1)} />
+    <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+      <Step label="−" onPress={() => onNudge(-1)} />
 
-      {/* The input needs an explicit width: on web a TextInput has an
-          intrinsic size that ignores flex and overflows its row. */}
-      <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-        {bodyweight && weight === 0 && draft === null ? (
-          // An unloaded bodyweight lift has no number worth showing — a bare
-          // "0 kg" reads as an error. Tap it to add weight (belt, dumbbell).
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Bodyweight, tap to add load"
-            onPress={() => setDraft("0")}
-            style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}
-          >
-            <Text
-              style={{
-                width: 166,
-                textAlign: "center",
-                color: colors.rise,
-                fontFamily: fonts.displayBold,
-                fontSize: 31,
-                letterSpacing: 0,
-              }}
-            >
+      {draft !== null ? (
+        // Typing: the number becomes a field with the number pad up. The
+        // input needs an explicit width: on web a TextInput has an intrinsic
+        // size that ignores flex and overflows its row.
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+          <TextInput
+            autoFocus
+            value={draft}
+            onChangeText={setDraft}
+            onBlur={commit}
+            onSubmitEditing={commit}
+            keyboardType="decimal-pad"
+            selectTextOnFocus
+            accessibilityLabel={holds ? "Hold in seconds" : "Weight in kilograms"}
+            style={{
+              width: Math.round(size * 2.1),
+              padding: 0,
+              color: colors.text,
+              fontFamily: fonts.semibold,
+              fontSize: size,
+              letterSpacing: -size * 0.02,
+              textAlign: "right",
+              fontVariant: ["lining-nums", "tabular-nums"],
+            }}
+          />
+          <Text style={{ color: colors.text, fontFamily: fonts.regular, fontSize: 22 }}>{unit}</Text>
+        </View>
+      ) : (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={
+            bodyweight && weight === 0
+              ? holds
+                ? "Bodyweight, no hold. Tap to type a hold in seconds"
+                : "Bodyweight. Tap to add load"
+              : `${weight} ${unit}. Tap to type ${holds ? "a hold" : "a weight"}`
+          }
+          onPress={() => setDraft(String(weight))}
+          hitSlop={8}
+          style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}
+        >
+          {bodyweight && weight === 0 ? (
+            // An unloaded bodyweight lift has no number worth showing — a
+            // bare "0 kg" reads as an error. Tap it to add weight (belt,
+            // dumbbell).
+            <Text style={{ color: colors.text, fontFamily: fonts.medium, fontSize: Math.round(size * 0.5) }}>
               Bodyweight
             </Text>
-          </Pressable>
-        ) : (
-          <>
-        <TextInput
-          value={draft ?? String(weight)}
-          onChangeText={setDraft}
-          onFocus={() => setDraft(String(weight))}
-          onBlur={commit}
-          onSubmitEditing={commit}
-          keyboardType="decimal-pad"
-          selectTextOnFocus
-          style={{
-            width: 104,
-            color: colors.rise,
-            fontFamily: fonts.displayBold,
-            fontSize: 48,
-            letterSpacing: 0,
-            textAlign: "right",
-            fontVariant: ["tabular-nums"],
-          }}
-        />
-        <View style={{ width: 56 }}>
-          <Text style={{ color: colors.muted, fontSize: 17, fontWeight: "700" }}>
-            kg
-          </Text>
-          {perHand ? (
-            <Text style={{ color: colors.faint, fontSize: 13, fontWeight: "700" }}>
-              ×2
-            </Text>
-          ) : null}
-          {/* A negative weight on an assisted movement is help from the
-              machine, not load — say so, or the number reads as an error. */}
-          {weight < 0 ? (
-            <Text style={{ color: colors.faint, fontSize: 12, fontWeight: "700" }}>
-              assist
-            </Text>
-          ) : null}
-          {bodyweight && weight > 0 ? (
-            <Text style={{ color: colors.faint, fontSize: 12, fontWeight: "700" }}>
-              added
-            </Text>
-          ) : null}
-        </View>
-          </>
-        )}
-      </View>
+          ) : (
+            <Weight weight={weight} unit={unit} size={size} />
+          )}
+        </Pressable>
+      )}
 
-      <Step label="+" small onPress={() => onNudge(1)} />
+      <Step label="+" onPress={() => onNudge(1)} />
     </View>
   );
 }
 
-function Step({
-  label,
-  small,
-  onPress,
-}: {
-  label: "−" | "+";
-  /** The weight's steppers: the weight sits above the circles, not beside them. */
-  small?: boolean;
-  onPress: () => void;
-}) {
+/** − or +: a soft circle in a tint of the field. */
+function Step({ label, onPress }: { label: "−" | "+"; onPress: () => void }) {
+  const colors = useColors();
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={label === "+" ? "More" : "Less"}
       onPress={onPress}
+      hitSlop={4}
       style={({ pressed }) => ({
-        width: small ? 44 : 52,
-        height: small ? 44 : 52,
+        width: 48,
+        height: 48,
         alignItems: "center",
         justifyContent: "center",
         borderRadius: 999,
-        backgroundColor: colors.raised,
+        backgroundColor: colors.surface,
         opacity: pressed ? 0.6 : 1,
       })}
     >
-      <Icon name={label === "+" ? "plus" : "minus"} size={small ? 18 : 22} color={colors.text} weight="semibold" />
+      <Icon name={label === "+" ? "plus" : "minus"} size={22} color={colors.text} />
     </Pressable>
   );
 }
 
-/** The line that explains where today's number came from. */
-function Why({ prescription }: { prescription: ReturnType<typeof currentPrescription> }) {
+/**
+ * The line under the circles, which follows the exercise through. Before the
+ * first set, where today's number came from — last time's weight and reps,
+ * the reps in small circles like the ones above, or why it changed. Between
+ * sets, how to own the next one: the position to hold. Once every set is in,
+ * what that means for next time: a line from Akilles, and the plain fact
+ * under it.
+ */
+function Why({
+  prescription,
+  result,
+  started,
+  compact,
+}: {
+  prescription: ReturnType<typeof currentPrescription>;
+  /** Every set is in: what it means for next time, shown in the hint's place. */
+  result: { fact: string; quip: string } | null;
+  /** A set is logged, so where the number came from has been read. */
+  started: boolean;
+  /** Sharing the screen with a superset: one line for the remark. */
+  compact?: boolean;
+}) {
+  const colors = useColors();
   if (!prescription) return null;
-  const { last, deloaded, skippedLast } = prescription;
+  const line = { textAlign: "center", color: colors.text, fontFamily: fonts.regular, fontSize: 19, lineHeight: 24 } as const;
 
-  if (prescription.exercise.unloaded) {
+  if (result) {
     return (
-      <Text style={{ height: FIXED.why, color: colors.faint, fontSize: 13, lineHeight: 19, textAlign: "center" }}>
+      <View accessibilityLiveRegion="polite" style={{ alignItems: "center", gap: 4 }}>
+        <Text
+          numberOfLines={compact ? 1 : 2}
+          adjustsFontSizeToFit={compact}
+          minimumFontScale={0.75}
+          style={{ textAlign: "center", color: colors.text, fontFamily: fonts.italic, fontSize: 24, lineHeight: 28 }}
+        >
+          {result.quip}
+        </Text>
+        <Text numberOfLines={1} style={line}>
+          {result.fact}
+        </Text>
+      </View>
+    );
+  }
+  const { last, deloaded, skippedLast, exercise } = prescription;
+
+  if (exercise.unloaded) {
+    return (
+      <Text numberOfLines={3} style={line}>
         Maximum effort every rep. Rest as long as you need between sets.
+      </Text>
+    );
+  }
+
+  if (started) {
+    // Every cue opens on a verb, so it carries on the sentence: "Own it: pause…".
+    const cue = ownCue(exercise.id, exercise.holds ? prescription.weight : 0);
+    return (
+      <Text numberOfLines={compact ? 2 : 3} style={line}>
+        <Text style={{ fontFamily: fonts.italic }}>Own it: </Text>
+        {cue.charAt(0).toLowerCase() + cue.slice(1)}
       </Text>
     );
   }
@@ -1704,26 +1635,76 @@ function Why({ prescription }: { prescription: ReturnType<typeof currentPrescrip
   const text = prescription.decay
     ? decayLabel(prescription.decay)
     : skippedLast
-    ? "Skipped last time. Same weight and reps as before."
-    : deloaded
-      ? "10% lighter after two sessions short of target. Build it up again."
-      : last
-        ? `Last time: ${weightLabel(prescription.exercise, last.weight)} · ${last.reps.join(" ")}`
-        : "First time on this one. Pick a weight you could do two more reps with.";
+      ? "Skipped last time. Same weight and reps as before."
+      : deloaded
+        ? exercise.holds || exercise.timed
+          ? "Easier after two sessions short of target. Build it up again."
+          : "10% lighter after two sessions short of target. Build it up again."
+        : prescription.reload === "start"
+          ? `Reload: same ${exercise.holds ? "hold" : "weight"}, back to ${prescription.reps} reps. Own it before the next step.`
+          : last
+            ? null
+            : exercise.bodyweight && !exercise.assistable
+              ? "First time on this one. Slow, controlled reps, with two to spare."
+              : "First time on this one. Pick a weight you control, with two reps to spare.";
 
+  if (text !== null || !last) {
+    return (
+      <Text numberOfLines={compact ? 2 : 3} style={line}>
+        {text}
+      </Text>
+    );
+  }
+
+  const weight = weightLabel(exercise, last.weight);
+  // Five or more sets would crowd the line, so their circles come down a size.
+  const mini = last.reps.length > 4 ? 26 : 30;
+  // Drawn exactly as the big circles were: solid at the target, a tint where
+  // a set fell short of it.
   return (
-    <Text
-      numberOfLines={3}
-      style={{ height: FIXED.why, color: colors.faint, fontSize: 13, lineHeight: 19, textAlign: "center" }}
+    <View
+      accessible
+      accessibilityLabel={`Last time: ${weight}, ${last.reps.join(", ")} reps`}
+      style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10, height: 32 }}
     >
-      {text}
-    </Text>
+      <Text style={{ color: colors.text, fontFamily: fonts.italic, fontSize: 19 }}>Last time</Text>
+      <Text style={{ color: colors.text, fontFamily: fonts.medium, fontSize: 19 }}>{weight}</Text>
+      <View style={{ flexDirection: "row", gap: 6, marginLeft: 4 }}>
+        {last.reps.map((r, i) => (
+          <View
+            key={i}
+            style={{
+              width: mini,
+              height: mini,
+              alignItems: "center",
+              justifyContent: "center",
+              borderRadius: 999,
+              backgroundColor: r < last.target ? colors.raised : colors.cloud,
+            }}
+          >
+            <Text
+              style={{
+                marginTop: -2,
+                color: r < last.target ? colors.text : colors.ink,
+                fontFamily: fonts.semibold,
+                fontSize: Math.round(mini * 0.6),
+                fontVariant: ["lining-nums", "tabular-nums"],
+              }}
+            >
+              {r}
+            </Text>
+          </View>
+        ))}
+      </View>
+    </View>
   );
 }
 
 /** The folded-in partner: its own weight, target and tappable circles. */
 function Partner({
+  id,
   name,
+  cue,
   weight,
   sets,
   target,
@@ -1733,7 +1714,9 @@ function Partner({
   onReset,
   onRemove,
 }: {
+  id: string;
   name: string;
+  cue?: string;
   weight: string;
   sets: number;
   target: number;
@@ -1744,67 +1727,63 @@ function Partner({
   /** Unpair it: goes back to its own place in the workout, keeping its sets. */
   onRemove: () => void;
 }) {
+  const colors = useColors();
+  // Kept short — two rows over its circles — so a paired screen still fits
+  // above the bar without scrolling.
   return (
     <View
       style={{
-        gap: 14,
-        borderRadius: radii.card,
+        gap: 8,
+        marginTop: 12,
+        borderRadius: 20,
         borderCurve: "continuous",
         backgroundColor: colors.surface,
-        padding: 18,
+        paddingHorizontal: 16,
+        paddingTop: 10,
+        paddingBottom: 14,
       }}
     >
-      <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 10 }}>
-        <View style={{ flex: 1, gap: 2 }}>
-          <Text
-            style={{
-              color: colors.rise,
-              fontSize: 11,
-              fontWeight: "800",
-              letterSpacing: 1.2,
-              textTransform: "uppercase",
-            }}
-          >
-            Superset with
-          </Text>
-          <Text style={{ color: colors.text, fontSize: 20, fontWeight: "700" }}>
-            {name}
-          </Text>
-          <Text
-            style={{
-              color: colors.rise,
-              fontFamily: fonts.displayBold,
-              fontSize: 28,
-              fontVariant: ["tabular-nums"],
-            }}
-          >
-            {weight}
-          </Text>
-          <Text style={{ color: colors.muted, fontSize: 13, fontWeight: "600" }}>
-            {sets} sets of {target}
-            {timed ? " seconds" : ""}
-          </Text>
-        </View>
-
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+        <Text style={{ flex: 1, color: colors.text, fontFamily: fonts.italic, fontSize: 18 }}>
+          Superset · {sets} sets of {target}
+          {timed ? " seconds" : ""}
+        </Text>
+        <GuideButton id={id} name={name} cue={cue} size={36} />
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={`Remove ${name} from this superset`}
           onPress={onRemove}
+          hitSlop={4}
           style={({ pressed }) => ({
-            width: 44,
-            height: 44,
-            marginTop: -8,
+            width: 36,
+            height: 36,
             marginRight: -8,
             alignItems: "center",
             justifyContent: "center",
             opacity: pressed ? 0.5 : 1,
           })}
         >
-          <Icon name="close" size={16} color={colors.muted} />
+          <Icon name="close" size={16} color={colors.text} />
         </Pressable>
       </View>
 
-      <Sets logged={logged} target={target} onTap={onTap} onReset={onReset} compact />
+      <View style={{ flexDirection: "row", alignItems: "baseline", gap: 12 }}>
+        <Text numberOfLines={1} style={{ flex: 1, color: colors.text, fontFamily: fonts.medium, fontSize: 21 }}>
+          {name}
+        </Text>
+        <Text
+          style={{
+            color: colors.text,
+            fontFamily: fonts.semibold,
+            fontSize: 24,
+            fontVariant: ["lining-nums", "tabular-nums"],
+          }}
+        >
+          {weight}
+        </Text>
+      </View>
+
+      <Sets logged={logged} target={target} onTap={onTap} onReset={onReset} role="partner" />
     </View>
   );
 }
@@ -1826,40 +1805,53 @@ function SupersetPicker({
       }}
     >
       {options.map((o) => (
-        <Pressable
-          key={o.id}
-          onPress={() => onPick(o.id)}
-          style={({ pressed }) => ({
-            justifyContent: "center",
-            minHeight: 52,
-            borderRadius: 14,
-            paddingHorizontal: 14,
-            opacity: pressed ? 0.55 : 1,
-          })}
-        >
-          <Text style={{ color: colors.text, fontSize: 16, fontWeight: "600" }}>
-            {o.name}
-          </Text>
-        </Pressable>
+        <View key={o.id} style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={`Superset with ${o.name}`}
+            onPress={() => onPick(o.id)}
+            style={({ pressed }) => ({
+              flex: 1,
+              justifyContent: "center",
+              minHeight: 52,
+              borderRadius: 14,
+              paddingHorizontal: 14,
+              opacity: pressed ? 0.55 : 1,
+            })}
+          >
+            <Text style={{ color: colors.text, fontSize: 16, fontWeight: "600" }}>
+              {o.name}
+            </Text>
+          </Pressable>
+          <GuideButton id={o.id} name={o.name} cue={byId(o.id)?.cue} size={36} />
+        </View>
       ))}
     </View>
   );
 }
 
+/**
+ * The way on: a full-width slab under the thumb. Waiting, it is a soft tint
+ * with its label held back; ready, it turns solid — white or navy on a
+ * field, blue on white — with an arrow.
+ */
 function Action({
   label,
-  icon,
   onPress,
   fill,
+  arrow,
   disabled,
 }: {
   label: string;
-  icon?: IconName;
   onPress: () => void;
-  /** The affirmative action: the cloud-white pill. */
+  /** The affirmative action: solid once it can be pressed. */
   fill?: boolean;
+  /** Points on to what comes next. */
+  arrow?: boolean;
   disabled?: boolean;
 }) {
+  const colors = useColors();
+  const on = !!fill && !disabled;
   return (
     <Pressable
       accessibilityRole="button"
@@ -1872,23 +1864,27 @@ function Action({
         alignItems: "center",
         justifyContent: "center",
         flexDirection: "row",
-        gap: 8,
-        borderRadius: radii.button,
+        gap: 10,
+        paddingHorizontal: 18,
+        borderRadius: radii.action,
         borderCurve: "continuous",
-        backgroundColor: fill ? colors.cloud : colors.raised,
-        opacity: disabled ? 0.3 : pressed ? 0.75 : 1,
+        backgroundColor: on ? colors.cloud : colors.surface,
+        opacity: pressed ? 0.8 : 1,
       })}
     >
-      {icon ? <Icon name={icon} size={20} color={fill ? colors.ink : colors.text} /> : null}
       <Text
+        numberOfLines={1}
         style={{
-          color: fill ? colors.ink : colors.text,
-          fontSize: 15,
-          fontWeight: "800",
+          flexShrink: 1,
+          color: on ? colors.ink : colors.text,
+          opacity: disabled ? 0.6 : 1,
+          fontFamily: on ? fonts.medium : fonts.regular,
+          fontSize: 21,
         }}
       >
         {label}
       </Text>
+      {arrow && on ? <Icon name="forward" size={20} color={colors.ink} weight="semibold" /> : null}
     </Pressable>
   );
 }
@@ -1916,6 +1912,7 @@ function Finished({ hasSession }: { hasSession: boolean }) {
   const facts = [
     scored > 0 ? `${t.hit} of ${scored} ${scored === 1 ? "lift" : "lifts"} on target.` : null,
     t.drop > 0 ? `${t.drop} going 10% lighter.` : null,
+    t.reload > 0 ? `${t.reload} ${t.reload === 1 ? "lift reloads" : "lifts reload"} next time.` : null,
     nextUp ? `Next up: ${nextUp.name || "Untitled"}.` : null,
   ].filter(Boolean);
 
@@ -1933,20 +1930,11 @@ function Finished({ hasSession }: { hasSession: boolean }) {
         paddingTop: insets.top + 90,
         paddingHorizontal: 22,
         // The floating bar sits over the foot of the screen; clear it.
-        paddingBottom: barSpace + 20,
+        paddingBottom: barSpace + 14,
       }}
     >
       <Column style={{ gap: 12 }}>
-        <Text
-          style={{
-            color: colors.text,
-            fontFamily: fonts.display,
-            textTransform: "uppercase",
-            fontSize: 55,
-            lineHeight: 55,
-            letterSpacing: 0.3,
-          }}
-        >
+        <Text style={{ color: colors.text, fontFamily: fonts.medium, fontSize: 60, lineHeight: 66 }}>
           Done.
         </Text>
         {hasSession ? (
@@ -1954,14 +1942,14 @@ function Finished({ hasSession }: { hasSession: boolean }) {
             <Text
               style={{
                 color: mood === "perfect" ? colors.rise : colors.text,
-                fontFamily: fonts.voice,
-                fontSize: 27,
-                lineHeight: 31,
+                fontFamily: fonts.italic,
+                fontSize: 28,
+                lineHeight: 34,
               }}
             >
               {quip}
             </Text>
-            <Text style={{ color: colors.muted, fontSize: 16, lineHeight: 24 }}>
+            <Text style={{ color: colors.muted, fontFamily: fonts.regular, fontSize: 19, lineHeight: 26 }}>
               {facts.join(" ")}
             </Text>
           </>

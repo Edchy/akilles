@@ -1,10 +1,13 @@
 import { useEffect, useState } from "react";
-import { AppState, Text } from "react-native";
+import { AppState, View } from "react-native";
+import { Text } from "@/components/text";
 
-import { colors } from "@/constants/theme";
+import { useColors } from "@/components/field";
+import { Icon } from "@/components/icon";
 
 /** Elapsed time since the last logged set, including time with the phone locked. */
 export function RestTimer({ startedAt }: { startedAt?: number }) {
+  const colors = useColors();
   const [now, setNow] = useState(Date.now);
 
   useEffect(() => {
@@ -36,19 +39,21 @@ export function RestTimer({ startedAt }: { startedAt?: number }) {
   const seconds = elapsed % 60;
 
   return (
+    <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+    <Icon name="timer" size={17} color={colors.text} />
     <Text
       accessibilityLabel={startedAt === undefined
         ? "Rest timer starts after your first set"
         : `Time since last set: ${minutes} minutes, ${seconds} seconds`}
       style={{
-        color: colors.muted,
+        color: colors.text,
         fontSize: 17,
-        fontWeight: "700",
-        fontVariant: ["tabular-nums"],
+        fontVariant: ["lining-nums", "tabular-nums"],
         textAlign: "right",
       }}
     >
       Rest {startedAt === undefined ? "—" : `${minutes}:${String(seconds).padStart(2, "0")}`}
     </Text>
+    </View>
   );
 }

@@ -1,14 +1,49 @@
 import { GlassView, isLiquidGlassAvailable } from "expo-glass-effect";
-import type { PropsWithChildren, ReactNode } from "react";
-import { Pressable, Text, View, type ViewStyle } from "react-native";
+import { usePathname } from "expo-router";
+import { createContext, useContext, type PropsWithChildren, type ReactNode } from "react";
+import { Pressable, View, type ViewStyle } from "react-native";
+import { Text } from "@/components/text";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { Icon, type IconName } from "@/components/icon";
 import { COLUMN } from "@/components/screen";
-import { BAR, colors, fonts, radii } from "@/constants/theme";
+import { BAR, colors, FAMILY, fieldColors, fonts, radii } from "@/constants/theme";
+import type { Family } from "@/data/families";
+import { isComplete, itemFamily, useSession } from "@/store/session";
 
 /** Checked once: the phone either draws Liquid Glass or it doesn't. */
 const GLASS = isLiquidGlassAvailable();
+
+/**
+ * What the bar is floating over: a family's field while you lift, white
+ * everywhere else. The bar is mounted once, above every screen, so it works
+ * this out for itself rather than being told.
+ */
+function useGround(): Family | null {
+  const { state } = useSession();
+  const pathname = usePathname();
+  const active = state.active;
+  if (pathname !== "/workout" || !active || isComplete(state)) return null;
+  const item = active.items[active.cursor];
+  return item ? itemFamily(item) : null;
+}
+
+/**
+ * The bar's words and its pressed fill, matched to what is under the glass:
+ * white on the dark fields, navy on the light ones and on white.
+ */
+type Ink = { ink: string; quiet: string; pressed: string };
+const WHITE_INK: Ink = { ink: colors.text, quiet: colors.muted, pressed: colors.surface };
+const inkFor = (ground: Family | null): Ink => {
+  if (!ground) return WHITE_INK;
+  const on = FAMILY[ground].dark ? colors.white : colors.text;
+  return {
+    ink: on,
+    quiet: on,
+    pressed: FAMILY[ground].dark ? "rgba(255, 255, 255, 0.18)" : "rgba(19, 50, 91, 0.10)",
+  };
+};
+const InkContext = createContext<Ink>(WHITE_INK);
 
 /** How far the capsule floats above the bottom edge of the screen. */
 function useBarBottom() {
@@ -27,13 +62,19 @@ export function useBarSpace() {
 }
 
 /**
- * The bar chrome: a capsule of Liquid Glass floating over the screen. Mounted
- * once for the life of the app so it never animates with the screens — only
- * its buttons change as you navigate. Where the phone can't draw glass (older
- * iOS, the web preview) it is a solid capsule of the same shape.
+ * The bar chrome: a capsule of Liquid Glass floating over the screen, so it
+ * takes on whatever it sits over — white on Today, the family's colour while
+ * you lift — with its words in that ground's ink. Mounted once for the life
+ * of the app so it never animates with the screens; only its buttons change
+ * as you navigate. Where the phone can't draw glass (older iOS, the web
+ * preview) it is a white capsule on a soft shadow over white, and a tint of
+ * the field over a field — never a white slab on colour.
  */
 export function BottomBar({ children }: PropsWithChildren) {
   const bottom = useBarBottom();
+  const ground = useGround();
+  const ink = inkFor(ground);
+  const dark = !!ground && FAMILY[ground].dark;
 
   const capsule: ViewStyle = {
     width: "100%",
@@ -55,30 +96,46 @@ export function BottomBar({ children }: PropsWithChildren) {
         alignItems: "center",
       }}
     >
-      {GLASS ? (
-        <GlassView glassEffectStyle="regular" colorScheme="light" style={capsule}>
-          {children}
-        </GlassView>
-      ) : (
-        <View
-          style={[
-            capsule,
-            { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.line },
-          ]}
-        >
-          {children}
-        </View>
-      )}
+      <InkContext.Provider value={ink}>
+        {GLASS ? (
+          <GlassView
+            glassEffectStyle="regular"
+            colorScheme={dark ? "dark" : "light"}
+            // Tinted with the field itself, so over orange it is orange glass
+            // rather than a frosted white or a smoked navy.
+            tintColor={ground ? `${FAMILY[ground].field}B3` : undefined}
+            isInteractive
+            style={capsule}
+          >
+            {children}
+          </GlassView>
+        ) : ground ? (
+          <View style={[capsule, { backgroundColor: fieldColors(ground).raised }]}>{children}</View>
+        ) : (
+          <View
+            style={[
+              capsule,
+              {
+                backgroundColor: colors.white,
+                borderWidth: 1,
+                borderColor: "rgba(19, 50, 91, 0.08)",
+                boxShadow: "0 12px 28px rgba(8, 28, 60, 0.16), 0 2px 6px rgba(8, 28, 60, 0.06)",
+              },
+            ]}
+          >
+            {children}
+          </View>
+        )}
+      </InkContext.Provider>
     </View>
   );
 }
 
-/** The bar's labels: the display face, in capitals, like the names above. */
+/** The bar's labels: plain Garamond, in sentence case like everything else. */
 export const barLabel = {
-  fontFamily: fonts.voice,
+  fontFamily: fonts.regular,
   fontSize: BAR.label,
-  letterSpacing: 1.2,
-  textTransform: "uppercase",
+  lineHeight: BAR.label + 3,
 } as const;
 
 /**
@@ -114,16 +171,14 @@ export function Slot({
       }}
     >
       {children}
-      <Icon name={icon} size={BAR.glyph} color={tint} weight="semibold" />
+      <Icon name={icon} size={BAR.glyph} color={tint} weight="regular" />
       <Text style={[barLabel, { color: tint }]}>{label}</Text>
     </View>
   );
 }
 
-/** Pressed feedback for a slot: a wash of the red. */
-export const PRESSED = colors.riseWash;
 
-/** One of the three tabs. The current one sits in a lozenge of rising blue. */
+/** One of the three tabs. The current one sits in a soft grey pill. */
 export function TabButton({
   icon,
   label,
@@ -135,6 +190,7 @@ export function TabButton({
   onPress: () => void;
   active: boolean;
 }) {
+  const { ink, quiet, pressed: fill } = useContext(InkContext);
   return (
     <Pressable
       accessibilityRole="tab"
@@ -147,8 +203,8 @@ export function TabButton({
         <Slot
           icon={icon}
           label={label}
-          tint={active ? colors.rise : colors.muted}
-          fill={active ? colors.riseWash : pressed ? PRESSED : undefined}
+          tint={active ? ink : quiet}
+          fill={active || pressed ? fill : undefined}
         />
       )}
     </Pressable>
@@ -167,6 +223,7 @@ export function ActionButton({
   onPress: () => void;
   disabled?: boolean;
 }) {
+  const { ink, pressed: fill } = useContext(InkContext);
   return (
     <Pressable
       accessibilityRole="button"
@@ -177,7 +234,7 @@ export function ActionButton({
       style={{ flex: 1, opacity: disabled ? 0.3 : 1 }}
     >
       {({ pressed }) => (
-        <Slot icon={icon} label={label} tint={colors.text} fill={pressed ? PRESSED : undefined} />
+        <Slot icon={icon} label={label} tint={ink} fill={pressed ? fill : undefined} />
       )}
     </Pressable>
   );

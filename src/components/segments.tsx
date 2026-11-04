@@ -1,10 +1,12 @@
-import { Pressable, Text, View } from "react-native";
+import { Pressable, View } from "react-native";
+import { Text } from "@/components/text";
 
 import { colors } from "@/constants/theme";
 
 /**
  * Two or three views of one tab, as a pill switch — Plan's Workouts and
- * Exercises, History's Sessions and Lifts.
+ * Exercises, History's Sessions and Lifts. Quiet on purpose: the chosen one
+ * is a white pill lifted off the grey, not a colour — colour means family.
  */
 export function Segments<T extends string>({
   options,
@@ -37,17 +39,18 @@ export function Segments<T extends string>({
               flex: 1,
               alignItems: "center",
               justifyContent: "center",
-              minHeight: 44,
+              minHeight: 42,
               borderRadius: 999,
-              backgroundColor: active ? colors.cloud : "transparent",
-              opacity: pressed ? 0.8 : 1,
+              backgroundColor: active ? colors.bg : "transparent",
+              boxShadow: active ? "0 1px 3px rgba(19, 50, 91, 0.12)" : undefined,
+              opacity: pressed ? 0.7 : 1,
             })}
           >
             <Text
               style={{
-                color: active ? colors.ink : colors.muted,
-                fontSize: 14,
-                fontWeight: "800",
+                color: active ? colors.text : colors.muted,
+                fontSize: 15,
+                fontWeight: active ? "600" : "400",
               }}
             >
               {o.label}

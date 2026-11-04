@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
-import { Text, View } from "react-native";
+import { View } from "react-native";
+import { Text } from "@/components/text";
 
 import { colors, fonts, radii } from "@/constants/theme";
 import {
@@ -197,13 +198,9 @@ function Line({
 const display = {
   color: colors.text,
   fontFamily: fonts.display,
-  textTransform: "uppercase",
-  letterSpacing: 0.3,
 } as const;
 
 const caps = {
-  fontSize: 11,
-  fontWeight: "800",
-  letterSpacing: 1,
-  textTransform: "uppercase",
+  fontSize: 15,
+  fontStyle: "italic",
 } as const;

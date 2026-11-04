@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Pressable, ScrollView, Text, View } from "react-native";
+import { Pressable, ScrollView, View } from "react-native";
+import { Text } from "@/components/text";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { Backup } from "@/components/backup";
@@ -12,8 +13,8 @@ import { Sheet } from "@/components/sheet";
 import { colors, fonts, radii } from "@/constants/theme";
 import { cardioById, courseLabel, distanceLabel, timeLabel } from "@/data/conditioning";
 import { byId, GROUP_LABEL, GROUP_ORDER, groupOf, type Exercise } from "@/data/exercises";
-import { ladderFor, type Scheme } from "@/data/split";
-import type { ExerciseState } from "@/lib/progression";
+import type { Scheme } from "@/data/split";
+import { ladderOf, type ExerciseState } from "@/lib/progression";
 import { weightLabel } from "@/lib/warmup";
 import {
   useSession,
@@ -56,9 +57,7 @@ export default function HistoryScreen() {
         style={{
           color: colors.text,
           fontFamily: fonts.display,
-          textTransform: "uppercase",
           fontSize: 48,
-          letterSpacing: 0.3,
         }}
       >
         Progress
@@ -270,9 +269,7 @@ function SessionCard({
             flex: 1,
             color: colors.text,
             fontFamily: fonts.display,
-            textTransform: "uppercase",
             fontSize: 28,
-            letterSpacing: 0.3,
           }}
         >
           {session.name}
@@ -530,7 +527,7 @@ function LiftRowView({
   onToggle: () => void;
 }) {
   const { st, exercise, scheme } = row;
-  const ladder = ladderFor(scheme);
+  const ladder = ladderOf(exercise, scheme);
   const target = ladder[Math.min(st.rung, ladder.length - 1)];
 
   // This lift's past, newest first, from the log — including sessions on a
@@ -584,7 +581,7 @@ function LiftRowView({
       </View>
       <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
         <Text style={[caps, { color: colors.faint }]}>{scheme}</Text>
-        <Text style={{ color: colors.muted, fontSize: 13 }}>next {target} reps</Text>
+        <Text style={{ color: colors.muted, fontSize: 13 }}>next {target} {exercise.timed ? "s" : "reps"}</Text>
         <Text
           style={{
             marginLeft: "auto",
@@ -692,10 +689,8 @@ function CardioRow({
 // ---- bits ----
 
 const caps = {
-  fontSize: 11,
-  fontWeight: "800",
-  letterSpacing: 1,
-  textTransform: "uppercase",
+  fontSize: 15,
+  fontStyle: "italic",
 } as const;
 
 function Empty({ children }: { children: string }) {

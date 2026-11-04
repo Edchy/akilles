@@ -1,8 +1,13 @@
 import {
-  BarlowCondensed_700Bold,
-  BarlowCondensed_800ExtraBold,
+  EBGaramond_400Regular,
+  EBGaramond_400Regular_Italic,
+  EBGaramond_500Medium,
+  EBGaramond_500Medium_Italic,
+  EBGaramond_600SemiBold,
+  EBGaramond_600SemiBold_Italic,
+  EBGaramond_700Bold,
   useFonts,
-} from "@expo-google-fonts/barlow-condensed";
+} from "@expo-google-fonts/eb-garamond";
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { View } from "react-native";
@@ -37,12 +42,17 @@ function Shell() {
 
 export default function RootLayout() {
   const { state, setState, ready } = useSaved();
-  // The display face ships inside the bundle, so this is as quick as the read
-  // below. A font that fails to load falls back to the system face rather
-  // than holding the app on a blank screen.
+  // The face ships inside the bundle, so this is as quick as the read below.
+  // A font that fails to load falls back to the system face rather than
+  // holding the app on a blank screen.
   const [fontsLoaded, fontError] = useFonts({
-    BarlowCondensed_700Bold,
-    BarlowCondensed_800ExtraBold,
+    EBGaramond_400Regular,
+    EBGaramond_400Regular_Italic,
+    EBGaramond_500Medium,
+    EBGaramond_500Medium_Italic,
+    EBGaramond_600SemiBold,
+    EBGaramond_600SemiBold_Italic,
+    EBGaramond_700Bold,
   });
 
   // Nothing renders until the saved training is read back, so no screen can

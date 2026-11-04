@@ -1,19 +1,19 @@
 import { useMemo, useState } from "react";
-import { Pressable, Text, TextInput, View } from "react-native";
+import { Pressable, View } from "react-native";
+import { Text, TextInput } from "@/components/text";
 
 import { Icon } from "@/components/icon";
+import { RoutineEditor } from "@/components/routine";
 import { BigButton, OpenRow, SectionLabel, Sheet, TextButton } from "@/components/sheet";
 import { WeightField, parseWeight } from "@/components/weight-field";
 import { colors, radii } from "@/constants/theme";
 import {
   CARDIO_MINUTES,
-  COURSE_STEP,
   METRICS,
   cardioById,
   cardioPool,
   courseLabel,
   mobilityPool,
-  routineSeconds,
 } from "@/data/conditioning";
 import {
   CATEGORY_LABEL,
@@ -25,30 +25,38 @@ import {
   type Exercise,
   type Pattern,
 } from "@/data/exercises";
+import { newId } from "@/data/split";
 import {
   addCardio,
   addExercise,
-  addMobility,
   canRemove,
   canRemoveConditioning,
   catalogue,
-  courseFor,
+  createRoutine,
   editExercise,
+  editRoutine,
   hiddenConditioningList,
   hiddenExercises,
   isCustom,
   isCustomConditioning,
-  nudgeCourse,
   removeConditioning,
   removeExercise,
   restoreConditioning,
   restoreExercise,
+  routineMinutes,
   useSession,
+  workoutsUsing,
 } from "@/store/session";
 
-/** "2.5 kg steps", "bodyweight" — the one detail worth showing in a list. */
+/** "2.5 kg steps", "holds" — the one detail worth showing in a list. */
 const stepLabel = (ex: Exercise) =>
-  ex.unloaded ? "no weight" : `${ex.increment || 2.5} kg steps`;
+  ex.unloaded
+    ? "no weight"
+    : ex.holds
+      ? "longer holds"
+      : ex.timed
+        ? "seconds"
+        : `${ex.increment || 2.5} kg steps`;
 
 /**
  * Your exercises, grouped the way you train them: push, pull, legs, core —
@@ -360,7 +368,9 @@ function ExerciseEditor({ exercise, onRemoved }: { exercise: Exercise; onRemoved
 
       <WeightField exerciseId={exercise.id} />
 
-      {exercise.unloaded ? null : (
+      {/* A hold steps a second at a time and a timed hold not at all:
+          there is no weight step to choose. */}
+      {exercise.unloaded || exercise.holds || exercise.timed ? null : (
         <View style={{ gap: 12 }}>
           <SectionLabel>Weight step</SectionLabel>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
@@ -437,13 +447,21 @@ function ExerciseEditor({ exercise, onRemoved }: { exercise: Exercise; onRemoved
 }
 
 /** Kinds of equipment, each with the weight step it usually moves by. */
-const EQUIPMENT: { label: string; increment: number; perHand?: boolean; bodyweight?: boolean }[] =
+const EQUIPMENT: {
+  label: string;
+  increment: number;
+  perHand?: boolean;
+  bodyweight?: boolean;
+  holds?: boolean;
+}[] =
   [
     { label: "Barbell", increment: 2.5 },
-    { label: "Dumbbells", increment: 2, perHand: true },
+    { label: "Dumbbells", increment: 2.5, perHand: true },
     { label: "Kettlebell", increment: 4 },
     { label: "Machine", increment: 5 },
-    { label: "Bodyweight", increment: 2.5, bodyweight: true },
+    // Nothing to add to your own bodyweight in the gym, so it gets longer
+    // holds instead of kilograms — see `holds` in exercises.ts.
+    { label: "Bodyweight", increment: 1, bodyweight: true, holds: true },
   ];
 
 /** Name it, say what it is, and it joins this group. */
@@ -478,6 +496,7 @@ function CreateExercise({
       increment: gear.increment,
       perHand: gear.perHand,
       bodyweight: gear.bodyweight,
+      holds: gear.holds,
       ...(startWeight !== null ? { startWeight } : {}),
     });
     setName("");
@@ -517,8 +536,8 @@ function CreateExercise({
         keyboardType="decimal-pad"
         accessibilityLabel="Starting weight in kilograms"
         placeholder={
-          gear.bodyweight
-            ? "Added weight in kg, if any"
+          gear.holds
+            ? "Seconds to hold, if any"
             : `Starting weight in kg${gear.perHand ? ", per dumbbell" : ""}`
         }
         placeholderTextColor={colors.faint}
@@ -575,21 +594,18 @@ function CardioSheet({ visible, onClose }: { visible: boolean; onClose: () => vo
   return (
     <Sheet visible={visible} title="Cardio" closeLabel="Done" onClose={close}>
       <View style={{ gap: 12, paddingTop: 12 }}>
-        {machines.map((c) => {
-          const course = courseFor(state, c.id);
-          return (
-            <OpenRow
-              key={c.id}
-              title={c.name}
-              detail={
-                course !== undefined
-                  ? `${courseLabel(c, course)}, timed`
-                  : `${CARDIO_MINUTES} minutes, distance in ${c.metric.unit}`
-              }
-              onPress={() => setEditing(c.id)}
-            />
-          );
-        })}
+        {machines.map((c) => (
+          <OpenRow
+            key={c.id}
+            title={c.name}
+            detail={
+              c.distance !== undefined
+                ? `${courseLabel(c, c.distance)}, timed`
+                : `${CARDIO_MINUTES} minutes, distance in ${c.metric.unit}`
+            }
+            onPress={() => setEditing(c.id)}
+          />
+        ))}
         <AddLink label="Add machine" onPress={() => setAdding(true)} />
       </View>
 
@@ -625,31 +641,27 @@ function CardioSheet({ visible, onClose }: { visible: boolean; onClose: () => vo
   );
 }
 
-/** One machine: its set distance, if it runs one, and removing it. */
+/**
+ * One machine: what a block on it runs by default, and removing it. How far
+ * or how long it runs in a given workout is set in that workout.
+ */
 function MachineEditor({ id, onRemoved }: { id: string; onRemoved: () => void }) {
-  const { state, setState } = useSession();
   const machine = cardioById(id);
   if (!machine) return null;
-  const course = courseFor(state, id);
 
   return (
     <View style={{ gap: 36, paddingTop: 12 }}>
       <View style={{ gap: 6 }}>
         <Text style={{ color: colors.text, fontSize: 26, fontWeight: "700" }}>{machine.name}</Text>
         <Text style={{ color: colors.faint, fontSize: 15, lineHeight: 21 }}>
-          {course !== undefined
-            ? "A set distance, timed. Your time is the score."
-            : `${CARDIO_MINUTES} minutes every time. The distance you cover is the score.`}
+          {machine.distance !== undefined
+            ? `${courseLabel(machine, machine.distance)}, timed, unless a workout says otherwise. Your time is the score.`
+            : `${CARDIO_MINUTES} minutes, unless a workout says otherwise. The distance you cover is the score.`}
+        </Text>
+        <Text style={{ color: colors.faint, fontSize: 15, lineHeight: 21 }}>
+          To change how far or how long, open a workout under Workouts.
         </Text>
       </View>
-
-      {course !== undefined ? (
-        <CourseEditor
-          cardioId={id}
-          course={course}
-          onNudge={(d) => setState((s) => nudgeCourse(s, id, d))}
-        />
-      ) : null}
 
       <RemoveConditioning id={id} name={machine.name} onRemoved={onRemoved} />
     </View>
@@ -661,6 +673,7 @@ function MobilitySheet({ visible, onClose }: { visible: boolean; onClose: () => 
   const { state, setState } = useSession();
   const [editing, setEditing] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
+  const [dragging, setDragging] = useState(false);
   const routines = mobilityPool(state.hiddenConditioning);
   const routine = routines.find((m) => m.id === editing);
 
@@ -677,59 +690,46 @@ function MobilitySheet({ visible, onClose }: { visible: boolean; onClose: () => 
           <OpenRow
             key={m.id}
             title={m.name}
-            detail={`${plural(m.moves.length, "hold", "holds")} · about ${Math.round(
-              routineSeconds(m) / 60,
-            )} min`}
+            detail={`${plural(m.moves.length, "stretch", "stretches")} · about ${routineMinutes(m)} min`}
             onPress={() => setEditing(m.id)}
           />
         ))}
         <AddLink label="Add routine" onPress={() => setAdding(true)} />
       </View>
 
-      <Sheet visible={!!routine} title="Routine" closeLabel="Done" onClose={() => setEditing(null)}>
+      <Sheet
+        visible={!!routine}
+        title="Routine"
+        closeLabel="Done"
+        scrollEnabled={!dragging}
+        onClose={() => setEditing(null)}
+      >
         {routine ? (
           <View style={{ gap: 36, paddingTop: 12 }}>
-            <View style={{ gap: 6 }}>
-              <Text style={{ color: colors.text, fontSize: 26, fontWeight: "700" }}>
-                {routine.name}
+            <View style={{ gap: 8 }}>
+              <TextInput
+                value={routine.name}
+                onChangeText={(name) => setState((s) => editRoutine(s, routine.id, { name }))}
+                placeholder="Name"
+                placeholderTextColor={colors.faint}
+                returnKeyType="done"
+                style={{
+                  minHeight: 64,
+                  paddingHorizontal: 16,
+                  borderRadius: 16,
+                  backgroundColor: colors.surface,
+                  color: colors.text,
+                  fontSize: 26,
+                  fontWeight: "700",
+                }}
+              />
+              <Text style={{ color: colors.faint, fontSize: 14, lineHeight: 20 }}>
+                {usedBy(workoutsUsing(state, routine.id).map((w) => w.name || "Untitled"))}
               </Text>
-              <Text style={{ color: colors.faint, fontSize: 15 }}>{routine.subtitle}</Text>
             </View>
-            <View
-              style={{
-                borderRadius: radii.card,
-                borderCurve: "continuous",
-                backgroundColor: colors.surface,
-                paddingHorizontal: 18,
-              }}
-            >
-              {routine.moves.map((move, i) => (
-                <View
-                  key={move.id}
-                  style={{
-                    flexDirection: "row",
-                    alignItems: "center",
-                    gap: 10,
-                    minHeight: 56,
-                    borderBottomWidth: i === routine.moves.length - 1 ? 0 : 1,
-                    borderBottomColor: colors.line,
-                  }}
-                >
-                  <Text style={{ flex: 1, color: colors.text, fontSize: 16, fontWeight: "600" }}>
-                    {move.name}
-                  </Text>
-                  <Text
-                    style={{
-                      color: colors.muted,
-                      fontSize: 15,
-                      fontWeight: "700",
-                      fontVariant: ["tabular-nums"],
-                    }}
-                  >
-                    {move.seconds}s{move.perSide ? " ×2" : ""}
-                  </Text>
-                </View>
-              ))}
+            <View style={{ gap: 12 }}>
+              <SectionLabel>Stretches</SectionLabel>
+              <RoutineEditor routineId={routine.id} onDragChange={setDragging} />
             </View>
             <RemoveConditioning
               id={routine.id}
@@ -751,9 +751,11 @@ function MobilitySheet({ visible, onClose }: { visible: boolean; onClose: () => 
           }}
           create={
             <AddMobility
-              onAdd={(r) => {
+              onAdd={(name) => {
+                const id = newId("m");
                 setAdding(false);
-                setState((s) => addMobility(s, r));
+                setState((s) => createRoutine(s, id, name));
+                setEditing(id);
               }}
             />
           }
@@ -762,6 +764,14 @@ function MobilitySheet({ visible, onClose }: { visible: boolean; onClose: () => 
     </Sheet>
   );
 }
+
+/** Which workouts end on a routine — so you know what an edit will reach. */
+const usedBy = (names: string[]): string =>
+  names.length === 0
+    ? "No workout ends on this routine yet. Pick it in a workout under Workouts."
+    : names.length === 1
+      ? `${names[0]} ends on this routine. Changes apply there.`
+      : `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]} end on this routine. Changes apply to all of them.`;
 
 /** Two taps to remove a machine or routine; the last of its kind stays. */
 function RemoveConditioning({
@@ -807,79 +817,6 @@ function RemoveConditioning({
           : mine
             ? "Deleting it keeps its records."
             : "Removing puts it back in the library, records and all."}
-      </Text>
-    </View>
-  );
-}
-
-/**
- * The distance a timed machine runs, stepped rather than typed: every
- * distance keeps its own record, so only whole steps are offered.
- */
-function CourseEditor({
-  cardioId,
-  course,
-  onNudge,
-}: {
-  cardioId: string;
-  course: number;
-  onNudge: (direction: 1 | -1) => void;
-}) {
-  const machine = cardioById(cardioId)!;
-  const atMin = course <= COURSE_STEP[machine.metric.unit];
-
-  const step = (label: string, direction: 1 | -1, disabled = false) => (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={direction === 1 ? "Longer" : "Shorter"}
-      accessibilityState={{ disabled }}
-      disabled={disabled}
-      onPress={() => onNudge(direction)}
-      style={({ pressed }) => ({
-        width: 52,
-        height: 52,
-        alignItems: "center",
-        justifyContent: "center",
-        borderRadius: 999,
-        backgroundColor: colors.surface,
-        opacity: disabled ? 0.3 : pressed ? 0.6 : 1,
-      })}
-    >
-      <Icon name={label === "+" ? "plus" : "minus"} size={20} color={colors.text} weight="semibold" />
-    </Pressable>
-  );
-
-  return (
-    <View
-      style={{
-        gap: 10,
-        borderRadius: 14,
-        backgroundColor: colors.raised,
-        padding: 12,
-        marginBottom: 8,
-      }}
-    >
-      <Label>Distance</Label>
-      <View
-        style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}
-      >
-        {step("−", -1, atMin)}
-        <Text
-          style={{
-            color: colors.text,
-            fontSize: 28,
-            fontWeight: "800",
-            letterSpacing: -0.8,
-            fontVariant: ["tabular-nums"],
-          }}
-        >
-          {courseLabel(machine, course)}
-        </Text>
-        {step("+", 1)}
-      </View>
-      <Text style={{ color: colors.faint, fontSize: 12, lineHeight: 17 }}>
-        Your time over it is the score. Each distance keeps its own times — change
-        it back and your old ones are still there.
       </Text>
     </View>
   );
@@ -953,8 +890,8 @@ function AddCardio({
       </View>
 
       <Text style={{ color: colors.faint, fontSize: 12, lineHeight: 17 }}>
-        Every cardio block runs {CARDIO_MINUTES} minutes. The distance you cover
-        is the score, and it is tracked per machine.
+        A block on it runs {CARDIO_MINUTES} minutes and the distance you cover is
+        the score. Each workout can make it longer, or a set distance instead.
       </Text>
 
       <Submit label="Add" disabled={!name.trim()} onPress={submit} />
@@ -963,54 +900,15 @@ function AddCardio({
 }
 
 /**
- * A mobility routine is a name and a list of holds. Holds are added one at a
- * time so the routine can be as short or as long as you want.
+ * A new routine is just a name: it starts as a copy of the everyday stretch,
+ * so it works from the first tap, and opens to be changed from there.
  */
-function AddMobility({
-  onAdd,
-}: {
-  onAdd: (routine: {
-    id: string;
-    name: string;
-    subtitle: string;
-    moves: { id: string; name: string; seconds: number; perSide?: boolean }[];
-  }) => void;
-}) {
+function AddMobility({ onAdd }: { onAdd: (name: string) => void }) {
   const [name, setName] = useState("");
-  const [move, setMove] = useState("");
-  const [seconds, setSeconds] = useState(45);
-  const [perSide, setPerSide] = useState(false);
-  const [moves, setMoves] = useState<
-    { id: string; name: string; seconds: number; perSide?: boolean }[]
-  >([]);
-
-  const addMove = () => {
-    const trimmed = move.trim();
-    if (!trimmed) return;
-    setMoves((v) => [
-      ...v,
-      {
-        id: `${trimmed.toLowerCase().replace(/[^a-z0-9]+/g, "_")}_${v.length}`,
-        name: trimmed,
-        seconds,
-        perSide: perSide || undefined,
-      },
-    ]);
-    setMove("");
-    setPerSide(false);
-  };
-
   const submit = () => {
-    const trimmed = name.trim();
-    if (!trimmed || moves.length === 0) return;
-    onAdd({
-      id: `custom_${trimmed.toLowerCase().replace(/[^a-z0-9]+/g, "_")}`,
-      name: trimmed,
-      subtitle: "your routine",
-      moves,
-    });
+    if (!name.trim()) return;
+    onAdd(name.trim());
     setName("");
-    setMoves([]);
   };
 
   return (
@@ -1027,6 +925,7 @@ function AddMobility({
       <TextInput
         value={name}
         onChangeText={setName}
+        onSubmitEditing={submit}
         placeholder="Routine name"
         placeholderTextColor={colors.faint}
         style={{
@@ -1039,86 +938,11 @@ function AddMobility({
           fontWeight: "600",
         }}
       />
-
-      {/* The holds added so far. Tap one to take it back off the list. */}
-      {moves.length > 0 ? (
-        <View style={{ gap: 2 }}>
-          {moves.map((m, i) => (
-            <Pressable
-              key={m.id}
-              accessibilityRole="button"
-              accessibilityLabel={`Remove ${m.name} from this routine`}
-              onPress={() => setMoves((v) => v.filter((_, j) => j !== i))}
-              style={({ pressed }) => ({
-                flexDirection: "row",
-                alignItems: "center",
-                gap: 10,
-                minHeight: 40,
-                opacity: pressed ? 0.5 : 1,
-              })}
-            >
-              <Text
-                style={{ flex: 1, color: colors.text, fontSize: 14, fontWeight: "600" }}
-              >
-                {m.name}
-              </Text>
-              <Text
-                style={{
-                  color: colors.muted,
-                  fontSize: 13,
-                  fontWeight: "700",
-                  fontVariant: ["tabular-nums"],
-                }}
-              >
-                {m.seconds}s{m.perSide ? " ×2" : ""}
-              </Text>
-              <Icon name="minus" size={14} color={colors.faint} />
-            </Pressable>
-          ))}
-        </View>
-      ) : null}
-
-      <View style={{ gap: 8 }}>
-        <Label>Add a hold</Label>
-        <TextInput
-          value={move}
-          onChangeText={setMove}
-          onSubmitEditing={addMove}
-          placeholder="Pose or stretch"
-          placeholderTextColor={colors.faint}
-          style={{
-            minHeight: 44,
-            paddingHorizontal: 14,
-            borderRadius: 12,
-            backgroundColor: colors.raised,
-            color: colors.text,
-            fontSize: 15,
-            fontWeight: "600",
-          }}
-        />
-        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-          {[30, 45, 60, 90].map((sec) => (
-            <Chip
-              key={sec}
-              label={`${sec}s`}
-              on={seconds === sec}
-              onPress={() => setSeconds(sec)}
-            />
-          ))}
-          <Chip
-            label="Each side"
-            on={perSide}
-            onPress={() => setPerSide((v) => !v)}
-          />
-        </View>
-        <Submit label="Add hold" disabled={!move.trim()} onPress={addMove} subtle />
-      </View>
-
-      <Submit
-        label="Add routine"
-        disabled={!name.trim() || moves.length === 0}
-        onPress={submit}
-      />
+      <Text style={{ color: colors.faint, fontSize: 12, lineHeight: 17 }}>
+        It starts as a copy of the everyday stretch. Add, take out and reorder
+        stretches from there.
+      </Text>
+      <Submit label="Create" disabled={!name.trim()} onPress={submit} />
     </View>
   );
 }
@@ -1128,10 +952,8 @@ function Label({ children }: { children: string }) {
     <Text
       style={{
         color: colors.faint,
-        fontSize: 10,
-        fontWeight: "800",
-        letterSpacing: 0.9,
-        textTransform: "uppercase",
+        fontSize: 15,
+        fontStyle: "italic",
       }}
     >
       {children}

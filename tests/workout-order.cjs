@@ -82,8 +82,10 @@ test("leaving an empty session keeps the scheduled workout and queue", () => {
 
 test("repeated postpones and explicit round skips consume the pending order", () => {
   const postponed = store.postponeWorkout(fresh(ids[2]));
-  assert.deepEqual(order(store.postponeWorkout(postponed), 3), [ids[2], ids[3], ids[4]]);
-  assert.deepEqual(order(store.skipWorkout(postponed), 3), [ids[2], ids[4], ids[0]]);
+  // Putting off the one that came up walks on; both wait, in the order they were due.
+  assert.deepEqual(order(store.postponeWorkout(postponed), 5), [ids[4], ids[2], ids[3], ids[0], ids[1]]);
+  // Skipping the one that came up walks on too; the one put off still waits.
+  assert.deepEqual(order(store.skipWorkout(postponed), 3), [ids[4], ids[2], ids[0]]);
   assert.deepEqual(order(store.skipWorkout(finish(postponed)), 3), [ids[4], ids[0], ids[1]]);
 });
 
@@ -94,6 +96,33 @@ test("manual Do next replaces the temporary queue; deletion removes queued worko
   assert.deepEqual(order(chosen, 3), [ids[0], ids[1], ids[2]]);
   assert.deepEqual(order(store.removeWorkout(postponed, ids[2]), 4), [ids[3], ids[4], ids[0], ids[1]]);
   assert.equal(next(store.removeWorkout(postponed, ids[3])), ids[2]);
+});
+
+test("postponing twice never swaps back to the workout just put off", () => {
+  let state = fresh(ids[0]);
+  state = store.postponeWorkout(state);
+  assert.equal(next(state), ids[1]);
+  state = store.postponeWorkout(state);
+  assert.equal(next(state), ids[2]);
+  assert.deepEqual([...state.postponed], [ids[0], ids[1]]);
+  state = store.postponeWorkout(state);
+  assert.equal(next(state), ids[3]);
+  assert.deepEqual(order(state, 6), [ids[3], ids[0], ids[1], ids[2], ids[4], ids[0]]);
+});
+
+test("with everything else waiting there is nothing to put off for", () => {
+  const two = store.postponeWorkout(fresh(ids[0], store.initialState.workouts.slice(0, 2)));
+  assert.equal(next(two), ids[1]);
+  assert.equal(store.postponeWorkout(two), two);
+});
+
+test("finishing or skipping a waiting workout takes it off the waiting line", () => {
+  const twice = store.postponeWorkout(store.postponeWorkout(fresh(ids[0])));
+  const done = finish(finish(twice));
+  assert.equal(next(done), ids[1]);
+  assert.deepEqual([...done.postponed], [ids[1]]);
+  assert.equal(finish(done).postponed, undefined);
+  assert.equal(store.setNextWorkout(twice, ids[4]).postponed, undefined);
 });
 
 test("skip and postpone cannot change a workout in progress or a single-workout plan", () => {
@@ -127,6 +156,8 @@ test("Today opens both choices, cancels without changes, and Undo restores an ex
     if (name === "@/components/screen") return { Column: "Column", COLUMN: 460 };
     if (name === "@/components/sheet") return { Sheet: "Sheet", OpenRow: "OpenRow" };
     if (name === "@/components/icon") return { Icon: "Icon" };
+    if (name === "@/components/text") return { Text: "Text" };
+    if (name === "@/components/mark") return { Mark: "Mark" };
     return load(name);
   };
   const module = { exports: {} };
@@ -149,16 +180,19 @@ test("Today opens both choices, cancels without changes, and Undo restores an ex
   const undo = () => find(render(), (node) => node.props?.accessibilityLabel?.startsWith("Undo skipping"));
   find(render(), (node) => node.props?.label === "Skip").props.onPress();
   assert.equal(sheet().props.visible, true);
-  assert.ok(row("Do this next time").props.detail.includes("Push B"));
+  assert.equal(row("Do it next time").props.detail, "Push B today → Legs → Pull B");
+  assert.equal(row("Skip it").props.detail, "Push B today → Pull B → Push A");
   sheet().props.onClose();
   assert.equal(next(state), ids[2]);
-  row("Do this next time").props.onPress();
+  row("Do it next time").props.onPress();
   assert.equal(sheet().props.visible, false);
   assert.equal(next(state), ids[3]);
   const pending = state;
-  row("Skip this round").props.onPress();
-  assert.equal(next(state), ids[2]);
+  row("Skip it").props.onPress();
+  // Legs was put off, so skipping Push B walks on to Pull B rather than back to Legs.
+  assert.equal(next(state), ids[4]);
   undo().props.onPress();
   assert.equal(next(state), ids[3]);
   assert.deepEqual(state.workoutQueue, pending.workoutQueue);
+  assert.deepEqual(state.postponed, pending.postponed);
 });

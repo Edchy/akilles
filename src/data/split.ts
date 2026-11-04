@@ -1,3 +1,4 @@
+import type { CardioBlock, CardioEnd } from "@/data/conditioning";
 import type { Pattern } from "@/data/exercises";
 
 /**
@@ -154,6 +155,17 @@ export type Workout = {
   /** What the workout trains, in lower case. Keep it to a few words. */
   subtitle: string;
   exercises: Entry[];
+  /**
+   * The cardio that opens the session and the cardio that finishes it.
+   * Absent means the default machine at its default length; null means the
+   * workout has none there.
+   */
+  cardio?: Partial<Record<CardioEnd, CardioBlock | null>>;
+  /**
+   * The mobility routine it ends on. Absent means the everyday stretch —
+   * see `DEFAULT_MOBILITY`; null means none.
+   */
+  mobility?: string | null;
 };
 
 /** A workout as authored below — slot ids are filled in from the labels. */
@@ -196,7 +208,7 @@ const FULL_CYCLE: Authored[] = [
   {
     id: "legs",
     name: "Legs",
-    subtitle: "squat, hinge, split squat",
+    subtitle: "squat focus",
     exercises: [
       { slot: "Squat", pattern: "squat", options: ["back_squat"], scheme: DEFAULT_SCHEME },
       { slot: "Hinge", pattern: "hinge", options: ["rdl"], scheme: DEFAULT_SCHEME },

@@ -6,13 +6,18 @@
  *
  * The reps decide everything; nothing is asked:
  *
- *   every set on target        climb the rep ladder     8 → 10 → 12
+ *   every set on target        climb the rep ladder       6 → 8 → 10 → 12
  *   on target, top of ladder   weight += increment, back to the bottom rung
+ *     ...after two steps up    RELOAD instead: same weight, back two rungs
+ *                              (10 reps), climbed again before the next step
  *   short of target            repeat the exact same prescription
  *   short twice in a row       deload 10%, back to the bottom rung
  *
  * A set left empty is not a miss. Running out of time says nothing about the
  * weight, so an unfinished exercise repeats without counting against it.
+ *
+ * Reloads are the app's philosophy in one rule: own the weight before you add
+ * to it. Progress, not the calendar, calls them — see `RELOAD_AFTER`.
  */
 
 import { byId, type Exercise, type Pattern } from "@/data/exercises";
@@ -48,22 +53,21 @@ export type ExerciseState = {
    */
   lastTrainedAt?: number;
   /**
-   * When the routine back-off clock was last reckoned. Separate from
-   * `lastTrainedAt` so the monthly check lands every 30 days of *calendar*
-   * time rather than every 30 days of training.
+   * When a layoff was last settled — a cut taken or turned down — so the same
+   * gap is never charged twice. Separate from `lastTrainedAt`, since settling
+   * is not training. (Named for the monthly back-off it also used to time.)
    */
   lastBackOffAt?: number;
   /**
-   * Where the lift stood at that moment, as a single comparable number — see
-   * `progressScore`. The next check asks whether it has moved at all; a lift
-   * that is climbing is left alone, and only a stalled one is eased back.
+   * Steps up in weight since the last reload. Absent on records from before
+   * reloads, which reads as none, so no lift is sent back the day they ship.
    */
-  backOffScore?: number;
+  climbs?: number;
   /**
-   * The heaviest this lift has ever been. The routine back-off will not take
-   * it below a share of this, so repeated trims cannot grind it down.
+   * Partway through a reload: climbing the top of the ladder again at a
+   * weight already topped out. Finishing that climb earns the next step up.
    */
-  bestWeight?: number;
+  reloading?: boolean;
   /**
    * A time-based cut applied but not yet trained through. Kept so the screen
    * can explain today's number, and cleared the moment the exercise is
@@ -92,9 +96,14 @@ export type Prescription = {
   /** Set when the previous session triggered a deload. */
   deloaded?: boolean;
   /**
-   * A weight cut applied for time rather than performance — a layoff or the
-   * routine monthly back-off. Carries what happened so the screen can say so
-   * in words rather than the number just being mysteriously smaller.
+   * On a reload: "start" for its first session, back two rungs — the one
+   * that needs explaining — and "climb" for the rest of the way up.
+   */
+  reload?: "start" | "climb";
+  /**
+   * A weight cut applied for time rather than performance — a layoff.
+   * Carries what happened so the screen can say so in words rather than the
+   * number just being mysteriously smaller.
    */
   decay?: Decay;
   /** Set when this exercise was skipped last time it came up. */
@@ -102,23 +111,21 @@ export type Prescription = {
 };
 
 /**
- * Weight cuts that happen with time rather than performance.
+ * A weight cut that happens with time rather than performance: a LAYOFF.
  *
- * Two of them, and they are different things:
+ * You have not done this exercise for a while, so the weight you left it at
+ * is no longer the weight you can lift. The longer the gap, the bigger the
+ * cut — capped, because three months off does not put you back at zero.
  *
- *   LAYOFF     you have not done this exercise for a while, so the weight
- *              you left it at is no longer the weight you can lift. The
- *              longer the gap, the bigger the cut — capped, because three
- *              months off does not put you back at zero.
+ * It is the one rule here that looks at the calendar, and it is about time
+ * away, not pace. How fast a lift climbs is held back by reloads, which count
+ * progress instead — see `applyResult`. A routine monthly trim used to live
+ * here too; reloads replaced it, and `backoff` survives only on records saved
+ * before.
  *
- *   BACK-OFF   a routine 10% trim every 30 days, whether or not you have
- *              been training. Nothing is wrong; it is there to stop the
- *              ladder climbing faster than the tissue behind it, and you
- *              earn the weight back in a couple of sessions.
- *
- * Both are applied when a workout is BUILT, not when it is finished, so the
- * number you see on the screen is already the adjusted one. Neither ever
- * touches an exercise you have never trained.
+ * Offered on Today and applied only if you say yes, so the number you see on
+ * the lift screen is already the adjusted one. It never touches an exercise
+ * you have never trained.
  */
 export type DecayKind = "layoff" | "backoff";
 
@@ -151,42 +158,19 @@ const LAYOFF: { days: number; fraction: number }[] = [
   { days: 21, fraction: 0.05 },
 ];
 
-/** The routine trim: 10% once this many days have passed since the last one. */
-const BACKOFF_DAYS = 30;
-const BACKOFF_FRACTION = 0.1;
-
-/**
- * A routine back-off never takes a lift below this share of its best.
- *
- * Without a floor the trims stack: a lifter progressing slowly gets cut
- * faster than they climb and is dragged to the bar in a year. Backing off to
- * 80% of your best is a real deload — it is not a reason to start again.
- *
- * A LAYOFF is exempt. Three months away genuinely does cost you more than
- * 20%, and pretending otherwise would hand you a weight you cannot lift.
- */
-const BACKOFF_FLOOR = 0.8;
-
 /** Whole days between two moments, floored. Negative clocks read as zero. */
 export const daysBetween = (from: number, to: number): number =>
   Math.max(0, Math.floor((to - from) / DAY));
 
 /**
- * Work out what cut, if any, an exercise has earned by now.
- *
- * Returns the LARGER of the two rather than both: a layoff and a scheduled
- * back-off landing in the same session should not compound into a 25% drop.
+ * Work out whether an exercise has been away long enough to ease back.
  * `null` means nothing is owed.
  *
  * A record with no `lastTrainedAt` — written before time was tracked, or
  * never trained — is left alone. Guessing an age would silently cut weights
  * that were set only yesterday.
  */
-export const decayFor = (
-  state: ExerciseState,
-  scheme: Scheme,
-  now: number,
-): Decay | null => {
+export const decayFor = (state: ExerciseState, now: number): Decay | null => {
   if (typeof state.lastTrainedAt !== "number") return null;
   // A pure bodyweight lift with no assist machine has no number to move: a
   // press-up is a press-up. An ASSISTABLE one always has somewhere to go,
@@ -196,76 +180,17 @@ export const decayFor = (
   if (!ex || ex.unloaded) return null;
   if (state.weight === 0 && !ex.assistable) return null;
 
-  // Idle time runs from the last cut as well as the last session: a layoff
-  // already paid for stays paid for, otherwise every reopen of the app would
-  // charge it again.
+  // Idle time runs from the last settled layoff as well as the last session:
+  // a gap already paid for, or turned down, stays settled. Otherwise every
+  // reopen of the app would charge it again.
   const lastReckoned = Math.max(
     state.lastTrainedAt,
     state.lastBackOffAt ?? state.lastTrainedAt,
   );
   const idle = daysBetween(lastReckoned, now);
   const layoff = LAYOFF.find((t) => idle >= t.days);
-
-  // The back-off clock is deliberately NOT reset by training — it runs on
-  // calendar time, so a lift trained twice a week is still checked every 30
-  // days. It is seeded on the first session (see `applyResult`) and moved
-  // whenever a check happens.
-  //
-  // The check only BITES if the weight has not gone up since last time. A
-  // lift that is progressing has nothing to back off from.
-  const stalled =
-    typeof state.backOffScore !== "number" ||
-    progressScore(state, scheme) <= state.backOffScore;
-  // Already at or below the floor: the trim has done its job and repeating it
-  // would only grind the lift down.
-  const best = state.bestWeight ?? state.weight;
-  const atFloor = state.weight <= best * BACKOFF_FLOOR;
-  const dueBackOff =
-    typeof state.lastBackOffAt === "number" &&
-    daysBetween(state.lastBackOffAt, now) >= BACKOFF_DAYS &&
-    stalled &&
-    !atFloor;
-
-  if (layoff && (!dueBackOff || layoff.fraction >= BACKOFF_FRACTION)) {
-    return { kind: "layoff", fraction: layoff.fraction, days: idle };
-  }
-  if (dueBackOff) return { kind: "backoff", fraction: BACKOFF_FRACTION };
   return layoff ? { kind: "layoff", fraction: layoff.fraction, days: idle } : null;
 };
-
-/**
- * How far along a lift is, as one number that only ever goes up while you
- * are progressing.
- *
- * Weight alone is not enough: climbing the rep ladder from 5 to 6 to 8 reps
- * IS progress, and takes three sessions during which the weight does not
- * move at all. Judging a stall on weight alone would punish exactly the
- * lifter who is doing it right.
- *
- * Rungs are worth a fraction of an increment each, so finishing the ladder
- * and adding weight scores the same as the weight jump it earns.
- */
-export const progressScore = (state: ExerciseState, scheme: Scheme): number => {
-  const exercise = byId(state.exerciseId);
-  const step = exercise?.increment || 2.5;
-  const rungs = ladderFor(scheme).length;
-  return state.weight + (state.rung / rungs) * step;
-};
-
-/**
- * A routine check fell due but the lift had moved up, so nothing is cut.
- * The window still re-arms against today's weight — otherwise the baseline
- * goes stale and the next check compares against a months-old number.
- */
-export const rearmBackOff = (
-  state: ExerciseState,
-  scheme: Scheme,
-  now: number,
-): ExerciseState => ({
-  ...state,
-  lastBackOffAt: now,
-  backOffScore: progressScore(state, scheme),
-});
 
 /**
  * The cut, in words. One sentence, said plainly — the weight on the screen
@@ -282,53 +207,39 @@ export const decayLabel = (decay: Decay): string => {
   return `Backed off ${pct}% after ${gap} away. Build it up again.`;
 };
 
-/** Whether a routine check is due, regardless of whether it would bite. */
-export const backOffDue = (state: ExerciseState, now: number): boolean =>
-  typeof state.lastBackOffAt === "number" &&
-  daysBetween(state.lastBackOffAt, now) >= BACKOFF_DAYS;
-
 /**
  * Apply a cut. The rep ladder restarts too — coming back at the bottom rung
  * of a lighter weight is the point, and it is what the failure deload does.
  */
-export const applyDecay = (
-  state: ExerciseState,
-  scheme: Scheme,
-  decay: Decay,
-  now: number,
-): ExerciseState => {
+export const applyDecay = (state: ExerciseState, decay: Decay, now: number): ExerciseState => {
   const exercise = byId(state.exerciseId)!;
-  const cut = cutWeight(
-    state.weight,
-    decay.fraction,
-    exercise.increment,
-    !!exercise.assistable,
-  );
-  // A routine trim stops at the floor. A layoff does not — time off is a real
-  // loss, and handing back a weight you cannot lift helps nobody.
-  // The routine trim stops at a share of your best — but only where that
-  // means something. Across zero, "80% of -30" is nonsense, so an assistable
-  // lift is floored by the layoff cap alone.
-  const best = state.bestWeight ?? state.weight;
-  const weight =
-    decay.kind === "backoff" && best > 0 && !exercise.assistable
-      ? Math.max(cut, roundTo(best * BACKOFF_FLOOR, exercise.increment))
-      : cut;
   return {
     ...state,
-    weight,
+    weight: cutWeight(state.weight, decay.fraction, exercise.increment, !!exercise.assistable),
     rung: 0,
     downStreak: 0,
-    // Stamps BOTH clocks: `decayFor` reads this as the last time anything was
-    // reckoned, so a cut already taken is never charged again on the next
-    // build, and a layoff also postpones the next routine check.
+    // A step back of its own, so the count toward the next reload starts
+    // again, and a reload under way is over.
+    climbs: 0,
+    reloading: false,
+    // Settles the gap: `decayFor` reads this as the last time it was
+    // reckoned, so a cut already taken is never charged again.
     lastBackOffAt: now,
-    backOffScore: weight,
     // Remembered so the screen can explain the number until it is trained
     // again, at which point the explanation is stale and is cleared.
     pendingDecay: decay,
   };
 };
+
+/**
+ * A layoff turned down: the weight stays, and the gap counts as settled, so
+ * the question is not asked again until there is a new one. The training
+ * clock is left alone — declining is not a workout.
+ */
+export const settleLayoff = (state: ExerciseState, now: number): ExerciseState => ({
+  ...state,
+  lastBackOffAt: now,
+});
 
 /**
  * Make a lift easier by a fraction, snapped to the equipment's increment.
@@ -413,19 +324,48 @@ const STARTING_WEIGHT: Partial<Record<Pattern, number>> = {
 export const freshState = (ex: Exercise): ExerciseState => ({
   exerciseId: ex.id,
   // A per-hand exercise stores the weight of one dumbbell, so the opening
-  // guess is halved — 40kg of bench is a pair of 20s.
-  weight:
-    ex.startWeight ??
-    (ex.bodyweight
-      ? 0
-      : roundTo(
-          (STARTING_WEIGHT[ex.patterns[0]] ?? 20) / (ex.perHand ? 2 : 1),
-          ex.increment,
-        )),
+  // guess is halved — 40kg of bench is a pair of 20s. A holds lift starts
+  // with no hold unless told otherwise, and never past the longest.
+  weight: ex.holds
+    ? Math.min(HOLD_MAX, Math.max(0, Math.round(ex.startWeight ?? 0)))
+    : (ex.startWeight ??
+      (ex.bodyweight
+        ? 0
+        : roundTo(
+            (STARTING_WEIGHT[ex.patterns[0]] ?? 20) / (ex.perHand ? 2 : 1),
+            ex.increment,
+          ))),
   rung: 0,
   downStreak: 0,
   deloads: 0,
 });
+
+/**
+ * The longest hold a holds lift climbs to, in seconds. Twelve reps with five
+ * seconds at the hardest point of each is as owned as a movement gets; past
+ * it the lift stays at the top rather than asking for more.
+ */
+export const HOLD_MAX = 5;
+
+/**
+ * Seconds per rep on a timed hold. A plank on the 6–12 ladder holds for 30 →
+ * 40 → 50 → 60 seconds, not six to twelve.
+ */
+export const TIMED_SECONDS = 5;
+
+/** The ladder an exercise actually climbs: the scheme's, in seconds for a timed hold. */
+export const ladderOf = (exercise: Exercise | undefined, scheme: Scheme): number[] => {
+  const ladder = ladderFor(scheme);
+  return exercise?.timed ? ladder.map((reps) => reps * TIMED_SECONDS) : ladder;
+};
+
+/**
+ * Whether topping out can take the lift any further: a weight to add, or a
+ * second more to hold. A plank has neither, and a holds lift at `HOLD_MAX`
+ * has gone as far as it goes.
+ */
+export const canStepUp = (exercise: Exercise, weight: number): boolean =>
+  exercise.increment > 0 && !(exercise.holds && weight + exercise.increment > HOLD_MAX);
 
 /** Turn stored state into the numbers on the screen. */
 export const prescribe = (
@@ -435,14 +375,46 @@ export const prescribe = (
 ): Prescription => ({
   exercise: byId(state.exerciseId)!,
   weight: state.weight,
-  reps: ladderFor(scheme)[Math.min(state.rung, ladderFor(scheme).length - 1)],
+  reps: ladderOf(byId(state.exerciseId), scheme)[
+    Math.min(state.rung, ladderFor(scheme).length - 1)
+  ],
   sets,
   scheme,
   last: state.lastPerformed,
   deloaded: state.deloads > 0 && state.downStreak === 0 && state.rung === 0,
+  reload: state.reloading
+    ? state.rung === reloadRung(ladderFor(scheme))
+      ? "start"
+      : "climb"
+    : undefined,
   skippedLast: state.skippedLast,
   decay: state.pendingDecay,
 });
+
+/**
+ * Steps up in weight before a lift reloads.
+ *
+ * Counted in steps, not kilograms or a percentage: a step is whatever the
+ * equipment moves by, so two of them mean the same thing on a dumbbell bench
+ * (5 kg), a machine stack (10 kg) and a kettlebell (8 kg). On 20 kg
+ * dumbbells that is 20 → 22.5 → 25, then a reload at 25.
+ *
+ * The reload adds two sessions to every two steps — see `reloadRung` — so a
+ * 20 kg dumbbell bench takes 10 sessions to gain 5 kg instead of 8. Waiting
+ * for three or four steps would barely be quicker, 9 sessions at most, since
+ * the ladder is what takes the time. But it would leave a light lift 40–50%
+ * heavier before it ever stops to consolidate.
+ */
+export const RELOAD_AFTER = 2;
+
+/**
+ * Where a reload starts: two rungs below the top, so 10 reps on 6–12 and on
+ * 8–12, then 12 again. Not the bottom. Six reps at a weight just done for
+ * twelve is a wasted session, and a whole second climb would keep one weight
+ * for eight. Ten is a lighter day that is still work, and twelve again proves
+ * it. On a ladder of two rungs or fewer, that is the whole ladder.
+ */
+export const reloadRung = (ladder: readonly number[]): number => Math.max(0, ladder.length - 2);
 
 /** Every set logged at or above target. Only then does the lift move up. */
 export const hitTarget = (reps: (number | null)[], target: number): boolean =>
@@ -463,7 +435,7 @@ export const applyResult = (
   now: number = Date.now(),
 ): ExerciseState => {
   const exercise = byId(state.exerciseId)!;
-  const ladder = ladderFor(scheme);
+  const ladder = ladderOf(exercise, scheme);
   const target = ladder[Math.min(state.rung, ladder.length - 1)];
   const performed = {
     weight: state.weight,
@@ -472,17 +444,8 @@ export const applyResult = (
   };
 
   // Trained, whatever the outcome: the idle clock restarts and any cut we
-  // were explaining is now history. The back-off clock is seeded here on the
-  // first session only — after that it belongs to `applyDecay`, so training
-  // regularly cannot postpone the routine trim indefinitely.
-  const trained = {
-    ...state,
-    lastTrainedAt: now,
-    lastBackOffAt: state.lastBackOffAt ?? now,
-    backOffScore: state.backOffScore ?? progressScore(state, scheme),
-    bestWeight: Math.max(state.bestWeight ?? state.weight, state.weight),
-    pendingDecay: undefined,
-  };
+  // were explaining is now history.
+  const trained = { ...state, lastTrainedAt: now, pendingDecay: undefined };
 
   // Left unfinished: repeat exactly, and count nothing against the weight.
   if (reps.some((r) => r === null)) {
@@ -490,17 +453,40 @@ export const applyResult = (
   }
 
   if (hitTarget(reps, target)) {
-    const atTop = state.rung >= ladder.length - 1;
-    return {
+    const hit = {
       ...trained,
-      // Top of the ladder: add weight and drop back to the bottom rung.
-      // Otherwise just climb one rung at the same weight.
-      weight: atTop ? state.weight + exercise.increment : state.weight,
-      rung: atTop ? 0 : state.rung + 1,
       downStreak: 0,
       deloads: 0,
       skippedLast: false,
       lastPerformed: performed,
+    };
+    // Partway up the ladder: one rung, same weight.
+    if (state.rung < ladder.length - 1) return { ...hit, rung: state.rung + 1 };
+
+    // The top, with nowhere further to go — a plank at a minute, a hold at
+    // its longest: it stays at the top. Starting the ladder again would only
+    // make the same lift easier for no reason. Jumps are the exception: they
+    // have no top to stay at, and simply go round again.
+    if (!exercise.unloaded && !canStepUp(exercise, state.weight)) {
+      return { ...hit, reloading: false };
+    }
+
+    // The top, after two steps up since the last reload: the weight stays and
+    // the top of the ladder is climbed again, so the new weight is owned
+    // before the next.
+    // A reload just climbed is never followed by another — its own top is
+    // what earns the step. Nothing to reload where there is no step to hold.
+    const climbs = state.climbs ?? 0;
+    if (!state.reloading && climbs >= RELOAD_AFTER && canStepUp(exercise, state.weight)) {
+      return { ...hit, rung: reloadRung(ladder), climbs: 0, reloading: true };
+    }
+    // The top: add weight and drop back to the bottom rung.
+    return {
+      ...hit,
+      weight: state.weight + exercise.increment,
+      rung: 0,
+      climbs: climbs + 1,
+      reloading: false,
     };
   }
 
@@ -516,13 +502,18 @@ export const applyResult = (
     };
   }
 
-  // Short twice in a row: deload 10% and restart the ladder.
+  // Short twice in a row: deload 10% and restart the ladder. A step back of
+  // its own, so the count toward the next reload starts again. Eased along
+  // the same axis as a layoff, so an assisted pull-up gets more help rather
+  // than being rounded up to added weight.
   return {
     ...trained,
-    weight: roundTo(state.weight * 0.9, exercise.increment),
+    weight: cutWeight(state.weight, 0.1, exercise.increment, !!exercise.assistable),
     rung: 0,
     downStreak: 0,
     deloads: state.deloads + 1,
+    climbs: 0,
+    reloading: false,
     skippedLast: false,
     lastPerformed: performed,
   };

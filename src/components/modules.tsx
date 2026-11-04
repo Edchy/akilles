@@ -1,12 +1,29 @@
 import { useState } from "react";
-import { Pressable, Text, TextInput, View } from "react-native";
+import { Pressable, View } from "react-native";
+import { Text, TextInput } from "@/components/text";
 
+import { AddExerciseSheet } from "@/components/add-exercise";
+import { Count, Setting, Step } from "@/components/controls";
 import { DragList, type Drag } from "@/components/drag-list";
-import { Icon, type IconName } from "@/components/icon";
-import { BigButton, SectionLabel, Sheet, TextButton } from "@/components/sheet";
+import { Icon } from "@/components/icon";
+import { Mark } from "@/components/mark";
+import { RoutineEditor } from "@/components/routine";
+import { Segments } from "@/components/segments";
+import { Swipe } from "@/components/swipe";
+import { BigButton, OpenRow, SectionLabel, Sheet, TextButton } from "@/components/sheet";
 import { WeightField } from "@/components/weight-field";
-import { colors, radii } from "@/constants/theme";
-import { PATTERN_LABEL, PATTERN_ORDER, byId } from "@/data/exercises";
+import { FAMILY, colors, fonts, radii } from "@/constants/theme";
+import {
+  COURSE_STEP,
+  MINUTES_MAX,
+  MINUTES_STEP,
+  cardioPool,
+  courseLabel,
+  mobilityPool,
+  type CardioEnd,
+} from "@/data/conditioning";
+import { PATTERN_LABEL, byId } from "@/data/exercises";
+import { familyOf } from "@/data/families";
 import {
   REPS_RANGE,
   REP_STEP,
@@ -20,25 +37,35 @@ import {
 } from "@/data/split";
 import {
   SETS_RANGE,
-  addEntry,
   addWorkout,
-  addablePatterns,
   canRemoveWorkout,
+  cardioAmount,
+  cardioPlan,
+  chooseCardio,
   chooseExercise,
+  copyRoutineFor,
   isBuiltInWorkout,
   chosen,
+  mobilityPlan,
   moveEntry,
   moveWorkout,
+  nudgeCardio,
   poolFor,
   removeEntry,
   removeWorkout,
   renameWorkout,
   restoreWorkout,
+  routineMinutes,
+  setCardio,
+  setCardioMode,
+  setMobility,
   setNextWorkout,
   takenElsewhere,
   upNext,
   updateEntry,
   useSession,
+  workoutFamily,
+  workoutsUsing,
 } from "@/store/session";
 
 /** Screen-reader stand-ins for dragging: step a row up or down one place. */
@@ -80,9 +107,9 @@ export function Modules({ onDragChange }: { onDragChange: (dragging: boolean) =>
 
   return (
     <View style={{ gap: 24 }}>
-      <Text style={{ color: colors.faint, fontSize: 14, lineHeight: 20 }}>
+      <Text style={{ color: colors.muted, fontSize: 15, lineHeight: 22 }}>
         Your workouts run top to bottom, then start again. Tap one to change
-        it; hold and drag to reorder.
+        it, hold and drag to reorder, swipe left to remove.
       </Text>
 
       <DragList
@@ -239,7 +266,11 @@ function RemovedWorkouts() {
   );
 }
 
-/** One workout in the list: its name, what it trains, and whether it is next. */
+/**
+ * One workout in the list, the way Today shows it: its shape, its name, what
+ * it trains, on a wash of its colour — so the plan reads as the run of
+ * colours you will train through. Swipe left to remove it.
+ */
 function WorkoutRow({
   workout,
   isNext,
@@ -251,62 +282,78 @@ function WorkoutRow({
   drag: Drag;
   onOpen: () => void;
 }) {
+  const { state, setState } = useSession();
+  const family = workoutFamily(state, workout);
   const count = workout.exercises.length;
+  // A built-in goes to Removed and can be put back; one of yours is gone for good.
+  const builtIn = isBuiltInWorkout(workout.id);
   return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityHint="Opens the workout. Hold and drag to reorder."
-      {...moveActions(drag)}
-      onPress={onOpen}
-      onLongPress={drag.start}
-      onPressOut={drag.cancel}
-      delayLongPress={250}
-      style={({ pressed }) => ({
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 12,
-        minHeight: 84,
-        paddingHorizontal: 20,
-        paddingVertical: 14,
-        borderRadius: radii.card,
-        borderCurve: "continuous",
-        backgroundColor: drag.active ? colors.raised : colors.surface,
-        borderWidth: 1,
-        borderColor: drag.active ? colors.rise : colors.surface,
-        opacity: pressed && !drag.active ? 0.7 : 1,
-      })}
+    <Swipe
+      label={builtIn ? "Remove" : "Delete"}
+      // The last workout cannot go: the cycle needs something in it.
+      disabled={!canRemoveWorkout(state) || drag.active}
+      radius={radii.card}
+      onAction={() => setState((s) => removeWorkout(s, workout.id))}
     >
-      <View style={{ flex: 1, gap: 3 }}>
-        <Text style={{ color: colors.text, fontSize: 21, fontWeight: "700" }}>
-          {workout.name || "Untitled"}
-        </Text>
-        <Text style={{ color: colors.faint, fontSize: 14 }}>
-          {[workout.subtitle, `${count} exercise${count === 1 ? "" : "s"}`]
-            .filter(Boolean)
-            .join(" · ")}
-        </Text>
-      </View>
-      {isNext ? (
-        <Text
-          style={{
-            color: colors.rise,
-            fontSize: 12,
-            fontWeight: "800",
-            letterSpacing: 1,
-            textTransform: "uppercase",
-          }}
-        >
-          Next
-        </Text>
-      ) : null}
-      <Icon name="open" size={15} color={colors.faint} weight="semibold" />
-    </Pressable>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityHint="Opens the workout. Hold and drag to reorder."
+        {...moveActions(drag)}
+        onPress={onOpen}
+        onLongPress={drag.start}
+        onPressOut={drag.cancel}
+        delayLongPress={250}
+        style={({ pressed }) => ({
+          flexDirection: "row",
+          alignItems: "center",
+          gap: 14,
+          minHeight: 84,
+          paddingLeft: 18,
+          paddingRight: 20,
+          paddingVertical: 16,
+          borderRadius: radii.card,
+          borderCurve: "continuous",
+          backgroundColor: `${FAMILY[family].field}${drag.active ? "33" : "1A"}`,
+          borderWidth: 1.5,
+          borderColor: drag.active ? FAMILY[family].mark : "transparent",
+          opacity: pressed && !drag.active ? 0.7 : 1,
+        })}
+      >
+        <View style={{ width: 26, alignItems: "center" }}>
+          <Mark family={family} size={24} />
+        </View>
+        <View style={{ flex: 1, gap: 2 }}>
+          <Text
+            numberOfLines={1}
+            style={{ color: colors.text, fontFamily: fonts.display, fontSize: 28, lineHeight: 34 }}
+          >
+            {workout.name || "Untitled"}
+          </Text>
+          <Text numberOfLines={1} style={{ color: colors.muted, fontSize: 16, fontStyle: "italic" }}>
+            {[workout.subtitle, `${count} exercise${count === 1 ? "" : "s"}`]
+              .filter(Boolean)
+              .join(" · ")}
+          </Text>
+        </View>
+        {isNext ? (
+          <Text style={{ color: colors.text, fontSize: 16, fontStyle: "italic", fontWeight: "500" }}>
+            Next
+          </Text>
+        ) : null}
+        <Icon name="open" size={15} color={colors.muted} weight="semibold" />
+      </Pressable>
+    </Swipe>
   );
 }
 
+/** A block of conditioning in a workout: cardio at one end, or the mobility. */
+type Block = CardioEnd | "mobility";
+
 /**
- * Everything about one workout, with room to breathe: its name, its
- * exercises in order, and the few things you can do to it as a whole.
+ * Everything about one workout, with room to breathe: its name, the whole
+ * session in the order it runs — warm-up cardio, exercises, then the
+ * finishing cardio and mobility — and the few things you can do to it as a
+ * whole.
  */
 function WorkoutSheet({
   workout,
@@ -321,12 +368,14 @@ function WorkoutSheet({
 }) {
   const { state, setState } = useSession();
   const [slot, setSlot] = useState<string | null>(null);
+  const [block, setBlock] = useState<Block | null>(null);
   const [adding, setAdding] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const [dragging, setDragging] = useState(false);
 
   const close = () => {
     setSlot(null);
+    setBlock(null);
     setAdding(false);
     setConfirming(false);
     onClose();
@@ -334,7 +383,6 @@ function WorkoutSheet({
 
   if (!workout) return <Sheet visible={false} title="" onClose={close} />;
 
-  const addable = new Set(addablePatterns(state, workout.id));
   const removable = canRemoveWorkout(state);
   // A built-in goes to Removed and can be put back; one of yours is gone for good.
   const builtIn = isBuiltInWorkout(workout.id);
@@ -365,6 +413,11 @@ function WorkoutSheet({
         </View>
 
         <View style={{ gap: 12 }}>
+          <SectionLabel>Warm-up</SectionLabel>
+          <CardioRow workout={workout} where="open" onOpen={() => setBlock("open")} />
+        </View>
+
+        <View style={{ gap: 12 }}>
           <SectionLabel>Exercises</SectionLabel>
           <DragList
             data={workout.exercises}
@@ -383,49 +436,17 @@ function WorkoutSheet({
           />
           {workout.exercises.length === 0 ? (
             <Text style={{ color: colors.faint, fontSize: 15, lineHeight: 21 }}>
-              No exercises yet. Cardio and mobility still run either side.
+              No exercises yet.
             </Text>
           ) : null}
 
-          {adding ? (
-            <View style={{ gap: 12, paddingTop: 8 }}>
-              <Text style={{ color: colors.faint, fontSize: 14, lineHeight: 20 }}>
-                Pick a movement. You can choose the exercise for it next.
-              </Text>
-              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-                {PATTERN_ORDER.filter((p) => addable.has(p)).map((pattern) => (
-                  <Chip
-                    key={pattern}
-                    label={PATTERN_LABEL[pattern]}
-                    onPress={() => {
-                      const entryId = newId("s");
-                      setState((s) => addEntry(s, workout.id, pattern, entryId));
-                      setAdding(false);
-                      setSlot(entryId);
-                    }}
-                  />
-                ))}
-              </View>
-              <TextButton label="Cancel" onPress={() => setAdding(false)} />
-            </View>
-          ) : (
-            <Pressable
-              accessibilityRole="button"
-              onPress={() => setAdding(true)}
-              style={({ pressed }) => ({
-                flexDirection: "row",
-                alignItems: "center",
-                gap: 8,
-                minHeight: 52,
-                opacity: pressed ? 0.6 : 1,
-              })}
-            >
-              <Icon name="plus" size={16} color={colors.rise} weight="semibold" />
-              <Text style={{ color: colors.rise, fontSize: 16, fontWeight: "700" }}>
-                Add exercise
-              </Text>
-            </Pressable>
-          )}
+          <AddRow label="Add exercise" onPress={() => setAdding(true)} />
+        </View>
+
+        <View style={{ gap: 12 }}>
+          <SectionLabel>Finish</SectionLabel>
+          <CardioRow workout={workout} where="close" onOpen={() => setBlock("close")} />
+          <MobilityRow workout={workout} onOpen={() => setBlock("mobility")} />
         </View>
 
         <View style={{ gap: 12 }}>
@@ -473,11 +494,292 @@ function WorkoutSheet({
         </View>
       </View>
 
-      {/* A sheet over the sheet: one exercise slot, opened from the list above. */}
+      {/* Sheets over the sheet: one exercise slot, or one block, opened from
+          the list above. */}
       <SlotSheet workoutId={workout.id} entry={entry} onClose={() => setSlot(null)} />
+      <AddExerciseSheet workout={workout} visible={adding} onClose={() => setAdding(false)} />
+      <CardioSheet
+        workout={workout}
+        where={block === "open" || block === "close" ? block : null}
+        onClose={() => setBlock(null)}
+      />
+      <MobilitySheet
+        workout={block === "mobility" ? workout : undefined}
+        onClose={() => setBlock(null)}
+      />
     </Sheet>
   );
 }
+
+/** A quiet + link at the foot of a list: Add exercise, Add cardio. */
+function AddRow({ label, onPress }: { label: string; onPress: () => void }) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      onPress={onPress}
+      style={({ pressed }) => ({
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 8,
+        minHeight: 52,
+        opacity: pressed ? 0.6 : 1,
+      })}
+    >
+      <Icon name="plus" size={16} color={colors.rise} weight="semibold" />
+      <Text style={{ color: colors.rise, fontSize: 16, fontWeight: "700" }}>{label}</Text>
+    </Pressable>
+  );
+}
+
+/**
+ * A workout's cardio at one end: the machine and how long, or — if the
+ * workout has none there — a link to put the default back.
+ */
+function CardioRow({
+  workout,
+  where,
+  onOpen,
+}: {
+  workout: Workout;
+  where: CardioEnd;
+  onOpen: () => void;
+}) {
+  const { state, setState } = useSession();
+  const plan = cardioPlan(state, workout, where);
+  if (!plan) {
+    return (
+      <AddRow
+        label="Add cardio"
+        onPress={() => setState((s) => setCardio(s, workout.id, where, undefined))}
+      />
+    );
+  }
+  return (
+    <OpenRow
+      title={plan.machine.name}
+      detail={`Cardio · ${cardioAmount(plan)}${plan.course !== undefined ? ", timed" : ""}`}
+      onPress={onOpen}
+    />
+  );
+}
+
+/** The routine a workout ends on, or a link to put one back. */
+function MobilityRow({ workout, onOpen }: { workout: Workout; onOpen: () => void }) {
+  const { state, setState } = useSession();
+  const routine = mobilityPlan(state, workout);
+  if (!routine) {
+    return (
+      <AddRow
+        label="Add mobility"
+        onPress={() => setState((s) => setMobility(s, workout.id, undefined))}
+      />
+    );
+  }
+  return (
+    <OpenRow
+      title={routine.name}
+      detail={`Mobility · about ${routineMinutes(routine)} min`}
+      onPress={onOpen}
+    />
+  );
+}
+
+/**
+ * One cardio block, opened: which machine, and how long — a set distance
+ * you time, or a set time you measure the distance of. Changes apply as you
+ * make them, from the next time this workout runs.
+ */
+function CardioSheet({
+  workout,
+  where,
+  onClose,
+}: {
+  workout: Workout;
+  where: CardioEnd | null;
+  onClose: () => void;
+}) {
+  const { state, setState } = useSession();
+  const plan = where ? cardioPlan(state, workout, where) : null;
+  if (!where || !plan) return <Sheet visible={false} title="" onClose={onClose} />;
+
+  const machines = cardioPool(state.hiddenConditioning);
+  const timed = plan.course !== undefined;
+  const atMin = timed
+    ? plan.course <= COURSE_STEP[plan.machine.metric.unit]
+    : plan.minutes <= MINUTES_STEP;
+  const atMax = !timed && plan.minutes >= MINUTES_MAX;
+  const nudge = (direction: 1 | -1) =>
+    setState((s) => nudgeCardio(s, workout.id, where, direction));
+
+  return (
+    <Sheet
+      visible
+      title={where === "open" ? "Warm-up cardio" : "Finishing cardio"}
+      closeLabel="Done"
+      onClose={onClose}
+    >
+      <View style={{ gap: 36, paddingTop: 12 }}>
+        <View style={{ gap: 12 }}>
+          <SectionLabel>Machine</SectionLabel>
+          {machines.length > 1 ? (
+            <View style={{ gap: 6 }}>
+              {machines.map((c) => (
+                <Choice
+                  key={c.id}
+                  label={c.name}
+                  active={c.id === plan.machine.id}
+                  onPress={() => setState((s) => chooseCardio(s, workout.id, where, c.id))}
+                />
+              ))}
+            </View>
+          ) : (
+            <Text style={{ color: colors.faint, fontSize: 15, lineHeight: 21 }}>
+              {plan.machine.name}. Nothing else to swap to — add more under Exercises.
+            </Text>
+          )}
+        </View>
+
+        <View style={{ gap: 12 }}>
+          <SectionLabel>How long</SectionLabel>
+          <Segments
+            options={[
+              { value: "distance", label: "Set distance" },
+              { value: "time", label: "Set time" },
+            ]}
+            value={timed ? "distance" : "time"}
+            onChange={(mode) => {
+              if (mode !== (timed ? "distance" : "time")) {
+                setState((s) => setCardioMode(s, workout.id, where, mode));
+              }
+            }}
+          />
+          <View
+            style={{
+              borderRadius: radii.card,
+              borderCurve: "continuous",
+              backgroundColor: colors.surface,
+              paddingHorizontal: 18,
+              paddingVertical: 6,
+            }}
+          >
+            <Setting label={timed ? "Distance" : "Minutes"} last>
+              <Step
+                icon="minus"
+                label={timed ? "Shorter distance" : "Fewer minutes"}
+                disabled={atMin}
+                onPress={() => nudge(-1)}
+              />
+              <Count value={timed ? courseLabel(plan.machine, plan.course) : plan.minutes} />
+              <Step
+                icon="plus"
+                label={timed ? "Longer distance" : "More minutes"}
+                disabled={atMax}
+                onPress={() => nudge(1)}
+              />
+            </Setting>
+          </View>
+          <Text style={{ color: colors.faint, fontSize: 13, lineHeight: 19 }}>
+            {timed
+              ? "Your time over the distance is the score. Each distance keeps its own times."
+              : "The distance you cover in the time is the score. Each length keeps its own record."}
+          </Text>
+        </View>
+
+        <BigButton
+          label="Remove from workout"
+          quiet
+          onPress={() => {
+            setState((s) => setCardio(s, workout.id, where, null));
+            onClose();
+          }}
+        />
+      </View>
+    </Sheet>
+  );
+}
+
+/**
+ * The mobility a workout ends on, opened: pick a routine, and change its
+ * stretches right here. A routine is shared by every workout that uses it,
+ * so the sheet says who else an edit reaches — and offers a copy for this
+ * workout alone.
+ */
+function MobilitySheet({
+  workout,
+  onClose,
+}: {
+  workout: Workout | undefined;
+  onClose: () => void;
+}) {
+  const { state, setState } = useSession();
+  const [dragging, setDragging] = useState(false);
+  const routine = workout ? mobilityPlan(state, workout) : null;
+  if (!workout || !routine) return <Sheet visible={false} title="" onClose={onClose} />;
+
+  const routines = mobilityPool(state.hiddenConditioning);
+  const others = workoutsUsing(state, routine.id).filter((w) => w.id !== workout.id);
+  const name = workout.name || "this workout";
+
+  return (
+    <Sheet
+      visible
+      title="Mobility"
+      closeLabel="Done"
+      scrollEnabled={!dragging}
+      onClose={onClose}
+    >
+      <View style={{ gap: 36, paddingTop: 12 }}>
+        <View style={{ gap: 12 }}>
+          <SectionLabel>Routine</SectionLabel>
+          <View style={{ gap: 6 }}>
+            {routines.map((m) => (
+              <Choice
+                key={m.id}
+                label={m.name}
+                detail={`${routineMinutes(m)} min`}
+                active={m.id === routine.id}
+                onPress={() => setState((s) => setMobility(s, workout.id, m.id))}
+              />
+            ))}
+          </View>
+        </View>
+
+        <View style={{ gap: 12 }}>
+          <SectionLabel>Stretches</SectionLabel>
+          {others.length > 0 ? (
+            <View style={{ gap: 4 }}>
+              <Text style={{ color: colors.faint, fontSize: 13, lineHeight: 19 }}>
+                {`${namesOf(others)} ${others.length === 1 ? "ends" : "end"} on this routine too, so changes here change ${others.length === 1 ? "it" : "them"} as well.`}
+              </Text>
+              <AddRow
+                label={`Make a copy just for ${name}`}
+                onPress={() => setState((s) => copyRoutineFor(s, workout.id))}
+              />
+            </View>
+          ) : null}
+          <RoutineEditor routineId={routine.id} onDragChange={setDragging} />
+        </View>
+
+        <BigButton
+          label="Remove from workout"
+          quiet
+          onPress={() => {
+            setState((s) => setMobility(s, workout.id, null));
+            onClose();
+          }}
+        />
+      </View>
+    </Sheet>
+  );
+}
+
+/** "Push A", "Push A and Legs", "Push A, Pull A and 2 more". */
+const namesOf = (workouts: Workout[]): string => {
+  const names = workouts.map((w) => w.name || "Untitled");
+  if (names.length <= 2) return names.join(" and ");
+  if (names.length === 3) return `${names[0]}, ${names[1]} and ${names[2]}`;
+  return `${names[0]}, ${names[1]} and ${names.length - 2} more`;
+};
 
 /** One slot in a workout's list: the exercise filling it, and its sets and reps. */
 function SlotRow({
@@ -491,46 +793,54 @@ function SlotRow({
   drag: Drag;
   onOpen: () => void;
 }) {
-  const { state } = useSession();
-  const exerciseId = chosen(state, workoutId, entry);
+  const { state, setState } = useSession();
+  const exercise = byId(chosen(state, workoutId, entry));
   return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityHint="Opens the exercise. Hold and drag to reorder."
-      {...moveActions(drag)}
-      onPress={onOpen}
-      onLongPress={drag.start}
-      onPressOut={drag.cancel}
-      delayLongPress={250}
-      style={({ pressed }) => ({
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 12,
-        minHeight: 64,
-        paddingHorizontal: 16,
-        borderRadius: 18,
-        borderCurve: "continuous",
-        backgroundColor: drag.active ? colors.raised : colors.surface,
-        borderWidth: 1,
-        borderColor: drag.active ? colors.rise : colors.surface,
-        opacity: pressed && !drag.active ? 0.7 : 1,
-      })}
+    <Swipe
+      label="Remove"
+      disabled={drag.active}
+      radius={18}
+      onAction={() => setState((s) => removeEntry(s, workoutId, entry.id))}
     >
-      <Text style={{ flex: 1, color: colors.text, fontSize: 17, fontWeight: "600" }}>
-        {byId(exerciseId)?.name ?? "—"}
-      </Text>
-      <Text
-        style={{
-          color: colors.faint,
-          fontSize: 14,
-          fontWeight: "700",
-          fontVariant: ["tabular-nums"],
-        }}
+      <Pressable
+        accessibilityRole="button"
+        accessibilityHint="Opens the exercise. Hold and drag to reorder."
+        {...moveActions(drag)}
+        onPress={onOpen}
+        onLongPress={drag.start}
+        onPressOut={drag.cancel}
+        delayLongPress={250}
+        style={({ pressed }) => ({
+          flexDirection: "row",
+          alignItems: "center",
+          gap: 12,
+          minHeight: 64,
+          paddingHorizontal: 16,
+          borderRadius: 18,
+          borderCurve: "continuous",
+          backgroundColor: drag.active ? colors.raised : colors.surface,
+          borderWidth: 1,
+          borderColor: drag.active ? colors.text : colors.surface,
+          opacity: pressed && !drag.active ? 0.7 : 1,
+        })}
       >
-        {setsFor(entry)} × {repLabel(entry.scheme)}
-      </Text>
-      <Icon name="open" size={13} color={colors.faint} weight="semibold" />
-    </Pressable>
+        <Mark family={familyOf(exercise)} size={16} />
+        <Text style={{ flex: 1, color: colors.text, fontSize: 17, fontWeight: "600" }}>
+          {exercise?.name ?? "—"}
+        </Text>
+        <Text
+          style={{
+            color: colors.faint,
+            fontSize: 14,
+            fontWeight: "700",
+            fontVariant: ["tabular-nums"],
+          }}
+        >
+          {setsFor(entry)} × {repLabel(entry.scheme)}
+        </Text>
+        <Icon name="open" size={13} color={colors.faint} weight="semibold" />
+      </Pressable>
+    </Swipe>
   );
 }
 
@@ -576,46 +886,14 @@ function SlotSheet({
             <View style={{ gap: 6 }}>
               {options.map((id) => {
                 const active = id === exerciseId;
-                const used = taken.has(id) && !active;
                 return (
-                  <Pressable
+                  <Choice
                     key={id}
-                    accessibilityRole="button"
-                    accessibilityState={{ selected: active, disabled: used }}
-                    disabled={used}
-                    onPress={() => {
-                      if (!active) setState((s) => chooseExercise(s, workoutId, entry.id, id));
-                    }}
-                    style={({ pressed }) => ({
-                      flexDirection: "row",
-                      alignItems: "center",
-                      gap: 10,
-                      minHeight: 58,
-                      paddingHorizontal: 16,
-                      borderRadius: 16,
-                      borderCurve: "continuous",
-                      backgroundColor: active ? colors.cloud : colors.surface,
-                      opacity: used ? 0.35 : pressed ? 0.7 : 1,
-                    })}
-                  >
-                    <Text
-                      style={{
-                        flex: 1,
-                        color: active ? colors.ink : colors.text,
-                        fontSize: 17,
-                        fontWeight: active ? "800" : "600",
-                      }}
-                    >
-                      {byId(id)!.name}
-                    </Text>
-                    {used ? (
-                      <Text style={{ color: colors.faint, fontSize: 12, fontWeight: "800", letterSpacing: 0.8 }}>
-                        IN USE
-                      </Text>
-                    ) : active ? (
-                      <Icon name="check" size={16} color={colors.ink} weight="bold" />
-                    ) : null}
-                  </Pressable>
+                    label={byId(id)!.name}
+                    active={active}
+                    used={taken.has(id) && !active}
+                    onPress={() => setState((s) => chooseExercise(s, workoutId, entry.id, id))}
+                  />
                 );
               })}
             </View>
@@ -728,120 +1006,71 @@ function SlotSheet({
   );
 }
 
-/** The number between a pair of steppers. */
-function Count({ value }: { value: number }) {
-  return (
-    <Text
-      style={{
-        minWidth: 36,
-        textAlign: "center",
-        color: colors.text,
-        fontSize: 22,
-        fontWeight: "800",
-        fontVariant: ["tabular-nums"],
-      }}
-    >
-      {value}
-    </Text>
-  );
-}
-
-/** A labelled row of controls in a grouped panel, divided from the next. */
-function Setting({
+/**
+ * One of a list to pick from: an exercise for a slot, a machine, a routine.
+ * The picked one is filled in and ticked; one another slot is using is dimmed.
+ */
+function Choice({
   label,
-  last,
-  children,
-}: {
-  label: string;
-  last?: boolean;
-  children: React.ReactNode;
-}) {
-  return (
-    <View
-      style={{
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 10,
-        minHeight: 68,
-        borderBottomWidth: last ? 0 : 1,
-        borderBottomColor: colors.line,
-      }}
-    >
-      <Text style={{ flex: 1, color: colors.text, fontSize: 17, fontWeight: "600" }}>
-        {label}
-      </Text>
-      <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>{children}</View>
-    </View>
-  );
-}
-
-function Chip({
-  label,
-  selected = false,
+  detail,
+  active,
+  used = false,
   onPress,
 }: {
   label: string;
-  selected?: boolean;
+  detail?: string;
+  active: boolean;
+  /** Taken by another slot in the same workout, so not offered. */
+  used?: boolean;
   onPress: () => void;
 }) {
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityState={{ selected }}
-      onPress={onPress}
+      accessibilityState={{ selected: active, disabled: used }}
+      disabled={used}
+      onPress={() => {
+        if (!active) onPress();
+      }}
       style={({ pressed }) => ({
-        justifyContent: "center",
-        minHeight: 44,
-        paddingHorizontal: 14,
-        borderRadius: 999,
-        backgroundColor: selected ? colors.cloud : colors.raised,
-        opacity: pressed ? 0.7 : 1,
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 10,
+        minHeight: 58,
+        paddingHorizontal: 16,
+        borderRadius: 16,
+        borderCurve: "continuous",
+        backgroundColor: active ? colors.cloud : colors.surface,
+        opacity: used ? 0.35 : pressed ? 0.7 : 1,
       })}
     >
       <Text
         style={{
-          color: selected ? colors.ink : colors.text,
-          fontSize: 14,
-          fontWeight: selected ? "800" : "600",
-          fontVariant: ["tabular-nums"],
+          flex: 1,
+          color: active ? colors.ink : colors.text,
+          fontSize: 17,
+          fontWeight: active ? "800" : "600",
         }}
       >
         {label}
       </Text>
-    </Pressable>
-  );
-}
-
-function Step({
-  icon,
-  label,
-  disabled,
-  onPress,
-}: {
-  icon: IconName;
-  label: string;
-  disabled: boolean;
-  onPress: () => void;
-}) {
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={label}
-      accessibilityState={{ disabled }}
-      disabled={disabled}
-      onPress={onPress}
-      style={({ pressed }) => ({
-        width: 48,
-        height: 48,
-        alignItems: "center",
-        justifyContent: "center",
-        borderRadius: 999,
-        // Sits on a surface panel, so one step lighter.
-        backgroundColor: colors.raised,
-        opacity: disabled ? 0.3 : pressed ? 0.7 : 1,
-      })}
-    >
-      <Icon name={icon} size={18} color={colors.text} weight="semibold" />
+      {detail ? (
+        <Text
+          style={{
+            color: active ? colors.ink : colors.faint,
+            fontSize: 14,
+            fontWeight: "700",
+            fontVariant: ["tabular-nums"],
+          }}
+        >
+          {detail}
+        </Text>
+      ) : null}
+      {used ? (
+        <Text style={{ color: colors.faint, fontSize: 14, fontStyle: "italic" }}>in use</Text>
+      ) : active ? (
+        <Icon name="check" size={16} color={colors.ink} weight="bold" />
+      ) : null}
     </Pressable>
   );
 }

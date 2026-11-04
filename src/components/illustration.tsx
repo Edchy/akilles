@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { Image, Text, View, type ViewStyle } from "react-native";
+import { Image, View, type ViewStyle } from "react-native";
+import { Text } from "@/components/text";
 
 import { Icon } from "@/components/icon";
 import { colors } from "@/constants/theme";
@@ -18,7 +19,16 @@ const FRAME_MS = 1100;
  * Every screen asks for its picture here, so changing the art — photos,
  * illustrations — is a change to this file and `data/photos.ts` alone.
  */
-export function Illustration({ id, style }: { id: string; style?: ViewStyle }) {
+export function Illustration({
+  id,
+  style,
+  compact,
+}: {
+  id: string;
+  style?: ViewStyle;
+  /** A thumbnail in a list: the placeholder is just a small icon, no words. */
+  compact?: boolean;
+}) {
   const frames = PHOTOS[id];
   const [frame, setFrame] = useState(0);
 
@@ -69,18 +79,18 @@ export function Illustration({ id, style }: { id: string; style?: ViewStyle }) {
         style,
       ]}
     >
-      <Icon name="stretch" size={56} color={colors.line} weight="regular" />
-      <Text
-        style={{
-          color: colors.faint,
-          fontSize: 11,
-          fontWeight: "800",
-          letterSpacing: 1,
-          textTransform: "uppercase",
-        }}
-      >
-        Illustration to come
-      </Text>
+      <Icon name="stretch" size={compact ? 20 : 56} color={colors.line} weight="regular" />
+      {compact ? null : (
+        <Text
+          style={{
+            color: colors.faint,
+            fontSize: 15,
+            fontStyle: "italic",
+          }}
+        >
+          Illustration to come
+        </Text>
+      )}
     </View>
   );
 }

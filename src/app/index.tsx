@@ -1,19 +1,21 @@
 import { router } from "expo-router";
-import { useEffect, useState } from "react";
-import { Pressable, ScrollView, Text, View } from "react-native";
+import { useState } from "react";
+import { Pressable, ScrollView, View } from "react-native";
+import { Text } from "@/components/text";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useBarSpace } from "@/components/bottom-bar";
-import { Icon } from "@/components/icon";
+import { Mark } from "@/components/mark";
 import { Column, COLUMN } from "@/components/screen";
 import { Sheet, OpenRow } from "@/components/sheet";
-import { colors, fonts, radii } from "@/constants/theme";
+import { colors, FAMILY, fonts, radii } from "@/constants/theme";
 import { byId } from "@/data/exercises";
+import type { Family } from "@/data/families";
 import type { Workout } from "@/data/split";
-import { TODAY_LINES, fillLine, pickLine, type TodayMood } from "@/data/voice";
+import { TODAY_LINES, fillLine, newsLine, pickLine, type TodayMood } from "@/data/voice";
 import { decayLabel, type Decay } from "@/lib/progression";
 import { weightLabel } from "@/lib/warmup";
-import type { DecayOffer, SessionState } from "@/store/session";
+import type { DecayOffer, PreviewRow, SessionState } from "@/store/session";
 import {
   acceptDecay,
   buildWorkout,
@@ -29,7 +31,9 @@ import {
   skipWorkout,
   trainedToday,
   upNext,
+  upcomingWorkouts,
   useSession,
+  workoutFamily,
   workoutPreview,
 } from "@/store/session";
 
@@ -52,7 +56,7 @@ export default function TodayScreen() {
     id: string;
     name: string;
     postponed: boolean;
-    before: Pick<SessionState, "nextWorkout" | "workoutQueue">;
+    before: Pick<SessionState, "nextWorkout" | "workoutQueue" | "postponed">;
   } | null>(null);
 
   // What time WOULD cost, computed fresh each render. Nothing is written
@@ -80,19 +84,24 @@ export default function TodayScreen() {
       id: workout.id,
       name: workout.name,
       postponed,
-      before: { nextWorkout: state.nextWorkout, workoutQueue: state.workoutQueue },
+      before: {
+        nextWorkout: state.nextWorkout,
+        workoutQueue: state.workoutQueue,
+        postponed: state.postponed,
+      },
     });
     setState((s) => postponed ? postponeWorkout(s) : skipWorkout(s));
   };
 
-  // The exercise list, opened by tapping the summary. Closed again whenever
-  // the workout on screen changes.
-  const [showList, setShowList] = useState(false);
-  useEffect(() => setShowList(false), [workout.id]);
+  const rows = workoutPreview(state, workout);
+  const family = workoutFamily(state, workout);
 
-  // Akilles' remark for today. Seeded by the day and the workout, so it holds
-  // still while you look at it and changes tomorrow or when the workout does.
-  const mood: TodayMood = skipped
+  // Akilles says something only when there is something to say: a day that
+  // is not ordinary, or what changed since you last did these lifts. An
+  // ordinary day with nothing new has no line at all. Seeded by the day and
+  // the workout, so it holds still while you look at it.
+  const seed = `${new Date().toDateString()}:${workout.id}:${skipped?.id ?? ""}`;
+  const mood: TodayMood | null = skipped
     ? "skipped"
     : idleDays === null
       ? "first"
@@ -100,23 +109,59 @@ export default function TodayScreen() {
         ? "back"
         : trainedToday(state)
           ? "again"
-          : "regular";
-  const remark = fillLine(
-    pickLine(TODAY_LINES[mood], `${new Date().toDateString()}:${workout.id}:${skipped?.id ?? ""}`),
-    { days: idleDays ?? undefined, name: skipped?.name },
-  );
+          : null;
+  const remark = mood
+    ? fillLine(pickLine(TODAY_LINES[mood], seed), {
+        days: idleDays ?? undefined,
+        name: skipped?.name,
+      })
+    : newsLine(
+        {
+          up: rows.flatMap((r) =>
+            r.change === "up" && r.weight ? [{ name: r.name, weight: r.weight }] : [],
+          ),
+          fresh: rows.filter((r) => r.change === "new"),
+          reload: rows.flatMap((r) =>
+            r.change === "reload" && r.weight ? [{ name: r.name, weight: r.weight }] : [],
+          ),
+          down: rows.flatMap((r) =>
+            r.change === "down" && r.weight ? [{ name: r.name, weight: r.weight }] : [],
+          ),
+        },
+        seed,
+      );
+  // Where you are, or what comes next — said plainly.
+  const fact = inProgress
+    ? `In progress: ${exerciseCount(state, "done")} of ${exerciseCount(state, "total")} done.`
+    : skipped?.postponed
+      ? waitingLine(state, workout.name, skipped.name)
+      : null;
+  const line = fact ?? remark;
+  // What each Skip answer would leave you with. "Do it next time" comes back
+  // unchanged when everything else is already waiting, and then is not offered.
+  const putOff = postponeWorkout(state);
+  const dropped = skipWorkout(state);
+  // Each answer lists the workouts it leads to — three, or as many as it
+  // takes to reach where the two part ways, which with others already
+  // waiting can be a few further on.
+  const span = (() => {
+    const most = state.workouts.length + 1;
+    const a = upcomingWorkouts(putOff, most);
+    const b = upcomingWorkouts(dropped, most);
+    return Math.max(3, a.findIndex((w, i) => w.id !== b[i]?.id) + 1);
+  })();
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.bg }}>
       <ScrollView
         contentContainerStyle={{
           flexGrow: 1,
-          paddingTop: insets.top + 56,
+          paddingTop: insets.top + 32,
           paddingHorizontal: 22,
           width: "100%",
           maxWidth: COLUMN,
           alignSelf: "center",
-          paddingBottom: 28,
+          paddingBottom: 20,
           gap: 28,
         }}
       >
@@ -131,91 +176,121 @@ export default function TodayScreen() {
           <DecayBanner adjusted={adjusted} />
         ) : null}
 
-        {/* What you are about to do, at the top where the eye lands. The
-            exercises are one tap away for a look before you commit. */}
-        <View>
-          <Text
-            style={{
-              color: colors.text,
-              fontFamily: fonts.display,
-              textTransform: "uppercase",
-              fontSize: 77,
-              lineHeight: 76,
-              letterSpacing: 0.3,
-            }}
-          >
-            {workout.name || "Untitled"}
-          </Text>
-          {workout.subtitle ? (
-            <Text
-              style={{
-                color: colors.text,
-                fontSize: 26,
-                lineHeight: 30,
-                fontWeight: "600",
-                textTransform: "uppercase",
-                letterSpacing: 0.5,
-              }}
-            >
-              {workout.subtitle}
-            </Text>
-          ) : null}
-        </View>
+        {/* The day, in one card washed with its colour: the shape beside the
+            name, the subtitle on the same left edge as the list, and the
+            list itself — what you are about to do, held together, with
+            Akilles' word and the buttons outside it below. */}
+        <View
+          style={{
+            backgroundColor: `${FAMILY[family].field}1A`,
+            borderRadius: radii.card,
+            borderCurve: "continuous",
+            paddingHorizontal: 18,
+            paddingTop: 20,
+            paddingBottom: 14,
+            gap: 20,
+          }}
+        >
+          <View>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: GAP }}>
+              <View style={{ width: MARKS, alignItems: "center" }}>
+                <Mark family={family} size={MARKS} />
+              </View>
+              <Text
+                accessibilityRole="header"
+                numberOfLines={1}
+                style={{
+                  flex: 1,
+                  color: colors.text,
+                  fontFamily: fonts.display,
+                  fontSize: 44,
+                  lineHeight: 52,
+                }}
+              >
+                {workout.name || "Untitled"}
+              </Text>
+            </View>
+            <View style={{ marginLeft: INDENT, alignItems: "flex-start" }}>
+              {workout.subtitle ? (
+                <Text
+                  style={{
+                    color: colors.muted,
+                    fontSize: 19,
+                    fontStyle: "italic",
+                  }}
+                >
+                  {workout.subtitle}
+                </Text>
+              ) : null}
+            </View>
+          </View>
 
-        <Preview workout={workout} open={showList} onToggle={() => setShowList((v) => !v)} />
+          <Preview rows={rows} />
+        </View>
       </ScrollView>
 
       <View style={{ paddingHorizontal: 22, paddingBottom: barSpace + 16 }}>
-        <Column style={{ gap: 14 }}>
-          {/* Akilles has a word, out of the way of the workout itself. After a
-              skip, the remark names it and carries the Undo. */}
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 10, minHeight: 44 }}>
-            <Text style={{ flex: 1, color: colors.muted, fontSize: 16, lineHeight: 22, fontWeight: "600" }}>
-              {inProgress
-                ? `In progress: ${exerciseCount(state, "done")} of ${exerciseCount(state, "total")} done.`
-                : skipped?.postponed
-                  ? `${skipped.name} is next after ${workout.name}.`
-                  : remark}
-            </Text>
-            {skipped ? (
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={`Undo skipping ${skipped.name}`}
-                hitSlop={12}
-                onPress={() => {
-                  setState((s) => ({ ...s, ...skipped.before }));
-                  setSkipped(null);
+        <Column style={{ gap: 18 }}>
+          {/* Akilles' word, kept apart from the day it comments on: under
+              the list, just before you start. After a skip it carries the
+              Undo. */}
+          {line ? (
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 16 }}>
+              <Text
+                style={{
+                  flex: 1,
+                  color: colors.text,
+                  fontSize: 19,
+                  lineHeight: 25,
+                  // Akilles' remark in italics; a plain fact in roman.
+                  fontStyle: fact ? "normal" : "italic",
                 }}
-                style={({ pressed }) => ({
-                  minHeight: 44,
-                  justifyContent: "center",
-                  opacity: pressed ? 0.5 : 1,
-                })}
               >
-                <Text style={{ color: colors.rise, fontSize: 16, fontWeight: "800" }}>Undo</Text>
-              </Pressable>
-            ) : null}
-          </View>
-
+                {line}
+              </Text>
+              {skipped ? (
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={`Undo skipping ${skipped.name}`}
+                  hitSlop={12}
+                  onPress={() => {
+                    setState((s) => ({ ...s, ...skipped.before }));
+                    setSkipped(null);
+                  }}
+                  style={({ pressed }) => ({
+                    minHeight: 44,
+                    justifyContent: "center",
+                    opacity: pressed ? 0.5 : 1,
+                  })}
+                >
+                  <Text style={{ color: colors.rise, fontSize: 17, fontWeight: "600" }}>Undo</Text>
+                </Pressable>
+              ) : null}
+            </View>
+          ) : null}
           <View style={{ flexDirection: "row", gap: 12 }}>
             {inProgress ? <BigButton label="End" onPress={() => setEnding(true)} /> : null}
             {canSkip ? <BigButton label="Skip" onPress={() => setPickingSkip(true)} /> : null}
-            <BigButton label={inProgress ? "Continue" : "Start"} primary onPress={start} />
+            <BigButton label={inProgress ? "Continue" : "Start"} primary={family} onPress={start} />
           </View>
         </Column>
       </View>
-      <Sheet visible={pickingSkip} title={workout.name} onClose={() => setPickingSkip(false)}>
+      <Sheet
+        visible={pickingSkip}
+        title={`Skip ${workout.name}`}
+        onClose={() => setPickingSkip(false)}
+      >
+        {/* Each answer shows the workouts it leads to, today's first, so the
+            difference is seen rather than explained. */}
         <View style={{ paddingTop: 12, gap: 12 }}>
-          <OpenRow
-            title="Do this next time"
-            detail={`Do ${upNext(skipWorkout(state)).name} now, then ${workout.name}.`}
-            onPress={() => skip(true)}
-          />
-          <OpenRow
-            title="Skip this round"
-            detail="Move on. This workout returns when the cycle repeats."
-            onPress={() => skip(false)}
-          />
+          {putOff !== state ? (
+            <OpenRow
+              title="Do it next time"
+              detail={order(putOff, span)}
+              onPress={() => skip(true)}
+            />
+          ) : null}
+          <OpenRow title="Skip it" detail={order(dropped, span)} onPress={() => skip(false)} />
         </View>
       </Sheet>
       <Sheet visible={ending} title={workout.name} onClose={() => setEnding(false)}>
@@ -235,109 +310,108 @@ export default function TodayScreen() {
   );
 }
 
+/** Workout names in a sentence: "Push A", "Push A and Pull A", "Push A, Pull A and Legs". */
+function names(state: SessionState, ids: string[] | undefined): string {
+  const list = (ids ?? []).flatMap((id) => {
+    const w = state.workouts.find((w) => w.id === id);
+    return w ? [w.name] : [];
+  });
+  return list.length < 2 ? (list[0] ?? "") : `${list.slice(0, -1).join(", ")} and ${list.at(-1)}`;
+}
+
+/** What a choice leads to: "Pull A today → Push A → Legs". */
+function order(state: SessionState, count: number): string {
+  const [today, ...then] = upcomingWorkouts(state, count).map((w) => w.name);
+  return [`${today} today`, ...then].join(" → ");
+}
+
+/** After "Do it next time": what is waiting, and what it waits behind. */
+function waitingLine(state: SessionState, today: string, fallback: string): string {
+  const waiting = names(state, state.postponed) || fallback;
+  const many = (state.postponed?.length ?? 1) > 1;
+  return `${waiting} ${many ? "are" : "is"} next after ${today}.`;
+}
+
+/** The left column every shape sits in, and the edge every word starts on. */
+const MARKS = 30;
+const GAP = 14;
+const INDENT = MARKS + GAP;
+
 /**
- * The workout at a glance: how many blocks, tap for the list — cardio, every
- * lift with the sets, reps and weight you would get today, cardio, mobility,
- * in the order you will do them.
+ * The session in order — cardio, the lifts, cardio, the stretch — like a
+ * timetable: each behind its family's shape, with one figure on the right.
+ * A lift shows the weight it is set to (a weight that went up in full ink, so
+ * the news above has somewhere to point); cardio and the stretch say how
+ * much. A lift you have never done shows nothing until it has a weight of
+ * its own, and one with no weight to carry shows its sets.
  */
-function Preview({
-  workout,
-  open,
-  onToggle,
-}: {
-  workout: Workout;
-  open: boolean;
-  onToggle: () => void;
-}) {
-  const { state } = useSession();
-  const rows = workoutPreview(state, workout);
-  const n = rows.length;
-
+function Preview({ rows }: { rows: PreviewRow[] }) {
   return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityState={{ expanded: open }}
-      accessibilityLabel={`${n} exercises. ${open ? "Hide" : "Show"} the list.`}
-      onPress={onToggle}
-      style={({ pressed }) => ({
-        borderRadius: radii.card,
-        borderCurve: "continuous",
-        backgroundColor: colors.surface,
-        paddingHorizontal: 20,
-        paddingVertical: 16,
-        opacity: pressed ? 0.85 : 1,
-      })}
-    >
-      <View style={{ flexDirection: "row", alignItems: "center", gap: 10, minHeight: 32 }}>
-        <Text style={{ flex: 1, color: colors.text, fontSize: 18, fontWeight: "700" }}>
-          {n} {n === 1 ? "exercise" : "exercises"}
-        </Text>
-        <Icon name={open ? "collapse" : "expand"} size={15} color={colors.muted} weight="semibold" />
-      </View>
-
-      {open ? (
-        <View style={{ marginTop: 10 }}>
-          {rows.map((r, i) => (
-            <View
-              key={r.id}
+    <View accessibilityRole="list">
+      {rows.map((r) => {
+        const timed = r.family === "cardio" || r.family === "mobility";
+        const figure = timed ? r.amount : r.guess ? undefined : (r.weight ?? r.amount);
+        return (
+          <View
+            key={r.id}
+            accessible
+            accessibilityLabel={figure ? `${r.name}, ${figure}` : r.name}
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              gap: GAP,
+              minHeight: 38,
+            }}
+          >
+            <View style={{ width: MARKS, alignItems: "center" }}>
+              <Mark family={r.family} size={22} />
+            </View>
+            <Text
+              numberOfLines={1}
               style={{
-                flexDirection: "row",
-                alignItems: "center",
-                gap: 12,
-                minHeight: 54,
-                borderTopWidth: 1,
-                borderTopColor: colors.line,
+                flex: 1,
+                color: colors.text,
+                fontFamily: fonts.regular,
+                fontSize: 20,
               }}
             >
+              {r.name}
+            </Text>
+            {figure ? (
               <Text
                 style={{
-                  width: 18,
-                  color: colors.faint,
-                  fontSize: 13,
-                  fontWeight: "800",
-                  fontVariant: ["tabular-nums"],
+                  color: r.change === "up" ? colors.text : colors.muted,
+                  fontFamily: r.change === "up" ? fonts.medium : fonts.regular,
+                  fontSize: 17,
+                  fontVariant: ["lining-nums", "tabular-nums"],
                 }}
               >
-                {i + 1}
+                {figure}
               </Text>
-              <Text style={{ flex: 1, color: colors.text, fontSize: 16, fontWeight: "600" }}>
-                {r.name}
-              </Text>
-              <View style={{ alignItems: "flex-end" }}>
-                <Text
-                  style={{
-                    color: colors.muted,
-                    fontSize: 14,
-                    fontWeight: "700",
-                    fontVariant: ["tabular-nums"],
-                  }}
-                >
-                  {r.amount}
-                </Text>
-                {r.weight ? (
-                  <Text style={{ color: colors.faint, fontSize: 13, fontVariant: ["tabular-nums"] }}>
-                    {r.weight}
-                  </Text>
-                ) : null}
-              </View>
-            </View>
-          ))}
-        </View>
-      ) : null}
-    </Pressable>
+            ) : null}
+          </View>
+        );
+      })}
+    </View>
   );
 }
 
-/** The two things Today asks: big enough to hit without looking twice. */
+/**
+ * The two things Today asks: big enough to hit without looking twice. Start
+ * is drawn in the day's colour — the field it opens onto — with that field's
+ * own words, white or navy.
+ */
 function BigButton({
   label,
-  primary = false,
+  primary,
   onPress,
 }: {
   label: string;
-  primary?: boolean;
+  /** The day's family, on the one button that moves you on. */
+  primary?: Family;
   onPress: () => void;
 }) {
+  const fill = primary ? FAMILY[primary] : null;
   return (
     <Pressable
       accessibilityRole="button"
@@ -345,20 +419,20 @@ function BigButton({
       style={({ pressed }) => ({
         // Start is the answer nearly every time, so it takes twice the room.
         flex: primary ? 2 : 1,
-        minHeight: 76,
+        minHeight: 60,
         alignItems: "center",
         justifyContent: "center",
-        borderRadius: radii.button,
+        borderRadius: radii.action,
         borderCurve: "continuous",
-        backgroundColor: primary ? colors.cloud : colors.raised,
+        backgroundColor: fill ? fill.field : colors.surface,
         opacity: pressed ? 0.8 : 1,
       })}
     >
       <Text
         style={{
-          color: primary ? colors.ink : colors.text,
-          fontSize: 22,
-          fontWeight: "800",
+          color: fill?.dark ? colors.white : colors.text,
+          fontSize: 19,
+          fontWeight: primary ? "500" : "400",
         }}
       >
         {label}
@@ -401,10 +475,8 @@ function DecayBanner({
       <Text
         style={{
           color: colors.rise,
-          fontSize: 11,
-          fontWeight: "800",
-          letterSpacing: 1.2,
-          textTransform: "uppercase",
+          fontSize: 15,
+          fontStyle: "italic",
         }}
       >
         Weights adjusted
@@ -454,11 +526,7 @@ function DecayPrompt({
   // Every offer in a session is normally the same cut, so lead with it.
   const worst = offers.reduce((a, b) => (b.decay.fraction > a.decay.fraction ? b : a));
   const pct = Math.round(worst.decay.fraction * 100);
-  const layoff = worst.decay.kind === "layoff";
-
-  const headline = layoff
-    ? `It has been ${describeGap(idleDays ?? worst.decay.days ?? 0)} since your last workout.`
-    : "A month without progress on some lifts.";
+  const headline = `It has been ${describeGap(idleDays ?? worst.decay.days ?? 0)} since your last workout.`;
 
   // A couple of concrete examples beat a percentage: "80 → 67.5" is the
   // thing you can actually judge.
@@ -478,10 +546,8 @@ function DecayPrompt({
         <Text
           style={{
             color: colors.rise,
-            fontSize: 11,
-            fontWeight: "800",
-            letterSpacing: 1.2,
-            textTransform: "uppercase",
+            fontSize: 15,
+            fontStyle: "italic",
           }}
         >
           Drop the weights?
@@ -496,7 +562,12 @@ function DecayPrompt({
         {examples.map((o) => (
           <View
             key={o.key}
-            style={{ flexDirection: "row", alignItems: "center", gap: 10, minHeight: 30 }}
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              gap: 10,
+              minHeight: 30,
+            }}
           >
             <Text style={{ flex: 1, color: colors.muted, fontSize: 14 }}>
               {byId(o.exerciseId)?.name ?? o.exerciseId}

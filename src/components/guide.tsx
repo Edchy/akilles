@@ -1,6 +1,8 @@
 import { useState } from "react";
-import { Pressable, Text, View } from "react-native";
+import { Pressable, View } from "react-native";
+import { Text } from "@/components/text";
 
+import { useColors } from "@/components/field";
 import { Icon } from "@/components/icon";
 import { Illustration } from "@/components/illustration";
 import { Sheet } from "@/components/sheet";
@@ -28,6 +30,8 @@ export function GuideButton({
   onPicture?: boolean;
 }) {
   const [open, setOpen] = useState(false);
+  // On the lift screen this sits on the family's colour: a tint of it.
+  const field = useColors();
 
   return (
     <>
@@ -42,11 +46,15 @@ export function GuideButton({
           alignItems: "center",
           justifyContent: "center",
           borderRadius: 999,
-          backgroundColor: onPicture ? colors.bg : colors.raised,
+          // On a field, a tint of it; on white, a step darker than the grey
+          // panels it usually sits in (a sheet's list), or it disappears.
+          backgroundColor: onPicture ? colors.bg : field === colors ? colors.raised : field.surface,
+          // Over a photo, a white circle can vanish into a white wall: lift it.
+          boxShadow: onPicture ? "0 1px 6px rgba(8, 28, 60, 0.22)" : undefined,
           opacity: pressed ? 0.7 : 1,
         })}
       >
-        <Icon name="info" size={size * 0.45} color={colors.muted} />
+        <Icon name="info" size={size * 0.5} color={onPicture ? colors.text : field.text} />
       </Pressable>
 
       <Sheet visible={open} title={name} closeLabel="Done" onClose={() => setOpen(false)}>
@@ -92,6 +100,13 @@ function Guide({ id, cue }: { id: string; cue?: string }) {
             ))}
           </View>
 
+          {guide.own ? (
+            <View style={{ gap: 4, paddingHorizontal: 16 }}>
+              <Text style={{ color: colors.rise, fontSize: 15, fontStyle: "italic" }}>Own it</Text>
+              <Text style={{ color: colors.text, fontSize: 16, lineHeight: 23 }}>{guide.own}</Text>
+            </View>
+          ) : null}
+
           <View
             style={{
               gap: 4,
@@ -104,10 +119,8 @@ function Guide({ id, cue }: { id: string; cue?: string }) {
             <Text
               style={{
                 color: colors.bend,
-                fontSize: 11,
-                fontWeight: "800",
-                letterSpacing: 1,
-                textTransform: "uppercase",
+                fontSize: 15,
+                fontStyle: "italic",
               }}
             >
               Watch out

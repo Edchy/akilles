@@ -1,8 +1,10 @@
 import { useState } from "react";
-import { Text, TextInput, View } from "react-native";
+import { View } from "react-native";
+import { Text, TextInput } from "@/components/text";
 
 import { SectionLabel } from "@/components/sheet";
 import { colors } from "@/constants/theme";
+import { HOLD_MAX } from "@/lib/progression";
 import { lookup, nextWeight, setExerciseWeight, useSession } from "@/store/session";
 
 /**
@@ -29,10 +31,13 @@ export function WeightField({ exerciseId }: { exerciseId: string }) {
   if (!exercise || exercise.unloaded) return null;
 
   const assisted = !!exercise.assistable;
+  const holds = !!exercise.holds;
   const valid = parseWeight(text, assisted) !== null;
   const trained = Object.values(state.history).some((r) => r.exerciseId === exerciseId);
   const perDumbbell = exercise.perHand ? ", per dumbbell" : "";
-  const hint = exercise.bodyweight
+  const hint = holds
+    ? `Seconds to hold at the hardest point of every rep, up to ${HOLD_MAX}. 0 is just the reps.`
+    : exercise.bodyweight
     ? assisted
       ? "0 is bodyweight. Above adds weight; below is help from the assist machine."
       : "0 is bodyweight. Above adds weight."
@@ -42,7 +47,7 @@ export function WeightField({ exerciseId }: { exerciseId: string }) {
 
   return (
     <View style={{ gap: 12 }}>
-      <SectionLabel>{trained ? "Weight" : "Starting weight"}</SectionLabel>
+      <SectionLabel>{holds ? "Hold" : trained ? "Weight" : "Starting weight"}</SectionLabel>
       <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
         <TextInput
           value={text}
@@ -55,7 +60,7 @@ export function WeightField({ exerciseId }: { exerciseId: string }) {
           // The decimal pad has no minus key.
           keyboardType={assisted ? "numbers-and-punctuation" : "decimal-pad"}
           selectTextOnFocus
-          accessibilityLabel="Weight in kilograms"
+          accessibilityLabel={holds ? "Hold in seconds" : "Weight in kilograms"}
           selectionColor={colors.text}
           style={{
             flex: 1,
@@ -69,13 +74,15 @@ export function WeightField({ exerciseId }: { exerciseId: string }) {
           }}
         />
         <Text style={{ color: colors.muted, fontSize: 17 }}>
-          {exercise.perHand ? "kg ×2" : "kg"}
+          {holds ? "s" : exercise.perHand ? "kg ×2" : "kg"}
         </Text>
       </View>
       <Text style={{ color: valid ? colors.muted : colors.bend, fontSize: 13, lineHeight: 19 }}>
         {valid
           ? `${hint} Changes save automatically.`
-          : `Enter a weight in kg${assisted ? "" : ", 0 or more"}. The previous one is kept until then.`}
+          : holds
+            ? "Enter a number of seconds, 0 or more. The previous one is kept until then."
+            : `Enter a weight in kg${assisted ? "" : ", 0 or more"}. The previous one is kept until then.`}
       </Text>
     </View>
   );
