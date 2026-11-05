@@ -235,7 +235,7 @@ function AddLink({ label, onPress }: { label: string; onPress: () => void }) {
         opacity: pressed ? 0.6 : 1,
       })}
     >
-      <Icon name="plus" size={16} color={colors.rise} weight="semibold" />
+      <Icon name="plus" size={16} color={colors.rise} />
       <Text style={{ color: colors.rise, fontSize: 16, fontWeight: "700" }}>{label}</Text>
     </Pressable>
   );
@@ -287,7 +287,7 @@ function AddPanel({
               <Text style={{ flex: 1, color: colors.text, fontSize: 16, fontWeight: "600" }}>
                 {row.name}
               </Text>
-              <Icon name="plus" size={18} color={colors.rise} weight="semibold" />
+              <Icon name="plus" size={18} color={colors.rise} />
             </Pressable>
           ))}
         </>

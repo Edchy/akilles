@@ -193,7 +193,7 @@ function NewWorkout({
           opacity: pressed ? 0.6 : 1,
         })}
       >
-        <Icon name="plus" size={16} color={colors.muted} weight="semibold" />
+        <Icon name="plus" size={16} color={colors.muted} />
         <Text style={{ color: colors.muted, fontSize: 16, fontWeight: "700" }}>New workout</Text>
       </Pressable>
     );
@@ -215,7 +215,7 @@ function NewWorkout({
           onBlank();
         }}
       >
-        <Icon name="plus" size={14} color={colors.text} weight="semibold" />
+        <Icon name="plus" size={14} color={colors.text} />
         <Text style={{ color: colors.text, fontSize: 16, fontWeight: "600" }}>Start blank</Text>
       </Pill>
       <Text style={{ color: colors.muted, fontSize: 15, fontStyle: "italic" }}>Or copy one</Text>
@@ -445,7 +445,7 @@ function WorkoutRow({
             Next
           </Text>
         ) : null}
-        <Icon name="open" size={15} color={colors.muted} weight="semibold" />
+        <Icon name="open" size={15} color={colors.muted} />
       </Pressable>
     </Swipe>
   );
@@ -611,7 +611,7 @@ function AddRow({ label, onPress }: { label: string; onPress: () => void }) {
         opacity: pressed ? 0.6 : 1,
       })}
     >
-      <Icon name="plus" size={16} color={colors.rise} weight="semibold" />
+      <Icon name="plus" size={16} color={colors.rise} />
       <Text style={{ color: colors.rise, fontSize: 16, fontWeight: "700" }}>{label}</Text>
     </Pressable>
   );
@@ -924,7 +924,7 @@ function SlotRow({
         >
           {setsFor(entry)} × {repLabel(entry.scheme)}
         </Text>
-        <Icon name="open" size={13} color={colors.faint} weight="semibold" />
+        <Icon name="open" size={13} color={colors.faint} />
       </Pressable>
     </Swipe>
   );
@@ -1155,7 +1155,7 @@ function Choice({
       {used ? (
         <Text style={{ color: colors.faint, fontSize: 14, fontStyle: "italic" }}>in use</Text>
       ) : active ? (
-        <Icon name="check" size={16} color={colors.ink} weight="bold" />
+        <Icon name="check" size={16} color={colors.ink} />
       ) : null}
     </Pressable>
   );

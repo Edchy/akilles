@@ -267,13 +267,15 @@ Tactile and unmistakable: one solid way on, everything else soft.
 - **Pressed:** opacity drops to 0.6–0.8 under the thumb. No hover states: this is a phone.
 
 ### Soft circles and pills
-- **Step (− / +):** 48pt circle in the field tint, outline SF Symbol at 22. On the lift screen they only show while the weight is being changed.
+- **Step (− / +):** 48pt circle in the field tint, icon at 22. On the lift screen they only show while the weight is being changed.
 - **Editable number:** the weight's figures are underlined in short dashes (9 long, 2 thick, 55% of the text colour) to say they can be changed without drawing a box. Tap it and it is being changed, all at once: the number pad comes up, the dashes become a solid line, − and + fade in at the row's ends, and the weight is held back at 40% with a blinking caret before it, like a placeholder. What you type is drawn in its place at the same size — the field you type into is hidden — so nothing jumps. − and + still step it with the pad up. A tap on the number or anywhere else keeps what you typed and closes it at once; a tap on a set circle closes it and logs the set. VoiceOver adjusts the weight with a swipe up or down.
 - **Tool (ⓘ, swap, note):** 40pt icon-only circle in the field tint, glyph at 20, on the cardio, mobility and warm-up screens. On white, the ⓘ uses Raised Grey.
 - **More (⋯):** 36pt circle in the field tint at the end of the lift's name. Opens a 250pt white card, 22px corners, with a soft shadow, right-aligned under the button: rows 52 high, outline icon at 20 and body roman at 19, hairlines between. A tap anywhere else closes it.
 
 ### Set circles
 The signature control. 92pt outlined circles holding the target reps in SemiBold 50; tap to log (fills solid), tap again to count down, hold to reset. A short set fills with the raised tint instead of solid ink. Under them, "Last time" in italic, last time's weight in roman, and last time's sets as small solid circles.
+
+**When a lift is done well.** Once the circles settle on target — 0.65s with no tap, since a short set passes through the target on its way down (tap for 6, tap again for 5) — the lift gets its moment, scaled to what was earned. *On target* (every set at its reps): a ripple runs through the circles left to right, each swelling about 9% and sending out a thin ring in the text colour that grows to 1.55× and fades, all over 1.1s, and a success buzz. *The heavier weight earned* (a reload owned): the same, plus each circle lets loose two or three of the family's marks (13–20pt, in the text colour, some fainter) as the ripple reaches it, coming out from behind it, fanning up and away from the middle, turning, and fading before they reach the weight; the "Up to … next time" line lights up with a soft white pill behind it; a second, firmer buzz. Akilles' line itself appears the moment the last circle fills, as for any result. Nothing for a set short or a weight going down, which keep their calm line. It plays once per lift: putting a circle right afterwards, or coming back to a lift already done, plays nothing, and a circle put wrong while it plays takes it away at once. *The send-off:* pressing Next on a lift done well gives a light tap and a soft band of light passing once over the button that comes up in its place (the next lift's Next, its warm-up's Ready, cardio's Done, the stretches'), 0.7s, clipped to the pill. Nothing in any of it moves a control or takes a touch. With Reduce Motion, only the buzzes.
 
 ### Cards / Containers
 - **Corner Style:** 28px continuous.
@@ -292,13 +294,13 @@ A list row slides left 108pt to show one navy pill behind it (white words: Pause
 Exercise first, never movement first. One sheet: a pill search field (Soft Grey, magnifier, "Search exercises"), then every exercise you could add as plain rows on white, mark at 16 and name at 18, grouped Push, Pull, Legs, Core under italic headings. Rows already in the workout are faint with an italic "in it". Search matches names, other names (aliases), plurals and muscles, best first. When nothing matches exactly, the last row is a push-blue "+ Create “…”" link opening two plain questions as chips: "What do you lift?" and "What does it work?" (in gym words, one row per family led by its mark). Selected chips are navy with white words; the final pill is navy, since what you make could be any family.
 
 ### Navigation
-The bottom bar: a Liquid Glass capsule 80pt high, 6pt inner padding, 22pt from the screen edges, mounted once so it never animates with screens. It works out its own ground: the current item's field on the workout screen, white everywhere else. Each slot is a full-height lozenge with an outline SF Symbol (24, regular) over a 15pt Garamond label in the ground's ink (navy, or white on dark fields). The current tab sits in a Soft Grey lozenge; inactive tabs use slate. A pressed slot on a field takes a white (dark fields) or navy (light fields) wash. While lifting it carries Back, Leave and Skip instead of tabs; its shape never changes.
+The bottom bar: a Liquid Glass capsule 80pt high, 6pt inner padding, 22pt from the screen edges, mounted once so it never animates with screens. It works out its own ground: the current item's field on the workout screen, white everywhere else. Each slot is a full-height lozenge with an icon (24) over a 15pt Garamond label in the ground's ink (navy, or white on dark fields). The current tab sits in a Soft Grey lozenge; inactive tabs use slate. A pressed slot on a field takes a white (dark fields) or navy (light fields) wash. While lifting it carries Back, Leave and Skip instead of tabs; its shape never changes.
 
 ### Sheets
 White, in the white palette even over a field. Section headings are italic 15 in faint slate, sentence case.
 
 ### Icons
-Outline SF Symbols at medium weight by default, drawn in the current ink. Unicode stand-ins exist only for the web preview and are never drawn on the phone.
+Phosphor Icons in Bold, drawn in the current ink at one weight everywhere. Only the drawings the app uses are kept, as plain paths in `components/icon.tsx`, so the phone, Android and the web preview match. The tabs: weights for Today, stairs for Progress (climbed a rung at a time), a grid for Plan. In the workout bar, Leave is an open door, since the workout waits on Today, and Skip a double chevron.
 
 ## Do's and Don'ts
 

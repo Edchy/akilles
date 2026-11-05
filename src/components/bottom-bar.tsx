@@ -171,7 +171,7 @@ export function Slot({
       }}
     >
       {children}
-      <Icon name={icon} size={BAR.glyph} color={tint} weight="regular" />
+      <Icon name={icon} size={BAR.glyph} color={tint} />
       <Text style={[barLabel, { color: tint }]}>{label}</Text>
     </View>
   );

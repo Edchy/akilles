@@ -79,7 +79,7 @@ export function Illustration({
         style,
       ]}
     >
-      <Icon name="stretch" size={compact ? 20 : 56} color={colors.line} weight="regular" />
+      <Icon name="stretch" size={compact ? 20 : 56} color={colors.line} />
       {compact ? null : (
         <Text
           style={{

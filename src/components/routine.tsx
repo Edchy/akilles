@@ -96,7 +96,7 @@ export function RoutineEditor({
           opacity: pressed ? 0.6 : 1,
         })}
       >
-        <Icon name="plus" size={16} color={colors.rise} weight="semibold" />
+        <Icon name="plus" size={16} color={colors.rise} />
         <Text style={{ color: colors.rise, fontSize: 16, fontWeight: "700" }}>Add stretch</Text>
       </Pressable>
 
@@ -322,7 +322,7 @@ function AddStretch({
               {inRoutine.has(s.id) ? (
                 <Text style={{ color: colors.faint, fontSize: 14, fontStyle: "italic" }}>in it</Text>
               ) : (
-                <Icon name="plus" size={16} color={colors.rise} weight="semibold" />
+                <Icon name="plus" size={16} color={colors.rise} />
               )}
             </Pressable>
           ))}

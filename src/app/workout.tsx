@@ -3,13 +3,17 @@ import { router } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import {
   Children,
+  createContext,
+  useContext,
   useEffect,
+  useMemo,
   useRef,
   useState,
   type PropsWithChildren,
   type RefObject,
 } from "react";
 import {
+  AccessibilityInfo,
   Animated,
   Easing,
   Keyboard,
@@ -37,7 +41,7 @@ import { Illustration } from "@/components/illustration";
 import { Sheet } from "@/components/sheet";
 import { RestTimer } from "@/components/rest-timer";
 import { colors, FAMILY, fieldColors, fonts, radii } from "@/constants/theme";
-import { byId } from "@/data/exercises";
+import { byId, inSentence } from "@/data/exercises";
 import { ownCue } from "@/data/guides";
 import type { Family } from "@/data/families";
 import {
@@ -214,6 +218,20 @@ export default function WorkoutScreen() {
     [active?.cursor, done, inWarmup, skipWarned],
   );
 
+  // A lift done well gets its moment — see `useCheer` — and a send-off on
+  // Next. Reduce Motion keeps the buzzes and drops the movement.
+  const { cheer, well } = useCheer(state);
+  const still = useReduceMotion();
+  // Leaving a lift done well: a light passes over the button that comes up
+  // under your thumb — see `SendOff`. It stands for a second, then is spent.
+  const [glint, setGlint] = useState(0);
+  useEffect(() => {
+    if (!glint) return;
+    const spent = setTimeout(() => setGlint(0), 1000);
+    return () => clearTimeout(spent);
+  }, [glint]);
+  const sendOff = still ? 0 : glint;
+
   // Hooks must all run before this: the bar publish above is one of them.
   if (done) return <Finished hasSession={!!active} />;
 
@@ -226,14 +244,14 @@ export default function WorkoutScreen() {
   // family's colour, like a lift.
   if (isMobility(item)) {
     return (
-      <OnField family="mobility">
+      <OnField family="mobility" sendOff={sendOff}>
         <Mobility key={item.slot} item={item} />
       </OnField>
     );
   }
   if (isConditioning(item)) {
     return (
-      <OnField family="cardio">
+      <OnField family="cardio" sendOff={sendOff}>
         <Conditioning key={item.slot} item={item} />
       </OnField>
     );
@@ -268,7 +286,7 @@ export default function WorkoutScreen() {
 
   if (warmup.length > 0) {
     return (
-      <OnField family={family}>
+      <OnField family={family} sendOff={sendOff}>
         <Warmup
           family={family}
           name={p.exercise.name}
@@ -291,6 +309,10 @@ export default function WorkoutScreen() {
   const next = () => {
     setPicking(false);
     setMenu(null);
+    if (well) {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      setGlint((g) => g + 1);
+    }
     setState((s) => completeExercise(s));
   };
   // Said before you move on, so what happens next time is never a surprise:
@@ -309,7 +331,7 @@ export default function WorkoutScreen() {
     p.reload ? "reload" : null,
     p.exercise.timed ? "seconds, not reps" : null,
     item.derive
-      ? `${Math.round(item.derive.fraction * 100)}% of ${byId(item.derive.from)!.name.toLowerCase()}`
+      ? `${Math.round(item.derive.fraction * 100)}% of ${inSentence(byId(item.derive.from)!.name)}`
       : null,
   ]
     .filter(Boolean)
@@ -333,11 +355,13 @@ export default function WorkoutScreen() {
       : null,
   ].filter((t): t is Tool => t !== null);
 
+  const motion = cheer && !still ? cheer : null;
+
   // Before it is measured, a fair guess at what sits under the name.
   const under = underName ?? (note ? 28 : 0) + (myNote ? 39 : 0);
 
   return (
-    <OnField family={family}>
+    <OnField family={family} sendOff={sendOff}>
     <View
       ref={root}
       onStartShouldSetResponderCapture={() => {
@@ -440,6 +464,8 @@ export default function WorkoutScreen() {
             logged={item.logged}
             target={p.reps}
             role={partner ? "main" : "solo"}
+            cheer={motion?.id ?? null}
+            burst={motion?.big ? family : null}
             onTap={(i) => setState((s) => tapSet(s, i))}
             onReset={(i) => setState((s) => resetSet(s, i))}
           />
@@ -451,6 +477,7 @@ export default function WorkoutScreen() {
             result={logged ? result : null}
             started={item.logged.some((r) => r !== null)}
             compact={!!partner}
+            glow={motion?.big ? motion.id : null}
           />
         </View>
 
@@ -525,14 +552,25 @@ export default function WorkoutScreen() {
 }
 
 /**
+ * The send-off for a lift done well, while it stands: whichever button comes
+ * up under your thumb after Next — the next lift's, its warm-up's Ready,
+ * cardio's Done, the stretches' — has a light pass over it. See `Glint`.
+ */
+const SendOff = createContext(0);
+
+/**
  * Draws everything inside on the family's colour, with the status bar to
  * match: light over the dark fields, dark over the light ones.
  */
-function OnField({ family, children }: PropsWithChildren<{ family: Family }>) {
+function OnField({
+  family,
+  sendOff = 0,
+  children,
+}: PropsWithChildren<{ family: Family; sendOff?: number }>) {
   return (
     <Field family={family}>
       <StatusBar style={FAMILY[family].dark ? "light" : "dark"} />
-      {children}
+      <SendOff.Provider value={sendOff}>{children}</SendOff.Provider>
     </Field>
   );
 }
@@ -696,7 +734,7 @@ function LiftTitle({
             opacity: pressed ? 0.7 : 1,
           })}
         >
-          <Icon name="more" size={20} color={colors.text} weight="semibold" />
+          <Icon name="more" size={20} color={colors.text} />
         </Pressable>
       </View>
       {children}
@@ -1726,7 +1764,7 @@ function Warmup({
                     backgroundColor: done[i] ? colors.cloud : "transparent",
                   }}
                 >
-                  {done[i] ? <Icon name="check" size={16} color={colors.ink} weight="bold" /> : null}
+                  {done[i] ? <Icon name="check" size={16} color={colors.ink} /> : null}
                 </View>
               </Pressable>
             ))}
@@ -1786,6 +1824,8 @@ function Sets({
   onTap,
   onReset,
   role = "solo",
+  cheer = null,
+  burst = null,
 }: {
   logged: (number | null)[];
   target: number;
@@ -1794,8 +1834,25 @@ function Sets({
   onReset: (index: number) => void;
   /** Which lift these are for — see `CIRCLES`. */
   role?: keyof typeof CIRCLES;
+  /** A lift done well, just now: see `useCheer`. */
+  cheer?: number | null;
+  /** The heavier weight earned, too: the circles let loose this family's marks. */
+  burst?: Family | null;
 }) {
   const colors = useColors();
+  // On target: a ripple runs through the circles, left to right, each one
+  // swelling a touch and sending a thin ring out that fades. A fresh value
+  // per cheer, so it starts at rest-before rather than flashing.
+  const wave = useMemo(() => new Animated.Value(cheer === null ? 1 : 0), [cheer]);
+  useEffect(() => {
+    if (cheer === null) return;
+    Animated.timing(wave, {
+      toValue: 1,
+      duration: RIPPLE_MS,
+      easing: Easing.linear,
+      useNativeDriver: true,
+    }).start();
+  }, [cheer, wave]);
   // Every circle is the same fixed size, centred as a group, and the row
   // is always the same height — two sets must not make bigger circles than
   // four, or the screen changes shape from one exercise to the next. Only
@@ -1807,6 +1864,9 @@ function Sets({
   const fits = width > 0 ? (width - gap * (n - 1)) / n : full;
   const size = Math.max(36, Math.min(full, fits));
   const fontSize = Math.round((font * size) / full);
+  // Each circle's turn in the ripple, spread so the last starts by 0.4.
+  const stagger = n > 1 ? Math.min(0.14, 0.4 / (n - 1)) : 0;
+  const first = (width - n * size - (n - 1) * gap) / 2 + size / 2;
   return (
     <View
       onLayout={(e) => setWidth(e.nativeEvent.layout.width)}
@@ -1818,48 +1878,93 @@ function Sets({
         gap,
       }}
     >
+      {/* First, so the circles cover where the marks start from. */}
+      {burst && cheer !== null ? (
+        <Burst
+          key={cheer}
+          family={burst}
+          from={logged.map((_, i) => ({
+            x: first + i * (size + gap),
+            y: full / 2,
+            at: i * stagger,
+          }))}
+          radius={size / 2}
+        />
+      ) : null}
       {logged.map((reps, i) => {
         const filled = reps !== null;
         const short = filled && reps < target;
+        const at = i * stagger;
+        const swell = wave.interpolate({
+          inputRange: [at, at + 0.06, at + 0.12, at + 0.26, at + 0.4],
+          outputRange: [1, 1.06, 1.09, 1.03, 1],
+          extrapolate: "clamp",
+        });
+        const ring = wave.interpolate({
+          inputRange: [at, at + 0.55],
+          outputRange: [1, 1.55],
+          extrapolate: "clamp",
+        });
+        const ringFade = wave.interpolate({
+          inputRange: [at, at + 0.04, at + 0.55],
+          outputRange: [0, 0.7, 0],
+          extrapolate: "clamp",
+        });
         return (
-          <Pressable
-            key={i}
-            accessibilityRole="button"
-            accessibilityLabel={`Set ${i + 1}${filled ? `, ${reps} reps` : `, target ${target}, not logged`}`}
-            accessibilityHint="Tap to log or count down. Hold to reset to the target."
-            onPress={() => onTap(i)}
-            onLongPress={() => {
-              // The circle is under the thumb, so say it happened by touch.
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-              onReset(i);
-            }}
-            delayLongPress={400}
-            style={({ pressed }) => ({
-              width: size,
-              height: size,
-              alignItems: "center",
-              justifyContent: "center",
-              borderRadius: 999,
-              borderWidth: filled ? 0 : role === "partner" ? 2 : 3,
-              borderColor: colors.text,
-              backgroundColor: filled ? (short ? colors.raised : colors.cloud) : "transparent",
-              opacity: pressed ? 0.7 : 1,
-            })}
-          >
-            <Text
-              style={{
-                // Garamond's figures sit a touch low in a circle: lift them
-                // to its optical centre.
-                marginTop: -Math.round(fontSize * 0.08),
-                color: filled && !short ? colors.ink : colors.text,
-                fontFamily: fonts.semibold,
-                fontSize,
-                fontVariant: ["lining-nums", "tabular-nums"],
+          <Animated.View key={i} style={{ transform: [{ scale: swell }] }}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={`Set ${i + 1}${filled ? `, ${reps} reps` : `, target ${target}, not logged`}`}
+              accessibilityHint="Tap to log or count down. Hold to reset to the target."
+              onPress={() => onTap(i)}
+              onLongPress={() => {
+                // The circle is under the thumb, so say it happened by touch.
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                onReset(i);
               }}
+              delayLongPress={400}
+              style={({ pressed }) => ({
+                width: size,
+                height: size,
+                alignItems: "center",
+                justifyContent: "center",
+                borderRadius: 999,
+                borderWidth: filled ? 0 : role === "partner" ? 2 : 3,
+                borderColor: colors.text,
+                backgroundColor: filled ? (short ? colors.raised : colors.cloud) : "transparent",
+                opacity: pressed ? 0.7 : 1,
+              })}
             >
-              {filled ? reps : target}
-            </Text>
-          </Pressable>
+              <Text
+                style={{
+                  // Garamond's figures sit a touch low in a circle: lift them
+                  // to its optical centre.
+                  marginTop: -Math.round(fontSize * 0.08),
+                  color: filled && !short ? colors.ink : colors.text,
+                  fontFamily: fonts.semibold,
+                  fontSize,
+                  fontVariant: ["lining-nums", "tabular-nums"],
+                }}
+              >
+                {filled ? reps : target}
+              </Text>
+            </Pressable>
+            <Animated.View
+              style={{
+                position: "absolute",
+                left: 0,
+                top: 0,
+                width: size,
+                height: size,
+                borderRadius: 999,
+                borderWidth: 2,
+                borderColor: colors.text,
+                opacity: ringFade,
+                transform: [{ scale: ring }],
+                pointerEvents: "none",
+              }}
+            />
+          </Animated.View>
         );
       })}
     </View>
@@ -2103,6 +2208,255 @@ function Step({ label, onPress }: { label: "−" | "+"; onPress: () => void }) {
   );
 }
 
+/** A lift done well, just now: on target, or the heavier weight earned (`big`). */
+type Cheer = { id: number; key: string; big: boolean };
+
+/** How long a cheer stands: past its longest movement, then it is spent. */
+const CHEER_MS = 2600;
+
+/**
+ * How long the circles must sit still before a lift done well is cheered.
+ * A short set passes through the target on its way down — tap for 6, tap
+ * again for 5 — so the moment waits to see where the circles settle. Long
+ * enough for a quick count down, short enough to still feel like an answer.
+ */
+const SETTLE_MS = 650;
+
+/**
+ * When a lift gets its moment. On target — every set at its reps — and more
+ * so when that earns the heavier weight. Never for a set short or a weight
+ * going down: those keep their plain, calm line.
+ *
+ * It comes once the circles have settled on target, whether the last one
+ * just filled or a correction made it a hit, and once per lift: putting a
+ * circle right afterwards does not play it again, and coming back to a lift
+ * already done well is not the moment. A circle put wrong while it plays
+ * takes it away at once. A success buzz says it under the thumb; the
+ * heavier weight gets a second, firmer one.
+ *
+ * `well` is the lift as it stands, done well or not, for the send-off on Next.
+ */
+function useCheer(state: ReturnType<typeof useSession>["state"]): {
+  cheer: Cheer | null;
+  well: boolean;
+} {
+  const active = state.active;
+  const item = active && !isComplete(state) ? active.items[active.cursor] : undefined;
+  const lift =
+    !!item && !isMobility(item) && !isConditioning(item) && currentWarmup(state).length === 0;
+  const say = lift && allSetsLogged(state) ? nextTime(state)?.say : undefined;
+  const good = say === "hit" || say === "owned";
+  const big = say === "owned";
+  const key = active && item ? `${active.startedAt}:${active.cursor}` : "";
+  // What the circles say now, the partner's too: any tap starts the wait again.
+  const circles = lift && item ? `${item.logged.join()}|${item.supersetLogged?.join() ?? ""}` : "";
+
+  const [track, setTrack] = useState<{
+    key: string;
+    done: string[];
+    count: number;
+    cheer: Cheer | null;
+  }>(() => ({ key, done: good ? [key] : [], count: 0, cheer: null }));
+  if (track.key !== key) {
+    // Arriving at a lift already done well — Back to it — is not the moment.
+    const done = good && !track.done.includes(key) ? [...track.done, key] : track.done;
+    setTrack({ ...track, key, done, cheer: null });
+  } else if (!good && track.cheer) {
+    setTrack({ ...track, cheer: null });
+  }
+
+  const waiting = good && track.key === key && !track.done.includes(key);
+  useEffect(() => {
+    if (!waiting) return;
+    const settled = setTimeout(
+      () =>
+        setTrack((t) =>
+          t.key !== key || t.done.includes(key)
+            ? t
+            : {
+                key,
+                done: [...t.done, key],
+                count: t.count + 1,
+                cheer: { id: t.count + 1, key, big },
+              },
+        ),
+      SETTLE_MS,
+    );
+    return () => clearTimeout(settled);
+  }, [waiting, key, circles, big]);
+
+  const id = track.cheer?.id;
+  const firm = track.cheer?.big;
+  useEffect(() => {
+    if (id === undefined) return;
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    const second = firm
+      ? setTimeout(() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium), 220)
+      : undefined;
+    // Spent once it has played, so a line drawn again later stays still.
+    const spent = setTimeout(
+      () => setTrack((t) => (t.cheer?.id === id ? { ...t, cheer: null } : t)),
+      CHEER_MS,
+    );
+    return () => {
+      clearTimeout(second);
+      clearTimeout(spent);
+    };
+  }, [id, firm]);
+
+  return { cheer: good && track.cheer?.key === key ? track.cheer : null, well: good };
+}
+
+/** Whether the phone asks for less movement (Reduce Motion). */
+function useReduceMotion() {
+  const [reduce, setReduce] = useState(false);
+  useEffect(() => {
+    AccessibilityInfo.isReduceMotionEnabled().then(setReduce);
+    const sub = AccessibilityInfo.addEventListener("reduceMotionChanged", setReduce);
+    return () => sub.remove();
+  }, []);
+  return reduce;
+}
+
+/** How long the ripple takes to run through the circles and settle. */
+const RIPPLE_MS = 1100;
+
+/**
+ * The heavier weight earned: each circle lets loose a few marks of the
+ * lift's family as the ripple reaches it. They come out from behind it and
+ * fan upward and away from the middle, turning a little, and fade before
+ * they get far — around the weight rather than over it. A handful, not a
+ * shower, some fainter so they sit at different depths. Touches nothing.
+ */
+function Burst({
+  family,
+  from,
+  radius,
+}: {
+  family: Family;
+  /** Each circle's centre in the row, and its turn in the ripple (0–1). */
+  from: { x: number; y: number; at: number }[];
+  radius: number;
+}) {
+  const colors = useColors();
+  // Worked out once, as it appears: the screen redraws every second while
+  // resting, and the marks must not start again each time.
+  const [pieces] = useState(() => {
+    const per = from.length > 3 ? 2 : 3;
+    const middle = (from.length - 1) / 2;
+    return from.flatMap((c, i) =>
+      Array.from({ length: per }, (_, j) => {
+        // A fan over the top of the circle, leaning away from the middle.
+        const spread = per === 3 ? (j - 1) * 50 : (j - 0.5) * 60;
+        const angle =
+          ((-90 + spread + (i - middle) * 24 + (Math.random() - 0.5) * 24) * Math.PI) / 180;
+        const far = radius * 0.9 + 40 + Math.random() * 45;
+        return {
+          x: c.x,
+          y: c.y,
+          dx: Math.cos(angle) * far,
+          dy: Math.sin(angle) * far,
+          turn: Math.round((Math.random() < 0.5 ? -1 : 1) * (40 + Math.random() * 80)),
+          size: 13 + Math.round(Math.random() * 7),
+          delay: Math.round(c.at * RIPPLE_MS + 40 + Math.random() * 120),
+          duration: 1100 + Math.round(Math.random() * 400),
+          soft: (i + j) % 3 === 0,
+          t: new Animated.Value(0),
+        };
+      }),
+    );
+  });
+  useEffect(() => {
+    Animated.parallel(
+      pieces.map((p) =>
+        Animated.timing(p.t, {
+          toValue: 1,
+          delay: p.delay,
+          duration: p.duration,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: true,
+        }),
+      ),
+    ).start();
+  }, [pieces]);
+
+  return (
+    <View
+      accessibilityElementsHidden
+      importantForAccessibility="no-hide-descendants"
+      style={{
+        position: "absolute",
+        left: 0,
+        right: 0,
+        top: 0,
+        bottom: 0,
+        pointerEvents: "none",
+      }}
+    >
+      {pieces.map((p, i) => {
+        const along = (to: number) => p.t.interpolate({ inputRange: [0, 1], outputRange: [0, to] });
+        const turn = p.t.interpolate({ inputRange: [0, 1], outputRange: ["0deg", `${p.turn}deg`] });
+        const grow = p.t.interpolate({ inputRange: [0, 0.25, 1], outputRange: [0.5, 1, 0.8] });
+        return (
+          <Animated.View
+            key={i}
+            style={{
+              position: "absolute",
+              left: p.x - p.size / 2,
+              top: p.y - p.size / 2,
+              opacity: p.t.interpolate({
+                inputRange: [0, 0.1, 0.55, 1],
+                outputRange: [0, p.soft ? 0.5 : 0.95, p.soft ? 0.4 : 0.75, 0],
+              }),
+              transform: [
+                { translateX: along(p.dx) },
+                { translateY: along(p.dy) },
+                { rotate: turn },
+                { scale: grow },
+              ],
+            }}
+          >
+            <Mark family={family} size={p.size} color={colors.text} />
+          </Animated.View>
+        );
+      })}
+    </View>
+  );
+}
+
+/** A soft light behind a line, coming up and going again: the heavier weight, earned. */
+function Glow() {
+  const colors = useColors();
+  const t = useMemo(() => new Animated.Value(0), []);
+  useEffect(() => {
+    Animated.timing(t, {
+      toValue: 1,
+      delay: 520,
+      duration: 1500,
+      easing: Easing.inOut(Easing.quad),
+      useNativeDriver: true,
+    }).start();
+  }, [t]);
+  return (
+    <Animated.View
+      style={{
+        position: "absolute",
+        top: -3,
+        bottom: -3,
+        left: -14,
+        right: -14,
+        borderRadius: 999,
+        backgroundColor: colors.white,
+        opacity: t.interpolate({ inputRange: [0, 0.3, 1], outputRange: [0, 0.26, 0] }),
+        transform: [
+          { scale: t.interpolate({ inputRange: [0, 0.3, 1], outputRange: [0.92, 1, 1.04] }) },
+        ],
+        pointerEvents: "none",
+      }}
+    />
+  );
+}
+
 /**
  * The line under the circles, which follows the exercise through. Before the
  * first set, where today's number came from — last time's weight and reps,
@@ -2116,6 +2470,7 @@ function Why({
   result,
   started,
   compact,
+  glow = null,
 }: {
   prescription: ReturnType<typeof currentPrescription>;
   /** Every set is in: what it means for next time, shown in the hint's place. */
@@ -2124,6 +2479,8 @@ function Why({
   started: boolean;
   /** Sharing the screen with a superset: one line for the remark. */
   compact?: boolean;
+  /** The heavier weight earned, just now: its line lights up for a moment. */
+  glow?: number | null;
 }) {
   const colors = useColors();
   if (!prescription) return null;
@@ -2140,9 +2497,12 @@ function Why({
         >
           {result.quip}
         </Text>
-        <Text numberOfLines={1} style={line}>
-          {result.fact}
-        </Text>
+        <View>
+          {glow !== null ? <Glow key={glow} /> : null}
+          <Text numberOfLines={1} style={line}>
+            {result.fact}
+          </Text>
+        </View>
       </View>
     );
   }
@@ -2394,6 +2754,7 @@ function Action({
   disabled?: boolean;
 }) {
   const colors = useColors();
+  const glint = useContext(SendOff);
   const on = !!fill && !disabled;
   return (
     <Pressable
@@ -2427,8 +2788,63 @@ function Action({
       >
         {label}
       </Text>
-      {arrow && on ? <Icon name="forward" size={20} color={colors.ink} weight="semibold" /> : null}
+      {arrow && on ? <Icon name="forward" size={20} color={colors.ink} /> : null}
+      {glint > 0 ? <Glint key={glint} /> : null}
     </Pressable>
+  );
+}
+
+/**
+ * The send-off for a lift done well: as you press Next, a soft band of light
+ * passes over the button now in its place, left to right, once. The screen
+ * has already moved on, so it is whatever comes next that carries it.
+ */
+function Glint() {
+  const [width, setWidth] = useState(0);
+  const t = useMemo(() => new Animated.Value(0), []);
+  useEffect(() => {
+    if (!width) return;
+    Animated.timing(t, {
+      toValue: 1,
+      duration: 700,
+      easing: Easing.inOut(Easing.quad),
+      useNativeDriver: true,
+    }).start();
+  }, [t, width]);
+  return (
+    <View
+      onLayout={(e) => setWidth(e.nativeEvent.layout.width)}
+      style={{
+        position: "absolute",
+        left: 0,
+        right: 0,
+        top: 0,
+        bottom: 0,
+        overflow: "hidden",
+        borderRadius: radii.action,
+        borderCurve: "continuous",
+        pointerEvents: "none",
+      }}
+    >
+      {width ? (
+        <Animated.View
+          style={{
+            position: "absolute",
+            top: -24,
+            bottom: -24,
+            left: 0,
+            width: 16,
+            backgroundColor: "rgba(255, 255, 255, 0.7)",
+            boxShadow: "0 0 22px 10px rgba(255, 255, 255, 0.45)",
+            opacity: t.interpolate({ inputRange: [0, 0.15, 0.8, 1], outputRange: [0, 1, 1, 0] }),
+            transform: [
+              { translateX: t.interpolate({ inputRange: [0, 1], outputRange: [-40, width + 40] }) },
+              { rotate: "16deg" },
+            ],
+          }}
+        />
+      ) : null}
+    </View>
   );
 }
 

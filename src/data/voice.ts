@@ -1,3 +1,5 @@
+import { inSentence } from "@/data/exercises";
+
 /**
  * Akilles talks back.
  *
@@ -185,7 +187,7 @@ export const newsLine = (news: News, seed: string): string | null => {
     const one = items[0];
     return line
       .replace("{name}", one.name)
-      .replace("{lname}", one.name.toLowerCase())
+      .replace("{lname}", inSentence(one.name))
       .replace("{weight}", one.weight ?? "")
       .replace("{count}", WORDS[items.length] ?? String(items.length));
   };

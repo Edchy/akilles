@@ -238,7 +238,7 @@ export function OpenRow({
           {tag}
         </Text>
       ) : null}
-      <Icon name="open" size={large ? 15 : 13} color={colors.faint} weight="semibold" />
+      <Icon name="open" size={large ? 15 : 13} color={colors.faint} />
     </Pressable>
   );
 }

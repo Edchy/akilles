@@ -82,7 +82,7 @@ export function AddExerciseSheet({
               backgroundColor: colors.surface,
             }}
           >
-            <Icon name="search" size={16} color={colors.faint} weight="semibold" />
+            <Icon name="search" size={16} color={colors.faint} />
             <TextInput
               value={query}
               onChangeText={setQuery}
@@ -215,7 +215,7 @@ function CreateRow({ label, onPress }: { label: string; onPress: () => void }) {
         opacity: pressed ? 0.5 : 1,
       })}
     >
-      <Icon name="plus" size={15} color={colors.rise} weight="bold" />
+      <Icon name="plus" size={15} color={colors.rise} />
       <Text style={{ color: colors.rise, fontSize: 18, fontWeight: "600" }}>{label}</Text>
     </Pressable>
   );
@@ -239,7 +239,7 @@ const GEAR: {
   { label: "Bodyweight", increment: 1, bodyweight: true, holds: true },
 ];
 
-/** The gear a name already gives away: "Dumbbell fly", "Cable kickback". */
+/** The gear a name already gives away: "DB fly", "Cable kickback". */
 const gearIn = (name: string): number | null => {
   const n = ` ${name.toLowerCase()} `;
   if (/\b(dumbbells?|db)\b/.test(n)) return 1;

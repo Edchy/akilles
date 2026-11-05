@@ -31,7 +31,7 @@ They are a starting point, not a fixture — see
 | | | Main lifts | Arms & abs |
 |---|---|---|---|
 | 1 | **Push A** · chest focus | DB bench `3x` · DB shoulder press `3x` · cable crossover `3x` · dips `3x` | hanging leg raise `2x` |
-| 2 | **Pull A** · vertical pull focus | pull-ups `3x` · barbell row `3x` · row machine `3x` | barbell curl `3x` · rotary torso machine `2x` |
+| 2 | **Pull A** · vertical pull focus | pull-ups `3x` · BB row `3x` · row machine `3x` | BB curl `3x` · rotary torso machine `2x` |
 | 3 | **Legs** | back squat `3x` · RDL `3x` · Bulgarian split squat `2x` | hanging leg raise `2x` |
 | 4 | **Push B** · shoulder focus | DB shoulder press `3x` · DB bench `3x` · cable crossover `3x` | pushdown `3x` · rotary torso machine `2x` |
 | 5 | **Pull B** · row focus | lat pulldown `3x` · DB row `3x` · row machine `3x` | DB curl `3x` · hanging leg raise `2x` |

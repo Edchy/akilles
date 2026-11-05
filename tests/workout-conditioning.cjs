@@ -302,7 +302,7 @@ test("the button that moves on names what comes next, and nothing after the last
   let state = store.buildWorkout(fresh());
   const at = (cursor) => ({ ...state, active: { ...state.active, cursor } });
   const items = state.active.items;
-  assert.equal(store.nextItemName(at(0)), "Dumbbell bench press");
+  assert.equal(store.nextItemName(at(0)), "DB bench press");
   assert.equal(store.nextItemName(at(items.length - 3)), "Ski-erg");
   assert.equal(store.nextItemName(at(items.length - 2)), "Everyday stretch");
   assert.equal(store.nextItemName(at(items.length - 1)), null);

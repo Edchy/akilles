@@ -5,6 +5,12 @@ import { Text } from "@/components/text";
 import { useColors } from "@/components/field";
 import { Icon } from "@/components/icon";
 
+/**
+ * Past this, it is a break rather than a rest — a workout left and come back
+ * to hours later read "Rest 318:38" — so the clock stops here and says so.
+ */
+const LONGEST_REST = 10 * 60;
+
 /** Elapsed time since the last logged set, including time with the phone locked. */
 export function RestTimer({ startedAt }: { startedAt?: number }) {
   const colors = useColors();
@@ -12,7 +18,11 @@ export function RestTimer({ startedAt }: { startedAt?: number }) {
 
   useEffect(() => {
     if (startedAt === undefined) return;
-    const tick = () => setNow(Date.now());
+    const tick = () => {
+      const time = Date.now();
+      setNow(time);
+      if (time - startedAt >= LONGEST_REST * 1000) stop();
+    };
     let interval: ReturnType<typeof setInterval> | undefined;
     const stop = () => {
       clearInterval(interval);
@@ -35,8 +45,9 @@ export function RestTimer({ startedAt }: { startedAt?: number }) {
   }, [startedAt]);
 
   const elapsed = startedAt === undefined ? 0 : Math.max(0, Math.floor((now - startedAt) / 1000));
-  const minutes = Math.floor(elapsed / 60);
-  const seconds = elapsed % 60;
+  const long = elapsed >= LONGEST_REST;
+  const minutes = Math.floor(Math.min(elapsed, LONGEST_REST) / 60);
+  const seconds = long ? 0 : elapsed % 60;
 
   return (
     <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
@@ -44,7 +55,9 @@ export function RestTimer({ startedAt }: { startedAt?: number }) {
     <Text
       accessibilityLabel={startedAt === undefined
         ? "Rest timer starts after your first set"
-        : `Time since last set: ${minutes} minutes, ${seconds} seconds`}
+        : long
+          ? `More than ${LONGEST_REST / 60} minutes since your last set`
+          : `Time since last set: ${minutes} minutes, ${seconds} seconds`}
       style={{
         color: colors.text,
         fontSize: 17,
@@ -52,7 +65,7 @@ export function RestTimer({ startedAt }: { startedAt?: number }) {
         textAlign: "right",
       }}
     >
-      Rest {startedAt === undefined ? "—" : `${minutes}:${String(seconds).padStart(2, "0")}`}
+      Rest {startedAt === undefined ? "—" : `${minutes}:${String(seconds).padStart(2, "0")}${long ? "+" : ""}`}
     </Text>
     </View>
   );

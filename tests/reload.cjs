@@ -170,10 +170,10 @@ test("Today says a lift reloads", () => {
     },
   };
   const rows = store.workoutPreview(state, store.workoutById(state, "push_a"));
-  const bench = rows.find((r) => r.name === "Dumbbell bench press");
+  const bench = rows.find((r) => r.name === "DB bench press");
   assert.equal(bench.change, "reload");
   assert.equal(bench.amount, "3 × 10");
 
   const line = voice.newsLine({ up: [], fresh: [], reload: [{ name: bench.name, weight: bench.weight }], down: [] }, "x");
-  assert.match(line, /Dumbbell bench press reloads/);
+  assert.match(line, /DB bench press reloads/);
 });

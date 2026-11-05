@@ -88,7 +88,7 @@ export function Step({
         opacity: disabled ? 0.3 : pressed ? 0.7 : 1,
       })}
     >
-      <Icon name={icon} size={18} color={colors.text} weight="semibold" />
+      <Icon name={icon} size={18} color={colors.text} />
     </Pressable>
   );
 }
