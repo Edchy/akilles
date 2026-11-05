@@ -33,6 +33,26 @@ export const BODY = {
   neck: 0.21,
 };
 
+/**
+ * How thick each part is drawn (see `marks.ts`), in metres. A move needs
+ * these wherever the body touches something: the seat and the upper back on
+ * a bench, the bar on the chest.
+ */
+export const SIZE = {
+  /** The head's radius. */
+  head: 0.11,
+  /**
+   * The ▽ of the trunk: its top past the shoulder joints, its point past the
+   * hip joints (below them), and its half-width from the side and face on.
+   */
+  trunk: { up: 0.06, down: -0.08, side: 0.17, front: 0.25 },
+  /** Each limb's radius. */
+  thigh: 0.068,
+  shin: 0.068,
+  upperArm: 0.05,
+  forearm: 0.05,
+};
+
 export const SIDES = [1, -1] as const;
 
 /** An arm or a leg: shoulder or hip, elbow or knee, hand or ankle. */
@@ -55,6 +75,8 @@ export type Pose = {
   head: Vec3;
   /** The middle of a barbell, when there is one; it runs across the body. */
   bar?: Vec3;
+  /** How far the lower back lifts off the line of the spine, in metres: a bench press's arch. */
+  arch?: number;
 };
 
 /**

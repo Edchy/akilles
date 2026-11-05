@@ -113,15 +113,17 @@ edit, clear it to remove it. One note per exercise or machine, not one per
 session, and nothing shows until there is one. The same note is under **Note**
 when you tap an exercise or machine in Plan.
 
-**Films** are Milo's own pictures, starting with the back squat: a short loop
-of one rep from the side, a turn, and one rep from the front, drawn flat after
-the Munich '72 pictograms — a circle head, a ▽ trunk, even bars for limbs, in
-the family's ink on its field. The pose isn't drawn but worked out from the
-rules a coach gives (feet flat, knees over the toes, the bar over mid-foot), so
-it is true from any side, and `tests/motion.cjs` checks it against a coach's
-ranges. The plate from the side is see-through, so the bar reads as on the
-back. With Reduce Motion, a film holds the bottom of the rep. See
-`src/motion/`. Thumbnails in lists keep the photo.
+**Films** are Milo's own pictures, so far of the back squat and the bench
+press: a short loop drawn flat after the Munich '72 pictograms — a circle
+head, a ▽ trunk, even bars for limbs, in the family's ink on its field. A
+squat shows a rep from the side, turns, and shows one from the front; a bench
+press stays side on. The pose isn't drawn but worked out from the rules a
+coach gives — feet flat, knees over the toes, the bar over mid-foot; on the
+bench, the arch, forearms upright, elbows about 45° — so it is true from any
+side, and `tests/motion.cjs` checks it against a coach's ranges. A plate seen
+from the side is see-through, so the bar reads as where it is. With Reduce
+Motion, a film holds the bottom of the rep. See `src/motion/`. Thumbnails in
+lists keep the photo.
 
 **Photos** come from [free-exercise-db](https://github.com/yuhonas/free-exercise-db),
 public domain under the Unlicense, matched by hand in `src/data/photos.ts`. A

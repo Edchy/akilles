@@ -3,7 +3,7 @@ import { View, type ViewStyle } from "react-native";
 import Svg, { ClipPath, Defs, Path } from "react-native-svg";
 
 import { useReduceMotion } from "@/lib/use-reduce-motion";
-import { FILM_SECONDS, momentAt, STILL_SECONDS } from "@/motion/film";
+import { filmOf, STILL_SECONDS } from "@/motion/film";
 import { draw, type FilmColors } from "@/motion/marks";
 import { MOVES } from "@/motion/moves";
 
@@ -14,6 +14,8 @@ import { MOVES } from "@/motion/moves";
  */
 export function Film({ id, colors, style }: { id: string; colors: FilmColors; style?: ViewStyle }) {
   const still = useReduceMotion();
+  const move = MOVES[id];
+  const film = filmOf(move.film.views);
   const [seconds, setSeconds] = useState(0);
   const [size, setSize] = useState<{ width: number; height: number }>();
   const clip = `film-${useId().replace(/[^a-zA-Z0-9]/g, "")}`;
@@ -22,14 +24,14 @@ export function Film({ id, colors, style }: { id: string; colors: FilmColors; st
     if (still) return;
     const start = Date.now();
     let frame = requestAnimationFrame(function tick() {
-      setSeconds(((Date.now() - start) / 1000) % FILM_SECONDS);
+      setSeconds(((Date.now() - start) / 1000) % film.seconds);
       frame = requestAnimationFrame(tick);
     });
     return () => cancelAnimationFrame(frame);
-  }, [still]);
+  }, [still, film.seconds]);
 
-  const moment = momentAt(still ? STILL_SECONDS : seconds);
-  const drawing = size ? draw(MOVES[id], moment, colors, size) : null;
+  const moment = film.momentAt(still ? STILL_SECONDS : seconds);
+  const drawing = size ? draw(move, moment, colors, size) : null;
 
   return (
     <View

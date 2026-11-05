@@ -1,4 +1,4 @@
-import { BODY, type Pose } from "@/motion/figure";
+import { BODY, SIZE } from "@/motion/figure";
 import type { Moment } from "@/motion/film";
 import type { Move } from "@/motion/moves";
 import { Vec3 } from "@/motion/vector";
@@ -37,12 +37,10 @@ export type Drawing = {
   body: string;
 };
 
-// Sizes, in metres.
+// Sizes, in metres; the body's own are `SIZE`.
 const GAP = 0.021;
-const HEAD = 0.11;
-/** The ▽: top past the shoulders, point past the hips, half-width side on and face on. */
-const TORSO = { up: 0.06, down: -0.08, side: 0.17, front: 0.25, round: 0.035 };
-const LIMB = { thigh: 0.068, shin: 0.068, upperArm: 0.05, forearm: 0.05 };
+/** How round the ▽'s corners are. */
+const ROUND = 0.035;
 /** A quarter-round: heel behind the ankle, length, height, and half its width. */
 const FOOT = { back: 0.07, long: 0.27, high: 0.095, half: 0.042 };
 const LINE = 0.017;
@@ -53,8 +51,6 @@ const FLOOR = 0.012;
  * across) on each side and its end a little ring.
  */
 const BAR = { from: 0.24, half: 1.1, plateAt: 0.69, plate: 0.17, end: 0.03 };
-/** What a box must hold: a lifter standing tall with room over their head, and a bar's width. */
-const ROOM = { height: 1.85, width: 2.4 };
 
 type Pt = [number, number];
 
@@ -65,8 +61,8 @@ const clamp = (x: number, lo: number, hi: number) => Math.min(Math.max(x, lo), h
 /**
  * A movement at one moment of its film, drawn to fill a box `width` by
  * `height` points: the floor near the bottom — in a box taller than the
- * lifter needs, a little below the middle — and the lifter turning about the
- * middle of their feet.
+ * lifter needs, a little below the middle — and the film's middle in the
+ * middle (see `Move.film`).
  */
 export function draw(
   move: Move,
@@ -75,12 +71,12 @@ export function draw(
   { width, height }: { width: number; height: number },
 ): Drawing {
   const pose = move.pose(depth);
-  const scale = Math.min((height * 0.88) / ROOM.height, width / ROOM.width);
-  const floorY = Math.min(height * 0.88, (height + ROOM.height * scale) / 2 + height * 0.05);
+  const { room, middle } = move.film;
+  const scale = Math.min((height * 0.88) / room.height, width / room.width);
+  const floorY = Math.min(height * 0.88, (height + room.height * scale) / 2 + height * 0.05);
   const angle = (turn * Math.PI) / 180;
   const toCamera = new Vec3(Math.sin(angle), 0, Math.cos(angle));
   const right = new Vec3(Math.cos(angle), 0, -Math.sin(angle));
-  const middle = feetMiddle(pose);
   const at = (v: Vec3): Pt => [
     width / 2 + v.clone().sub(middle).dot(right) * scale,
     floorY - v.y * scale,
@@ -101,11 +97,11 @@ export function draw(
     });
   };
   // Equipment goes behind the whole body, nearest last.
-  const line = (key: string, d: string, depth: number) =>
+  const line = (key: string, d: string, depth: number, fill?: string) =>
     parts.push({
       depth: depth - 100,
       paints: [
-        { key: `${key}-gap`, d, stroke: colors.field, width: HALO * scale },
+        { key: `${key}-gap`, d, fill, stroke: colors.field, width: HALO * scale },
         { key, d, stroke: colors.ink, width: LINE * scale },
       ],
     });
@@ -127,23 +123,29 @@ export function draw(
     return mix(colors.tint, colors.ink, clamp((-facing - 0.05) / 0.5, 0, 1));
   };
 
-  // The ▽: its point sharp face on; side on it narrows to a wedge.
+  // The ▽: its point sharp face on; side on it narrows to a wedge, its
+  // point lifted by an arched back.
+  const T = SIZE.trunk;
   const shoulders = pose.pelvis.clone().addScaledVector(pose.trunk, BODY.torso);
   const across = Math.abs(right.dot(pose.across));
-  const half = (TORSO.side + (TORSO.front - TORSO.side) * across) * scale;
+  const half = (T.side + (T.front - T.side) * across) * scale;
   const [hx, hy] = at(pose.pelvis);
   const [sx, sy] = at(shoulders);
   const spine = Math.hypot(sx - hx, sy - hy);
   const [nx, ny] = spine > 1e-6 ? [(hy - sy) / spine, (sx - hx) / spine] : [1, 0];
-  const [tx, ty] = at(shoulders.clone().addScaledVector(pose.trunk, TORSO.up));
+  const [tx, ty] = at(shoulders.clone().addScaledVector(pose.trunk, T.up));
+  const point = pose.pelvis
+    .clone()
+    .addScaledVector(pose.trunk, T.down)
+    .addScaledVector(pose.forward, (pose.arch ?? 0) * (1 - across));
   const torso: Pt[] = [
     [tx + nx * half, ty + ny * half],
     [tx - nx * half, ty - ny * half],
-    at(pose.pelvis.clone().addScaledVector(pose.trunk, TORSO.down)),
+    at(point),
   ];
-  shape("torso", rounded(torso, TORSO.round * scale), colors.ink, torsoDepth);
+  shape("torso", rounded(torso, ROUND * scale), colors.ink, torsoDepth);
 
-  shape("head", circle(at(pose.head), HEAD * scale), colors.ink, relative(pose.head) + 0.03);
+  shape("head", circle(at(pose.head), SIZE.head * scale), colors.ink, relative(pose.head) + 0.03);
 
   pose.legs.forEach((leg, i) => {
     const color = colorOf(i);
@@ -163,24 +165,24 @@ export function draw(
     }
     const heel = floor.clone().addScaledVector(leg.foot, 0.06);
     shape(`foot${i}`, polygon(hull(foot)), color, relative(heel));
-    const thigh = pill(at(leg.root), at(leg.mid), LIMB.thigh * scale);
+    const thigh = pill(at(leg.root), at(leg.mid), SIZE.thigh * scale);
     shape(`thigh${i}`, thigh, color, between(leg.root, leg.mid));
-    const shin = pill(at(leg.mid), at(leg.end), LIMB.shin * scale);
+    const shin = pill(at(leg.mid), at(leg.end), SIZE.shin * scale);
     shape(`shin${i}`, shin, color, between(leg.mid, leg.end) + 0.002);
   });
 
   const hands: number[] = [];
   pose.arms.forEach((arm, i) => {
     const color = colorOf(i);
-    const upper = pill(at(arm.root), at(arm.mid), LIMB.upperArm * scale);
+    const upper = pill(at(arm.root), at(arm.mid), SIZE.upperArm * scale);
     shape(`upperArm${i}`, upper, color, between(arm.root, arm.mid));
-    const fore = pill(at(arm.mid), at(arm.end), LIMB.forearm * scale);
+    const fore = pill(at(arm.mid), at(arm.end), SIZE.forearm * scale);
     shape(`forearm${i}`, fore, color, between(arm.mid, arm.end) + 0.002);
     hands[i] = relative(arm.end);
   });
 
   const bar = pose.bar;
-  if (move.kit === "barbell" && bar) {
+  if (move.kit.bar && bar) {
     const along = (z: number) => bar.clone().add(new Vec3(0, 0, z));
     // Round things on the bar face along it: circles from the side, lines
     // face on, ellipses between.
@@ -201,6 +203,25 @@ export function draw(
     });
   }
 
+  // A bench: its pad in outline over the field, two legs, a rail on the floor.
+  const bench = move.kit.bench;
+  if (bench) {
+    const under = bench.top - bench.pad;
+    const box: Pt[] = [];
+    for (const x of [bench.from, bench.to]) {
+      for (const y of [under, bench.top]) {
+        for (const z of [-bench.half, bench.half]) box.push(at(new Vec3(x, y, z)));
+      }
+    }
+    line("pad", rounded(hull(box), 0.02 * scale), torsoDepth - 0.05, colors.field);
+    bench.legs.forEach((x, i) => {
+      const leg = `M${pt(at(new Vec3(x, under, 0)))}L${pt(at(new Vec3(x, 0, 0)))}`;
+      line(`leg${i}`, leg, torsoDepth - 0.06);
+    });
+    const rail = [bench.from + 0.04, bench.to - 0.04].map((x) => pt(at(new Vec3(x, 0, 0))));
+    line("rail", `M${rail[0]}L${rail[1]}`, torsoDepth - 0.06);
+  }
+
   parts.sort((a, b) => a.depth - b.depth);
   const ground: Paint = {
     key: "floor",
@@ -209,15 +230,6 @@ export function draw(
     width: FLOOR * scale,
   };
   return { paints: [ground, ...parts.flatMap((p) => p.paints), ...cuts], body: outlines.join("") };
-}
-
-/** Where the lifter turns: the middle of their feet, on the floor. */
-function feetMiddle(pose: Pose) {
-  const middle = new Vec3();
-  for (const leg of pose.legs) {
-    middle.add(leg.end).addScaledVector(leg.foot, (BODY.toe - BODY.heel) / 2);
-  }
-  return middle.multiplyScalar(0.5).setY(0);
 }
 
 // Every outline runs clockwise on screen, so all of them in one path still
