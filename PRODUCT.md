@@ -8,7 +8,7 @@ ios
 
 ## Users
 
-Right now: one person, the author, training in a commercial gym with an iPhone in hand between sets. The app is also meant to grow into a product for the people described in `PRODUCT_STRATEGY.md`: people who want to train but struggle to start and keep coming back. Design for the first user without closing the door on the second group. There is no onboarding or marketing surface yet.
+Right now: one person, the author, training in a commercial gym with an iPhone in hand between sets. The app is also meant to grow into a product for the people described in `PRODUCT_STRATEGY.md`: people who want to train but struggle to start and keep coming back. Design for the first user without closing the door on the second group. The only onboarding is the intro: six pages on first launch (why, then how), reopened from Plan's ?. There is no marketing surface yet.
 
 Situation of use: mid-session, heart rate up, sweaty hands, a glance at arm's length, often while walking between machines.
 
@@ -22,15 +22,15 @@ The app decides and the user performs. It is not a logbook you have to fill in a
 
 ## Philosophy: Own the Weight
 
-Leave the ego at the door. Akilles is the opposite of the typical gym-bro app, and it wants gym bros anyway.
+Leave the ego at the door. Milo is the opposite of the typical gym-bro app, and it wants gym bros anyway.
 
-> Most gym apps count how much you lift. Akilles counts how much you own. A rep counts when you lower it slowly, hold it where it's hardest, and lift it without a swing. When a lift climbs, it reloads: back down the ladder and up again, slower. Lighter today is how you get heavier for good.
+> Most gym apps count how much you lift. Milo counts how much you own. A rep counts when you lower it slowly, hold it where it's hardest, and lift it without a swing. When a lift climbs, it reloads: back down the ladder and up again, slower. Lighter today is how you get heavier for good.
 
 - **A rep counts when it is owned:** lowered under control, held where it is hardest, no swing and no bounce. Progression runs entirely on the reps you log, so honest counting is the form check. Progress slows to the speed of your form without another rule.
 - **Lift less.** Weights start with two reps to spare. Light and controlled is praised over heavy and sloppy.
 - **Harder without heavier.** Where nothing can be added — a hanging leg raise, a push-up — the step up is a longer hold at the hardest point, a second at a time up to five. Owning the position is the progress.
 - **Reload as you climb.** After two steps up, a lift climbs the same weight again before the next. Progress calls it, never the calendar. The only calendar rule is the layoff: easing back after weeks away, offered and never forced.
-- **Make control the flex.** Reloads, honest short counts and slow reps are what Akilles praises. Momentum and ego are what it teases. The only pitch that reaches gym bros is control as the harder, more impressive thing, so say it in their language: "lighter is the flex", "owned, not borrowed".
+- **Make control the flex.** Reloads, honest short counts and slow reps are what Milo praises. Momentum and ego are what it teases. The only pitch that reaches gym bros is control as the harder, more impressive thing, so say it in their language: "lighter is the flex", "owned, not borrowed".
 
 ## Operating Context
 
@@ -49,8 +49,8 @@ Leave the ego at the door. Akilles is the opposite of the typical gym-bro app, a
 
 ## Brand Commitments
 
-- The name is **Akilles** (the repository folder is "achilles").
-- Two voices. **Instructions and facts** are plain and direct: what to do, what happens next time, in full sentences. **Akilles itself** talks back: cheeky, blunt, a bit harsh — about the lifting, never about the person. It teases momentum, swinging, ego and the heel, never a small number. It respects an honest short count, doesn't call anyone weak, and doesn't guilt anyone for skipping. A quip is always paired with the plain fact, so nothing important lives only in the joke. Lines live in `src/data/voice.ts`.
+- The name is **Milo**, after Milo of Croton, who carried a calf every day until it was a bull: the oldest story of getting stronger a little at a time. It was Akilles until November 2026; the repository folder ("achilles"), the Expo slug and scheme ("akilles") and the storage key (`achilles/state`) keep the old name, so saved training and published updates carry over.
+- Two voices. **Instructions and facts** are plain and direct: what to do, what happens next time, in full sentences. **Milo itself** talks back: cheeky, blunt, a bit harsh — about the lifting, never about the person. It teases momentum, swinging and ego, never a small number. It respects an honest short count, doesn't call anyone weak, and doesn't guilt anyone for skipping. A quip is always paired with the plain fact, so nothing important lives only in the joke. Lines live in `src/data/voice.ts`.
 - The product promise: "Open the app. Do the next useful thing. Leave before you hate it."
 
 ## Evidence on Hand
@@ -64,6 +64,7 @@ No users other than the author, and no testimonials, metrics or press. None shou
 3. The app does the arithmetic. The user only sees an instruction and one number to beat.
 4. No guilt: a short session is a complete session, and skipping is always one tap and never punished.
 5. Own the weight. Control beats load: the app slows progress on purpose, says why, and never rewards a heavier number for its own sake.
+6. Clear to anyone. An 80-year-old opening the app for the first time should understand exactly what is going on. Plain words in full sentences, a heading that says what it means rather than a slogan, and no gym word (rep, set, reload) left unexplained where someone new meets it.
 
 ## Accessibility & Inclusion
 

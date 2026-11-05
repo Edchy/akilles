@@ -13,7 +13,6 @@ import {
   type RefObject,
 } from "react";
 import {
-  AccessibilityInfo,
   Animated,
   Easing,
   Keyboard,
@@ -28,6 +27,7 @@ import {
 } from "react-native";
 import { Text, TextInput } from "@/components/text";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import Svg, { Circle } from "react-native-svg";
 
 import { Column, COLUMN } from "@/components/screen";
 import { useBarActions } from "@/components/bar-actions";
@@ -38,6 +38,7 @@ import { Mark } from "@/components/mark";
 import { NoteLine, NoteSheet } from "@/components/note";
 import { GuideButton, GuideSheet } from "@/components/guide";
 import { Illustration } from "@/components/illustration";
+import { GoalSheet, Pips, hasTutorial, openTutorial } from "@/components/goals";
 import { Sheet } from "@/components/sheet";
 import { RestTimer } from "@/components/rest-timer";
 import { colors, FAMILY, fieldColors, fonts, radii } from "@/constants/theme";
@@ -46,6 +47,7 @@ import { ownCue } from "@/data/guides";
 import type { Family } from "@/data/families";
 import {
   FINISHED_LINES,
+  GOAL_LINES,
   OUTCOME_LINES,
   pickLine,
   WARMUP_SKIP_LINES,
@@ -61,7 +63,9 @@ import {
   type MobilityMove,
   type MobilityRoutine,
 } from "@/data/conditioning";
+import { nextStepLine, ruleLine, type Goal, type GoalStep } from "@/data/goals";
 import { decayLabel } from "@/lib/progression";
+import { useReduceMotion } from "@/lib/use-reduce-motion";
 import { weightLabel } from "@/lib/warmup";
 import {
   addSuperset,
@@ -69,6 +73,7 @@ import {
   cardioRecord,
   completeCardio,
   completeExercise,
+  completeGoal,
   conditioningPool,
   currentCardio,
   currentRoutine,
@@ -81,14 +86,19 @@ import {
   dismissWarmup,
   editWeight,
   finishWorkout,
+  goalStepOf,
+  goalVerdict,
   isCardio,
   isBetter,
   isComplete,
   isConditioning,
+  isGoal,
+  isLift,
   itemFamily,
   isMobility,
   isTimed,
   lastScore,
+  logGoalSet,
   nudgeScore,
   nextAfterSession,
   nextTime,
@@ -98,13 +108,16 @@ import {
   partnerPrescription,
   previousExercise,
   removeSuperset,
+  resetGoalSet,
   resetSet,
   scoreOf,
+  setGot,
   setScore,
   skipExercise,
   supersetOptions,
   swapConditioning,
   swapForSession,
+  tapGoalSet,
   tapSet,
   nextItemName,
   completeMove,
@@ -167,7 +180,7 @@ export default function WorkoutScreen() {
   const active = state.active;
   const done = !active || isComplete(state);
   const inWarmup = !!active && !done && currentWarmup(state).length > 0;
-  // Skip on a warm-up is refused once, with a word from Akilles; pressed
+  // Skip on a warm-up is refused once, with a word from Milo; pressed
   // again it skips the warm-up only, never the exercise behind it.
   const [skipWarned, setSkipWarned] = useState(false);
   useEffect(() => setSkipWarned(false), [active?.cursor, inWarmup]);
@@ -237,6 +250,28 @@ export default function WorkoutScreen() {
 
 
   const item = active.items[active.cursor];
+  const motion = cheer && !still ? cheer : null;
+
+  // A goal's step is its own screen too: circles like a lift's, but the
+  // step you are on where the weight would be. See `GoalBlock`.
+  if (isGoal(item)) {
+    return (
+      <OnField family="goal" sendOff={sendOff}>
+        <GoalBlock
+          key={item.slot}
+          item={item}
+          motion={motion}
+          onNext={(practised) => {
+            if (well) {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              setGlint((g) => g + 1);
+            }
+            setState((s) => completeGoal(s, practised));
+          }}
+        />
+      </OnField>
+    );
+  }
 
   // Cardio and mobility are their own screens: no weight, no rep circles and
   // no rep ladder. They still sit inside the same session, so the bar's Back,
@@ -354,8 +389,6 @@ export default function WorkoutScreen() {
       ? { icon: "plus", label: "Add superset", onPress: () => setPicking(true) }
       : null,
   ].filter((t): t is Tool => t !== null);
-
-  const motion = cheer && !still ? cheer : null;
 
   // Before it is measured, a fair guess at what sits under the name.
   const under = underName ?? (note ? 28 : 0) + (myNote ? 39 : 0);
@@ -1325,6 +1358,477 @@ function Mobility({ item }: { item: Item }) {
   );
 }
 
+/**
+ * A goal's step, on the goal's violet. Laid out like a lift so it reads at a
+ * glance the same way: the drill's name with ⋯ beside it, the goal it is for
+ * in italics, then — where a lift has its weight — the step you are on, with
+ * the whole ladder in small under it. Then the work, and what it means:
+ *
+ * - reps are circles exactly like a lift's;
+ * - holds are circles too, each its own clock — tap to start, it buzzes at
+ *   the target, tap to stop early and log what you held;
+ * - practice is one clock, and a button for when you've got it.
+ *
+ * Owning a step gets the lift's cheer with the goal's stars, and the line
+ * under it says what comes next.
+ */
+function GoalBlock({
+  item,
+  motion,
+  onNext,
+}: {
+  item: Item;
+  /** A step done well, just now — see `useCheer`. */
+  motion: Cheer | null;
+  /** Next, with the seconds practised where practice was timed. */
+  onNext: (practised?: number) => void;
+}) {
+  const { state, setState } = useSession();
+  const colors = useColors();
+  const barSpace = useBarSpace();
+  const root = useRef<View>(null);
+  const [menu, setMenu] = useState<Anchor | null>(null);
+  const [editing, setEditing] = useState(false);
+  // Practice's clock, here so Next knows how long it ran: what is left, and
+  // when it runs out while it runs. Null until it is started.
+  const [practice, setPractice] = useState<{ left: number; endAt: number | null } | null>(null);
+  const [, tick] = useState(0);
+  useEffect(() => {
+    if (!practice?.endAt) return;
+    const endAt = practice.endAt;
+    const timer = setInterval(() => {
+      if (endAt - Date.now() > 0) return tick((t) => t + 1);
+      clearInterval(timer);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      setPractice({ left: 0, endAt: null });
+    }, 200);
+    return () => clearInterval(timer);
+  }, [practice?.endAt]);
+
+  const found = goalStepOf(state, item);
+  const after = nextItemName(state);
+  const next = after ? `Next: ${after}` : "Finish workout";
+
+  if (!found) {
+    // Deleted in Plan while the session ran: nothing left to do here.
+    return (
+      <View style={{ flex: 1, backgroundColor: colors.bg }}>
+        <Header />
+        <View style={{ flex: 1, justifyContent: "center", paddingHorizontal: 22 }}>
+          <Text style={{ textAlign: "center", color: colors.text, fontFamily: fonts.italic, fontSize: 22 }}>
+            This goal has been deleted.
+          </Text>
+        </View>
+        <View style={{ paddingHorizontal: 22, paddingBottom: barSpace + 14 }}>
+          <Column>
+            <Action label={next} arrow fill onPress={() => setState((s) => completeExercise(s))} />
+          </Column>
+        </View>
+      </View>
+    );
+  }
+
+  const { goal, step, index } = found;
+  const timed = step.measure === "practice";
+  const total = step.target * 60;
+  const left = practice
+    ? practice.endAt
+      ? Math.max(0, (practice.endAt - Date.now()) / 1000)
+      : practice.left
+    : total;
+  const ready = timed || item.logged.every((r) => r !== null);
+
+  const openMenu = (button: View) =>
+    button.measureInWindow((x, y, width, height) =>
+      root.current?.measureInWindow((rx, ry) => setMenu({ x: x - rx, y: y - ry, width, height })),
+    );
+  const tools: Tool[] = [
+    hasTutorial(goal.link)
+      ? { icon: "play", label: "Watch the tutorial", onPress: () => openTutorial(goal.link) }
+      : null,
+    { icon: "note", label: "Change the goal", onPress: () => setEditing(true) },
+  ].filter((t): t is Tool => t !== null);
+
+  return (
+    <View ref={root} style={{ flex: 1, backgroundColor: colors.bg }}>
+      <Header showRest />
+
+      <ScrollView
+        contentContainerStyle={{
+          flexGrow: 1,
+          paddingHorizontal: 22,
+          paddingBottom: 8,
+          width: "100%",
+          maxWidth: COLUMN,
+          alignSelf: "center",
+        }}
+      >
+        <LiftTitle family="goal" name={step.name} onMore={openMenu} style={{ marginTop: LAYOUT.solo.name }}>
+          <Text
+            numberOfLines={1}
+            style={{ marginTop: 4, textAlign: "center", color: colors.text, fontFamily: fonts.italic, fontSize: 20 }}
+          >
+            {goal.name}
+          </Text>
+          {step.note ? (
+            <View style={{ paddingTop: 6 }}>
+              <NoteLine text={step.note} lines={2} center onPress={() => setEditing(true)} />
+            </View>
+          ) : null}
+        </LiftTitle>
+
+        <View
+          accessible
+          accessibilityLabel={`Step ${index + 1} of ${goal.steps.length}`}
+          // Practice carries a clock and a button under it, so it sits a little higher.
+          style={{ marginTop: (step.note ? 26 : 40) - (timed ? 8 : 0), alignItems: "center", gap: 12 }}
+        >
+          <View style={{ flexDirection: "row", alignItems: "baseline", gap: 10 }}>
+            <Text
+              style={{
+                color: colors.text,
+                fontFamily: fonts.semibold,
+                fontSize: LAYOUT.solo.number,
+                lineHeight: LAYOUT.solo.number + 4,
+                letterSpacing: -2,
+                fontVariant: ["lining-nums"],
+              }}
+            >
+              {index + 1}
+            </Text>
+            <Text style={{ color: colors.text, fontFamily: fonts.regular, fontSize: 24 }}>
+              of {goal.steps.length}
+            </Text>
+          </View>
+          <Pips goal={goal} at={index} color={colors.text} size="large" />
+        </View>
+
+        <View style={{ marginTop: timed ? 16 : 36 }}>
+          {timed ? (
+            <PracticeClock
+              left={left}
+              total={total}
+              running={!!practice?.endAt}
+              cheer={motion?.id ?? null}
+              onStart={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                setPractice({ left, endAt: Date.now() + left * 1000 });
+              }}
+              onPause={() => setPractice({ left, endAt: null })}
+            />
+          ) : step.measure === "hold" ? (
+            <HoldSets
+              logged={item.logged}
+              target={step.target}
+              cheer={motion?.id ?? null}
+              burst={motion?.big ? "goal" : null}
+              onLog={(i, held) => setState((s) => logGoalSet(s, i, held))}
+              onTap={(i) => setState((s) => tapGoalSet(s, i))}
+              onReset={(i) => setState((s) => resetGoalSet(s, i))}
+            />
+          ) : (
+            <Sets
+              logged={item.logged}
+              target={step.target}
+              cheer={motion?.id ?? null}
+              burst={motion?.big ? "goal" : null}
+              onTap={(i) => setState((s) => tapGoalSet(s, i))}
+              onReset={(i) => setState((s) => resetGoalSet(s, i))}
+            />
+          )}
+        </View>
+
+        <View style={{ minHeight: LAYOUT.solo.under, marginTop: timed ? 14 : LAYOUT.solo.underGap }}>
+          <GoalWhy
+            goal={goal}
+            step={step}
+            index={index}
+            item={item}
+            glow={motion?.big ? motion.id : null}
+          />
+        </View>
+      </ScrollView>
+
+      <View style={{ paddingHorizontal: 22, paddingBottom: barSpace + 14 }}>
+        <Column>
+          <Action
+            label={next}
+            arrow
+            fill
+            disabled={!ready}
+            onPress={() => {
+              setMenu(null);
+              // Practice counts at what the clock ran, or the whole time if it never started.
+              onNext(timed && practice ? total - left : undefined);
+            }}
+          />
+        </Column>
+      </View>
+
+      {menu ? <ToolsMenu anchor={menu} tools={tools} onClose={() => setMenu(null)} /> : null}
+      <GoalSheet goalId={editing ? goal.id : null} onClose={() => setEditing(false)} />
+    </View>
+  );
+}
+
+/**
+ * A step's holds: the lift's circles, each one its own clock. Tap an empty
+ * one and it counts down from the target, the ring running down with it;
+ * at zero it buzzes and logs the full hold, so you never have to reach for
+ * the phone mid-handstand. Tap it while it runs to stop early and log what
+ * you held. A hold already in comes down five seconds a tap, like a timed
+ * lift; holding resets it to the target. One clock runs at a time.
+ */
+function HoldSets({
+  logged,
+  target,
+  cheer,
+  burst,
+  onLog,
+  onTap,
+  onReset,
+}: {
+  logged: (number | null)[];
+  target: number;
+  cheer: number | null;
+  burst: Family | null;
+  onLog: (index: number, seconds: number) => void;
+  onTap: (index: number) => void;
+  onReset: (index: number) => void;
+}) {
+  // Kept as an end time, like a stretch's, so a slow frame or a locked phone
+  // cannot stretch the hold.
+  const [running, setRunning] = useState<{ index: number; endAt: number } | null>(null);
+  const [, tick] = useState(0);
+  useEffect(() => {
+    if (!running) return;
+    const timer = setInterval(() => {
+      if (running.endAt - Date.now() > 0) return tick((t) => t + 1);
+      clearInterval(timer);
+      setRunning(null);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      onLog(running.index, target);
+    }, 200);
+    return () => clearInterval(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [running]);
+
+  const left = running ? Math.max(0, (running.endAt - Date.now()) / 1000) : 0;
+  return (
+    <Sets
+      logged={logged}
+      target={target}
+      seconds
+      clock={running ? { index: running.index, left } : null}
+      cheer={cheer}
+      burst={burst}
+      onTap={(i) => {
+        if (running) {
+          if (running.index !== i) return;
+          setRunning(null);
+          const held = target - left;
+          if (held >= 1) onLog(i, held);
+          return;
+        }
+        if (logged[i] === null) {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+          setRunning({ index: i, endAt: Date.now() + target * 1000 });
+          return;
+        }
+        onTap(i);
+      }}
+      onReset={(i) => {
+        if (running?.index === i) setRunning(null);
+        onReset(i);
+      }}
+    />
+  );
+}
+
+/**
+ * Practice: one clock for the minutes, and nothing to count. It is a guide,
+ * not a gate — Next is there all along — and it buzzes when the time is up.
+ */
+function PracticeClock({
+  left,
+  total,
+  running,
+  cheer,
+  onStart,
+  onPause,
+}: {
+  left: number;
+  total: number;
+  running: boolean;
+  /** You've got it, just now: the goal's stars go up from the clock. */
+  cheer: number | null;
+  onStart: () => void;
+  onPause: () => void;
+}) {
+  const colors = useColors();
+  const [width, setWidth] = useState(0);
+  const done = left <= 0;
+  const started = left < total;
+  return (
+    <View
+      onLayout={(e) => setWidth(e.nativeEvent.layout.width)}
+      style={{ alignItems: "center", gap: 10 }}
+    >
+      {cheer !== null && width > 0 ? (
+        <Burst
+          key={cheer}
+          family="goal"
+          from={[0.3, 0.5, 0.7].map((f, i) => ({ x: width * f, y: 44, at: i * 0.12 }))}
+          radius={40}
+        />
+      ) : null}
+      <View
+        accessible
+        accessibilityLabel={`${timeLabel(Math.ceil(left))} of practice ${done ? "done" : "left"}`}
+        style={{ flexDirection: "row", alignItems: "baseline", gap: 8 }}
+      >
+        <Text
+          style={{
+            color: colors.text,
+            fontFamily: fonts.semibold,
+            fontSize: 76,
+            lineHeight: 84,
+            fontVariant: ["lining-nums", "tabular-nums"],
+          }}
+        >
+          {timeLabel(Math.ceil(left))}
+        </Text>
+        <Text style={{ color: colors.text, fontFamily: fonts.regular, fontSize: 22 }}>
+          {done ? "practised" : "practice"}
+        </Text>
+      </View>
+      {done ? null : (
+        <Pressable
+          accessibilityRole="button"
+          onPress={running ? onPause : onStart}
+          style={({ pressed }) => ({
+            minWidth: 180,
+            height: 52,
+            paddingHorizontal: 24,
+            alignItems: "center",
+            justifyContent: "center",
+            borderRadius: radii.button,
+            backgroundColor: running ? colors.surface : colors.cloud,
+            opacity: pressed ? 0.8 : 1,
+          })}
+        >
+          <Text
+            style={{
+              color: running ? colors.text : colors.ink,
+              fontFamily: fonts.medium,
+              fontSize: 21,
+            }}
+          >
+            {running ? "Pause" : started ? "Resume" : "Start"}
+          </Text>
+        </Pressable>
+      )}
+    </View>
+  );
+}
+
+/**
+ * The words under a step, like a lift's: before it is done, a line from
+ * Milo and what owning the step takes; once every circle is in, what
+ * that means for next time — the next step, lit up, when this one is owned.
+ * Practice says it is your call, and carries the button that makes it.
+ */
+function GoalWhy({
+  goal,
+  step,
+  index,
+  item,
+  glow,
+}: {
+  goal: Goal;
+  step: GoalStep;
+  index: number;
+  item: Item;
+  glow: number | null;
+}) {
+  const { state, setState } = useSession();
+  const colors = useColors();
+  const seed = `${state.active?.startedAt}:${item.slot}`;
+  const verdict = goalVerdict(state, item);
+  const line = { textAlign: "center", color: colors.text, fontFamily: fonts.regular, fontSize: 19, lineHeight: 24 } as const;
+  const voice = { textAlign: "center", color: colors.text, fontFamily: fonts.italic, fontSize: 24, lineHeight: 28 } as const;
+
+  const live = Math.min(goal.at, goal.steps.length - 1) === index && !goal.learned;
+  const said = !verdict
+    ? null
+    : verdict.learned
+      ? "learned"
+      : verdict.outcome === "owned"
+        ? step.measure === "practice"
+          ? "got"
+          : "owned"
+        : verdict.outcome === "hit"
+          ? "hit"
+          : "miss";
+  const quip = said
+    ? pickLine(GOAL_LINES[said], seed)
+    : step.measure === "practice"
+      ? null
+      : pickLine(live && goal.streak > 0 ? GOAL_LINES.once : GOAL_LINES.start, seed);
+  const fact = verdict
+    ? verdict.outcome === "owned"
+      ? nextStepLine(goal, index)
+      : verdict.outcome === "hit"
+        ? "Same step next time. Once more moves you on."
+        : "Same step next time."
+    : ruleLine(step);
+
+  return (
+    <View accessibilityLiveRegion="polite" style={{ alignItems: "center", gap: 6 }}>
+      {quip ? (
+        <Text numberOfLines={2} style={voice}>
+          {quip}
+        </Text>
+      ) : null}
+      <View>
+        {glow !== null ? <Glow key={glow} /> : null}
+        <Text numberOfLines={2} style={line}>
+          {fact}
+        </Text>
+      </View>
+      {step.measure === "practice" ? (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityState={{ checked: !!item.got }}
+          onPress={() => setState((s) => setGot(s, !item.got))}
+          style={({ pressed }) => ({
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 8,
+            minHeight: 44,
+            marginTop: 4,
+            paddingHorizontal: 20,
+            borderRadius: radii.button,
+            backgroundColor: item.got ? colors.cloud : colors.surface,
+            opacity: pressed ? 0.8 : 1,
+          })}
+        >
+          {item.got ? <Icon name="check" size={16} color={colors.ink} /> : null}
+          <Text
+            style={{
+              color: item.got ? colors.ink : colors.text,
+              fontFamily: item.got ? fonts.medium : fonts.regular,
+              fontSize: 19,
+            }}
+          >
+            {item.got ? "Got it — tap to undo" : "I've got it — next step"}
+          </Text>
+        </Pressable>
+      ) : null}
+    </View>
+  );
+}
+
 type Card = { move: MobilityMove; index: number; side: "Left side" | "Right side" | null };
 
 function MobilityDeck({
@@ -1674,7 +2178,7 @@ function Warmup({
   /** Your note on the lift — the seat height is worth knowing before the first set. */
   note: string;
   onNote: () => void;
-  /** Akilles' answer to Skip, while it stands. */
+  /** Milo's answer to Skip, while it stands. */
   refusal: string | null;
   onReady: () => void;
 }) {
@@ -1826,6 +2330,8 @@ function Sets({
   role = "solo",
   cheer = null,
   burst = null,
+  seconds = false,
+  clock = null,
 }: {
   logged: (number | null)[];
   target: number;
@@ -1838,6 +2344,10 @@ function Sets({
   cheer?: number | null;
   /** The heavier weight earned, too: the circles let loose this family's marks. */
   burst?: Family | null;
+  /** Holds: each circle counts seconds, and says so. */
+  seconds?: boolean;
+  /** The hold whose clock is running: what is left of it, drawn as a ring that runs down. */
+  clock?: { index: number; left: number } | null;
 }) {
   const colors = useColors();
   // On target: a ripple runs through the circles, left to right, each one
@@ -1892,8 +2402,10 @@ function Sets({
         />
       ) : null}
       {logged.map((reps, i) => {
-        const filled = reps !== null;
+        const running = clock?.index === i;
+        const filled = reps !== null && !running;
         const short = filled && reps < target;
+        const shown = running ? Math.ceil(clock.left) : filled ? reps : target;
         const at = i * stagger;
         const swell = wave.interpolate({
           inputRange: [at, at + 0.06, at + 0.12, at + 0.26, at + 0.4],
@@ -1914,8 +2426,24 @@ function Sets({
           <Animated.View key={i} style={{ transform: [{ scale: swell }] }}>
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel={`Set ${i + 1}${filled ? `, ${reps} reps` : `, target ${target}, not logged`}`}
-              accessibilityHint="Tap to log or count down. Hold to reset to the target."
+              accessibilityLabel={
+                seconds
+                  ? `Hold ${i + 1}${
+                      running
+                        ? `, ${shown} seconds left`
+                        : filled
+                          ? `, ${reps} seconds`
+                          : `, target ${target} seconds, not started`
+                    }`
+                  : `Set ${i + 1}${filled ? `, ${reps} reps` : `, target ${target}, not logged`}`
+              }
+              accessibilityHint={
+                seconds
+                  ? running
+                    ? "Tap to stop and log what you held."
+                    : "Tap to start its clock, or to take five seconds off. Hold to reset to the target."
+                  : "Tap to log or count down. Hold to reset to the target."
+              }
               onPress={() => onTap(i)}
               onLongPress={() => {
                 // The circle is under the thumb, so say it happened by touch.
@@ -1929,12 +2457,19 @@ function Sets({
                 alignItems: "center",
                 justifyContent: "center",
                 borderRadius: 999,
-                borderWidth: filled ? 0 : role === "partner" ? 2 : 3,
+                borderWidth: filled || running ? 0 : role === "partner" ? 2 : 3,
                 borderColor: colors.text,
-                backgroundColor: filled ? (short ? colors.raised : colors.cloud) : "transparent",
+                backgroundColor: filled
+                  ? short
+                    ? colors.raised
+                    : colors.cloud
+                  : running
+                    ? colors.surface
+                    : "transparent",
                 opacity: pressed ? 0.7 : 1,
               })}
             >
+              {running ? <Countdown size={size} left={clock.left / target} /> : null}
               <Text
                 style={{
                   // Garamond's figures sit a touch low in a circle: lift them
@@ -1942,11 +2477,16 @@ function Sets({
                   marginTop: -Math.round(fontSize * 0.08),
                   color: filled && !short ? colors.ink : colors.text,
                   fontFamily: fonts.semibold,
-                  fontSize,
+                  fontSize: seconds ? Math.round(fontSize * 0.92) : fontSize,
                   fontVariant: ["lining-nums", "tabular-nums"],
                 }}
               >
-                {filled ? reps : target}
+                {shown}
+                {seconds ? (
+                  <Text style={{ fontFamily: fonts.semibold, fontSize: Math.round(fontSize * 0.4) }}>
+                    {" s"}
+                  </Text>
+                ) : null}
               </Text>
             </Pressable>
             <Animated.View
@@ -1972,6 +2512,35 @@ function Sets({
 }
 
 /**
+ * A running hold's ring: a faint track, and the time left on it as an arc
+ * from the top, running down clockwise as the seconds go.
+ */
+function Countdown({ size, left }: { size: number; left: number }) {
+  const colors = useColors();
+  const r = (size - 3) / 2;
+  const round = 2 * Math.PI * r;
+  return (
+    <Svg
+      width={size}
+      height={size}
+      style={{ position: "absolute", left: 0, top: 0, transform: [{ rotate: "-90deg" }] }}
+    >
+      <Circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={colors.line} strokeWidth={3} />
+      <Circle
+        cx={size / 2}
+        cy={size / 2}
+        r={r}
+        fill="none"
+        stroke={colors.text}
+        strokeWidth={3}
+        strokeLinecap="round"
+        strokeDasharray={`${Math.max(0, Math.min(1, left)) * round} ${round}`}
+      />
+    </Svg>
+  );
+}
+
+/**
  * Hears every touch on the lift screen before anything else does, so a
  * control can put itself away on a tap anywhere but on it: the control marks
  * the touches that land on it, and once a touch has been handed out an
@@ -1986,7 +2555,7 @@ function cleanNumber(typed: string) {
 }
 
 /**
- * The weight. Akilles sets it and you rarely change it, so it stands alone,
+ * The weight. Milo sets it and you rarely change it, so it stands alone,
  * its figures underlined in dashes to say they can be changed.
  *
  * Tap it and it is being changed, all at once: the number pad comes up, the
@@ -2225,7 +2794,8 @@ const SETTLE_MS = 650;
 /**
  * When a lift gets its moment. On target — every set at its reps — and more
  * so when that earns the heavier weight. Never for a set short or a weight
- * going down: those keep their plain, calm line.
+ * going down: those keep their plain, calm line. A goal's step gets the same:
+ * on target, and more so when that owns the step.
  *
  * It comes once the circles have settled on target, whether the last one
  * just filled or a correction made it a hit, and once per lift: putting a
@@ -2242,14 +2812,19 @@ function useCheer(state: ReturnType<typeof useSession>["state"]): {
 } {
   const active = state.active;
   const item = active && !isComplete(state) ? active.items[active.cursor] : undefined;
-  const lift =
-    !!item && !isMobility(item) && !isConditioning(item) && currentWarmup(state).length === 0;
+  const lift = !!item && isLift(item) && currentWarmup(state).length === 0;
   const say = lift && allSetsLogged(state) ? nextTime(state)?.say : undefined;
-  const good = say === "hit" || say === "owned";
-  const big = say === "owned";
+  // A goal's step: on target, and more so when that owns it — or practice
+  // you've got, which owns it outright.
+  const goal = item && isGoal(item) ? goalVerdict(state, item)?.outcome : undefined;
+  const good = lift ? say === "hit" || say === "owned" : goal === "hit" || goal === "owned";
+  const big = lift ? say === "owned" : goal === "owned";
   const key = active && item ? `${active.startedAt}:${active.cursor}` : "";
   // What the circles say now, the partner's too: any tap starts the wait again.
-  const circles = lift && item ? `${item.logged.join()}|${item.supersetLogged?.join() ?? ""}` : "";
+  const circles =
+    (lift || goal !== undefined) && item
+      ? `${item.logged.join()}|${item.supersetLogged?.join() ?? ""}|${item.got ? 1 : 0}`
+      : "";
 
   const [track, setTrack] = useState<{
     key: string;
@@ -2305,17 +2880,6 @@ function useCheer(state: ReturnType<typeof useSession>["state"]): {
   }, [id, firm]);
 
   return { cheer: good && track.cheer?.key === key ? track.cheer : null, well: good };
-}
-
-/** Whether the phone asks for less movement (Reduce Motion). */
-function useReduceMotion() {
-  const [reduce, setReduce] = useState(false);
-  useEffect(() => {
-    AccessibilityInfo.isReduceMotionEnabled().then(setReduce);
-    const sub = AccessibilityInfo.addEventListener("reduceMotionChanged", setReduce);
-    return () => sub.remove();
-  }, []);
-  return reduce;
 }
 
 /** How long the ripple takes to run through the circles and settle. */
@@ -2462,7 +3026,7 @@ function Glow() {
  * first set, where today's number came from — last time's weight and reps,
  * the reps in small circles like the ones above, or why it changed. Between
  * sets, how to own the next one: the position to hold. Once every set is in,
- * what that means for next time: a line from Akilles, and the plain fact
+ * what that means for next time: a line from Milo, and the plain fact
  * under it.
  */
 function Why({

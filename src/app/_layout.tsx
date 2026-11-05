@@ -15,6 +15,7 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { BarActionsProvider, useBarSlot } from "@/components/bar-actions";
 import { BottomBar } from "@/components/bottom-bar";
+import { IntroProvider } from "@/components/intro";
 import { TabButtons } from "@/components/tab-bar";
 import { colors } from "@/constants/theme";
 import { SessionContext } from "@/store/session";
@@ -66,9 +67,12 @@ export default function RootLayout() {
     <SafeAreaProvider>
       <SessionContext.Provider value={{ state, setState }}>
         <StatusBar style="dark" />
-        <BarActionsProvider>
-          <Shell />
-        </BarActionsProvider>
+        {/* The intro, when it is wanted, covers everything — the bar too. */}
+        <IntroProvider>
+          <BarActionsProvider>
+            <Shell />
+          </BarActionsProvider>
+        </IntroProvider>
       </SessionContext.Provider>
     </SafeAreaProvider>
   );

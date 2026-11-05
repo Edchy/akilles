@@ -93,8 +93,12 @@ export function Catalogue() {
 
   return (
     <View style={{ gap: 24 }}>
-      <Text style={{ color: colors.faint, fontSize: 14, lineHeight: 20 }}>
-        Tap a group to see what is in it, change an exercise, or add one.
+      {/* The same voice and size as the Workouts intro beside it: this says
+          what the tab is for, not only how to tap it. */}
+      <Text style={{ color: colors.muted, fontSize: 15, lineHeight: 22 }}>
+        Exercises are the building blocks of your workouts. Each one remembers its
+        own weight, whichever workout it's in. Tap a group to see what's in it, or
+        to add your own.
       </Text>
 
       <View style={{ gap: 10 }}>

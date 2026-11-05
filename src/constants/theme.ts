@@ -67,6 +67,8 @@ export const FAMILY: Record<Family, { field: string; mark: string; dark: boolean
   core: { field: "#D6287E", mark: "#D6287E", dark: true },
   cardio: { field: "#3CC2CB", mark: "#1E9CA6", dark: false },
   mobility: { field: "#F6C12A", mark: "#BC8B00", dark: false },
+  // The one hue the six leave free: something you are learning, not lifting.
+  goal: { field: "#6A4AB0", mark: "#6A4AB0", dark: true },
 };
 
 /**
@@ -102,7 +104,7 @@ export function fieldColors(family: Family): Palette {
 
 /**
  * EB Garamond, throughout. A classic book face: sentence case, with italics
- * for Akilles' voice. Custom faces ignore `fontWeight` on iOS, so each weight
+ * for Milo's voice. Custom faces ignore `fontWeight` on iOS, so each weight
  * is its own family name; `Text` in `components/text.tsx` picks the right one
  * from an ordinary `fontWeight`, so most text never names a face at all.
  */
@@ -111,7 +113,7 @@ export const fonts = {
   display: "EBGaramond_500Medium",
   /** Numbers: the weight, the circles, scores. */
   displayBold: "EBGaramond_600SemiBold",
-  /** Akilles talking: a quip, in italics. */
+  /** Milo talking: a quip, in italics. */
   voice: "EBGaramond_400Regular_Italic",
   regular: "EBGaramond_400Regular",
   medium: "EBGaramond_500Medium",

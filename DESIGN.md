@@ -1,5 +1,5 @@
 ---
-name: Akilles
+name: Milo
 description: A strength-training app where each exercise owns the whole screen in its family's colour.
 colors:
   navy: "#13325B"
@@ -18,6 +18,7 @@ colors:
   cardio-mark: "#1E9CA6"
   stretch-yellow: "#F6C12A"
   stretch-mark: "#BC8B00"
+  goal-violet: "#6A4AB0"
   field-tint-dark: "rgba(8, 28, 60, 0.20)"
   field-tint-dark-raised: "rgba(8, 28, 60, 0.30)"
   field-tint-light: "rgba(255, 255, 255, 0.38)"
@@ -145,13 +146,13 @@ components:
     padding: "18px"
 ---
 
-# Design System: Akilles
+# Design System: Milo
 
 ## Overview
 
 **Creative North Star: "The Sports Hall in Munich Colours"**
 
-Akilles is two grounds. Off the floor it is a white page with deep navy words, set in EB Garamond like a well-made programme. On the floor, each exercise takes the entire screen in its family's colour: the screen turns orange for the squat, blue for the bench, and you know what you are doing before you read a word. Colour carries meaning and nothing else; it is never decoration and never a status tint.
+Milo is two grounds. Off the floor it is a white page with deep navy words, set in EB Garamond like a well-made programme. On the floor, each exercise takes the entire screen in its family's colour: the screen turns orange for the squat, blue for the bench, and you know what you are doing before you read a word. Colour carries meaning and nothing else; it is never decoration and never a status tint.
 
 Density is low and the targets are huge, because the reader is mid-set, sweaty-thumbed, at arm's length under bright light. The lift screen is a fixed vertical rhythm whose blocks are sized for their largest case, so nothing moves under a thumb. Hierarchy comes from size and italics, never from faded ink. Shapes are the family's six solid marks, soft circles in a tint of the field, one solid pill to move on, and a capsule of Liquid Glass floating over everything, tinted with whatever it floats over.
 
@@ -160,7 +161,7 @@ The system refuses the fitness-app default of a white card stack with a tinted a
 **Key Characteristics:**
 - One saturated field per exercise family while lifting; white ground with navy words everywhere else.
 - EB Garamond throughout, sentence case, lining figures for every number.
-- Akilles' remarks and short labels in italics; instructions and facts in roman.
+- Milo's remarks and short labels in italics; instructions and facts in roman.
 - Six bare solid marks on a 48-unit grid identify the families; no tiles behind them.
 - Secondary controls are soft circles and pills in a tint of the field; one solid slab moves you on.
 - A floating capsule bar of Liquid Glass, the same shape on every screen, tinted with the ground beneath it.
@@ -181,6 +182,7 @@ Each family's field fills the whole lift screen; its mark is the solid shape on 
 - **Legs Orange** (legs-orange) field, navy type; mark in the deeper **Burnt Orange** (legs-mark). Mark: ■.
 - **Cardio Teal** (cardio-teal) field, navy type; mark in the deeper **Pool Teal** (cardio-mark). Mark: ◆.
 - **Stretch Yellow** (stretch-yellow) field, navy type; mark in the deeper **Ochre** (stretch-mark). Mark: ◣ (a quarter-circle sweep).
+- **Goal Violet** (goal-violet) field and mark, white type (6.5:1). Mark: ★, a five-point star. Not an exercise family but a goal: something you are learning, a step at a time. Violet is the one hue the six leave free, so a goal never reads as a kind of lift. On white it washes a goal's cards at 10%.
 
 ### Neutral
 - **White** (white): Today's ground, the bottom bar's fallback, sheets, and the fill of logged circles and the solid slab on dark fields.
@@ -212,14 +214,14 @@ Every word goes through the app's own `Text` wrapper, which maps `fontWeight` an
 - **Number** (600, 84, -2% tracking): the weight on the lift screen, 64 when a superset is folded in. Unit beside it in Regular 22.
 - **Set count** (600, 50, lining and tabular): the rep count inside a 92pt set circle; 44 in an 80 circle and 28 in a 52 partner circle.
 - **Headline** (500, 27/33, single line with ellipsis): the exercise name beside its mark.
-- **Voice** (Italic 400, 24/28): Akilles' remark once the sets are in; 20/26 on Today ("Back squat goes up to 60 kg. Earned.").
+- **Voice** (Italic 400, 24/28): Milo's remark once the sets are in; 20/26 on Today ("Back squat goes up to 60 kg. Earned.").
 - **Body** (400, 19/24): facts and instructions, the top line's workout name, the rest timer.
 - **Label** (Italic 400, 19): short labels in a note slot: "Last time", "To beat", the n/total count. 15 for section labels in sheets and history.
 - **Action** (500 on a solid slab, 400 on a soft one, 21): slab words, "Next: X".
 - **Bar label** (400, 15/18): under each bottom-bar glyph.
 
 ### Named Rules
-**The Two Voices Rule.** Italics belong to Akilles' remarks and to short labels. Instructions and facts are set roman.
+**The Two Voices Rule.** Italics belong to Milo's remarks and to short labels. Instructions and facts are set roman.
 
 **The Sentence Case Rule.** Every label is sentence case. Small headings are italic, not tracked capitals.
 
@@ -233,7 +235,7 @@ The lift screen is a fixed rhythm, top to bottom: a top line (workout name with 
 
 **The Largest Case Rule.** Every block on the lift screen is sized for its largest content (a two-line remark, a five-figure weight). Smaller content sits inside that space; nothing shifts under the thumb.
 
-Today holds the day in one card: the day's field colour as a 10% wash over white (pale blue on push, pale orange on legs), 28px continuous corners, 18 side padding, flat like every card, so the name and its list read as one thing and the wash previews the field Start opens onto. Every text colour inside stays above 4.5:1 on any day's wash. Inside it reads left to right like the lift screen's title, on one left edge. A 30pt column holds the shapes (the day's mark at 30, the list's at 22, centred in it), with 14 to the words, so the name, subtitle and every list name start 44 in. The name at 44 and the italic subtitle lead straight into the list. Akilles' line sits outside the card, apart from the day it comments on: at the foot, flush with the buttons, 19/25, just above Skip and Start (carrying the Undo after a skip). It appears only when there is news: day one, a return after a week or more, a second session in a day, a skip, or what changed since these lifts were last done (a weight up or down, a lift never done). An ordinary day has no line. Below that, the session reads like a timetable: shape, name, and one figure right-aligned in slate with tabular lining figures. The figure is the weight for a lift (in full navy medium when it went up, so Akilles' line has a row to point at), the sets for a lift with no load, and the distance or minutes for cardio and the stretch. A lift never done shows no figure until it has a weight of its own. Skip and Start are pills side by side above the bar.
+Today holds the day in one card: the day's field colour as a 10% wash over white (pale blue on push, pale orange on legs), 28px continuous corners, 18 side padding, flat like every card, so the name and its list read as one thing and the wash previews the field Start opens onto. Every text colour inside stays above 4.5:1 on any day's wash. Inside it reads left to right like the lift screen's title, on one left edge. A 30pt column holds the shapes (the day's mark at 30, the list's at 22, centred in it), with 14 to the words, so the name, subtitle and every list name start 44 in. The name at 44 and the italic subtitle lead straight into the list. Milo's line sits outside the card, apart from the day it comments on: at the foot, flush with the buttons, 19/25, just above Skip and Start (carrying the Undo after a skip). It appears only when there is news: day one, a return after a week or more, a second session in a day, a skip, or what changed since these lifts were last done (a weight up or down, a lift never done). An ordinary day has no line. Below that, the session reads like a timetable: shape, name, and one figure right-aligned in slate with tabular lining figures. The figure is the weight for a lift (in full navy medium when it went up, so Milo's line has a row to point at), the sets for a lift with no load, and the distance or minutes for cardio and the stretch. A lift never done shows no figure until it has a weight of its own. Skip and Start are pills side by side above the bar.
 
 Plan's workout list uses Today's language, a row per workout, so the plan reads as the run of colours you will train through. Each workout is a card in its own 10% wash: its mark at 24 in a 26 column, 14 to the name in Display 28/34, the italic subtitle and exercise count under it in slate, "Next" in italic navy on the right of the next workout, and a chevron. The explanatory sentence above the list stays: it is the one place that says how the cycle works. Inside a workout, each exercise row carries its mark at 16 before the name.
 
@@ -253,7 +255,7 @@ Flat. Fields, slabs, circles and cards have no shadow; depth comes from tints of
 
 Two corner languages. Everything you tap is a circle or a full pill (999): set circles, steppers, tool buttons, the ⋯, the buttons that move you on (Start, Skip, Next, Done), and the bar and its slots, so the buttons above the bar share its shape. Cards and panels, which you read rather than press, keep a generous 28px continuous corner.
 
-The family marks are the system's signature geometry: six solid primitives on one 48-unit grid (push triangle pointing up, pull pointing down, legs a square, core a circle drawn slightly larger to match visual weight, cardio a square on its point, stretch a quarter-circle sweep). They are always bare: no tile, no outline, no background.
+The family marks are the system's signature geometry: six solid primitives on one 48-unit grid (push triangle pointing up, pull pointing down, legs a square, core a circle drawn slightly larger to match visual weight, cardio a square on its point, stretch a quarter-circle sweep), plus the goal's five-point star, drawn as a path since five points don't fall out of a border. They are always bare: no tile, no outline, no background. The one exception is the star as an outline: a goal waiting for a workout, and the top of a goal's ladder in Progress.
 
 Set circles are outlined (3px, 2px for a partner) in the field's ink when waiting, and filled solid in that ink with the field colour on top when logged.
 
@@ -275,7 +277,17 @@ Tactile and unmistakable: one solid way on, everything else soft.
 ### Set circles
 The signature control. 92pt outlined circles holding the target reps in SemiBold 50; tap to log (fills solid), tap again to count down, hold to reset. A short set fills with the raised tint instead of solid ink. Under them, "Last time" in italic, last time's weight in roman, and last time's sets as small solid circles.
 
-**When a lift is done well.** Once the circles settle on target — 0.65s with no tap, since a short set passes through the target on its way down (tap for 6, tap again for 5) — the lift gets its moment, scaled to what was earned. *On target* (every set at its reps): a ripple runs through the circles left to right, each swelling about 9% and sending out a thin ring in the text colour that grows to 1.55× and fades, all over 1.1s, and a success buzz. *The heavier weight earned* (a reload owned): the same, plus each circle lets loose two or three of the family's marks (13–20pt, in the text colour, some fainter) as the ripple reaches it, coming out from behind it, fanning up and away from the middle, turning, and fading before they reach the weight; the "Up to … next time" line lights up with a soft white pill behind it; a second, firmer buzz. Akilles' line itself appears the moment the last circle fills, as for any result. Nothing for a set short or a weight going down, which keep their calm line. It plays once per lift: putting a circle right afterwards, or coming back to a lift already done, plays nothing, and a circle put wrong while it plays takes it away at once. *The send-off:* pressing Next on a lift done well gives a light tap and a soft band of light passing once over the button that comes up in its place (the next lift's Next, its warm-up's Ready, cardio's Done, the stretches'), 0.7s, clipped to the pill. Nothing in any of it moves a control or takes a touch. With Reduce Motion, only the buzzes.
+**When a lift is done well.** Once the circles settle on target — 0.65s with no tap, since a short set passes through the target on its way down (tap for 6, tap again for 5) — the lift gets its moment, scaled to what was earned. *On target* (every set at its reps): a ripple runs through the circles left to right, each swelling about 9% and sending out a thin ring in the text colour that grows to 1.55× and fades, all over 1.1s, and a success buzz. *The heavier weight earned* (a reload owned): the same, plus each circle lets loose two or three of the family's marks (13–20pt, in the text colour, some fainter) as the ripple reaches it, coming out from behind it, fanning up and away from the middle, turning, and fading before they reach the weight; the "Up to … next time" line lights up with a soft white pill behind it; a second, firmer buzz. Milo's line itself appears the moment the last circle fills, as for any result. Nothing for a set short or a weight going down, which keep their calm line. It plays once per lift: putting a circle right afterwards, or coming back to a lift already done, plays nothing, and a circle put wrong while it plays takes it away at once. *The send-off:* pressing Next on a lift done well gives a light tap and a soft band of light passing once over the button that comes up in its place (the next lift's Next, its warm-up's Ready, cardio's Done, the stretches'), 0.7s, clipped to the pill. Nothing in any of it moves a control or takes a touch. With Reduce Motion, only the buzzes.
+
+### A goal's step
+A goal block sits straight after the warm-up, on Goal Violet, laid out like a lift so it reads the same way: the step's drill as the name with the ⋯ (Watch the tutorial, Change the goal), the goal's name in italics under it with the step's note, then, where a lift has its weight, the step number at 96 with "of 6" at 24 and the ladder in small under it (one 5pt bar a step, 22 wide, the current one 34, steps still to come at 30%). Then the work:
+- **Reps** are set circles exactly as a lift's.
+- **Holds** are set circles with a small "s", each its own clock: tap and it counts down from the target, the circle a tint of the field with a 3pt ring running down clockwise from the top over a faint track; it buzzes at zero and logs the hold, and a tap mid-hold stops it and logs what was held.
+- **Practice** is one clock (76pt figures, "practice" beside it) with a white Start pill, and under the line an "I've got it — next step" pill that turns solid once pressed.
+
+The line under it follows a lift's: Milo in italics and the plain rule ("Move on: every set at 8, two sessions running.") before, then what it means. A step owned gets the lift's whole cheer with stars for marks, and "Step 3 next time: kick-ups to the wall." lights up. Next is always there for practice, since its clock is a guide, not a gate.
+
+A fresh install comes with one goal, the handstand push-up, waiting in no workout: a grey row with the open star, "8 steps · not in a workout yet". Once there are no goals at all, Plan › Goals shows what one looks like: a violet-washed card with the start of that ladder as four rungs on a rail (done with a check, the one you are on as a ring with a dot, one still to come, and the open star for the goal), the one rule for moving up, and a violet "New goal" pill.
 
 ### Cards / Containers
 - **Corner Style:** 28px continuous.
@@ -285,13 +297,16 @@ The signature control. 92pt outlined circles holding the target reps in SemiBold
 - **Internal Padding:** 18px.
 
 ### Segments
-Two or three views of one tab (Plan's Workouts and Exercises, History's Sessions and Lifts): a Soft Grey pill track with 4pt padding; the chosen view is a white pill with a 1pt soft shadow and navy SemiBold words, the others slate roman. Never a family colour: a switch is not a family.
+Two or three views of one tab (Plan's Workouts, Exercises and Goals, History's Sessions and Lifts): a Soft Grey pill track with 4pt padding; the chosen view is a white pill with a 1pt soft shadow and navy SemiBold words, the others slate roman. Never a family colour: a switch is not a family.
 
 ### Swipe to remove
 A list row slides left 108pt to show one navy pill behind it (white words: Pause on a running workout, Remove on an exercise in a workout, Delete only on a paused workout, the one thing gone for good), with the row's own corners and a 10pt gap. The swipe only shows the button; the tap does the deed. Tapping the row or swiping back puts it away. Only a sideways drag (more across than down, past 12pt) is taken, so it lives inside scrolling sheets and hold-to-reorder lists. The same action always exists in the row's sheet too.
 
 ### Add exercise
 Exercise first, never movement first. One sheet: a pill search field (Soft Grey, magnifier, "Search exercises"), then every exercise you could add as plain rows on white, mark at 16 and name at 18, grouped Push, Pull, Legs, Core under italic headings. Rows already in the workout are faint with an italic "in it". Search matches names, other names (aliases), plurals and muscles, best first. When nothing matches exactly, the last row is a push-blue "+ Create “…”" link opening two plain questions as chips: "What do you lift?" and "What does it work?" (in gym words, one row per family led by its mark). Selected chips are navy with white words; the final pill is navy, since what you make could be any family.
+
+### The intro
+Six pages over everything, the bar included, on white: Skip at the top right (Close when reopened), one picture in the top half, then the words, then one dash a page (22 wide, the one you are on 34, those to come at 20%) and a 60pt navy pill, "Next →", "Get started" on the last. The words are a 40/44 Medium heading that says what it means, never a slogan, and 20/29 roman body in plain full sentences, written so that someone who has never trained follows it the first time. Each picture is drawn from the app's own parts (the week's circles, a lift on push blue with what each part means written in italics, the weights as a staircase, an exercise feeding two workout cards, the workouts in order with a line back to the top). Nothing else goes on a page: when it crowds, take something away. On a short phone the picture is drawn smaller rather than the words moved.
 
 ### Navigation
 The bottom bar: a Liquid Glass capsule 80pt high, 6pt inner padding, 22pt from the screen edges, mounted once so it never animates with screens. It works out its own ground: the current item's field on the workout screen, white everywhere else. Each slot is a full-height lozenge with an icon (24) over a 15pt Garamond label in the ground's ink (navy, or white on dark fields). The current tab sits in a Soft Grey lozenge; inactive tabs use slate. A pressed slot on a field takes a white (dark fields) or navy (light fields) wash. While lifting it carries Back, Leave and Skip instead of tabs; its shape never changes.
@@ -307,7 +322,7 @@ Phosphor Icons in Bold, drawn in the current ink at one weight everywhere. Only 
 ### Do:
 - **Do** fill the whole lift screen with the exercise family's field colour and draw every word on it in that field's one ink at full strength.
 - **Do** build hierarchy from size and italics: 84 for the weight, 50 in the circles, 27 for the name, 19 for facts.
-- **Do** set Akilles' remarks and short labels ("Last time", "To beat") in italics, and instructions and facts in roman.
+- **Do** set Milo's remarks and short labels ("Last time", "To beat") in italics, and instructions and facts in roman.
 - **Do** keep one solid slab per screen and make every other control a soft circle or pill in a tint of the ground.
 - **Do** size every lift-screen block for its largest case so nothing moves under the thumb.
 - **Do** use the six family marks bare, on the 48-unit grid, in the deeper mark shade on white.

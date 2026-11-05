@@ -5,6 +5,7 @@ import { Text, TextInput } from "@/components/text";
 import { AddExerciseSheet } from "@/components/add-exercise";
 import { Count, Setting, Step } from "@/components/controls";
 import { DragList, type Drag } from "@/components/drag-list";
+import { WorkoutGoals } from "@/components/goals";
 import { Icon } from "@/components/icon";
 import { Mark } from "@/components/mark";
 import { RoutineEditor } from "@/components/routine";
@@ -116,8 +117,8 @@ export function Modules({ onDragChange }: { onDragChange: (dragging: boolean) =>
   return (
     <View style={{ gap: 24 }}>
       <Text style={{ color: colors.muted, fontSize: 15, lineHeight: 22 }}>
-        Your workouts run top to bottom, then start again. Tap one to change
-        it, hold and drag to reorder, swipe left to pause.
+        Your workouts take turns, top to bottom, then back to the top. Tap one
+        to change it. Hold and drag to move it. Swipe left to pause it.
       </Text>
 
       <DragList
@@ -456,9 +457,9 @@ type Block = CardioEnd | "mobility";
 
 /**
  * Everything about one workout, with room to breathe: its name, the whole
- * session in the order it runs — warm-up cardio, exercises, then the
- * finishing cardio and mobility — and the few things you can do to it as a
- * whole.
+ * session in the order it runs — warm-up cardio, any goals, exercises, then
+ * the finishing cardio and mobility — and the few things you can do to it as
+ * a whole.
  */
 function WorkoutSheet({
   workout,
@@ -517,6 +518,8 @@ function WorkoutSheet({
           <SectionLabel>Warm-up</SectionLabel>
           <CardioRow workout={workout} where="open" onOpen={() => setBlock("open")} />
         </View>
+
+        <WorkoutGoals workoutId={workout.id} />
 
         <View style={{ gap: 12 }}>
           <SectionLabel>Exercises</SectionLabel>

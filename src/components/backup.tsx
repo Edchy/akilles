@@ -37,7 +37,7 @@ export function Backup() {
     run(async () => {
       const read = await pickBackup();
       if (read === null) return;
-      if (read === "invalid") return setNote("That file isn't an Akilles backup.");
+      if (read === "invalid") return setNote("That file isn't an Milo backup.");
       if (read === "newer") {
         return setNote("That backup is from a newer version of the app. Update first.");
       }

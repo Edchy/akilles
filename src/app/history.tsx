@@ -4,13 +4,14 @@ import { Text } from "@/components/text";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { Backup } from "@/components/backup";
+import { GoalProgress } from "@/components/goal-progress";
 import { useBarSpace } from "@/components/bottom-bar";
 import { Icon } from "@/components/icon";
 import { Results } from "@/components/results";
 import { COLUMN } from "@/components/screen";
 import { Segments } from "@/components/segments";
 import { Sheet } from "@/components/sheet";
-import { colors, fonts, radii } from "@/constants/theme";
+import { FAMILY, colors, fonts, radii } from "@/constants/theme";
 import { cardioById, courseLabel, distanceLabel, timeLabel } from "@/data/conditioning";
 import { byId, GROUP_LABEL, GROUP_ORDER, groupOf, type Exercise } from "@/data/exercises";
 import type { Scheme } from "@/data/split";
@@ -64,6 +65,8 @@ export default function HistoryScreen() {
       </Text>
 
       <Week state={state} />
+
+      <GoalProgress />
 
       <Segments
         options={[
@@ -233,6 +236,7 @@ function Sessions({ log }: { log: SessionLog[] }) {
 
 type LiftEntry = Extract<LogEntry, { kind: "lift" }>;
 type CardioEntry = Extract<LogEntry, { kind: "cardio" }>;
+type GoalEntry = Extract<LogEntry, { kind: "goal" }>;
 
 function SessionCard({
   session,
@@ -295,6 +299,8 @@ function SessionCard({
           {session.entries.map((e, i) =>
             e.kind === "lift" ? (
               <LiftLine key={i} entry={e} first={i === 0} />
+            ) : e.kind === "goal" ? (
+              <GoalLine key={i} entry={e} first={i === 0} />
             ) : (
               <CardioLine key={i} entry={e} first={i === 0} />
             ),
@@ -439,6 +445,42 @@ function CardioLine({ entry, first }: { entry: CardioEntry; first: boolean }) {
       >
         {score}
       </Text>
+    </View>
+  );
+}
+
+/**
+ * A goal's step as it went: the drill, the goal it is for, and the circles —
+ * or the minutes, for practice. The session that owned the step says so.
+ */
+function GoalLine({ entry, first }: { entry: GoalEntry; first: boolean }) {
+  return (
+    <View
+      style={{
+        gap: 8,
+        paddingVertical: 12,
+        borderTopWidth: first ? 0 : 1,
+        borderTopColor: colors.line,
+      }}
+    >
+      <View style={{ flexDirection: "row", alignItems: "baseline", gap: 10 }}>
+        <Text style={{ flex: 1, color: colors.text, fontSize: 15, fontWeight: "600" }}>
+          {entry.step}{" "}
+          <Text style={{ color: colors.faint, fontWeight: "500", fontStyle: "italic" }}>
+            {entry.goal}
+          </Text>
+        </Text>
+        {entry.outcome === "owned" ? (
+          <Text style={[caps, { color: FAMILY.goal.mark }]}>Owned</Text>
+        ) : null}
+      </View>
+      {entry.measure === "practice" ? (
+        <Text style={{ color: colors.muted, fontSize: 15 }}>
+          {Math.max(1, Math.round((entry.reps[0] ?? 0) / 60))} min practice
+        </Text>
+      ) : (
+        <Reps reps={entry.reps} target={entry.target} />
+      )}
     </View>
   );
 }

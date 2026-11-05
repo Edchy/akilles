@@ -96,7 +96,7 @@ export default function TodayScreen() {
   const rows = workoutPreview(state, workout);
   const family = workoutFamily(state, workout);
 
-  // Akilles says something only when there is something to say: a day that
+  // Milo says something only when there is something to say: a day that
   // is not ordinary, or what changed since you last did these lifts. An
   // ordinary day with nothing new has no line at all. Seeded by the day and
   // the workout, so it holds still while you look at it.
@@ -179,7 +179,7 @@ export default function TodayScreen() {
         {/* The day, in one card washed with its colour: the shape beside the
             name, the subtitle on the same left edge as the list, and the
             list itself — what you are about to do, held together, with
-            Akilles' word and the buttons outside it below. */}
+            Milo's word and the buttons outside it below. */}
         <View
           style={{
             backgroundColor: `${FAMILY[family].field}1A`,
@@ -231,7 +231,7 @@ export default function TodayScreen() {
 
       <View style={{ paddingHorizontal: 22, paddingBottom: barSpace + 16 }}>
         <Column style={{ gap: 18 }}>
-          {/* Akilles' word, kept apart from the day it comments on: under
+          {/* Milo's word, kept apart from the day it comments on: under
               the list, just before you start. After a skip it carries the
               Undo. */}
           {line ? (
@@ -242,7 +242,7 @@ export default function TodayScreen() {
                   color: colors.text,
                   fontSize: 19,
                   lineHeight: 25,
-                  // Akilles' remark in italics; a plain fact in roman.
+                  // Milo's remark in italics; a plain fact in roman.
                   fontStyle: fact ? "normal" : "italic",
                 }}
               >
@@ -338,18 +338,21 @@ const GAP = 14;
 const INDENT = MARKS + GAP;
 
 /**
- * The session in order — cardio, the lifts, cardio, the stretch — like a
- * timetable: each behind its family's shape, with one figure on the right.
- * A lift shows the weight it is set to (a weight that went up in full ink, so
- * the news above has somewhere to point); cardio and the stretch say how
- * much. A lift you have never done shows nothing until it has a weight of
- * its own, and one with no weight to carry shows its sets.
+ * The session in order — cardio, any goals, the lifts, cardio, the stretch —
+ * like a timetable: each behind its family's shape, with one figure on the
+ * right. A lift shows the weight it is set to (a weight that went up in full
+ * ink, so the news above has somewhere to point); cardio and the stretch say
+ * how much, and a goal the step you are on. A lift you have never done shows
+ * nothing until it has a weight of its own, and one with no weight to carry
+ * shows its sets.
  */
 function Preview({ rows }: { rows: PreviewRow[] }) {
   return (
     <View accessibilityRole="list">
       {rows.map((r) => {
-        const timed = r.family === "cardio" || r.family === "mobility";
+        const timed = r.family === "cardio" || r.family === "mobility" || r.family === "goal";
+        // A goal's step is the news on its row, so it is said in full ink.
+        const strong = r.change === "up" || r.family === "goal";
         const figure = timed ? r.amount : r.guess ? undefined : (r.weight ?? r.amount);
         return (
           <View
@@ -380,8 +383,8 @@ function Preview({ rows }: { rows: PreviewRow[] }) {
             {figure ? (
               <Text
                 style={{
-                  color: r.change === "up" ? colors.text : colors.muted,
-                  fontFamily: r.change === "up" ? fonts.medium : fonts.regular,
+                  color: strong ? colors.text : colors.muted,
+                  fontFamily: strong ? fonts.medium : fonts.regular,
                   fontSize: 17,
                   fontVariant: ["lining-nums", "tabular-nums"],
                 }}

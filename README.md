@@ -1,11 +1,11 @@
-# Akilles
+# Milo
 
 A workout app with one job: open it and know exactly what to do.
 
 No planning, no picking, no thinking. One exercise on screen at a time with the
 weight and reps already decided.
 
-**Own the weight.** Most gym apps count how much you lift. Akilles counts how
+**Own the weight.** Most gym apps count how much you lift. Milo counts how
 much you own. A rep counts when you lower it under control, hold it where it is
 hardest, and lift it without a swing or a bounce — so start lighter than your
 ego wants and log only the reps you owned. Progress is slow on purpose: every
@@ -67,7 +67,7 @@ sets at 40/60/80% of the working weight, for 10/6/3 reps. Tap each one as you
 finish it — **Ready** stays inert until all three are ticked, so the screen
 cannot be tapped past without reading. Nothing here is logged or affects
 progression; bodyweight and timed movements get no ramp at all. **Skip** on a
-warm-up is refused once with a word from Akilles; pressed again it skips the
+warm-up is refused once with a word from Milo; pressed again it skips the
 warm-up only and goes straight to that exercise's working sets.
 
 **Arms and abs close each session**; fold them into an earlier lift's rest
@@ -172,7 +172,7 @@ two steps: a dumbbell bench takes 10 sessions to gain 5 kg instead of 8.
 Waiting for three or four steps would barely be quicker, since the ladder is
 what takes the time, but a light lift would be 40–50% heavier before it ever
 stopped to consolidate. A reload is a hit, not a setback: Today announces it,
-the lift screen marks it, and Akilles treats it as one.
+the lift screen marks it, and Milo treats it as one.
 
 The one rule that reads the calendar is the **layoff**: three weeks or more
 away from a lift, and Today offers to ease it back 5–30% before you start.
@@ -202,11 +202,18 @@ and each progresses on its own reps.
 
 Three tabs, plus the workout itself which takes over the screen.
 
+**The intro.** A new phone opens on six short pages: why first (a little at
+a time, every visit counts, Milo tells you what to do, light and slow), then
+how (exercises are building blocks, workouts take turns). Skip is always
+there, and seeing or skipping it once is enough. A phone that already has
+training on it never gets it by itself; the **?** beside Plan's title opens
+it any time.
+
 | Tab | |
 |---|---|
 | **Today** | The next workout, large and nothing else. **Start**, or **Skip**: **Do this next time** trains the following workout now and returns to this one next session; **Skip this round** leaves it until the cycle repeats. Both offer Undo and record no training. With a workout in progress, **Continue** and **End** instead. |
-| **Progress** | This week's training days as seven circles, then three views. **Results**: total weight lifted (put in proportion — "3.8 small cars"), sessions this month, weeks in a row, share of lifts on target, lifts that got stronger, standing records, cardio that got faster or further. **Sessions**: every finished workout, newest first, with each set coloured hit or short. **Lifts**: every exercise by muscle group at its current weight, tap for its past sessions; cardio bests too. Backup & restore sits in a sheet at the bottom. |
-| **Plan** | Two segments: **Workouts** (your sessions, their order, what fills each slot, and the cardio and mobility either side) and **Exercises** (the catalogue of every movement). |
+| **Progress** | This week's training days as seven circles, then your **goals** — each one's ladder with the day you owned every step, and the goals you have learned — then three views. **Results**: total weight lifted (put in proportion — "3.8 small cars"), sessions this month, weeks in a row, share of lifts on target, lifts that got stronger, standing records, cardio that got faster or further. **Sessions**: every finished workout, newest first, with each set coloured hit or short. **Lifts**: every exercise by muscle group at its current weight, tap for its past sessions; cardio bests too. Backup & restore sits in a sheet at the bottom. |
+| **Plan** | Three segments: **Workouts** (your sessions, their order, what fills each slot, and the cardio and mobility either side), **Exercises** (the catalogue of every movement) and **Goals** (what you are learning, step by step). |
 
 Both segments are accordions — one workout or one category open at a time, so
 the whole list fits on a screen.
@@ -392,11 +399,34 @@ session you are in keeps the shape it started with. A weight is the exception:
 set one while a workout is in progress and any of its exercises not yet
 started pick it up.
 
+**Goals.** Something you are learning — a handstand push-up, a pistol squat —
+written as a ladder of steps, the way a tutorial teaches it. Under
+**Plan → Goals**, **New goal** takes a name and, if you like, the tutorial's
+link (▶ opens it). Each step is one drill, measured in **reps** (circles like
+a lift's), a **hold** (each circle its own clock: tap to start, it buzzes at
+the target) or **practice** (minutes on a clock). Tap a step to change it or to
+work on it from there; hold and drag to reorder. **Practise in** puts the goal
+in the workouts you choose — or switch it on from a workout's own sheet — and
+it runs there as its own block, first thing after the warm-up.
+
+Milo comes with one: **Handstand push-up**, in eight steps from the tutorial
+in its link — crow pose, handstand, forearm stand, planche lean, planche lean
+with a bend and press, pike push-up leaning forward, pike push-up with the
+feet floating, and the whole move put together. It is in no workout until you
+switch it on, and it stays off Progress until then. Delete it like any goal.
+
+A reps or hold step moves on when you own it: every set on target, two
+sessions running. Short of target starts the count again; skipping it changes
+nothing. Practice has nothing to count, so it moves on when you press
+**I've got it**. Owning the last step learns the goal: it leaves every workout
+and lives on in Progress. Several goals can run at once, each its own block.
+
 | What | Where |
 |---|---|
 | The starting program a fresh install opens with | `src/data/split.ts` |
 | The menu of available exercises | `src/data/exercises.ts` |
 | Progression rules and rep ladders | `src/lib/progression.ts`, `src/data/split.ts` |
+| Goals and how a step is owned | `src/data/goals.ts` |
 
 ## Known gaps
 

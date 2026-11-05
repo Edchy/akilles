@@ -4,9 +4,10 @@ import type { Exercise, Pattern } from "@/data/exercises";
  * The six kinds of exercise the app tells apart by colour and shape: the
  * three lifting families, core, cardio and stretching. Every exercise has
  * one — a lift you create yourself gets it from the movement type you pick —
- * so the shapes never run out.
+ * so the shapes never run out. A seventh, the goal, is not an exercise but
+ * something you are learning — see `data/goals.ts` — with a star of its own.
  */
-export type Family = "push" | "pull" | "legs" | "core" | "cardio" | "mobility";
+export type Family = "push" | "pull" | "legs" | "core" | "cardio" | "mobility" | "goal";
 
 const BY_PATTERN: Record<Pattern, Family> = {
   horizontal_push: "push",
@@ -39,4 +40,5 @@ export const FAMILY_LABEL: Record<Family, string> = {
   core: "Core",
   cardio: "Cardio",
   mobility: "Stretch",
+  goal: "Goal",
 };

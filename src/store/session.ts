@@ -70,6 +70,20 @@ import { warmupFor, weightLabel, type WarmupSet } from "@/lib/warmup";
 import type { Outcome, Say } from "@/data/voice";
 import { familyOf, type Family } from "@/data/families";
 import {
+  GOAL_HOLD_STEP,
+  GOAL_SETS,
+  STARTING_GOALS,
+  TARGET_LIMITS,
+  applyGoal,
+  currentStep,
+  isStarted,
+  onTarget,
+  type Goal,
+  type GoalOutcome,
+  type GoalStep,
+  type Measure,
+} from "@/data/goals";
+import {
   applyDecay,
   applyResult,
   daysBetween,
@@ -91,10 +105,10 @@ import {
  * What kind of block an item is.
  *
  * Lifting is the default and everything about the progression engine assumes
- * it. Cardio and mobility are their own things — no weight, no rep ladder —
- * so they are marked rather than squeezed into the same shape.
+ * it. Cardio, mobility and a goal's step are their own things — no weight, no
+ * rep ladder — so they are marked rather than squeezed into the same shape.
  */
-export type Kind = "lift" | "cardio" | "mobility";
+export type Kind = "lift" | "cardio" | "mobility" | "goal";
 
 /** The two cardio blocks, by where they sit in the session. */
 export const CARDIO_SLOTS: Record<CardioEnd, string> = { open: "Cardio · open", close: "Cardio · finish" };
@@ -124,6 +138,14 @@ export type Item = Entry & {
   seconds?: number | null;
   /** Which poses of a mobility routine you have ticked off. */
   moves?: boolean[];
+  /**
+   * A goal block's step, by id: the one you were on when the workout was
+   * built. `exerciseId` holds the goal's id; `logged` holds reps, seconds
+   * held, or — for practice — the seconds practised, in one entry.
+   */
+  step?: string;
+  /** Practice only: you said you've got it, so the goal moves on. */
+  got?: boolean;
   /** The exercise currently filling this slot. */
   exerciseId: string;
   /** Exercise id supersetted into this one, if any. */
@@ -199,6 +221,22 @@ export type LogEntry =
       outcome: Outcome | "skipped" | null;
     }
   | {
+      /**
+       * A goal's step as it went. The names are kept as they were, like a
+       * workout's, so renaming a step later does not rewrite the past.
+       */
+      kind: "goal";
+      goalId: string;
+      stepId: string;
+      goal: string;
+      step: string;
+      measure: Measure;
+      target: number;
+      /** Reps, seconds held, or seconds practised. */
+      reps: (number | null)[];
+      outcome: GoalOutcome;
+    }
+  | {
       kind: "cardio";
       exerciseId: string;
       /** Distance in the minutes, or seconds over `course`. */
@@ -266,6 +304,19 @@ export type SessionState = {
    * start with none.
    */
   notes: Record<string, string>;
+  /**
+   * What you are learning, step by step — see `data/goals.ts`. Learned goals
+   * stay, out of every workout, for Progress. Absent from saves made before
+   * goals existed, which simply start with none.
+   */
+  goals: Goal[];
+  /**
+   * When the intro — how Milo works, six pages — was finished or skipped.
+   * Absent until then. It opens by itself only on a phone that has trained
+   * nothing yet (`wantsIntro`), so a save from before it existed never meets
+   * it; Plan's ? opens it any time.
+   */
+  introSeen?: number;
   /** Cardio machines and mobility routines you have added. */
   customCardio: CardioExercise[];
   customMobility: MobilityRoutine[];
@@ -522,7 +573,7 @@ export const setExerciseWeight = (
   const active = state.active && {
     ...state.active,
     items: state.active.items.map((it) => {
-      if (isConditioning(it) || it.derive) return it;
+      if (!isLift(it) || it.derive) return it;
       let next = it;
       if (it.exerciseId === id && untouched(it.logged)) next = { ...next, weight: w };
       if (it.supersetEntry?.exerciseId === id && untouched(it.supersetLogged)) {
@@ -628,14 +679,14 @@ export const workoutById = (state: SessionState, id: string): Workout | undefine
 
 /**
  * What a workout will ask of you if you start it now, in the order it runs:
- * the opening cardio, each lift with the sets, reps and weight it would
- * prescribe, the closing cardio, then mobility. For the Today screen, before
- * anything is built.
+ * the opening cardio, its goals, each lift with the sets, reps and weight it
+ * would prescribe, the closing cardio, then mobility. For the Today screen,
+ * before anything is built.
  */
 export type PreviewRow = {
   id: string;
   name: string;
-  /** "3 × 6", "1 km", "5 min", "about 4 min". */
+  /** "3 × 6", "1 km", "5 min", "about 4 min", "step 2 of 6". */
   amount: string;
   /** The weight, for a loaded lift. */
   weight?: string;
@@ -691,8 +742,17 @@ export const workoutPreview = (state: SessionState, workout: Workout): PreviewRo
     ];
   };
   const routine = mobilityPlan(state, workout);
+  const goals = goalsIn(state, workout.id).map(
+    (g): PreviewRow => ({
+      id: `goal/${g.id}`,
+      name: g.name,
+      amount: `step ${Math.min(g.at, g.steps.length - 1) + 1} of ${g.steps.length}`,
+      family: "goal",
+    }),
+  );
   return [
     ...block("open"),
+    ...goals,
     ...lifts,
     ...block("close"),
     ...(routine
@@ -716,7 +776,9 @@ export const workoutPreview = (state: SessionState, workout: Workout): PreviewRo
  */
 export const workoutFamily = (state: SessionState, workout: Workout): Family => {
   const rows = workoutPreview(state, workout);
-  const lifts = rows.filter((r) => r.family !== "cardio" && r.family !== "mobility");
+  const lifts = rows.filter(
+    (r) => r.family !== "cardio" && r.family !== "mobility" && r.family !== "goal",
+  );
   const pool = lifts.length > 0 ? lifts : rows;
   const count = new Map<Family, number>();
   for (const r of pool) count.set(r.family, (count.get(r.family) ?? 0) + 1);
@@ -727,7 +789,9 @@ export const workoutFamily = (state: SessionState, workout: Workout): Family => 
 
 /** The family of the item on screen, for the lift screen's colour. */
 export const itemFamily = (item: Item): Family =>
-  item.kind === "cardio" ? "cardio" : item.kind === "mobility" ? "mobility" : familyOf(byId(item.exerciseId));
+  item.kind === "cardio" || item.kind === "mobility" || item.kind === "goal"
+    ? item.kind
+    : familyOf(byId(item.exerciseId));
 
 /** The workout Start will run. Falls back to the first if the id has gone. */
 export const upNext = (state: SessionState): Workout =>
@@ -834,6 +898,10 @@ export const copyWorkout = (state: SessionState, fromId: string, id: string): Se
   return {
     ...state,
     choices,
+    // Its goals come along: the copy is everything the workout had.
+    goals: state.goals.map((g) =>
+      g.workouts.includes(fromId) ? { ...g, workouts: [...g.workouts, id] } : g,
+    ),
     workouts: [...state.workouts, { ...from, id, name: `${base} ${n}` }],
   };
 };
@@ -1131,6 +1199,7 @@ export const initialState: SessionState = {
   custom: [],
   exerciseEdits: {},
   notes: {},
+  goals: STARTING_GOALS,
   customCardio: [],
   customMobility: [],
   mobilityEdits: {},
@@ -1337,8 +1406,12 @@ export const buildWorkout = (
         const open = cardioBlock(state, workout, "open");
         const close = cardioBlock(state, workout, "close");
         const mobility = mobilityBlock(state, workout);
+        // Skills straight after the warm-up, while you are fresh: a
+        // handstand is no place for tired shoulders.
+        const goals = goalsIn(state, workout.id).map(goalBlock);
         return [
           ...(open ? [open] : []),
+          ...goals,
           ...lifts,
           ...(close ? [close] : []),
           ...(mobility ? [mobility] : []),
@@ -1358,7 +1431,7 @@ export const currentPrescription = (state: SessionState): Prescription | null =>
   if (!state.active) return null;
   const item = state.active.items[state.active.cursor];
   // Conditioning has no weight, no reps and no ladder — nothing to prescribe.
-  if (!item || isConditioning(item)) return null;
+  if (!item || !isLift(item)) return null;
   const st =
     state.history[key(item.exerciseId, item.scheme)] ??
     freshState(byId(item.exerciseId)!);
@@ -1472,7 +1545,7 @@ const writeSet = (
 /** Every circle filled — including the partner's? Then it's logged, hit or miss. */
 export const allSetsLogged = (state: SessionState): boolean => {
   const item = state.active?.items[state.active.cursor];
-  if (!item || isConditioning(item)) return false;
+  if (!item || !isLift(item)) return false;
   const filled = (log?: (number | null)[]) => !log || log.every((r) => r !== null);
   return filled(item.logged) && filled(item.supersetLogged);
 };
@@ -1499,7 +1572,7 @@ export const madeTarget = (state: SessionState): boolean => {
  */
 export type Verdict = {
   outcome: Outcome;
-  /** Which of Akilles' lists answers it — a hit that starts or ends a reload has its own. */
+  /** Which of Milo's lists answers it — a hit that starts or ends a reload has its own. */
   say: Say;
   fact: string;
 };
@@ -1529,7 +1602,7 @@ const readOutcome = (
 };
 
 const verdictFor = (state: SessionState, item: Item): Verdict | null => {
-  if (item.skipped || isConditioning(item) || item.derive) return null;
+  if (item.skipped || !isLift(item) || item.derive) return null;
   const exercise = byId(item.exerciseId)!;
   if (exercise.unloaded || item.logged.some((r) => r === null)) return null;
 
@@ -1595,7 +1668,7 @@ export const sessionTally = (
 } => {
   const tally = { hit: 0, miss: 0, drop: 0, unfinished: 0, lifts: 0, reload: 0 };
   for (const item of state.active?.items ?? []) {
-    if (isConditioning(item) || item.derive || byId(item.exerciseId)?.unloaded) continue;
+    if (!isLift(item) || item.derive || byId(item.exerciseId)?.unloaded) continue;
     tally.lifts++;
     const v = verdictFor(state, item);
     if (v) tally[v.outcome]++;
@@ -1673,7 +1746,7 @@ export const swapForSession = (state: SessionState, exerciseId: string): Session
   if (!state.active) return state;
   const { items, cursor } = state.active;
   const item = items[cursor];
-  if (!item || isConditioning(item) || item.logged.some((r) => r !== null)) return state;
+  if (!item || !isLift(item) || item.logged.some((r) => r !== null)) return state;
   if (currentTaken(state).has(exerciseId)) return state;
   const ex = byId(exerciseId);
   if (!ex) return state;
@@ -1708,7 +1781,7 @@ export const currentTaken = (state: SessionState): Set<string> => {
   const { items, cursor } = state.active;
   return new Set(
     items
-      .filter((it, i) => i !== cursor && !isConditioning(it))
+      .filter((it, i) => i !== cursor && isLift(it))
       .flatMap((it) => [it.exerciseId, ...(it.supersetWith ? [it.supersetWith] : [])]),
   );
 };
@@ -1809,7 +1882,7 @@ export const skipExercise = (state: SessionState): SessionState => {
  * elsewhere), and not one you have already started.
  */
 const canPair = (it: Item): boolean =>
-  !isConditioning(it) &&
+  isLift(it) &&
   !it.supersetWith &&
   !it.derive &&
   !it.logged.some((r) => r !== null);
@@ -1982,7 +2055,31 @@ export const finishWorkout = (
     });
   };
 
+  let goals = state.goals ?? [];
+
   for (const item of state.active?.items ?? []) {
+    // A goal moves up its ladder — or doesn't — by `applyGoal`. One deleted
+    // since, or a step taken out of it, has nothing left to move.
+    if (isGoal(item)) {
+      const goal = goals.find((g) => g.id === item.exerciseId);
+      const step = goal?.steps.find((st) => st.id === item.step);
+      const touched = item.logged.some((r) => r !== null);
+      if (!goal || !step || item.skipped || (!touched && !item.got)) continue;
+      const applied = applyGoal(goal, step.id, item.logged, !!item.got, now);
+      goals = goals.map((g) => (g.id === goal.id ? applied.goal : g));
+      entries.push({
+        kind: "goal",
+        goalId: goal.id,
+        stepId: step.id,
+        goal: goal.name,
+        step: step.name,
+        measure: step.measure,
+        target: step.target,
+        reps: item.logged,
+        outcome: applied.outcome,
+      });
+      continue;
+    }
     // Cardio keeps its own record: last and best over the block length or
     // the course. A block with no score entered — skipped, or left before the
     // number went in — writes nothing, so the mark to beat stays where it was.
@@ -2062,6 +2159,7 @@ export const finishWorkout = (
     ...state,
     history,
     conditioning,
+    goals,
     log: [...(state.log ?? []), session],
     ...advanceWorkout(state, active.workoutId),
     active: null,
@@ -2126,6 +2224,10 @@ export const isCardio = (item: Item): boolean => item.kind === "cardio";
 export const isMobility = (item: Item): boolean => item.kind === "mobility";
 export const isConditioning = (item: Item): boolean =>
   item.kind === "cardio" || item.kind === "mobility";
+/** A goal's step, done as its own block — see `data/goals.ts`. */
+export const isGoal = (item: Item): boolean => item.kind === "goal";
+/** Anything with a weight and a rep ladder: not cardio, mobility or a goal. */
+export const isLift = (item: Item): boolean => !item.kind || item.kind === "lift";
 
 /** A workout's cardio block at one end, worked out: the machine and how long. */
 export type CardioPlan = { machine: CardioExercise } & CardioLength;
@@ -2332,7 +2434,9 @@ export const nextItemName = (state: SessionState): string | null => {
     ? cardioById(item.exerciseId)?.name
     : isMobility(item)
       ? mobilityById(item.exerciseId)?.name
-      : byId(item.exerciseId)?.name;
+      : isGoal(item)
+        ? goalStepOf(state, item)?.step.name
+        : byId(item.exerciseId)?.name;
   return name || "Next";
 };
 
@@ -2667,6 +2771,279 @@ export const hiddenConditioningList = (
     kind: "mobility" as const,
   })),
 ];
+
+// ---- goals ----
+
+/** A goal by id. */
+export const goalById = (state: SessionState, id: string): Goal | undefined =>
+  state.goals.find((g) => g.id === id);
+
+/**
+ * The goals a workout practises, in the order they sit in Plan. Not one
+ * already learned, and not one with no steps yet — there would be nothing
+ * to do.
+ */
+export const goalsIn = (state: SessionState, workoutId: string): Goal[] =>
+  state.goals.filter((g) => !g.learned && g.steps.length > 0 && g.workouts.includes(workoutId));
+
+/** The workouts a goal is practised in, by name, in loop order. */
+export const goalWorkouts = (state: SessionState, goal: Goal): Workout[] =>
+  state.workouts.filter((w) => goal.workouts.includes(w.id));
+
+/** A goal's block in a session: the step you are on, its circles empty. */
+const goalBlock = (goal: Goal): Item => {
+  const step = currentStep(goal)!;
+  const slot = `goal/${goal.id}`;
+  return {
+    kind: "goal",
+    id: slot,
+    slot,
+    pattern: "abs",
+    options: [],
+    scheme: "volume",
+    exerciseId: goal.id,
+    step: step.id,
+    weight: 0,
+    // Practice keeps one entry — the seconds practised — not a circle a set.
+    logged: Array<number | null>(step.measure === "practice" ? 1 : step.sets).fill(null),
+  };
+};
+
+/**
+ * A goal block's goal and step, read live, so an edit in Plan — a note, a
+ * name — shows straight away. Null once either has been deleted.
+ */
+export const goalStepOf = (
+  state: SessionState,
+  item: Item,
+): { goal: Goal; step: GoalStep; index: number } | null => {
+  const goal = goalById(state, item.exerciseId);
+  const index = goal ? goal.steps.findIndex((st) => st.id === item.step) : -1;
+  return goal && index >= 0 ? { goal, step: goal.steps[index], index } : null;
+};
+
+/**
+ * What today's work on a step means, worked out by `applyGoal` itself, so
+ * the screen can never disagree with what happens. Null until every circle
+ * is in — or, for practice, until you say you've got it.
+ */
+export type GoalVerdict = {
+  outcome: GoalOutcome;
+  /** That was the last step: the goal is learned. */
+  learned: boolean;
+};
+
+export const goalVerdict = (state: SessionState, item: Item): GoalVerdict | null => {
+  const found = goalStepOf(state, item);
+  if (!found || item.skipped) return null;
+  const { goal, step } = found;
+  const done = step.measure === "practice" ? !!item.got : item.logged.every((r) => r !== null);
+  if (!done) return null;
+  const after = applyGoal(goal, step.id, item.logged, !!item.got, Date.now());
+  return { outcome: after.outcome, learned: !!after.goal.learned && !goal.learned };
+};
+
+/** Write one circle of the goal block on screen. Filling an empty one starts the rest. */
+const writeGoalSet = (
+  state: SessionState,
+  index: number,
+  next: (current: number | null, step: GoalStep) => number | null,
+): SessionState => {
+  const item = state.active?.items[state.active.cursor];
+  const found = item && isGoal(item) ? goalStepOf(state, item) : null;
+  if (!state.active || !item || !found) return state;
+  const logged = item.logged.map((r, i) => (i === index ? next(r, found.step) : r));
+  // Corrections and clearing a circle are edits, not another finished set.
+  const newlyLogged = item.logged[index] === null && logged[index] !== null;
+  const patched = patchItem(state, (it) => ({ ...it, logged }));
+  return newlyLogged
+    ? { ...patched, active: { ...patched.active!, lastSetAt: Date.now() } }
+    : patched;
+};
+
+/**
+ * Tap a circle of a goal step: reps go empty → target → one fewer a tap →
+ * empty, like a lift's. A hold already in comes down five seconds a tap; an
+ * empty one is started by its own clock on screen instead — see `logGoalSet`.
+ */
+export const tapGoalSet = (state: SessionState, index: number): SessionState =>
+  writeGoalSet(state, index, (current, step) => {
+    const by = step.measure === "hold" ? GOAL_HOLD_STEP : 1;
+    return current === null ? step.target : current <= by ? null : current - by;
+  });
+
+/** Long press: straight back to the target. */
+export const resetGoalSet = (state: SessionState, index: number): SessionState =>
+  writeGoalSet(state, index, (_current, step) => step.target);
+
+/** A hold's clock stopped or ran out: what it read, in whole seconds. */
+export const logGoalSet = (state: SessionState, index: number, seconds: number): SessionState =>
+  writeGoalSet(state, index, () => Math.max(1, Math.round(seconds)));
+
+/** Practice: you've got it — or, tapped again, not yet. */
+export const setGot = (state: SessionState, got: boolean): SessionState =>
+  patchItem(state, (it) => (isGoal(it) ? { ...it, got } : it));
+
+/**
+ * Next on a goal block. Practice counts as done when you move on — the clock
+ * is a guide, not a gate — at what it ran, or the whole time if you never
+ * started it. Skipping is how you say you didn't.
+ */
+export const completeGoal = (state: SessionState, practised?: number): SessionState => {
+  const item = state.active?.items[state.active.cursor];
+  const found = item && isGoal(item) ? goalStepOf(state, item) : null;
+  if (!found || found.step.measure !== "practice") return completeExercise(state);
+  const seconds = Math.round(practised ?? found.step.target * 60);
+  return completeExercise(patchItem(state, (it) => ({ ...it, logged: [Math.max(1, seconds)] })));
+};
+
+/** Change one goal. */
+const patchGoal = (state: SessionState, id: string, fn: (goal: Goal) => Goal): SessionState => ({
+  ...state,
+  goals: state.goals.map((g) => {
+    if (g.id !== id) return g;
+    const next = fn(g);
+    // A starting goal begins the day you take it up, not the day it came.
+    return next.since === 0 && isStarted(next) ? { ...next, since: Date.now() } : next;
+  }),
+});
+
+/** A new goal: a name, no steps yet, in no workout yet. */
+export const addGoal = (
+  state: SessionState,
+  id: string,
+  name: string,
+  now: number = Date.now(),
+): SessionState => ({
+  ...state,
+  goals: [
+    ...state.goals,
+    { id, name, steps: [], at: 0, streak: 0, owned: {}, workouts: [], since: now },
+  ],
+});
+
+export const updateGoal = (
+  state: SessionState,
+  id: string,
+  patch: { name?: string; link?: string },
+): SessionState => patchGoal(state, id, (g) => ({ ...g, ...patch }));
+
+/**
+ * Delete a goal and everything it learned. A session running it keeps the
+ * block on screen — it was already under way — but drops it from further on.
+ */
+export const deleteGoal = (state: SessionState, id: string): SessionState => {
+  const active = state.active && {
+    ...state.active,
+    items: state.active.items.filter(
+      (it, i) => i <= state.active!.cursor || !(isGoal(it) && it.exerciseId === id),
+    ),
+  };
+  return { ...state, active, goals: state.goals.filter((g) => g.id !== id) };
+};
+
+/** Put a goal in a workout, or take it out. From the next time it runs. */
+export const practiseIn = (
+  state: SessionState,
+  goalId: string,
+  workoutId: string,
+  on: boolean,
+): SessionState =>
+  patchGoal(state, goalId, (g) => ({
+    ...g,
+    workouts: on
+      ? [...g.workouts.filter((w) => w !== workoutId), workoutId]
+      : g.workouts.filter((w) => w !== workoutId),
+  }));
+
+/** A step as the step sheet opens it: three sets, at a measure's starting number. */
+export const newStep = (id: string, measure: Measure = "reps"): GoalStep => ({
+  id,
+  name: "",
+  measure,
+  sets: GOAL_SETS.start,
+  target: TARGET_LIMITS[measure].start,
+});
+
+/**
+ * Add a step at the top of the ladder. A goal already learned has somewhere
+ * to go again: the new step becomes the one you are on.
+ */
+export const addStep = (state: SessionState, goalId: string, step: GoalStep): SessionState =>
+  patchGoal(state, goalId, (g) => ({
+    ...g,
+    steps: [...g.steps, step],
+    ...(g.learned ? { learned: undefined, at: g.steps.length, streak: 0 } : {}),
+  }));
+
+export const updateStep = (
+  state: SessionState,
+  goalId: string,
+  stepId: string,
+  patch: Partial<Omit<GoalStep, "id">>,
+): SessionState =>
+  patchGoal(state, goalId, (g) => ({
+    ...g,
+    steps: g.steps.map((st) => (st.id === stepId ? { ...st, ...patch } : st)),
+  }));
+
+/**
+ * Take a step out. You stay on the same step if it was another; take out
+ * the one you are on and the next one up is yours to work on — at the top,
+ * the one below.
+ */
+export const removeStep = (state: SessionState, goalId: string, stepId: string): SessionState =>
+  patchGoal(state, goalId, (g) => {
+    const index = g.steps.findIndex((st) => st.id === stepId);
+    if (index < 0) return g;
+    const steps = g.steps.filter((st) => st.id !== stepId);
+    const at = Math.max(0, Math.min(index < g.at ? g.at - 1 : g.at, steps.length - 1));
+    return { ...g, steps, at, streak: index === g.at ? 0 : g.streak };
+  });
+
+/** Reorder the ladder. The step you are on stays the one you are on. */
+export const moveStep = (
+  state: SessionState,
+  goalId: string,
+  from: number,
+  to: number,
+): SessionState =>
+  patchGoal(state, goalId, (g) => {
+    const current = currentStep(g)?.id;
+    const steps = [...g.steps];
+    const [moved] = steps.splice(from, 1);
+    steps.splice(to, 0, moved);
+    return { ...g, steps, at: Math.max(0, steps.findIndex((st) => st.id === current)) };
+  });
+
+/**
+ * Work on a goal from a step — further up because it's already easy, or
+ * back down because it isn't. The count of sessions on target starts again.
+ */
+export const startFrom = (state: SessionState, goalId: string, index: number): SessionState =>
+  patchGoal(state, goalId, (g) =>
+    index < 0 || index >= g.steps.length
+      ? g
+      : { ...g, at: index, streak: 0, learned: undefined },
+  );
+
+// ---- the intro ----
+
+/**
+ * Whether the intro should open by itself: never finished or skipped, and
+ * nothing trained yet. A phone with training on it belongs to someone who
+ * already knows their way round — from before the intro, or a backup put
+ * back — so it waits behind Plan's ? instead.
+ */
+export const wantsIntro = (state: SessionState): boolean =>
+  !state.introSeen &&
+  !state.active &&
+  state.log.length === 0 &&
+  Object.keys(state.history).length === 0;
+
+/** The intro finished or skipped: it doesn't open by itself again. */
+export const seeIntro = (state: SessionState, now = Date.now()): SessionState =>
+  state.introSeen ? state : { ...state, introSeen: now };
 
 // ---- context ----
 

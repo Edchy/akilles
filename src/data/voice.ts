@@ -1,7 +1,7 @@
 import { inSentence } from "@/data/exercises";
 
 /**
- * Akilles talks back.
+ * Milo talks back.
  *
  * The voice is cheeky and blunt about the lifting — never about the person.
  * It teases momentum, swinging, bouncing and ego; it never teases a small
@@ -91,7 +91,7 @@ export const TODAY_LINES = {
     "{days} days. We counted.",
     "Long time no lift.",
     "Back from the dead. Start light.",
-    "The heel healed? Good. Start light.",
+    "The calf missed you. Start light.",
     "Your gym membership sends its regards.",
     "The weights waited. Start light and own them again.",
   ],
@@ -120,7 +120,7 @@ export const fillLine = (line: string, vars: { days?: number; name?: string }): 
   line.replace("{days}", String(vars.days ?? "")).replace("{name}", vars.name ?? "");
 
 /**
- * What changed since you last did a workout's lifts, in Akilles' words. One
+ * What changed since you last did a workout's lifts, in Milo's words. One
  * kind of news gets a voiced line; two or three are said plainly, one after
  * the other. `{name}` is the lift at the start of a sentence, `{lname}` the
  * same mid-sentence, `{count}` a number word.
@@ -202,7 +202,7 @@ export const FINISHED_LINES = {
     "All of it, all controlled. Go home.",
     "Clean sweep. The ego's furious. The muscles aren't.",
     "Flawless and slow. The best kind.",
-    "Achilles, minus the heel.",
+    "Calf today. Bull someday.",
     "Nothing swung, nothing missed. Go eat.",
   ],
   /** Some hits, some misses. */
@@ -237,9 +237,9 @@ export const FINISHED_LINES = {
 
 export type FinishedMood = keyof typeof FINISHED_LINES;
 
-/** Skip pressed on a warm-up: Akilles refuses, once. */
+/** Skip pressed on a warm-up: Milo refuses, once. */
 export const WARMUP_SKIP_LINES = [
-  "Achilles skipped his warm-up once. Ask him about his heel.",
+  "Even Milo started with a calf. Warm up first.",
   "Cold muscles, hot take.",
   "Skip the warm-up? Your tendons have filed a complaint.",
   "The bar can wait a minute. Can your shoulders?",
@@ -247,6 +247,59 @@ export const WARMUP_SKIP_LINES = [
   "Warm-ups are boring. So is physio.",
   "The light sets are where the form gets built. Indulge me.",
 ];
+
+/**
+ * A goal's step. Learning a skill is slow and mostly not yet, so the voice
+ * is patient with a short count — every session on the ladder is practice —
+ * and saves its swagger for a step owned.
+ */
+export const GOAL_LINES = {
+  /** Before anything is in, on a step not yet on target. */
+  start: [
+    "One rung at a time.",
+    "Own this step. The goal comes after.",
+    "Slow is smooth. Smooth is a handstand, eventually.",
+    "Today's step, not the whole staircase.",
+    "Skills are built, not found.",
+  ],
+  /** Before anything is in, with one session on target already. */
+  once: ["Owned it once already.", "Once more on target and it's yours."],
+  /** On target, the first of two. */
+  hit: [
+    "On target. Once more and it's yours.",
+    "One clean session down.",
+    "Good. Now do it again.",
+    "Halfway to owning it.",
+  ],
+  /** Short of the target: the count starts again, the step stays. */
+  miss: [
+    "Not yet. That's what steps are for.",
+    "Honest count. The step will wait.",
+    "Skills come slowly, then all at once.",
+    "Short today. Still practice.",
+  ],
+  /** Two sessions running, or practice you've got: the next step. */
+  owned: [
+    "Owned twice. Next rung.",
+    "That one's yours now.",
+    "Two in a row. Not luck.",
+    "Step owned. The next one's nervous.",
+    "Earned, not skipped to.",
+  ],
+  /** Practice you've got: your call, so it moves on today. */
+  got: [
+    "Your call. Good call.",
+    "Got it. On to the next.",
+    "Practice did its job.",
+    "Easy now. That was the point.",
+  ],
+  /** The last step owned: the goal is learned. */
+  learned: [
+    "Learned. Go show someone.",
+    "That's the whole ladder. Climbed.",
+    "From the first rung to this. Yours.",
+  ],
+} as const;
 
 /**
  * One line from a list, chosen by a seed rather than at random, so the same

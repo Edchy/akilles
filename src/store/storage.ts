@@ -44,7 +44,7 @@ import {
   MOBILITY_SLOT,
   finishWorkout,
   initialState,
-  isConditioning,
+  isLift,
   key,
   type Item,
   type SessionState,
@@ -176,7 +176,7 @@ const toEvenRanges = (state: SessionState): SessionState => {
     ...(e.pattern === "abs" ? { sets: 2 } : {}),
   });
   const retuneItem = (it: Item): Item =>
-    isConditioning(it) || it.derive || it.scheme === "speed"
+    !isLift(it) || it.derive || it.scheme === "speed"
       ? it
       : {
           ...it,
