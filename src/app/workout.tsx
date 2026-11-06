@@ -39,7 +39,7 @@ import { NoteLine, NoteSheet } from "@/components/note";
 import { GuideButton, GuideSheet } from "@/components/guide";
 import { Illustration } from "@/components/illustration";
 import { GoalSheet, Pips, hasTutorial, openTutorial } from "@/components/goals";
-import { Sheet } from "@/components/sheet";
+import { BigButton, Sheet } from "@/components/sheet";
 import { RestTimer } from "@/components/rest-timer";
 import { colors, FAMILY, fieldColors, fonts, radii } from "@/constants/theme";
 import { byId, inSentence } from "@/data/exercises";
@@ -56,10 +56,13 @@ import {
 import {
   courseLabel,
   distanceLabel,
+  EFFORT,
   parseTime,
   pictureOf,
   timeLabel,
+  type CardioEnd,
   type CardioExercise,
+  type CardioLength,
   type MobilityMove,
   type MobilityRoutine,
 } from "@/data/conditioning";
@@ -123,6 +126,12 @@ import {
   completeMove,
   useSession,
   type Item,
+  cardioEnd,
+  itemLength,
+  keepTodayLength,
+  nudgeTodayLength,
+  plannedLength,
+  workoutById,
 } from "@/store/session";
 
 
@@ -676,9 +685,19 @@ function Title({
   family,
   name,
   note,
+  onNote,
+  noteLabel,
   style,
   children,
-}: PropsWithChildren<{ family: Family; name: string; note?: string; style?: ViewStyle }>) {
+}: PropsWithChildren<{
+  family: Family;
+  name: string;
+  note?: string;
+  /** Makes the note a button that opens what it says: "1 km ⌄". */
+  onNote?: () => void;
+  noteLabel?: string;
+  style?: ViewStyle;
+}>) {
   const colors = useColors();
   const tools = Children.toArray(children).length > 0 || !!note;
   return (
@@ -696,7 +715,30 @@ function Title({
       {tools ? (
         <View style={{ flexDirection: "row", alignItems: "center", gap: 10, height: 40, marginTop: 10, marginLeft: 36 }}>
           {children}
-          {note ? (
+          {note && onNote ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={noteLabel ?? note}
+              onPress={onNote}
+              hitSlop={4}
+              style={({ pressed }) => ({
+                height: 40,
+                flexDirection: "row",
+                alignItems: "center",
+                gap: 8,
+                paddingLeft: 16,
+                paddingRight: 12,
+                borderRadius: 999,
+                backgroundColor: colors.surface,
+                opacity: pressed ? 0.7 : 1,
+              })}
+            >
+              <Text numberOfLines={1} style={{ color: colors.text, fontFamily: fonts.italic, fontSize: 19 }}>
+                {note}
+              </Text>
+              <Icon name="expand" size={16} color={colors.text} />
+            </Pressable>
+          ) : note ? (
             <Text
               numberOfLines={1}
               style={{ flex: 1, marginLeft: 4, color: colors.text, fontFamily: fonts.italic, fontSize: 19 }}
@@ -1045,6 +1087,7 @@ function Conditioning({ item }: { item: Item }) {
   const { state, setState } = useSession();
   const [swapping, setSwapping] = useState(false);
   const [noting, setNoting] = useState(false);
+  const [lengthening, setLengthening] = useState(false);
   // One line of note until it is measured, so the weight does not jump.
   const [noteHeight, setNoteHeight] = useState(31);
 
@@ -1079,6 +1122,8 @@ function Conditioning({ item }: { item: Item }) {
           family="cardio"
           name={cardio?.name ?? ""}
           note={isTimed(item) && cardio ? courseLabel(cardio, item.course!) : `${item.minutes} minutes`}
+          onNote={cardio ? () => setLengthening(true) : undefined}
+          noteLabel={isTimed(item) ? "Change how far, today or for good" : "Change how long, today or for good"}
         >
           {cardio ? <GuideButton id={cardio.id} name={cardio.name} cue={cardio.cue} size={40} /> : null}
           {pool.length > 1 ? (
@@ -1123,6 +1168,15 @@ function Conditioning({ item }: { item: Item }) {
         </Sheet>
 
         {cardio ? (
+          <LengthSheet
+            visible={lengthening}
+            cardio={cardio}
+            item={item}
+            onClose={() => setLengthening(false)}
+          />
+        ) : null}
+
+        {cardio ? (
           <View
             style={{
               marginTop: note ? Math.max(10, CARDIO_WEIGHT - noteHeight) : CARDIO_WEIGHT,
@@ -1131,6 +1185,7 @@ function Conditioning({ item }: { item: Item }) {
           <CardioBody
             cardio={cardio}
             item={item}
+            end={cardioEnd(item)}
             last={last}
             record={cardioRecord(state, item)}
             onNudge={(d) => setState((s) => nudgeScore(s, d))}
@@ -1157,6 +1212,78 @@ function Conditioning({ item }: { item: Item }) {
 }
 
 /**
+ * How far or how long, changed in the middle of the session: you feel like
+ * 2 km today, not 1. − and + change today's block as you press; then Just
+ * today leaves the workout as it was, and Every time keeps it there too.
+ */
+function LengthSheet({
+  visible,
+  cardio,
+  item,
+  onClose,
+}: {
+  visible: boolean;
+  cardio: CardioExercise;
+  item: Item;
+  onClose: () => void;
+}) {
+  const colors = useColors();
+  const { state, setState } = useSession();
+  const today = itemLength(item);
+  const planned = plannedLength(state, item);
+  const workout = state.active ? workoutById(state, state.active.workoutId) : undefined;
+  const say = (l: CardioLength) =>
+    l.course !== undefined ? courseLabel(cardio, l.course) : `${l.minutes} minutes`;
+  const changed = !!planned && say(planned) !== say(today);
+  const timed = today.course !== undefined;
+
+  return (
+    <Sheet visible={visible} title={timed ? "How far" : "How long"} closeLabel="Done" onClose={onClose}>
+      <View style={{ gap: 28, paddingTop: 12 }}>
+        <View style={{ height: 84, flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+          <Step label="−" onPress={() => setState((s) => nudgeTodayLength(s, -1))} />
+          <Text
+            accessibilityLiveRegion="polite"
+            style={{
+              color: colors.text,
+              fontFamily: fonts.semibold,
+              fontSize: 48,
+              fontVariant: ["lining-nums", "tabular-nums"],
+            }}
+          >
+            {say(today)}
+          </Text>
+          <Step label="+" onPress={() => setState((s) => nudgeTodayLength(s, 1))} />
+        </View>
+
+        <Text style={{ color: colors.muted, fontFamily: fonts.regular, fontSize: 17, lineHeight: 24 }}>
+          {changed && planned
+            ? `${workout?.name ?? "This workout"} usually has ${say(planned)}. Your ${
+                timed ? "times" : "distances"
+              } for ${say(today)} are kept apart from ${say(planned)}, so you only ever compare like with like.`
+            : `${timed ? "Further or shorter" : "Longer or shorter"} than usual — for today, or for every time.`}
+        </Text>
+
+        {/* Only once it differs from the workout: then it is a choice. */}
+        {changed && workout ? (
+          <View style={{ gap: 12 }}>
+            <BigButton label="Just today" onPress={onClose} />
+            <BigButton
+              label={`Every time in ${workout.name}`}
+              quiet
+              onPress={() => {
+                setState((s) => keepTodayLength(s));
+                onClose();
+              }}
+            />
+          </View>
+        ) : null}
+      </View>
+    </Sheet>
+  );
+}
+
+/**
  * Your score, and the mark to beat — laid out like a lift: the number between
  * − and +, a line on last time under it, and the machine's cue.
  *
@@ -1167,6 +1294,7 @@ function Conditioning({ item }: { item: Item }) {
 function CardioBody({
   cardio,
   item,
+  end,
   last,
   record,
   onNudge,
@@ -1174,6 +1302,8 @@ function CardioBody({
 }: {
   cardio: CardioExercise;
   item: Item;
+  /** A warm-up is never a race: no cheer for going faster, and an easy pace. */
+  end: CardioEnd;
   /** Last session's score: what the box shows until you change it. */
   last: number | null;
   record: ReturnType<typeof cardioRecord>;
@@ -1200,8 +1330,10 @@ function CardioBody({
     setDraft(null);
   };
 
-  const beat = record && score !== null && isBetter(item, score, record.last);
-  const isBest = record && score !== null && isBetter(item, score, record.best);
+  // Only the finish cheers a faster time; in the warm-up it would read as a dare.
+  const cheers = end === "close" && record && score !== null;
+  const beat = cheers && isBetter(item, score, record.last);
+  const isBest = cheers && isBetter(item, score, record.best);
   const line = { textAlign: "center", color: colors.text, fontFamily: fonts.regular, fontSize: 19, lineHeight: 24 } as const;
   const number: TextStyle = {
     fontFamily: fonts.semibold,
@@ -1291,11 +1423,10 @@ function CardioBody({
         ) : null}
       </View>
 
+      {/* How hard, by where the block sits; then how, if the machine says. */}
       <Text style={[line, { marginTop: 12, fontSize: 17, lineHeight: 23 }]}>
-        {cardio.cue ??
-          (timed
-            ? "Same distance each time — the time is the score."
-            : "Same minutes each time — the distance is the score.")}
+        {EFFORT[end]}
+        {cardio.cue ? `\n${cardio.cue}` : ""}
       </Text>
     </View>
   );
@@ -1876,17 +2007,21 @@ function MobilityDeck({
       clearInterval(tick);
       setRunning(null);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      setLeft((l) => {
-        const next = l.map((v, i) => (i === running.page ? 0 : v));
-        const { index } = cards[running.page];
-        // The pose is done once every side of it is.
-        if (cards.every((c, i) => c.index !== index || next[i] <= 0)) onMoveDone(index);
-        return next;
-      });
+      finish(running.page);
     }, 200);
     return () => clearInterval(tick);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [running]);
+
+  /** A card done: its clock run out, or its reps said done. */
+  const finish = (p: number) =>
+    setLeft((l) => {
+      const next = l.map((v, i) => (i === p ? 0 : v));
+      const { index } = cards[p];
+      // The pose is done once every side of it is.
+      if (cards.every((c, i) => c.index !== index || next[i] <= 0)) onMoveDone(index);
+      return next;
+    });
 
   const pause = () => {
     if (!running) return;
@@ -1907,10 +2042,19 @@ function MobilityDeck({
       ? last
         ? { label: "Finish", onPress: onFinish }
         : { label: "Next", onPress: () => goTo(page + 1) }
-      : {
-          label: started ? "Resume" : `Start · ${timeLabel(card.move.seconds)}`,
-          onPress: () => setRunning({ page, endAt: Date.now() + left[page] * 1000 }),
-        };
+      : card.move.reps
+        ? // Reps have no clock: you say when they're done, and move on.
+          {
+            label: "Done",
+            onPress: () => {
+              finish(page);
+              if (!last) goTo(page + 1);
+            },
+          }
+        : {
+            label: started ? "Resume" : `Start · ${timeLabel(card.move.seconds)}`,
+            onPress: () => setRunning({ page, endAt: Date.now() + left[page] * 1000 }),
+          };
 
   return (
     <>
@@ -1954,7 +2098,7 @@ function MobilityDeck({
         <Column style={{ gap: 8 }}>
           {/* Always laid out, so the hint appearing moves nothing. */}
           <Text style={{ height: 22, textAlign: "center", color: colors.text, fontFamily: fonts.regular, fontSize: 17 }}>
-            {done && !last ? "Swipe for the next stretch" : ""}
+            {done && !last ? "Swipe for the next one" : ""}
           </Text>
           <Action label={action.label} fill onPress={action.onPress} />
         </Column>
@@ -1990,7 +2134,7 @@ function MobilityCard({ card, left, position }: { card: Card; left: number; posi
       <View style={{ gap: 6, paddingHorizontal: 18, paddingTop: 16, paddingBottom: 18 }}>
         <View style={{ flexDirection: "row", alignItems: "center" }}>
           <Text style={{ flex: 1, color: colors.text, fontFamily: fonts.italic, fontSize: 19 }}>
-            {side ?? "Hold"}
+            {side ?? (move.reps ? "Reps" : "Hold")}
           </Text>
           <Text style={{ color: colors.text, fontFamily: fonts.regular, fontSize: 17 }}>{position}</Text>
         </View>
@@ -2011,7 +2155,10 @@ function MobilityCard({ card, left, position }: { card: Card; left: number; posi
               fontVariant: ["lining-nums", "tabular-nums"],
             }}
           >
-            {done ? "Done" : timeLabel(Math.ceil(left))}
+            {done ? "Done" : move.reps ? move.reps : timeLabel(Math.ceil(left))}
+            {!done && move.reps ? (
+              <Text style={{ fontFamily: fonts.regular, fontSize: 22 }}> reps</Text>
+            ) : null}
           </Text>
         </View>
 

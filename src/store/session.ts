@@ -32,6 +32,8 @@ import {
   HOLD_RANGE,
   HOLD_STEP,
   MOBILITY,
+  REPS_RANGE_MOVE,
+  SHOULDER_WARMUP,
   TIME_STEP,
   cardioById,
   cardioPool,
@@ -45,6 +47,7 @@ import {
   mobilityById,
   mobilityPool,
   routineSeconds,
+  secondsFor,
   setCustomConditioning,
   setMobilityEdits,
   stretchById,
@@ -113,6 +116,8 @@ export type Kind = "lift" | "cardio" | "mobility" | "goal";
 /** The two cardio blocks, by where they sit in the session. */
 export const CARDIO_SLOTS: Record<CardioEnd, string> = { open: "Cardio · open", close: "Cardio · finish" };
 export const MOBILITY_SLOT = "Mobility";
+/** The routine that opens a session, after the cardio: the shoulder warm-up on a day that presses. */
+export const WARMUP_SLOT = "Warm-up";
 
 export type Item = Entry & {
   /** Lift unless marked otherwise — see `Kind`. */
@@ -755,6 +760,7 @@ export const workoutPreview = (state: SessionState, workout: Workout): PreviewRo
     ];
   };
   const routine = mobilityPlan(state, workout);
+  const warmup = warmupPlan(state, workout);
   const goals = goalsIn(state, workout.id).map(
     (g): PreviewRow => ({
       id: `goal/${g.id}`,
@@ -765,6 +771,16 @@ export const workoutPreview = (state: SessionState, workout: Workout): PreviewRo
   );
   return [
     ...block("open"),
+    ...(warmup
+      ? [
+          {
+            id: WARMUP_SLOT,
+            name: warmup.name,
+            amount: `about ${routineMinutes(warmup)} min`,
+            family: "mobility" as const,
+          },
+        ]
+      : []),
     ...goals,
     ...lifts,
     ...block("close"),
@@ -1419,11 +1435,15 @@ export const buildWorkout = (
         const open = cardioBlock(state, workout, "open");
         const close = cardioBlock(state, workout, "close");
         const mobility = mobilityBlock(state, workout);
+        // On a day that presses, the shoulders are readied before anything
+        // loads them — a handstand included.
+        const warmup = warmupBlock(state, workout);
         // Skills straight after the warm-up, while you are fresh: a
         // handstand is no place for tired shoulders.
         const goals = goalsIn(state, workout.id).map(goalBlock);
         return [
           ...(open ? [open] : []),
+          ...(warmup ? [warmup] : []),
           ...goals,
           ...lifts,
           ...(close ? [close] : []),
@@ -2288,9 +2308,35 @@ export const mobilityPlan = (state: SessionState, workout: Workout): MobilityRou
   return usable(workout.mobility) ?? usable(DEFAULT_MOBILITY) ?? pool[0] ?? null;
 };
 
-/** The workouts that end on a routine, so an edit can say who else it reaches. */
+/** Movement types that load the shoulders overhead or in front: a day with one presses. */
+const PRESSING: Pattern[] = ["horizontal_push", "vertical_push", "chest_iso"];
+
+/** Whether any lift in a workout presses — the days the shoulder warm-up is for. */
+export const presses = (state: SessionState, workout: Workout): boolean =>
+  workout.exercises.some((e) => {
+    const ex = byId(chosen(state, workout.id, e));
+    return !!ex && PRESSING.some((p) => isPattern(ex, p));
+  });
+
+/**
+ * The routine a workout opens with, or null. Yours if you chose one and it
+ * is still in the catalogue; otherwise the shoulder warm-up on a day that
+ * presses, and nothing on one that does not.
+ */
+export const warmupPlan = (state: SessionState, workout: Workout): MobilityRoutine | null => {
+  if (workout.warmup === null) return null;
+  const pool = mobilityPool(state.hiddenConditioning);
+  const usable = (id: string | undefined) => (id ? pool.find((m) => m.id === id) : undefined);
+  const own = usable(workout.warmup);
+  if (own) return own;
+  return presses(state, workout) ? (usable(SHOULDER_WARMUP) ?? null) : null;
+};
+
+/** The workouts that open or end on a routine, so an edit can say who else it reaches. */
 export const workoutsUsing = (state: SessionState, routineId: string): Workout[] =>
-  state.workouts.filter((w) => mobilityPlan(state, w)?.id === routineId);
+  state.workouts.filter(
+    (w) => mobilityPlan(state, w)?.id === routineId || warmupPlan(state, w)?.id === routineId,
+  );
 
 /** A cardio block for one end of the session, or null if the workout has none there. */
 const cardioBlock = (state: SessionState, workout: Workout, where: CardioEnd): Item | null => {
@@ -2314,13 +2360,20 @@ const cardioBlock = (state: SessionState, workout: Workout, where: CardioEnd): I
 };
 
 /** The closing mobility block, or null if the workout has none. */
-const mobilityBlock = (state: SessionState, workout: Workout): Item | null => {
-  const routine = mobilityPlan(state, workout);
+const mobilityBlock = (state: SessionState, workout: Workout): Item | null =>
+  routineBlock(mobilityPlan(state, workout), MOBILITY_SLOT);
+
+/** The warm-up block after the opening cardio, or null if the workout has none. */
+const warmupBlock = (state: SessionState, workout: Workout): Item | null =>
+  routineBlock(warmupPlan(state, workout), WARMUP_SLOT);
+
+/** A routine as a block in the session, under its slot. */
+const routineBlock = (routine: MobilityRoutine | null, slot: string): Item | null => {
   if (!routine) return null;
   return {
     kind: "mobility",
-    id: MOBILITY_SLOT,
-    slot: MOBILITY_SLOT,
+    id: slot,
+    slot,
     pattern: "abs",
     options: [],
     scheme: "volume",
@@ -2397,19 +2450,90 @@ export const nudgeCardio = (
   const w = workoutById(state, workoutId);
   const plan = w && cardioPlan(state, w, where);
   if (!plan) return state;
-  const machine = plan.machine.id;
-  if (plan.course !== undefined) {
-    const step = COURSE_STEP[plan.machine.metric.unit];
-    // Snapped onto the grid, so the records only ever land on whole steps.
-    const course = Math.max(step, Math.round(plan.course / step) * step + step * direction);
-    return setCardio(state, workoutId, where, { machine, course });
-  }
-  const minutes = Math.max(
-    MINUTES_STEP,
-    Math.min(MINUTES_MAX, Math.round(plan.minutes / MINUTES_STEP) * MINUTES_STEP + MINUTES_STEP * direction),
-  );
-  return setCardio(state, workoutId, where, { machine, minutes });
+  return setCardio(state, workoutId, where, {
+    machine: plan.machine.id,
+    ...stepLength(plan.machine, plan, direction),
+  });
 };
+
+/** One step longer or shorter, on the grid every length keeps its records on. */
+const stepLength = (
+  machine: CardioExercise,
+  length: CardioLength,
+  direction: 1 | -1,
+): CardioLength => {
+  if (length.course !== undefined) {
+    const step = COURSE_STEP[machine.metric.unit];
+    // Snapped onto the grid, so the records only ever land on whole steps.
+    return { course: Math.max(step, Math.round(length.course / step) * step + step * direction) };
+  }
+  return {
+    minutes: Math.max(
+      MINUTES_STEP,
+      Math.min(
+        MINUTES_MAX,
+        Math.round(length.minutes / MINUTES_STEP) * MINUTES_STEP + MINUTES_STEP * direction,
+      ),
+    ),
+  };
+};
+
+/** Which end of the session a cardio block sits at: the warm-up, or the finish. */
+export const cardioEnd = (item: Item): CardioEnd =>
+  item.id === CARDIO_SLOTS.close ? "close" : "open";
+
+/** How far or how long a running cardio block is. */
+export const itemLength = (item: Item): CardioLength =>
+  item.course !== undefined ? { course: item.course } : { minutes: item.minutes ?? CARDIO_MINUTES };
+
+/**
+ * Make the cardio on screen longer or shorter, for today only: you feel like
+ * 2 km instead of 1. The workout is untouched — `keepTodayLength` is the way
+ * to make it stick. The score goes back to unentered, since a time over 1 km
+ * says nothing about 2; each length keeps its own records.
+ */
+export const nudgeTodayLength = (state: SessionState, direction: 1 | -1): SessionState =>
+  patchItem(state, (it) => {
+    const machine = isCardio(it) ? cardioById(it.exerciseId) : undefined;
+    return machine ? { ...it, ...lengthFields(stepLength(machine, itemLength(it), direction)) } : it;
+  });
+
+/**
+ * What the running workout's plan has at this block's end, if it differs
+ * from today — the length to go back to, or to replace with today's.
+ */
+export const plannedLength = (state: SessionState, item: Item): CardioLength | null => {
+  const workout = state.active && workoutById(state, state.active.workoutId);
+  const plan = workout && cardioPlan(state, workout, cardioEnd(item));
+  return plan ? (plan.course !== undefined ? { course: plan.course } : { minutes: plan.minutes }) : null;
+};
+
+/**
+ * Today's length on the cardio on screen, kept in the workout from now on —
+ * the same as changing it in Plan, without leaving the session.
+ */
+export const keepTodayLength = (state: SessionState): SessionState => {
+  const item = state.active?.items[state.active.cursor];
+  if (!state.active || !item || !isCardio(item)) return state;
+  return setCardio(state, state.active.workoutId, cardioEnd(item), {
+    machine: item.exerciseId,
+    ...itemLength(item),
+  });
+};
+
+/**
+ * Set the routine a workout opens with. Undefined goes back to the shoulder
+ * warm-up on a day that presses; null takes it out.
+ */
+export const setWarmup = (
+  state: SessionState,
+  workoutId: string,
+  routine: string | null | undefined,
+): SessionState =>
+  patchWorkout(state, workoutId, (w) => {
+    const { warmup: _old, ...rest } = w;
+    return routine === undefined ? rest : { ...rest, warmup: routine };
+  });
 
 /**
  * Set the routine a workout ends on. Undefined goes back to the one that
@@ -2603,7 +2727,10 @@ export const addHold = (
 export const removeHold = (state: SessionState, routineId: string, holdId: string): SessionState =>
   editHolds(state, routineId, (moves) => moves.filter((m) => m.id !== holdId));
 
-/** Change how long a hold runs, by one `HOLD_STEP`, or whether it is held on each side. */
+/**
+ * Change how long a hold runs, by one `HOLD_STEP` — or, for a move done for
+ * reps, by one rep — or whether it is held on each side.
+ */
 export const nudgeHold = (
   state: SessionState,
   routineId: string,
@@ -2611,17 +2738,20 @@ export const nudgeHold = (
   direction: 1 | -1,
 ): SessionState =>
   editHolds(state, routineId, (moves) =>
-    moves.map((m) =>
-      m.id === holdId
-        ? {
-            ...m,
-            seconds: Math.max(
-              HOLD_RANGE.min,
-              Math.min(HOLD_RANGE.max, Math.round(m.seconds / HOLD_STEP) * HOLD_STEP + HOLD_STEP * direction),
-            ),
-          }
-        : m,
-    ),
+    moves.map((m) => {
+      if (m.id !== holdId) return m;
+      if (m.reps) {
+        const reps = Math.max(REPS_RANGE_MOVE.min, Math.min(REPS_RANGE_MOVE.max, m.reps + direction));
+        return { ...m, reps, seconds: secondsFor(reps) };
+      }
+      return {
+        ...m,
+        seconds: Math.max(
+          HOLD_RANGE.min,
+          Math.min(HOLD_RANGE.max, Math.round(m.seconds / HOLD_STEP) * HOLD_STEP + HOLD_STEP * direction),
+        ),
+      };
+    }),
   );
 
 export const setHoldSides = (
@@ -2664,18 +2794,25 @@ export const copyRoutineFor = (
   state: SessionState,
   workoutId: string,
   routineId: string = newId("m"),
+  where: RoutineEnd = "end",
 ): SessionState => {
   const workout = workoutById(state, workoutId);
-  const from = workout && mobilityPlan(state, workout);
+  const from = workout && (where === "warmup" ? warmupPlan : mobilityPlan)(state, workout);
   if (!workout || !from) return state;
   const copy: MobilityRoutine = {
     id: routineId,
-    name: `${workout.name || "Workout"} stretch`,
+    name: `${workout.name || "Workout"} ${where === "warmup" ? "warm-up" : "stretch"}`,
     subtitle: `for ${workout.name || "one workout"}`,
     moves: from.moves.map((m) => ({ ...m })),
   };
-  return setMobility(addMobility(state, copy), workoutId, copy.id);
+  const added = addMobility(state, copy);
+  return where === "warmup"
+    ? setWarmup(added, workoutId, copy.id)
+    : setMobility(added, workoutId, copy.id);
 };
+
+/** Which routine of a workout: the warm-up it opens with, or the stretch it ends on. */
+export type RoutineEnd = "warmup" | "end";
 
 /**
  * A routine you create from scratch starts as a copy of the everyday stretch,

@@ -51,8 +51,9 @@ test("a goal is its own block, straight after the warm-up, in the workouts you c
   const state = withGoal();
   const started = store.buildWorkout(store.setNextWorkout(state, "push"));
   const kinds = started.active.items.map((it) => it.kind ?? "lift");
-  assert.equal(kinds.slice(0, 3).join(","), "cardio,goal,lift");
-  const block = started.active.items[1];
+  // Push presses: its shoulder warm-up comes before the goal, readying the shoulders for it.
+  assert.equal(kinds.slice(0, 4).join(","), "cardio,mobility,goal,lift");
+  const block = started.active.items[2];
   assert.equal(block.exerciseId, "hspu");
   assert.equal(block.step, "plank");
   assert.equal(block.logged.length, 3);

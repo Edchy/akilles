@@ -92,4 +92,8 @@ export const PHOTOS: Record<string, ImageSourcePropType[]> = {
   chest_opener: [require("../../assets/photos/chest-and-front-of-shoulder-stretch-1.jpg")],
   lat_wall: [require("../../assets/photos/one-arm-against-wall-0.jpg")],
   cross_body: [require("../../assets/photos/shoulder-stretch-1.jpg")],
+  // The warm-up moves done for reps flip between start and finish, as a lift does.
+  // The ball on the wall has no true match: its thumbnail is its film's still.
+  band_pull_apart: [require("../../assets/photos/band-pull-apart-0.jpg"), require("../../assets/photos/band-pull-apart-1.jpg")],
+  band_external_rotation: [require("../../assets/photos/external-rotation-with-band-0.jpg"), require("../../assets/photos/external-rotation-with-band-1.jpg")],
 };

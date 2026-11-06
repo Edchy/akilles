@@ -1,8 +1,9 @@
 /**
  * Cardio and mobility: the work that bookends the lifting.
  *
- * These are pools, not programmes. A session opens with one cardio block and
- * closes with another plus mobility. Each workout says which machine and
+ * These are pools, not programmes. A session opens with one cardio block —
+ * then, on a day that presses, the shoulder warm-up — and closes with another
+ * plus mobility. Each workout says which machine and
  * routine fill its blocks, and how long each cardio block runs — see
  * `CardioBlock` and `Workout` in `split.ts`. Out of the box every workout
  * opens on the treadmill, finishes on the ski-erg and ends on the everyday
@@ -51,7 +52,7 @@ export type CardioExercise = {
  * different job from a treadmill before them.
  */
 export const CARDIO: CardioExercise[] = [
-  { id: "treadmill", name: "Treadmill", metric: KM, distance: 1, cue: "Settle into a pace, then empty the tank in the last stretch." },
+  { id: "treadmill", name: "Treadmill", metric: KM, distance: 1, cue: "Stand tall, hands off the rails." },
   { id: "row", name: "Rower", metric: METRES, cue: "Legs, back, arms — then the reverse." },
   { id: "ski_erg", name: "Ski-erg", metric: METRES, cue: "Hinge at the hips, finish past the pockets." },
   { id: "bike", name: "Bike", metric: KM },
@@ -62,6 +63,16 @@ export const CARDIO: CardioExercise[] = [
 
 /** The two ends of a session a cardio block can sit at. */
 export type CardioEnd = "open" | "close";
+
+/**
+ * How hard to go, by where the block sits rather than which machine it is:
+ * a warm-up readies you for the lifts, so it is never a race. A machine's own
+ * `cue` is only ever about how to use it.
+ */
+export const EFFORT: Record<CardioEnd, string> = {
+  open: "An easy pace you could talk at. Save your effort for the lifts.",
+  close: "Steady, then pick it up at the end if you have it left.",
+};
 
 /** The machine each end of a workout uses until you choose another. */
 export const CARDIO_DEFAULT: Record<CardioEnd, string> = {
@@ -121,14 +132,23 @@ export const defaultCourse = (machine: CardioExercise): number =>
 export type Stretch = {
   id: string;
   name: string;
-  /** Seconds to hold when first added. Per side, when `perSide`. */
+  /**
+   * Seconds to hold when first added. Per side, when `perSide`. For a move
+   * done for reps, roughly how long they take — see `secondsFor`.
+   */
   seconds: number;
   perSide?: boolean;
+  /**
+   * Done for a count rather than held: a band pull-apart is 15 slow reps, not
+   * a minute on a clock. Per side, when `perSide`. Its card has no timer —
+   * you say when you're done.
+   */
+  reps?: number;
   /** One line on the card. Keep it short. */
   cue?: string;
 };
 
-/** Every stretch on offer, roughly hips first and upper body last. */
+/** Every stretch on offer, roughly hips first and upper body last, then the warm-up moves. */
 export const STRETCHES: Stretch[] = [
   { id: "couch", name: "Couch stretch", seconds: 60, perSide: true, cue: "Squeeze the glute to feel the front of the hip." },
   { id: "worlds_greatest", name: "World's greatest stretch", seconds: 30, perSide: true, cue: "Elbow down to the instep, then turn the chest open." },
@@ -144,9 +164,22 @@ export const STRETCHES: Stretch[] = [
   { id: "chest_opener", name: "Chest and shoulder opener", seconds: 45, cue: "A stick or empty bar, wide grip, up and back." },
   { id: "lat_wall", name: "Lat stretch on a wall", seconds: 30, perSide: true, cue: "Forearm on the wall, sink the chest away." },
   { id: "cross_body", name: "Cross-body shoulder stretch", seconds: 30, perSide: true, cue: "Pull the arm across at chest height." },
+  // The shoulder warm-up's: to ready the shoulders to press, not to stretch them.
+  { id: "ball_shoulder", name: "Ball on the wall", seconds: 45, perSide: true, cue: "Ball under the front of the shoulder. Lean in and roll slowly." },
+  { id: "band_pull_apart", name: "Band pull-apart", seconds: 45, reps: 15, cue: "Arms straight, squeeze the shoulder blades together." },
+  { id: "band_external_rotation", name: "Band external rotation", seconds: 36, reps: 12, perSide: true, cue: "Elbow pinned to your side. Turn the hand out slowly." },
 ];
 
 export const stretchById = (id: string): Stretch | undefined => STRETCHES.find((s) => s.id === id);
+
+/** A rep, at the slow pace a warm-up move is done at. */
+export const SECONDS_PER_REP = 3;
+
+/** Fewest and most reps a move done for reps can be set to. */
+export const REPS_RANGE_MOVE = { min: 5, max: 30 } as const;
+
+/** Roughly how long a move done for reps takes: a rep every few seconds. */
+export const secondsFor = (reps: number): number => reps * SECONDS_PER_REP;
 
 /** How far − and + move a hold, and the range it stays within. */
 export const HOLD_STEP = 15;
@@ -165,6 +198,8 @@ export type MobilityMove = {
   seconds: number;
   /** Held on each side in turn, so the block is twice this long. */
   perSide?: boolean;
+  /** Done for this many reps rather than held — see `Stretch`. `seconds` is then how long they take. */
+  reps?: number;
   cue?: string;
 };
 
@@ -182,6 +217,7 @@ export const holdOf = (
   name: stretch.name,
   seconds: stretch.seconds,
   ...(stretch.perSide ? { perSide: true } : {}),
+  ...(stretch.reps ? { reps: stretch.reps } : {}),
   ...(stretch.cue ? { cue: stretch.cue } : {}),
   ...overrides,
 });
@@ -205,6 +241,13 @@ export type MobilityEdit = { name?: string; moves?: MobilityMove[] };
 export const DEFAULT_MOBILITY = "everyday";
 
 /**
+ * The routine a workout that presses opens with, after the cardio, until you
+ * choose another or take it out. Shoulders are the joint pressing hurts most.
+ * Not "shoulders": that id belonged to a routine retired in version 10.
+ */
+export const SHOULDER_WARMUP = "shoulder_warmup";
+
+/**
  * The built-in routines: one, and a good one. The best of the stretches for
  * someone who lifts — hips, hamstrings, glutes, chest and back — in about seven
  * minutes. Every hold has a photo and a guide. Change it in Plan, or make
@@ -224,6 +267,12 @@ export const MOBILITY: MobilityRoutine[] = [
       hold("childs_pose"),
     ],
   },
+  {
+    id: SHOULDER_WARMUP,
+    name: "Shoulder warm-up",
+    subtitle: "before you press",
+    moves: [hold("ball_shoulder"), hold("band_pull_apart"), hold("band_external_rotation")],
+  },
 ];
 
 /** Routines earlier versions shipped, all retired for `everyday`. Read only by the save migration. */
@@ -240,7 +289,7 @@ export const RETIRED_MOBILITY = ["full_body", "hips", "shoulders", "spine", "qui
  * Everything else ships removed and is one tap from coming back.
  */
 export const LEAN_CARDIO: string[] = ["treadmill", "ski_erg", "row"];
-export const LEAN_MOBILITY: string[] = [DEFAULT_MOBILITY];
+export const LEAN_MOBILITY: string[] = [DEFAULT_MOBILITY, SHOULDER_WARMUP];
 
 /** Built-in machines and routines that start out removed. */
 export const leanHiddenConditioning = (): string[] => [

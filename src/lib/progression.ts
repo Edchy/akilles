@@ -20,8 +20,15 @@
  * to it. Progress, not the calendar, calls them — see `RELOAD_AFTER`.
  */
 
-import { byId, type Exercise, type Pattern } from "@/data/exercises";
-import { ladderFor, type Scheme } from "@/data/split";
+import { byId, highReps, type Exercise, type Pattern } from "@/data/exercises";
+import {
+  HIGH_REPS_RANGE,
+  HIGH_REPS_SCHEME,
+  ladderFor,
+  REPS_RANGE,
+  type RepBounds,
+  type Scheme,
+} from "@/data/split";
 
 /** How a session felt. No longer asked — kept so older saved records still read. */
 export type Feedback = "up" | "down";
@@ -353,9 +360,26 @@ export const HOLD_MAX = 5;
  */
 export const TIMED_SECONDS = 5;
 
+/** The fewest and most reps an exercise's range can be set to. */
+export const repBounds = (exercise: Exercise | undefined): RepBounds =>
+  exercise && highReps(exercise) ? HIGH_REPS_RANGE : REPS_RANGE;
+
+/**
+ * The range an exercise actually climbs in a slot. The slot's own, unless
+ * that reaches outside what the exercise allows: a pushdown in a 6–12 slot
+ * climbs 10–14. The slot keeps its range — and the lift its record under it —
+ * so swapping dips back in gives dips their 6 again.
+ */
+export const schemeOf = (exercise: Exercise | undefined, scheme: Scheme): Scheme => {
+  if (!exercise || !highReps(exercise)) return scheme;
+  const ladder = ladderFor(scheme);
+  const fits = ladder[0] >= HIGH_REPS_RANGE.min && ladder[ladder.length - 1] <= HIGH_REPS_RANGE.max;
+  return fits ? scheme : HIGH_REPS_SCHEME;
+};
+
 /** The ladder an exercise actually climbs: the scheme's, in seconds for a timed hold. */
 export const ladderOf = (exercise: Exercise | undefined, scheme: Scheme): number[] => {
-  const ladder = ladderFor(scheme);
+  const ladder = ladderFor(schemeOf(exercise, scheme));
   return exercise?.timed ? ladder.map((reps) => reps * TIMED_SECONDS) : ladder;
 };
 
@@ -372,24 +396,26 @@ export const prescribe = (
   state: ExerciseState,
   scheme: Scheme,
   sets: number,
-): Prescription => ({
-  exercise: byId(state.exerciseId)!,
-  weight: state.weight,
-  reps: ladderOf(byId(state.exerciseId), scheme)[
-    Math.min(state.rung, ladderFor(scheme).length - 1)
-  ],
-  sets,
-  scheme,
-  last: state.lastPerformed,
-  deloaded: state.deloads > 0 && state.downStreak === 0 && state.rung === 0,
-  reload: state.reloading
-    ? state.rung === reloadRung(ladderFor(scheme))
-      ? "start"
-      : "climb"
-    : undefined,
-  skippedLast: state.skippedLast,
-  decay: state.pendingDecay,
-});
+): Prescription => {
+  const exercise = byId(state.exerciseId)!;
+  const ladder = ladderOf(exercise, scheme);
+  return {
+    exercise,
+    weight: state.weight,
+    reps: ladder[Math.min(state.rung, ladder.length - 1)],
+    sets,
+    scheme,
+    last: state.lastPerformed,
+    deloaded: state.deloads > 0 && state.downStreak === 0 && state.rung === 0,
+    reload: state.reloading
+      ? state.rung === reloadRung(ladder)
+        ? "start"
+        : "climb"
+      : undefined,
+    skippedLast: state.skippedLast,
+    decay: state.pendingDecay,
+  };
+};
 
 /**
  * Steps up in weight before a lift reloads.

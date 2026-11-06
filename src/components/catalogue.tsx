@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { Pressable, View } from "react-native";
 import { Text, TextInput } from "@/components/text";
 
+import { Count, Setting, Step } from "@/components/controls";
 import { Icon } from "@/components/icon";
 import { NoteField } from "@/components/note";
 import { RoutineEditor } from "@/components/routine";
@@ -13,8 +14,12 @@ import {
   METRICS,
   cardioById,
   cardioPool,
+  COURSE_STEP,
+  MINUTES_MAX,
+  MINUTES_STEP,
   courseLabel,
   mobilityPool,
+  type CardioEnd,
 } from "@/data/conditioning";
 import {
   CATEGORY_LABEL,
@@ -32,6 +37,7 @@ import {
   addExercise,
   canRemove,
   canRemoveConditioning,
+  cardioPlan,
   catalogue,
   createRoutine,
   editExercise,
@@ -40,6 +46,7 @@ import {
   hiddenExercises,
   isCustom,
   isCustomConditioning,
+  nudgeCardio,
   removeConditioning,
   removeExercise,
   restoreConditioning,
@@ -652,12 +659,21 @@ function CardioSheet({ visible, onClose }: { visible: boolean; onClose: () => vo
 }
 
 /**
- * One machine: what a block on it runs by default, and removing it. How far
- * or how long it runs in a given workout is set in that workout.
+ * One machine: where your workouts use it and for how long, its note, and
+ * removing it. How far or how long belongs to each workout — Push can warm up
+ * on 1 km while Legs runs 10 minutes — so each is stepped on its own row,
+ * named for its workout, the same setting the workout's own sheet changes.
  */
 function MachineEditor({ id, onRemoved }: { id: string; onRemoved: () => void }) {
+  const { state, setState } = useSession();
   const machine = cardioById(id);
   if (!machine) return null;
+  const uses = state.workouts.flatMap((w) =>
+    (["open", "close"] as CardioEnd[]).flatMap((where) => {
+      const plan = cardioPlan(state, w, where);
+      return plan && plan.machine.id === id ? [{ workout: w, where, plan }] : [];
+    }),
+  );
 
   return (
     <View style={{ gap: 36, paddingTop: 12 }}>
@@ -668,8 +684,57 @@ function MachineEditor({ id, onRemoved }: { id: string; onRemoved: () => void })
             ? `${courseLabel(machine, machine.distance)}, timed, unless a workout says otherwise. Your time is the score.`
             : `${CARDIO_MINUTES} minutes, unless a workout says otherwise. The distance you cover is the score.`}
         </Text>
+      </View>
+
+      <View style={{ gap: 12 }}>
+        <SectionLabel>In your workouts</SectionLabel>
+        {uses.length > 0 ? (
+          <View
+            style={{
+              borderRadius: radii.card,
+              borderCurve: "continuous",
+              backgroundColor: colors.surface,
+              paddingHorizontal: 18,
+              paddingVertical: 6,
+            }}
+          >
+            {uses.map(({ workout, where, plan }, i) => {
+              const timed = plan.course !== undefined;
+              const atMin = timed
+                ? plan.course <= COURSE_STEP[machine.metric.unit]
+                : plan.minutes <= MINUTES_STEP;
+              const atMax = !timed && plan.minutes >= MINUTES_MAX;
+              const what = `${workout.name}, ${where === "open" ? "warm-up" : "finish"}`;
+              const nudge = (d: 1 | -1) => setState((s) => nudgeCardio(s, workout.id, where, d));
+              return (
+                <Setting
+                  key={`${workout.id}:${where}`}
+                  // Name, then which end, on two lines: "Push B · warm-up" broke mid-word.
+                  label={`${workout.name}\n${where === "open" ? "Warm-up" : "Finish"}`}
+                  last={i === uses.length - 1}
+                >
+                  <Step
+                    icon="minus"
+                    label={`${what}: ${timed ? "shorter" : "fewer minutes"}`}
+                    disabled={atMin}
+                    onPress={() => nudge(-1)}
+                  />
+                  <Count value={timed ? courseLabel(machine, plan.course) : `${plan.minutes} min`} />
+                  <Step
+                    icon="plus"
+                    label={`${what}: ${timed ? "longer" : "more minutes"}`}
+                    disabled={atMax}
+                    onPress={() => nudge(1)}
+                  />
+                </Setting>
+              );
+            })}
+          </View>
+        ) : null}
         <Text style={{ color: colors.faint, fontSize: 15, lineHeight: 21 }}>
-          To change how far or how long, open a workout under Workouts.
+          {uses.length > 0
+            ? "Each workout keeps its own. To switch between a set distance and a set time, open the workout under Workouts."
+            : "No workout uses it yet. Open a workout under Workouts to choose it for the warm-up or the finish."}
         </Text>
       </View>
 

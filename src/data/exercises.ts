@@ -662,6 +662,18 @@ export const PATTERN_ORDER: Pattern[] = [
   "jump",
 ];
 
+/**
+ * Small muscles do their best work on ten reps or more: six heavy reps on a
+ * pushdown or a crunch is all strain and little growth. An exercise counts by
+ * its main movement type, so dips and close-grip bench — presses first,
+ * triceps second — can still go down to six, and so can chin-ups. Planks and
+ * other timed holds keep their seconds.
+ */
+const HIGH_REP_PATTERNS: Pattern[] = ["triceps", "biceps", "shoulders", "calves", "abs"];
+
+export const highReps = (ex: Exercise): boolean =>
+  !ex.timed && !ex.unloaded && HIGH_REP_PATTERNS.includes(ex.patterns[0]);
+
 /** Every exercise of a pattern, in pool order. */
 export const byPattern = (pattern: Pattern): Exercise[] =>
   EXERCISES.filter((e) => isPattern(e, pattern) && e.enabled !== false);

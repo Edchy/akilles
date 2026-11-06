@@ -58,26 +58,34 @@ const isNamed = (scheme: Scheme): scheme is NamedScheme => scheme in LADDERS;
 export const REPS_RANGE = { min: 6, max: 12 } as const;
 export const REP_STEP = 2;
 
+/** The fewest and most reps a range can span. */
+export type RepBounds = { readonly min: number; readonly max: number };
+
+/**
+ * The range small muscles climb instead: triceps, biceps, shoulders, calves
+ * and core do their best work on ten reps or more. 10 → 12 → 14, then the
+ * weight goes up. See `highReps` in `exercises.ts` for which lifts.
+ */
+export const HIGH_REPS_RANGE = { min: 10, max: 14 } as const;
+export const HIGH_REPS_SCHEME: Scheme = `${HIGH_REPS_RANGE.min}-${HIGH_REPS_RANGE.max}`;
+
 /** The range every slot starts on: 6 → 8 → 10 → 12. */
 export const DEFAULT_SCHEME: Scheme = `${REPS_RANGE.min}-${REPS_RANGE.max}`;
 
 /** Snap a rep count onto the range's even steps. */
-const onStep = (reps: number): number =>
+const onStep = (reps: number, bounds: RepBounds): number =>
   Math.max(
-    REPS_RANGE.min,
-    Math.min(
-      REPS_RANGE.max,
-      REPS_RANGE.min + Math.round((reps - REPS_RANGE.min) / REP_STEP) * REP_STEP,
-    ),
+    bounds.min,
+    Math.min(bounds.max, bounds.min + Math.round((reps - bounds.min) / REP_STEP) * REP_STEP),
   );
 
 /**
  * The scheme for a rep range. A range matching a named scheme's ends IS that
  * scheme — 8–12 is volume — so the lift keeps the history it already has.
  */
-export const rangeScheme = (min: number, max: number): Scheme => {
-  const lo = onStep(Math.min(min, max));
-  const hi = onStep(Math.max(min, max));
+export const rangeScheme = (min: number, max: number, bounds: RepBounds = REPS_RANGE): Scheme => {
+  const lo = onStep(Math.min(min, max), bounds);
+  const hi = onStep(Math.max(min, max), bounds);
   for (const name of ["strength", "volume", "pump"] as const) {
     const ladder = LADDERS[name];
     if (ladder[0] === lo && ladder[ladder.length - 1] === hi) return name;
@@ -161,6 +169,12 @@ export type Workout = {
    * workout has none there.
    */
   cardio?: Partial<Record<CardioEnd, CardioBlock | null>>;
+  /**
+   * The routine it opens with, after the opening cardio. Absent means the
+   * shoulder warm-up if the workout presses — see `SHOULDER_WARMUP` — and
+   * nothing otherwise; null means none even then.
+   */
+  warmup?: string | null;
   /**
    * The mobility routine it ends on. Absent means the everyday stretch —
    * see `DEFAULT_MOBILITY`; null means none.

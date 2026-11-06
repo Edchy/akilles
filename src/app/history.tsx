@@ -16,7 +16,7 @@ import { FAMILY, colors, fonts, radii } from "@/constants/theme";
 import { cardioById, courseLabel, distanceLabel, timeLabel } from "@/data/conditioning";
 import { byId, GROUP_LABEL, GROUP_ORDER, groupOf, type Exercise } from "@/data/exercises";
 import type { Scheme } from "@/data/split";
-import { ladderOf, type ExerciseState } from "@/lib/progression";
+import { ladderOf, schemeOf, type ExerciseState } from "@/lib/progression";
 import { weightLabel } from "@/lib/warmup";
 import {
   useSession,
@@ -651,7 +651,7 @@ function LiftRowView({
         </Text>
       </View>
       <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-        <Text style={[caps, { color: colors.faint }]}>{scheme}</Text>
+        <Text style={[caps, { color: colors.faint }]}>{schemeOf(exercise, scheme)}</Text>
         <Text style={{ color: colors.muted, fontSize: 13 }}>next {target} {exercise.timed ? "s" : "reps"}</Text>
         <Text
           style={{

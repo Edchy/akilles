@@ -24,6 +24,7 @@ import {
 } from "@/data/conditioning";
 import {
   LEAN,
+  byId,
   leanHiddenExercises,
   setCustomExercises,
   setExerciseEdits,
@@ -37,7 +38,7 @@ import {
   type Scheme,
   type Workout,
 } from "@/data/split";
-import { HOLD_MAX, type ExerciseState } from "@/lib/progression";
+import { HOLD_MAX, schemeOf, type ExerciseState } from "@/lib/progression";
 import {
   CARDIO_SLOTS,
   CONDITIONING_ID,
@@ -108,8 +109,11 @@ const MODE_KEY = "achilles/mode";
  * 12 — bodyweight movements you cannot load progress by holding instead:
  *     their number is seconds held at the hardest point of a rep, not kg.
  *     Kilograms already earned on them become seconds — see `toHolds`.
+ * 13 — triceps, biceps, shoulders, calves and core climb 10 → 12 → 14 in any
+ *     slot. Their weights are kept and their ladders start again at 10 —
+ *     see `toHighReps`.
  */
-const VERSION = 12;
+const VERSION = 13;
 
 /**
  * Version 11: the built-ins added in this version.
@@ -377,6 +381,24 @@ const seconds = (kg: number): number =>
   kg > 0 ? Math.min(HOLD_MAX, Math.max(1, Math.round(kg / 2.5))) : 0;
 
 /**
+ * Version 13: a small-muscle lift now climbing 10–14 where it climbed 6–12
+ * starts that ladder at its bottom, 10 reps, at the weight it had. Keeping
+ * the rung instead would turn a lift on its 10-rep rung into a 14-rep one.
+ * Must run after the custom list is registered, so your own lifts count.
+ */
+const toHighReps = (state: SessionState): SessionState => ({
+  ...state,
+  history: Object.fromEntries(
+    Object.entries(state.history).map(([k, r]) => {
+      const scheme = k.split(":")[1] as Scheme;
+      const ex = byId(r.exerciseId);
+      if (!ex || schemeOf(ex, scheme) === scheme) return [k, r];
+      return [k, { ...r, rung: 0, reloading: false }];
+    }),
+  ),
+});
+
+/**
  * Why a saved blob could not be read: not ours at all, or written by a newer
  * version of the app than this one understands.
  */
@@ -465,7 +487,8 @@ export const fromSaved = (raw: string): SessionState | Unreadable => {
     setMobilityEdits(held.mobilityEdits);
 
     const ranged = saved.version < 9 ? toEvenRanges(held) : held;
-    const migrated = saved.version < 10 ? toWorkoutConditioning(ranged) : ranged;
+    const conditioned = saved.version < 10 ? toWorkoutConditioning(ranged) : ranged;
+    const migrated = saved.version < 13 ? toHighReps(conditioned) : conditioned;
 
     // Yesterday's abandoned workout is not resumed. It is closed out exactly
     // as if you had pressed Leave: whatever you trained counts, the rest is

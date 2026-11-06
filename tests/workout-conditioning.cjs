@@ -64,8 +64,12 @@ test("out of the box, every workout ends on the everyday stretch", () => {
 
 test("every stretch has a photo and a guide, and so does every hold in the everyday stretch", () => {
   const photos = fs.readFileSync(path.resolve(__dirname, "../src/data/photos.ts"), "utf8");
+  // No photo matches the ball on the wall: its thumbnail is its film's still.
+  const filmOnly = ["ball_shoulder"];
   for (const s of conditioning.STRETCHES) {
-    assert.match(photos, new RegExp(`\\n  ${s.id}: \\[require`), `${s.id} has no photo`);
+    if (!filmOnly.includes(s.id)) {
+      assert.match(photos, new RegExp(`\\n  ${s.id}: \\[require`), `${s.id} has no photo`);
+    }
     assert.ok(guides.guideFor(s.id), `${s.id} has no guide`);
   }
   for (const m of conditioning.mobilityById("everyday").moves) {
@@ -87,7 +91,8 @@ test("a workout's cardio length is its own", () => {
 
   // A machine on the clock can be timed over a distance.
   state = store.setCardioMode(state, "push", "close", "distance");
-  assert.deepEqual(blocks(state, "push")[1], { slot: "Cardio · finish", id: "ski_erg", course: 1000 });
+  // Push presses, so its shoulder warm-up sits between the two cardio blocks.
+  assert.deepEqual(blocks(state, "push")[2], { slot: "Cardio · finish", id: "ski_erg", course: 1000 });
 });
 
 test("cardio length stays on whole steps and within bounds", () => {
@@ -104,7 +109,10 @@ test("blocks come out of a workout and go back in", () => {
   let state = fresh();
   state = store.setCardio(state, "push", "open", null);
   state = store.setMobility(state, "push", null);
-  assert.deepEqual(blocks(state, "push"), [{ slot: "Cardio · finish", id: "ski_erg", minutes: 5 }]);
+  assert.deepEqual(blocks(state, "push"), [
+    { slot: "Warm-up", id: "shoulder_warmup" },
+    { slot: "Cardio · finish", id: "ski_erg", minutes: 5 },
+  ]);
   assert.equal(blocks(state, "pull").length, 3);
 
   state = store.setCardio(state, "push", "open", undefined);
@@ -118,8 +126,8 @@ test("choosing a machine or routine changes only that workout", () => {
   state = store.setMobility(state, "legs", "m_mine");
   assert.equal(blocks(state, "legs")[1].id, "row");
   assert.equal(blocks(state, "legs")[2].id, "m_mine");
-  assert.equal(blocks(state, "push")[1].id, "ski_erg");
-  assert.equal(blocks(state, "push")[2].id, "everyday");
+  assert.equal(blocks(state, "push")[2].id, "ski_erg");
+  assert.equal(blocks(state, "push")[3].id, "everyday");
 });
 
 test("swapping mid-session is for today only", () => {
@@ -302,8 +310,45 @@ test("the button that moves on names what comes next, and nothing after the last
   let state = store.buildWorkout(fresh());
   const at = (cursor) => ({ ...state, active: { ...state.active, cursor } });
   const items = state.active.items;
-  assert.equal(store.nextItemName(at(0)), "DB bench press");
+  assert.equal(store.nextItemName(at(0)), "Shoulder warm-up");
+  assert.equal(store.nextItemName(at(1)), "DB bench press");
   assert.equal(store.nextItemName(at(items.length - 3)), "Ski-erg");
   assert.equal(store.nextItemName(at(items.length - 2)), "Everyday stretch");
   assert.equal(store.nextItemName(at(items.length - 1)), null);
+});
+
+test("the cardio on screen can run longer today only, or be kept for every time", () => {
+  let state = store.buildWorkout(store.setNextWorkout(fresh(), "push"));
+  const first = () => state.active.items[0];
+  assert.equal(store.cardioEnd(first()), "open");
+  assert.equal(first().course, 1);
+  state = store.setScore(state, 300);
+
+  // 2 km today: the time over 1 km means nothing over 2, so it goes back to unentered.
+  state = store.nudgeTodayLength(state, 1);
+  state = store.nudgeTodayLength(state, 1);
+  assert.equal(first().course, 2);
+  assert.equal(first().seconds, null);
+  assert.equal(workout(state, "push").cardio, undefined);
+  assert.deepEqual(plain(store.plannedLength(state, first())), { course: 1 });
+
+  // Never below one step.
+  for (let i = 0; i < 6; i++) state = store.nudgeTodayLength(state, -1);
+  assert.equal(first().course, 0.5);
+
+  state = store.nudgeTodayLength(state, 1);
+  state = store.nudgeTodayLength(state, 1);
+  state = store.nudgeTodayLength(state, 1);
+  state = store.keepTodayLength(state);
+  assert.deepEqual(plain(workout(state, "push").cardio.open), { machine: "treadmill", course: 2 });
+  assert.deepEqual(plain(workout(state, "pull").cardio ?? {}), {});
+});
+
+test("the finishing block is told apart from the warm-up, and each says how hard to go", () => {
+  const state = store.buildWorkout(store.setNextWorkout(fresh(), "push"));
+  const cardio = state.active.items.filter((it) => store.isCardio(it));
+  assert.deepEqual(plain(cardio.map((it) => store.cardioEnd(it))), ["open", "close"]);
+  assert.match(conditioning.EFFORT.open, /easy/i);
+  // A machine's own tip is about how to use it, never how hard.
+  assert.doesNotMatch(conditioning.cardioById("treadmill").cue, /tank|fast|hard/i);
 });

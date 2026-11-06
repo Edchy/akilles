@@ -35,7 +35,11 @@ week. They are a starting point, not a fixture — see
 | 2 | **Pull** · back, arms | lat pulldown `3x` · seated cable row `3x` · face pull `3x` | DB curl `3x` · plank `2x` |
 | 3 | **Legs** · legs, hips | goblet squat `3x` · DB Romanian deadlift `3x` · leg press `3x` · leg curl `3x` | |
 
-Every lift climbs **6 → 8 → 10 → 12** reps. Abs are always two sets.
+Every lift climbs **6 → 8 → 10 → 12** reps — except the small muscles:
+triceps, biceps, shoulders, calves and core climb **10 → 12 → 14**, since
+they do their best work on ten reps or more. Dips and close-grip bench are
+presses first, so they keep their six; planks keep their 30–60 seconds. Abs
+are always two sets.
 
 The picks are ones a first-timer can lower slowly and lift without swinging
 from the first day: dumbbells, cables and machines. The harder versions —
@@ -76,6 +80,15 @@ warm-up only and goes straight to that exercise's working sets.
 period as a superset and the session doesn't get longer. They get no warm-up
 ramp — by then they are warm.
 
+**On a day that presses, the shoulder warm-up comes straight after the opening
+cardio**, before any goal or lift: a ball on the wall under the front of each
+shoulder, 15 band pull-aparts, and 12 band external rotations each side —
+about three minutes. A day presses when any of its lifts is a press or a
+chest fly. Take it out, put it back, or add it to any other day from the
+workout's Warm-up row in Plan; its moves are edited like a stretch routine's.
+It runs as the same deck of cards as mobility, below, except that a move done
+for reps has no countdown: its button is **Done**, and it moves you on.
+
 **Mobility closes each session** as a deck of cards, one per stretch and one
 per side where a stretch has two: the picture, the name, a line on how, and a
 countdown. One big button does everything — Start, Pause, Resume, then Next
@@ -91,7 +104,17 @@ and child's pose — about seven minutes. Open a workout in **Plan** to change
 any of it: the machine, a set distance or a set time and how long, the
 routine — or take a block out altogether. Each length keeps its own record, so
 a 2 km run on leg day never competes with the 1 km on push day. A swap with
-`⇄` mid-workout is for today only, as with lifts.
+`⇄` mid-workout is for today only, as with lifts. So is a different length:
+tap "1 km" on the cardio screen to make it 2 km, then choose **Just today** or
+**Every time in Push**. The warm-up is never a race: its line says to go at an
+easy pace, and only the finishing block cheers a faster time. Exercises →
+Cardio → a machine lists every workout that uses it, each with its own − and +.
+
+**Where to change what.** Exercises is what a thing is, the same in every
+workout: a lift's name, weight step and note (its weight follows it too), a
+machine's note, a routine's stretches. A workout is how it uses them: which
+exercises, their order, sets and reps, which machine and how far, which
+routine. A running workout is just today.
 
 **Routines are yours to change**, from a workout's Mobility sheet or from
 Exercises → Mobility: add stretches, take them out, hold and drag to reorder,
@@ -198,6 +221,10 @@ never to an 11 or a 13. Slots start on 6–12; one can be narrowed (8–12,
 narrowing a slot's range starts that lift on a new record — set its weight
 in the same sheet. Saves from before the even steps were moved onto 6–12 with
 each lift's heaviest recent weight, at the rung nearest the reps it was on.
+A small-muscle lift climbs 10–14 in whatever slot it sits in, and its range
+can only be set within 10–14; the slot keeps its own range for anything
+swapped in. Saves from before this kept each such lift's weight and started
+its ladder again at 10.
 
 **Add superset** folds any lift from later in the workout into the current one,
 removing it from further down so it isn't done twice. What to pair is your

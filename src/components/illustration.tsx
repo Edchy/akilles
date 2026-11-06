@@ -20,7 +20,7 @@ const FRAME_MS = 1100;
  *
  * A film where Milo has one (see `motion/`): the movement drawn flat in
  * Milo's marks, a rep from the side and a rep from the front — except as a
- * thumbnail, where the photo stays. Given `plays`, a film loops that many
+ * thumbnail, where the photo stays if there is one. Given `plays`, a film loops that many
  * times and then holds its still, so a picture on screen through a whole
  * hold or set isn't drawing all the while. Otherwise a photo (see
  * `data/photos.ts`); a lift's start and finish frames flip back and forth so
@@ -47,7 +47,8 @@ export function Illustration({
   const count = frames?.length ?? 0;
   const [frame, setFrame] = useState(0);
 
-  const film = !compact && id in MOVES;
+  // A thumbnail keeps the photo; one with no photo shows the film's still.
+  const film = id in MOVES && (!compact || !frames);
 
   useEffect(() => {
     setFrame(0);
@@ -58,7 +59,7 @@ export function Illustration({
 
   if (film) {
     const colors = filmColors(familyOfPicture(id));
-    return <Film key={id} id={id} colors={colors} style={style} plays={plays} />;
+    return <Film key={id} id={id} colors={colors} style={style} plays={compact ? 0 : plays} />;
   }
 
   if (frames) {

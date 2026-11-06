@@ -25,15 +25,15 @@ import {
   COURSE_STEP,
   MINUTES_MAX,
   MINUTES_STEP,
+  SHOULDER_WARMUP,
   cardioPool,
   courseLabel,
   mobilityPool,
   type CardioEnd,
 } from "@/data/conditioning";
-import { PATTERN_LABEL, byId } from "@/data/exercises";
+import { PATTERN_LABEL, byId, highReps } from "@/data/exercises";
 import { familyOf } from "@/data/families";
 import {
-  REPS_RANGE,
   REP_STEP,
   newId,
   rangeScheme,
@@ -43,6 +43,7 @@ import {
   type Entry,
   type Workout,
 } from "@/data/split";
+import { repBounds, schemeOf } from "@/lib/progression";
 import {
   SETS_RANGE,
   addWorkout,
@@ -69,12 +70,16 @@ import {
   setCardioMode,
   setMobility,
   setNextWorkout,
+  setWarmup,
   takenElsewhere,
   upNext,
   updateEntry,
   useSession,
+  warmupPlan,
   workoutFamily,
   workoutsUsing,
+  type RoutineEnd,
+  type SessionState,
 } from "@/store/session";
 
 /** Screen-reader stand-ins for dragging: step a row up or down one place. */
@@ -469,12 +474,12 @@ function WorkoutRow({
   );
 }
 
-/** A block of conditioning in a workout: cardio at one end, or the mobility. */
-type Block = CardioEnd | "mobility";
+/** A block of conditioning in a workout: cardio at one end, or a routine at one. */
+type Block = CardioEnd | RoutineEnd;
 
 /**
  * Everything about one workout, with room to breathe: its name, the whole
- * session in the order it runs — warm-up cardio, any goals, exercises, then
+ * session in the order it runs — warm-up cardio and routine, any goals, exercises, then
  * the finishing cardio and mobility — and the few things you can do to it as
  * a whole.
  */
@@ -537,6 +542,7 @@ function WorkoutSheet({
         <View style={{ gap: 12 }}>
           <SectionLabel>Warm-up</SectionLabel>
           <CardioRow workout={workout} where="open" onOpen={() => setBlock("open")} />
+          <MobilityRow workout={workout} where="warmup" onOpen={() => setBlock("warmup")} />
         </View>
 
         <WorkoutGoals workoutId={workout.id} />
@@ -570,7 +576,7 @@ function WorkoutSheet({
         <View style={{ gap: 12 }}>
           <SectionLabel>Finish</SectionLabel>
           <CardioRow workout={workout} where="close" onOpen={() => setBlock("close")} />
-          <MobilityRow workout={workout} onOpen={() => setBlock("mobility")} />
+          <MobilityRow workout={workout} where="end" onOpen={() => setBlock("end")} />
         </View>
 
         <View style={{ gap: 12 }}>
@@ -615,7 +621,8 @@ function WorkoutSheet({
         onClose={() => setBlock(null)}
       />
       <MobilitySheet
-        workout={block === "mobility" ? workout : undefined}
+        workout={block === "warmup" || block === "end" ? workout : undefined}
+        where={block === "warmup" ? "warmup" : "end"}
         onClose={() => setBlock(null)}
       />
     </Sheet>
@@ -674,12 +681,25 @@ function CardioRow({
   );
 }
 
-/** The routine a workout ends on, or a link to put one back. */
-function MobilityRow({ workout, onOpen }: { workout: Workout; onOpen: () => void }) {
+/** The routine a workout opens with or ends on, or a link to put one there. */
+function MobilityRow({
+  workout,
+  where,
+  onOpen,
+}: {
+  workout: Workout;
+  where: RoutineEnd;
+  onOpen: () => void;
+}) {
   const { state, setState } = useSession();
-  const routine = mobilityPlan(state, workout);
+  const routine = routineAt(state, workout, where);
   if (!routine) {
-    return (
+    return where === "warmup" ? (
+      <AddRow
+        label="Add shoulder warm-up"
+        onPress={() => setState((s) => setWarmup(s, workout.id, SHOULDER_WARMUP))}
+      />
+    ) : (
       <AddRow
         label="Add mobility"
         onPress={() => setState((s) => setMobility(s, workout.id, undefined))}
@@ -689,11 +709,19 @@ function MobilityRow({ workout, onOpen }: { workout: Workout; onOpen: () => void
   return (
     <OpenRow
       title={routine.name}
-      detail={`Mobility · about ${routineMinutes(routine)} min`}
+      detail={`${where === "warmup" ? "Warm-up" : "Mobility"} · about ${routineMinutes(routine)} min`}
       onPress={onOpen}
     />
   );
 }
+
+/** The routine at one end of a workout. */
+const routineAt = (state: SessionState, workout: Workout, where: RoutineEnd) =>
+  where === "warmup" ? warmupPlan(state, workout) : mobilityPlan(state, workout);
+
+/** Choose the routine at one end of a workout, or take it out with null. */
+const chooseRoutine = (s: SessionState, workoutId: string, where: RoutineEnd, id: string | null) =>
+  where === "warmup" ? setWarmup(s, workoutId, id) : setMobility(s, workoutId, id);
 
 /**
  * One cardio block, opened: which machine, and how long — a set distance
@@ -817,14 +845,16 @@ function CardioSheet({
  */
 function MobilitySheet({
   workout,
+  where,
   onClose,
 }: {
   workout: Workout | undefined;
+  where: RoutineEnd;
   onClose: () => void;
 }) {
   const { state, setState } = useSession();
   const [dragging, setDragging] = useState(false);
-  const routine = workout ? mobilityPlan(state, workout) : null;
+  const routine = workout ? routineAt(state, workout, where) : null;
   if (!workout || !routine) return <Sheet visible={false} title="" onClose={onClose} />;
 
   const routines = mobilityPool(state.hiddenConditioning);
@@ -834,7 +864,7 @@ function MobilitySheet({
   return (
     <Sheet
       visible
-      title="Mobility"
+      title={where === "warmup" ? "Warm-up" : "Mobility"}
       closeLabel="Done"
       scrollEnabled={!dragging}
       onClose={onClose}
@@ -849,22 +879,22 @@ function MobilitySheet({
                 label={m.name}
                 detail={`${routineMinutes(m)} min`}
                 active={m.id === routine.id}
-                onPress={() => setState((s) => setMobility(s, workout.id, m.id))}
+                onPress={() => setState((s) => chooseRoutine(s, workout.id, where, m.id))}
               />
             ))}
           </View>
         </View>
 
         <View style={{ gap: 12 }}>
-          <SectionLabel>Stretches</SectionLabel>
+          <SectionLabel>{where === "warmup" ? "Moves" : "Stretches"}</SectionLabel>
           {others.length > 0 ? (
             <View style={{ gap: 4 }}>
               <Text style={{ color: colors.faint, fontSize: 13, lineHeight: 19 }}>
-                {`${namesOf(others)} ${others.length === 1 ? "ends" : "end"} on this routine too, so changes here change ${others.length === 1 ? "it" : "them"} as well.`}
+                {`${namesOf(others)} ${others.length === 1 ? "uses" : "use"} this routine too, so changes here change ${others.length === 1 ? "it" : "them"} as well.`}
               </Text>
               <AddRow
                 label={`Make a copy just for ${name}`}
-                onPress={() => setState((s) => copyRoutineFor(s, workout.id))}
+                onPress={() => setState((s) => copyRoutineFor(s, workout.id, undefined, where))}
               />
             </View>
           ) : null}
@@ -875,7 +905,7 @@ function MobilitySheet({
           label="Remove from workout"
           quiet
           onPress={() => {
-            setState((s) => setMobility(s, workout.id, null));
+            setState((s) => chooseRoutine(s, workout.id, where, null));
             onClose();
           }}
         />
@@ -947,7 +977,7 @@ function SlotRow({
             fontVariant: ["tabular-nums"],
           }}
         >
-          {setsFor(entry)} × {repLabel(entry.scheme)}
+          {setsFor(entry)} × {repLabel(schemeOf(exercise, entry.scheme))}
         </Text>
         <Icon name="open" size={13} color={colors.faint} />
       </Pressable>
@@ -984,7 +1014,12 @@ function SlotSheet({
   // Speed work takes its reps and weight from elsewhere; there is no range to pick.
   const fixedRange = entry.scheme === "speed" || !!entry.derive;
   const sets = setsFor(entry);
-  const reps = repRange(entry.scheme);
+  const exercise = byId(exerciseId);
+  // A small muscle climbs its own range in any slot — 10 to 14 — and the
+  // buttons stay inside it. See `schemeOf`.
+  const reps = repRange(schemeOf(exercise, entry.scheme));
+  const bounds = repBounds(exercise);
+  const range = (min: number, max: number) => update({ scheme: rangeScheme(min, max, bounds) });
   const update = (patch: Parameters<typeof updateEntry>[3]) =>
     setState((s) => updateEntry(s, workoutId, entry.id, patch));
 
@@ -1058,15 +1093,15 @@ function SlotSheet({
                   <Step
                     icon="minus"
                     label="Lower the bottom of the rep range"
-                    disabled={reps.min <= REPS_RANGE.min}
-                    onPress={() => update({ scheme: rangeScheme(reps.min - REP_STEP, reps.max) })}
+                    disabled={reps.min <= bounds.min}
+                    onPress={() => range(reps.min - REP_STEP, reps.max)}
                   />
                   <Count value={reps.min} />
                   <Step
                     icon="plus"
                     label="Raise the bottom of the rep range"
                     disabled={reps.min >= reps.max}
-                    onPress={() => update({ scheme: rangeScheme(reps.min + REP_STEP, reps.max) })}
+                    onPress={() => range(reps.min + REP_STEP, reps.max)}
                   />
                 </Setting>
                 <Setting label="Most reps" last>
@@ -1074,14 +1109,14 @@ function SlotSheet({
                     icon="minus"
                     label="Lower the top of the rep range"
                     disabled={reps.max <= reps.min}
-                    onPress={() => update({ scheme: rangeScheme(reps.min, reps.max - REP_STEP) })}
+                    onPress={() => range(reps.min, reps.max - REP_STEP)}
                   />
                   <Count value={reps.max} />
                   <Step
                     icon="plus"
                     label="Raise the top of the rep range"
-                    disabled={reps.max >= REPS_RANGE.max}
-                    onPress={() => update({ scheme: rangeScheme(reps.min, reps.max + REP_STEP) })}
+                    disabled={reps.max >= bounds.max}
+                    onPress={() => range(reps.min, reps.max + REP_STEP)}
                   />
                 </Setting>
               </>
@@ -1090,6 +1125,9 @@ function SlotSheet({
           {fixedRange ? null : (
             <Text style={{ color: colors.faint, fontSize: 13, lineHeight: 19 }}>
               Reps climb two at a time from the fewest to the most, then the weight goes up.
+              {exercise && highReps(exercise)
+                ? " Small muscles like this one do best with more reps, so it never goes below 10."
+                : ""}
             </Text>
           )}
         </View>

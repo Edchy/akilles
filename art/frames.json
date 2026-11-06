@@ -1,0 +1,57 @@
+{
+  "back_squat": {
+    "family": "legs",
+    "frames": [
+      {
+        "photo": "barbell-squat-0.jpg",
+        "moment": "Back squat, the start: standing tall with a barbell resting across the upper back behind the neck, both hands gripping the bar just outside the shoulders, feet shoulder width apart, knees straight, chest up.",
+        "view": "The person faces right."
+      },
+      {
+        "photo": "barbell-squat-1.jpg",
+        "moment": "Back squat, the bottom: hips sat down and back until the thighs are just below parallel, chest up, back straight and leaning forward a little, knees forward over the toes, heels flat on the floor, the bar still across the upper back and directly over the middle of the foot.",
+        "view": "The person faces right."
+      }
+    ]
+  },
+  "bench": {
+    "family": "push",
+    "frames": [
+      {
+        "photo": "barbell-bench-press-medium-grip-0.jpg",
+        "moment": "Barbell bench press, arms locked: lying on a flat bench, eyes under the bar, the bar held straight up over the shoulders with arms locked, feet flat on the floor.",
+        "view": "The person lies on their back, head on the left, feet on the right."
+      },
+      {
+        "photo": "barbell-bench-press-medium-grip-1.jpg",
+        "moment": "Barbell bench press, the bottom: the bar lowered to touch the low chest, forearms vertical under the bar, elbows about 45 degrees from the sides, upper back and hips on the bench, feet flat on the floor.",
+        "view": "The person lies on their back, head on the left, feet on the right."
+      }
+    ]
+  },
+  "lat_pulldown": {
+    "family": "pull",
+    "frames": [
+      {
+        "photo": "wide-grip-lat-pulldown-0.jpg",
+        "moment": "Lat pulldown, arms up: seated at a lat pulldown machine, thighs locked under the knee pad, feet flat, arms straight up holding a long wide bar that hangs from a cable above.",
+        "view": "The person faces right, the machine's cable column behind them on the left."
+      },
+      {
+        "photo": "wide-grip-lat-pulldown-1.jpg",
+        "moment": "Lat pulldown, the bottom: the long wide bar pulled down to the top of the chest, elbows down and slightly back, chest up, leaning back only slightly, thighs under the pad.",
+        "view": "The person faces right, the machine's cable column behind them on the left."
+      }
+    ]
+  },
+  "childs_pose": {
+    "family": "mobility",
+    "frames": [
+      {
+        "photo": "childs-pose-0.jpg",
+        "moment": "Child's pose stretch, the hold: kneeling with the knees apart, sitting back onto the heels, torso folded forward between the thighs, forehead resting on the floor, arms stretched forward along the floor, palms down.",
+        "view": "The person faces right, arms reaching to the right."
+      }
+    ]
+  }
+}

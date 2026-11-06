@@ -1193,6 +1193,30 @@ const MOBILITY: Record<string, Guide> = {
     ],
     "Pulling at the wrist or twisting the body with it.",
   ),
+  ball_shoulder: g(
+    [
+      "Stand by a wall with a tennis or massage ball between it and the front of your shoulder.",
+      "Lean in until it presses firmly, then roll it slowly in small circles.",
+      "Stop on a tender spot and breathe. Then the back of the shoulder.",
+    ],
+    "Pressing so hard you tense up — firm, but you should be able to relax into it.",
+  ),
+  band_pull_apart: g(
+    [
+      "Hold a light band in front of you at shoulder height, hands shoulder width.",
+      "Keep the arms straight and pull the band apart until it touches your chest.",
+      "Squeeze the shoulder blades together, then let it back slowly.",
+    ],
+    "Shrugging the shoulders up or arching the back to get the band wider.",
+  ),
+  band_external_rotation: g(
+    [
+      "Tie a light band at elbow height and stand side-on to it, holding it in the far hand.",
+      "Elbow bent to a right angle and pinned to your side.",
+      "Turn the hand out away from your belly, slowly, then back. Then the other side.",
+    ],
+    "Letting the elbow drift away from your side — it does the work for the shoulder.",
+  ),
 };
 
 // ---- owning it ----

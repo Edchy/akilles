@@ -43,18 +43,19 @@ test("a hanging leg raise earns a second's hold at the top, never kilograms, and
     seen.push(`${st.weight}s x${target(st)}${st.reloading ? " reload" : ""}`);
     st = hit(st);
   }
-  assert.deepEqual(seen.slice(0, 22), [
-    "0s x6", "0s x8", "0s x10", "0s x12",
-    "1s x6", "1s x8", "1s x10", "1s x12",
-    "2s x6", "2s x8", "2s x10", "2s x12",
-    "2s x10 reload", "2s x12 reload",
-    "3s x6", "3s x8", "3s x10", "3s x12",
-    "4s x6", "4s x8", "4s x10", "4s x12",
+  // Core work: 10 → 12 → 14 even in a 6–12 slot.
+  assert.deepEqual(seen.slice(0, 17), [
+    "0s x10", "0s x12", "0s x14",
+    "1s x10", "1s x12", "1s x14",
+    "2s x10", "2s x12", "2s x14",
+    "2s x12 reload", "2s x14 reload",
+    "3s x10", "3s x12", "3s x14",
+    "4s x10", "4s x12", "4s x14",
   ]);
-  // Five seconds is the top: twelve reps there, every time after.
+  // Five seconds is the top: fourteen reps there, every time after.
   assert.equal(st.weight, prog.HOLD_MAX);
-  assert.equal(target(st), 12);
-  assert.deepEqual(seen.slice(-2), ["5s x12", "5s x12"]);
+  assert.equal(target(st), 14);
+  assert.deepEqual(seen.slice(-2), ["5s x14", "5s x14"]);
   assert.ok(!st.reloading);
 });
 
@@ -113,13 +114,13 @@ const absDone = (rec, reps) => {
 
 test("what next time says, in seconds and holds", () => {
   const fact = (rec, reps) => store.nextTime(absDone({ lastTrainedAt: NOW - 3 * DAY, ...rec }, reps)).fact;
-  assert.equal(fact(record("hanging_leg_raise", 1, { rung: 3 })), "Up to 2 s hold next time.");
-  assert.equal(fact(record("hanging_leg_raise", 0, { rung: 0 })), "8 reps next time.");
-  assert.equal(fact(record("hanging_leg_raise", 5, { rung: 3 })), "12 reps with a 5 s hold again next time. That's the top.");
-  assert.equal(fact(record("hanging_leg_raise", 2, { rung: 3, climbs: 2 })), "Reload next time: 2 s hold again, from 10 reps.");
+  assert.equal(fact(record("hanging_leg_raise", 1, { rung: 2 })), "Up to 2 s hold next time.");
+  assert.equal(fact(record("hanging_leg_raise", 0, { rung: 0 })), "12 reps next time.");
+  assert.equal(fact(record("hanging_leg_raise", 5, { rung: 2 })), "14 reps with a 5 s hold again next time. That's the top.");
+  assert.equal(fact(record("hanging_leg_raise", 2, { rung: 2, climbs: 2 })), "Reload next time: 2 s hold again, from 12 reps.");
   assert.equal(fact(record("hanging_leg_raise", 2, { rung: 1 }), 6), "Same hold and reps next time.");
   assert.equal(fact(record("hanging_leg_raise", 3, { rung: 1, downStreak: 1 }), 6), "Back to a 2 s hold next time.");
-  assert.equal(fact(record("hanging_leg_raise", 0, { rung: 1, downStreak: 1 }), 6), "Back to 6 reps next time.");
+  assert.equal(fact(record("hanging_leg_raise", 0, { rung: 1, downStreak: 1 }), 6), "Back to 10 reps next time.");
   assert.equal(fact(record("plank", 0, { rung: 0 })), "40 s next time.");
   assert.equal(fact(record("plank", 0, { rung: 3 })), "60 s again next time. That's the top.");
   assert.equal(fact(record("plank", 0, { rung: 2 }), 45), "The same again next time.");

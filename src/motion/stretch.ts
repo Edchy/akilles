@@ -710,6 +710,166 @@ function supineTwist(): Move {
   };
 }
 
+// ---- the shoulder warm-up ----
+
+/** A light band from hand to hand, or from where it is tied to the hand. */
+const band = (from: Vec3, to: Vec3): Prop => rod(from, to);
+
+/**
+ * The ball on the wall: turned half toward the wall so the near shoulder
+ * leads, a ball pinned between the wall and the front of that shoulder, the
+ * far hand on the wall; lean in and roll it by dipping slowly at the knees.
+ * Seen from the side, the ball against the wall.
+ */
+function ballShoulder(): Move {
+  const r = 0.06;
+  const lean = rad(15);
+  const turn = rad(50);
+  // A step back from the wall, so only the shoulder reaches it.
+  const back = -0.14;
+  const trunk = along(lean);
+  // Turned about the spine so the near shoulder points at the wall.
+  const forward = new Vec3(Math.cos(turn), 0, -Math.sin(turn));
+  const across = new Vec3().crossVectors(forward, trunk).normalize();
+  return {
+    kit: {},
+    film: hold(0.05, { height: 2.1, width: 1.6 }),
+    pose(depth) {
+      const d = ease(clamp01(depth));
+      // Soft at the knees from the start: turned, the hips sit wider of the feet.
+      const bend = lerp(0.03, 0.09, d);
+      const pelvis = standingHips(back, 0.15).add(new Vec3(0, -bend, 0));
+      const top = pelvis.clone().addScaledVector(trunk, BODY.torso);
+      const near = top.clone().addScaledVector(across, BODY.shoulder);
+      const far = top.clone().addScaledVector(across, -BODY.shoulder);
+      // The ball sits just ahead of the near shoulder joint, and the wall just
+      // past the ball where it starts — the ball rolls down it as you dip.
+      const front = 0.06;
+      const ball = near.clone().add(new Vec3(front + r, 0, 0));
+      const start = standingHips(back, 0.15).add(new Vec3(0, -0.03, 0)).addScaledVector(trunk, BODY.torso).addScaledVector(across, BODY.shoulder);
+      const wall = start.x + front + 2 * r;
+      const hands: [Vec3, Vec3] = [
+        // The near arm hangs, out of the ball's way.
+        withinReach(near, near.clone().add(new Vec3(-0.03, -ARM, 0.04)), 0.99),
+        withinReach(far, new Vec3(wall - 0.03, 1.33 - bend, far.z), 0.99),
+      ];
+      const { feet, ankles } = stand(0.15, rad(10));
+      ankles.forEach((a) => (a.x += back));
+      const pose = poseFrom({
+        pelvis,
+        lean,
+        frame: { trunk, forward },
+        ankles,
+        feet,
+        hands,
+        elbowPole: [unit(-0.2, -1, 0.3), unit(0, -1, -0.6)],
+      });
+      pose.props = [
+        { kind: "ball", at: ball, r },
+        {
+          kind: "pad",
+          from: new Vec3(wall + 0.03, 0, 0),
+          to: new Vec3(wall + 0.03, 2.0, 0),
+          half: 0.6,
+          thick: 0.06,
+          up: AHEAD.clone().negate(),
+        },
+      ];
+      return pose;
+    },
+  };
+}
+
+/**
+ * The band pull-apart: a light band held at shoulder height, arms straight
+ * out in front, hands shoulder width; pull it apart into a T until it meets
+ * the chest, then let it back slowly. Seen from the front.
+ */
+function bandPullApart(): Move {
+  return {
+    kit: {},
+    film: { views: [90], lifts: true, middle: new Vec3(0, 0, 0), room: { height: 2.0, width: 2.0 } },
+    pose(depth) {
+      const d = ease(clamp01(depth));
+      const pelvis = standingHips(0, 0.15);
+      const { feet, ankles } = stand(0.15, rad(10));
+      const top = pelvis.clone().addScaledVector(UP, BODY.torso);
+      const arms = SIDES.map((s) => {
+        // Ahead with the hands a shoulder width apart, out to the side in a
+        // T — a little ahead still, so the band meets the chest.
+        const ahead = unit(1, -0.05, 0);
+        const out = unit(0.16, -0.05, s);
+        const dir = blend(ahead, out, d);
+        return armFrom(top.clone().setZ(s * BODY.shoulder), dir, dir);
+      }) as [Limb, Limb];
+      const pose = withArms(
+        poseFrom({
+          pelvis,
+          lean: 0,
+          ankles,
+          feet,
+          hands: [arms[0].end, arms[1].end],
+          elbowPole: DOWN,
+        }),
+        arms,
+      );
+      pose.props = [band(arms[0].end, arms[1].end)];
+      return pose;
+    },
+  };
+}
+
+/**
+ * The band external rotation: side-on to a band tied at elbow height, held
+ * in the far hand; the elbow bent square and pinned to the side, turn the
+ * hand out from across the belly, slowly, and back. Seen from the front.
+ */
+function bandExternalRotation(): Move {
+  return {
+    kit: {},
+    film: { views: [90], lifts: true, middle: new Vec3(0, 0, -0.3), room: { height: 2.1, width: 2.0 } },
+    pose(depth) {
+      const d = ease(clamp01(depth));
+      const pelvis = standingHips(0, 0.15);
+      const { feet, ankles } = stand(0.15, rad(10));
+      const top = pelvis.clone().addScaledVector(UP, BODY.torso);
+      const shoulder = top.clone().setZ(BODY.shoulder);
+      // The upper arm hangs against the side; the forearm turns about it,
+      // level, from across the belly to out past the shoulder.
+      const upper = unit(0.06, -1, -0.04);
+      const turn = rad(lerp(-62, 55, d));
+      const fore = new Vec3(Math.cos(turn), 0, Math.sin(turn));
+      const arm = armFrom(shoulder, upper, fore);
+      const other = top.clone().setZ(-BODY.shoulder);
+      const hanging = withinReach(other, other.clone().add(new Vec3(0.02, -ARM, -0.05)), 0.99);
+      const pose = poseFrom({
+        pelvis,
+        lean: 0,
+        ankles,
+        feet,
+        hands: [arm.end, hanging],
+        elbowPole: [DOWN, unit(0, -1, -0.6)],
+      });
+      pose.arms[0] = arm;
+      // Tied to a post on the other side, so turning out stretches it.
+      const post = new Vec3(arm.mid.x + 0.1, 0, -0.95);
+      pose.props = [
+        {
+          kind: "pad",
+          from: post,
+          to: post.clone().setY(2.0),
+          half: 0.05,
+          thick: 0.1,
+          up: AHEAD.clone(),
+          across: ACROSS.clone(),
+        },
+        band(new Vec3(post.x, arm.mid.y, post.z + 0.05), arm.end),
+      ];
+      return pose;
+    },
+  };
+}
+
 /** The stretches, by id. */
 export const STRETCHES: Record<string, () => Move> = {
   couch,
@@ -726,6 +886,9 @@ export const STRETCHES: Record<string, () => Move> = {
   seated_hamstring: seatedHamstring,
   standing_hip_flexor: standingHipFlexor,
   supine_twist: supineTwist,
+  ball_shoulder: ballShoulder,
+  band_pull_apart: bandPullApart,
+  band_external_rotation: bandExternalRotation,
 };
 
 void feetFlat;

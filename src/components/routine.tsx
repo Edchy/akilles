@@ -13,6 +13,7 @@ import { colors, radii } from "@/constants/theme";
 import {
   HOLD_RANGE,
   MOBILITY,
+  REPS_RANGE_MOVE,
   STRETCHES,
   mobilityById,
   pictureOf,
@@ -29,9 +30,9 @@ import {
   useSession,
 } from "@/store/session";
 
-/** "60s each side", "45s". */
-export const holdLabel = (move: Pick<MobilityMove, "seconds" | "perSide">): string =>
-  `${move.seconds}s${move.perSide ? " each side" : ""}`;
+/** "60s each side", "45s", "15 reps", "12 reps each side". */
+export const holdLabel = (move: Pick<MobilityMove, "seconds" | "perSide" | "reps">): string =>
+  `${move.reps ? `${move.reps} reps` : `${move.seconds}s`}${move.perSide ? " each side" : ""}`;
 
 /**
  * A routine's holds, editable: tap one to change how long it runs, whether
@@ -219,21 +220,39 @@ function HoldControls({
   return (
     <View style={{ gap: 12, paddingHorizontal: 14, paddingBottom: 14 }}>
       <View style={{ borderTopWidth: 1, borderTopColor: colors.line }}>
-        <Setting label="Hold" last>
-          <Step
-            icon="minus"
-            label="Shorter hold"
-            disabled={move.seconds <= HOLD_RANGE.min}
-            onPress={() => onNudge(-1)}
-          />
-          <Count value={`${move.seconds}s`} />
-          <Step
-            icon="plus"
-            label="Longer hold"
-            disabled={move.seconds >= HOLD_RANGE.max}
-            onPress={() => onNudge(1)}
-          />
-        </Setting>
+        {move.reps ? (
+          <Setting label="Reps" last>
+            <Step
+              icon="minus"
+              label="Fewer reps"
+              disabled={move.reps <= REPS_RANGE_MOVE.min}
+              onPress={() => onNudge(-1)}
+            />
+            <Count value={move.reps} />
+            <Step
+              icon="plus"
+              label="More reps"
+              disabled={move.reps >= REPS_RANGE_MOVE.max}
+              onPress={() => onNudge(1)}
+            />
+          </Setting>
+        ) : (
+          <Setting label="Hold" last>
+            <Step
+              icon="minus"
+              label="Shorter hold"
+              disabled={move.seconds <= HOLD_RANGE.min}
+              onPress={() => onNudge(-1)}
+            />
+            <Count value={`${move.seconds}s`} />
+            <Step
+              icon="plus"
+              label="Longer hold"
+              disabled={move.seconds >= HOLD_RANGE.max}
+              onPress={() => onNudge(1)}
+            />
+          </Setting>
+        )}
       </View>
       <Segments
         options={[
