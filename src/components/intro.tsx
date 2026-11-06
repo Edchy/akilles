@@ -255,6 +255,19 @@ type Page = {
   height: number;
 };
 
+const TURNS: { family: Family; name: string; note?: string; next?: boolean }[] = [
+  { family: "push", name: "Push", note: "last time" },
+  { family: "pull", name: "Pull", note: "next", next: true },
+  { family: "legs", name: "Legs" },
+];
+
+// Three roomy rows, and the line from the last back up to the first.
+const TURN_ROW = 64;
+const TURN_GAP = 16;
+const TURNS_HEIGHT = TURNS.length * TURN_ROW + (TURNS.length - 1) * TURN_GAP;
+const FIRST = TURN_ROW / 2;
+const LAST = TURNS_HEIGHT - TURN_ROW / 2;
+
 const PAGES: Page[] = [
   {
     title: "A little at a time.",
@@ -293,8 +306,8 @@ const PAGES: Page[] = [
   {
     title: "Exercises are building blocks.",
     body:
-      "A workout is a few exercises put together. Each exercise remembers its own weight, so if " +
-      "it's in two workouts, it's the same weight in both.",
+      "A workout is a few exercises put together, and you can make your own. Each exercise " +
+      "remembers its weight, so in a new workout it starts where you left it.",
     art: (w) => <Blocks width={w} />,
     height: 298,
   },
@@ -304,7 +317,7 @@ const PAGES: Page[] = [
       "They go in order, then start again at the top. There are no set days: whenever you come " +
       "back, the next one is ready. Change any of it under Plan.",
     art: (w) => <Turns width={w} />,
-    height: 310,
+    height: TURNS_HEIGHT,
   },
 ];
 
@@ -559,7 +572,10 @@ function Climb() {
   );
 }
 
-/** One exercise, in two workouts: a line down from it to each. */
+/**
+ * One exercise, in two workouts: a line down from it to each. The second is
+ * one you might make, drawn dashed like Plan's "New workout".
+ */
 function Blocks({ width }: { width: number }) {
   const card = (width - 18) / 2;
   const line = FAMILY.push.mark;
@@ -606,19 +622,20 @@ function Blocks({ width }: { width: number }) {
       </View>
       <View style={{ flexDirection: "row", gap: 18 }}>
         <Card
-          name="Push A"
+          name="Push"
           rows={[
             ["push", "Bench press", true],
             ["push", "Shoulder press"],
-            ["core", "Leg raise"],
+            ["push", "Pushdown"],
           ]}
         />
         <Card
-          name="Push B"
+          name="Upper body"
+          yours
           rows={[
-            ["push", "Shoulder press"],
+            ["pull", "Lat pulldown"],
             ["push", "Bench press", true],
-            ["push", "Pushdown"],
+            ["pull", "Cable row"],
           ]}
         />
       </View>
@@ -626,7 +643,15 @@ function Blocks({ width }: { width: number }) {
   );
 }
 
-function Card({ name, rows }: { name: string; rows: [Family, string, boolean?][] }) {
+function Card({
+  name,
+  rows,
+  yours = false,
+}: {
+  name: string;
+  rows: [Family, string, boolean?][];
+  yours?: boolean;
+}) {
   return (
     <View
       style={{
@@ -636,7 +661,10 @@ function Card({ name, rows }: { name: string; rows: [Family, string, boolean?][]
         paddingBottom: 22,
         borderRadius: 26,
         borderCurve: "continuous",
-        backgroundColor: colors.surface,
+        backgroundColor: yours ? "transparent" : colors.surface,
+        borderWidth: yours ? 1.5 : 0,
+        borderStyle: "dashed",
+        borderColor: colors.line,
         gap: 8,
       }}
     >
@@ -685,28 +713,20 @@ function Card({ name, rows }: { name: string; rows: [Family, string, boolean?][]
   );
 }
 
-const TURNS: { family: Family; name: string; note?: string; next?: boolean }[] = [
-  { family: "push", name: "Push A", note: "last time" },
-  { family: "pull", name: "Pull A", note: "next", next: true },
-  { family: "legs", name: "Legs" },
-  { family: "push", name: "Push B" },
-  { family: "pull", name: "Pull B" },
-];
-
 /** The workouts in order, with the way back to the top. */
 function Turns({ width }: { width: number }) {
   return (
     <View style={{ width, flexDirection: "row" }}>
-      <View style={{ flex: 1, gap: 10 }}>
+      <View style={{ flex: 1, gap: TURN_GAP }}>
         {TURNS.map((t) => {
           const c = FAMILY[t.family].mark;
           return (
             <View
               key={t.name}
               style={{
-                height: 54,
-                paddingHorizontal: t.next ? 18 : 20,
-                borderRadius: 27,
+                height: TURN_ROW,
+                paddingHorizontal: t.next ? 20 : 22,
+                borderRadius: TURN_ROW / 2,
                 borderCurve: "continuous",
                 backgroundColor: `${c}1A`,
                 borderWidth: t.next ? 2 : 0,
@@ -716,13 +736,13 @@ function Turns({ width }: { width: number }) {
                 gap: 12,
               }}
             >
-              <Mark family={t.family} size={18} />
+              <Mark family={t.family} size={20} />
               <Text
                 style={{
                   flex: 1,
                   color: colors.text,
                   fontFamily: fonts.medium,
-                  fontSize: 21,
+                  fontSize: 23,
                 }}
               >
                 {t.name}
@@ -742,16 +762,19 @@ function Turns({ width }: { width: number }) {
           );
         })}
       </View>
-      <Svg width={56} height={310} viewBox="0 0 56 310" fill="none">
+      <Svg width={56} height={TURNS_HEIGHT} viewBox={`0 0 56 ${TURNS_HEIGHT}`} fill="none">
         <Path
-          d="M4 283 H18 Q38 283 38 263 V47 Q38 27 18 27 H6"
+          d={
+            `M4 ${LAST} H18 Q38 ${LAST} 38 ${LAST - 20} ` +
+            `V${FIRST + 20} Q38 ${FIRST} 18 ${FIRST} H6`
+          }
           stroke={colors.muted}
           strokeWidth={2}
           strokeLinecap="round"
           strokeLinejoin="round"
         />
         <Path
-          d="M14 19 L6 27 L14 35"
+          d={`M14 ${FIRST - 8} L6 ${FIRST} L14 ${FIRST + 8}`}
           stroke={colors.muted}
           strokeWidth={2}
           strokeLinecap="round"

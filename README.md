@@ -24,23 +24,24 @@ npm start
 *when you train*, not when the calendar moves: miss a day and you pick up at the
 next workout. There is no debt and nothing to make up.
 
-A fresh install starts with the five below — push, pull, legs, push, pull.
-They are a starting point, not a fixture — see
+A fresh install starts with the three below — push, pull, legs — so legs
+come round as often as the rest, and three visits a week is about a lap a
+week. They are a starting point, not a fixture — see
 [Editing your training](#editing-your-training).
 
 | | | Main lifts | Arms & abs |
 |---|---|---|---|
-| 1 | **Push A** · chest focus | DB bench `3x` · DB shoulder press `3x` · cable crossover `3x` · dips `3x` | hanging leg raise `2x` |
-| 2 | **Pull A** · vertical pull focus | pull-ups `3x` · BB row `3x` · row machine `3x` | BB curl `3x` · rotary torso machine `2x` |
-| 3 | **Legs** | back squat `3x` · RDL `3x` · Bulgarian split squat `2x` | hanging leg raise `2x` |
-| 4 | **Push B** · shoulder focus | DB shoulder press `3x` · DB bench `3x` · cable crossover `3x` | pushdown `3x` · rotary torso machine `2x` |
-| 5 | **Pull B** · row focus | lat pulldown `3x` · DB row `3x` · row machine `3x` | DB curl `3x` · hanging leg raise `2x` |
+| 1 | **Push** · chest, shoulders | DB bench `3x` · DB shoulder press `3x` · cable crossover `3x` | triceps pushdown `3x` · ab crunch machine `2x` |
+| 2 | **Pull** · back, arms | lat pulldown `3x` · seated cable row `3x` · face pull `3x` | DB curl `3x` · plank `2x` |
+| 3 | **Legs** · legs, hips | goblet squat `3x` · DB Romanian deadlift `3x` · leg press `3x` · leg curl `3x` | |
 
 Every lift climbs **6 → 8 → 10 → 12** reps. Abs are always two sets.
 
-Pull-ups and dips are "as many as you can" in spirit. Here they climb a rep
-range like everything else, and topping it out adds weight — or takes
-assistance off, on an assist machine.
+The picks are ones a first-timer can lower slowly and lift without swinging
+from the first day: dumbbells, cables and machines. The harder versions —
+pull-ups, dips, barbell squats and rows — are one swap away. Pull-ups and
+dips climb a rep range like everything else, and topping it out adds weight
+— or takes assistance off, on an assist machine.
 
 **Slots, not fixed exercises.** Each module is a sequence of *slots* —
 "Horizontal press", "Vertical pull", "Biceps" — and a slot offers every
@@ -59,8 +60,9 @@ bench and you get dumbbell bench's own weight and ladder, not bench's numbers
 applied to dumbbells; swap back weeks later and barbell bench resumes exactly
 where it left off.
 
-**The same lifts come back twice a cycle.** DB bench on Push A and Push B is
-*one* ladder at one weight, so both days move it along.
+**An exercise in two workouts is one ladder.** Put DB bench in a workout of
+your own as well as Push and it is *one* ladder at one weight, so both days
+move it along — and in the new workout it starts where you left it.
 
 **Warm-ups** run before the first exercise of each muscle group: three ramping
 sets at 40/60/80% of the working weight, for 10/6/3 reps. Tap each one as you
@@ -224,7 +226,7 @@ it any time.
 | Tab | |
 |---|---|
 | **Today** | The next workout, large and nothing else. **Start**, or **Skip**: **Do this next time** trains the following workout now and returns to this one next session; **Skip this round** leaves it until the cycle repeats. Both offer Undo and record no training. With a workout in progress, **Continue** and **End** instead. |
-| **Progress** | This week's training days as seven circles, then your **goals** — each one's ladder with the day you owned every step, and the goals you have learned — then three views. **Results**: total weight lifted (put in proportion — "3.8 small cars"), sessions this month, weeks in a row, share of lifts on target, lifts that got stronger, standing records, cardio that got faster or further. **Sessions**: every finished workout, newest first, with each set coloured hit or short. **Lifts**: every exercise by muscle group at its current weight, tap for its past sessions; cardio bests too. Backup & restore sits in a sheet at the bottom. |
+| **Progress** | This week's training days as seven circles, then your **goals** — each one's ladder with the day you owned every step, and the goals you have learned — then three views. **Results**: total weight lifted (put in proportion — "3.8 small cars"), sessions this month, weeks in a row, share of lifts on target, lifts that got stronger, standing records, cardio that got faster or further. **Sessions**: every finished workout, newest first, with each set coloured hit or short. **Lifts**: every exercise by muscle group at its current weight, tap for its past sessions; cardio bests too. Backup & restore sits in a sheet at the bottom, and under it **Test mode**. |
 | **Plan** | Three segments: **Workouts** (your sessions, their order, what fills each slot, and the cardio and mobility either side), **Exercises** (the catalogue of every movement) and **Goals** (what you are learning, step by step). |
 
 Both segments are accordions — one workout or one category open at a time, so
@@ -374,12 +376,27 @@ rather than silently stalling.
 Dark throughout: black ground, acid green for the weight and for a set that hit
 target, coral for one that came up short.
 
+**Test mode** (Progress → Test mode) is for trying things out on your own
+phone. It is a second, separate save: while it is on, your real training is
+neither read nor written, and a navy strip across the top of every screen
+says "Test mode · your real training is safe", with **Leave** beside it.
+Start it **like a new phone** (the intro, the starting program, nothing
+trained) or with **a copy of your training**; next time you can **carry on**
+where you left it, or start again. Inside it, **Short workouts** runs each
+workout's first two exercises only, so a whole session takes minutes.
+Backup is off while it is on, so a test never ends up in a backup file.
+Test mode left on is still on after a restart.
+
 ## Editing your training
 
 Everything about the program is edited in the app, under **Plan → Workouts**.
 
 **Workouts.** Any number from one up; with one, it simply repeats.
-- **+ New workout** adds an empty one at the bottom of the cycle.
+- **+ New workout** adds an empty one at the bottom of the cycle, or a copy
+  of one you have.
+- **Make a copy**, at the foot of a workout's own sheet, does the same from
+  there: "Push 2" goes at the bottom with the same exercises, cardio, stretch
+  and goals, and its sheet opens with the name selected, so typing renames it.
 - **Hold and drag** a workout to reorder the cycle. Dragging only changes the
   order — whatever was next stays next, and the cycle carries on from wherever
   it now sits.

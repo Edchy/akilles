@@ -5,6 +5,7 @@ import { Text } from "@/components/text";
 import { colors } from "@/constants/theme";
 import { exportBackup, pickBackup } from "@/store/backup";
 import { resetToDefault, useSession, type SessionState } from "@/store/session";
+import { useTestMode } from "@/store/test-mode";
 
 /**
  * Save everything to a file, or put it back from one. The data otherwise
@@ -18,6 +19,7 @@ export function Backup() {
   const [pending, setPending] = useState<SessionState | null>(null);
   // Reset asked for once, waiting for the second tap.
   const [resetting, setResetting] = useState(false);
+  const { on: testing } = useTestMode();
 
   const run = async (task: () => Promise<void>) => {
     setBusy(true);
@@ -37,12 +39,25 @@ export function Backup() {
     run(async () => {
       const read = await pickBackup();
       if (read === null) return;
-      if (read === "invalid") return setNote("That file isn't an Milo backup.");
+      if (read === "invalid") return setNote("That file isn't a Milo backup.");
       if (read === "newer") {
         return setNote("That backup is from a newer version of the app. Update first.");
       }
       setPending(read);
     });
+
+  // A backup made now would hold the test, and putting one back would only
+  // reach the test — neither is what Backup is for.
+  if (testing) {
+    return (
+      <View style={{ gap: 14, paddingTop: 8 }}>
+        <Text style={{ color: colors.muted, fontSize: 15, lineHeight: 22 }}>
+          Backup is off in test mode, so a test never ends up in a backup. Leave test mode to save
+          or put back your real training.
+        </Text>
+      </View>
+    );
+  }
 
   return (
     <View style={{ gap: 14, paddingTop: 8 }}>

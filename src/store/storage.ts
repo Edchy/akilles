@@ -46,13 +46,23 @@ import {
   initialState,
   isLift,
   key,
+  resetToDefault,
   type Item,
   type SessionState,
 } from "@/store/session";
 
-// The app's old working name. Never rename it: a new key reads as an empty
-// store, and every saved workout would appear to be gone.
-const KEY = "achilles/state";
+/**
+ * Whose training is on screen: yours, or test mode's. Test mode is a second,
+ * separate save — the real one is neither read nor written while it is on —
+ * so you can try things on your own phone without changing what you train.
+ */
+export type Profile = "real" | "test";
+
+// The real key is the app's old working name. Never rename it: a new key
+// reads as an empty store, and every saved workout would appear to be gone.
+const KEYS: Record<Profile, string> = { real: "achilles/state", test: "achilles/test" };
+/** Present, as "test", only while test mode is on — so it survives a restart. */
+const MODE_KEY = "achilles/mode";
 
 /**
  * Bumped whenever the saved shape changes in a way older blobs cannot satisfy.
@@ -485,28 +495,61 @@ export const toSaved = (state: SessionState): string => {
  * yields a fresh state rather than throwing, since failing to start is a
  * worse outcome than starting empty.
  */
-export const load = async (): Promise<SessionState> => {
+export const load = async (profile: Profile = "real"): Promise<SessionState> => {
   try {
-    const raw = await AsyncStorage.getItem(KEY);
-    if (!raw) return initialState;
+    const raw = await AsyncStorage.getItem(KEYS[profile]);
+    // Fresh through `resetToDefault`, which also empties the custom lists, so
+    // nothing of the other profile's lingers after a switch.
+    if (!raw) return resetToDefault();
     const state = fromSaved(raw);
-    return typeof state === "string" ? initialState : state;
+    return typeof state === "string" ? resetToDefault() : state;
   } catch {
-    return initialState;
+    return resetToDefault();
   }
 };
 
 /** Write the training to disk. Errors are swallowed — see `useSaved`. */
-export const save = async (state: SessionState): Promise<void> => {
+export const save = async (state: SessionState, profile: Profile = "real"): Promise<void> => {
   try {
-    await AsyncStorage.setItem(KEY, toSaved(state));
+    await AsyncStorage.setItem(KEYS[profile], toSaved(state));
   } catch {
     // A failed write is not worth interrupting a set for. The next change
     // writes the whole state again, so one lost write costs nothing.
   }
 };
 
-/** Throw the saved training away. */
-export const clear = async (): Promise<void> => {
-  await AsyncStorage.removeItem(KEY);
+/** Whether there is anything saved under a profile — test mode to carry on with. */
+export const hasSaved = async (profile: Profile): Promise<boolean> => {
+  try {
+    return (await AsyncStorage.getItem(KEYS[profile])) !== null;
+  } catch {
+    return false;
+  }
+};
+
+/** Which profile was on when the app last ran. Anything unreadable is the real one. */
+export const loadProfile = async (): Promise<Profile> => {
+  try {
+    return (await AsyncStorage.getItem(MODE_KEY)) === "test" ? "test" : "real";
+  } catch {
+    return "real";
+  }
+};
+
+export const saveProfile = async (profile: Profile): Promise<void> => {
+  try {
+    if (profile === "test") await AsyncStorage.setItem(MODE_KEY, "test");
+    else await AsyncStorage.removeItem(MODE_KEY);
+  } catch {
+    // Worst case the app reopens on the other profile, with both saves intact.
+  }
+};
+
+/**
+ * Your training as test mode starts it: a copy, read back through the same
+ * path as a save, so the custom exercises it refers to are registered.
+ */
+export const copyForTest = (real: SessionState): SessionState => {
+  const copy = fromSaved(toSaved(real));
+  return typeof copy === "string" ? resetToDefault() : copy;
 };

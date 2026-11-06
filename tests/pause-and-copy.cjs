@@ -62,7 +62,7 @@ test("pausing the next workout moves next on; the last workout cannot be paused"
 
 test("only a paused workout can be deleted, and its choices go with it", () => {
   let s = store.resetToDefault();
-  s = store.chooseExercise(s, "legs", s.workouts.find((w) => w.id === "legs").exercises[0].id, "leg_press");
+  s = store.chooseExercise(s, "legs", s.workouts.find((w) => w.id === "legs").exercises[0].id, "back_squat");
   assert.equal(store.deleteWorkout(s, "legs"), s, "a running workout is not deleted");
   const gone = store.deleteWorkout(store.pauseWorkout(s, "legs"), "legs");
   assert.ok(!ids(gone).includes("legs"));
@@ -73,19 +73,19 @@ test("only a paused workout can be deleted, and its choices go with it", () => {
 test("a copy has the same exercises and choices, its own name, and goes at the bottom", () => {
   let s = store.resetToDefault();
   const legs = store.workoutById(s, "legs");
-  s = store.chooseExercise(s, "legs", legs.exercises[0].id, "leg_press");
+  s = store.chooseExercise(s, "legs", legs.exercises[0].id, "back_squat");
   const copied = store.copyWorkout(s, "legs", "w_copy");
   const copy = store.workoutById(copied, "w_copy");
   assert.equal(ids(copied).at(-1), "w_copy");
   assert.equal(copy.name, "Legs 2");
   assert.equal(copy.subtitle, legs.subtitle);
   assert.equal(JSON.stringify(copy.exercises), JSON.stringify(legs.exercises));
-  assert.equal(store.chosen(copied, "w_copy", copy.exercises[0]), "leg_press");
+  assert.equal(store.chosen(copied, "w_copy", copy.exercises[0]), "back_squat");
   assert.equal(store.copyWorkout(copied, "legs", "w_again").workouts.at(-1).name, "Legs 3");
 
   // Its own from here on: changing the copy leaves the original alone.
   const changed = store.chooseExercise(copied, "w_copy", copy.exercises[0].id, "goblet_squat");
-  assert.equal(store.chosen(changed, "legs", legs.exercises[0]), "leg_press");
+  assert.equal(store.chosen(changed, "legs", legs.exercises[0]), "back_squat");
 });
 
 test("a paused workout can be copied into the loop", () => {

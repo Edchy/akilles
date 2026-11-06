@@ -482,6 +482,7 @@ export const LEAN: string[] = [
   // Core
   "hanging_leg_raise",
   "ab_machine",
+  "machine_crunch",
   "cable_crunch",
   "plank",
   "crunch",

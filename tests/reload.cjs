@@ -169,7 +169,7 @@ test("Today says a lift reloads", () => {
       "db_bench:6-12": record("db_bench", 25, { rung: 2, reloading: true, lastPerformed: { weight: 25, reps: [12, 12, 12], target: 12 }, lastTrainedAt: NOW - 3 * DAY }),
     },
   };
-  const rows = store.workoutPreview(state, store.workoutById(state, "push_a"));
+  const rows = store.workoutPreview(state, store.workoutById(state, "push"));
   const bench = rows.find((r) => r.name === "DB bench press");
   assert.equal(bench.change, "reload");
   assert.equal(bench.amount, "3 × 10");

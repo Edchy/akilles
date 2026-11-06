@@ -39,23 +39,23 @@ const legs = (history) => {
 const row = (rows, id) => rows.find((r) => r.name === id);
 
 test("a lift never done is new, and its opening guess is marked as a guess", () => {
-  const squat = row(legs({}), "Back squat");
+  const squat = row(legs({}), "Goblet squat");
   assert.equal(squat.change, "new");
   assert.equal(squat.guess, true);
 });
 
 test("a weight above last time is up, below is down, the same is no news", () => {
   const rows = legs({
-    "back_squat:6-12": done("back_squat", 60, 57.5),
-    "rdl:6-12": done("rdl", 50, 55),
-    "bulgarian:6-12": done("bulgarian", 12, 12),
+    "goblet_squat:6-12": done("goblet_squat", 20, 18),
+    "db_rdl:6-12": done("db_rdl", 16, 18),
+    "leg_press:6-12": done("leg_press", 60, 60),
   });
-  const squat = row(rows, "Back squat");
+  const squat = row(rows, "Goblet squat");
   assert.equal(squat.change, "up");
   assert.equal(squat.guess, false);
-  assert.equal(squat.weight, "60 kg");
-  assert.equal(row(rows, "Romanian deadlift")?.change, "down");
-  assert.equal(row(rows, "Bulgarian split squat")?.change, undefined);
+  assert.equal(squat.weight, "20 kg");
+  assert.equal(row(rows, "DB Romanian deadlift")?.change, "down");
+  assert.equal(row(rows, "Leg press")?.change, undefined);
 });
 
 test("cardio and the stretch carry no news", () => {

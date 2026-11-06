@@ -35,12 +35,12 @@ const withGoal = (state = fresh()) => {
   s = store.addStep(s, "hspu", { id: "plank", name: "Wall plank", measure: "hold", sets: 3, target: 30 });
   s = store.addStep(s, "hspu", { id: "pike", name: "Pike push-up", measure: "reps", sets: 3, target: 8 });
   s = store.addStep(s, "hspu", { id: "kick", name: "Kick-ups to the wall", measure: "practice", sets: 1, target: 5 });
-  return store.practiseIn(s, "hspu", "push_a", true);
+  return store.practiseIn(s, "hspu", "push", true);
 };
 
 /** Start Push A and move to its goal block. */
 const startPush = (state) => {
-  const started = store.buildWorkout(store.setNextWorkout(state, "push_a"));
+  const started = store.buildWorkout(store.setNextWorkout(state, "push"));
   const at = started.active.items.findIndex((it) => store.isGoal(it));
   return { ...started, active: { ...started.active, cursor: at } };
 };
@@ -49,7 +49,7 @@ const goalOf = (state) => store.goalById(state, "hspu");
 
 test("a goal is its own block, straight after the warm-up, in the workouts you choose", () => {
   const state = withGoal();
-  const started = store.buildWorkout(store.setNextWorkout(state, "push_a"));
+  const started = store.buildWorkout(store.setNextWorkout(state, "push"));
   const kinds = started.active.items.map((it) => it.kind ?? "lift");
   assert.equal(kinds.slice(0, 3).join(","), "cardio,goal,lift");
   const block = started.active.items[1];
@@ -62,8 +62,8 @@ test("a goal is its own block, straight after the warm-up, in the workouts you c
   const legs = store.buildWorkout(store.setNextWorkout(state, "legs"));
   assert.ok(!legs.active.items.some((it) => store.isGoal(it)));
   // A goal with no steps has nothing to do, so it stays out.
-  const empty = store.practiseIn(store.addGoal(fresh(), "g", "Muscle-up"), "g", "push_a", true);
-  assert.ok(!store.buildWorkout(store.setNextWorkout(empty, "push_a")).active.items.some((it) => store.isGoal(it)));
+  const empty = store.practiseIn(store.addGoal(fresh(), "g", "Muscle-up"), "g", "push", true);
+  assert.ok(!store.buildWorkout(store.setNextWorkout(empty, "push")).active.items.some((it) => store.isGoal(it)));
 });
 
 test("a step is owned on target two sessions running, and a short one starts the count again", () => {
@@ -135,7 +135,7 @@ test("practice moves on when you say you've got it, and counts as done when you 
   state = store.finishWorkout(store.completeGoal(s, 140));
   assert.equal(typeof goalOf(state).learned, "number");
   assert.equal(state.log.at(-1).entries.find((e) => e.kind === "goal").reps[0], 140);
-  assert.ok(!store.buildWorkout(store.setNextWorkout(state, "push_a")).active.items.some((it) => store.isGoal(it)));
+  assert.ok(!store.buildWorkout(store.setNextWorkout(state, "push")).active.items.some((it) => store.isGoal(it)));
 
   // A new step at the top gives it somewhere to go again.
   state = store.addStep(state, "hspu", { id: "neg", name: "Slow negatives", measure: "reps", sets: 3, target: 3 });
@@ -185,7 +185,7 @@ test("a step changed in Plan mid-session is logged but moves nothing", () => {
 
 test("deleting a goal drops its block from the rest of a running session", () => {
   const state = withGoal();
-  const started = store.buildWorkout(store.setNextWorkout(state, "push_a"));
+  const started = store.buildWorkout(store.setNextWorkout(state, "push"));
   const gone = store.deleteGoal(started, "hspu");
   assert.ok(!gone.goals.some((g) => g.id === "hspu"));
   assert.ok(!gone.active.items.some((it) => store.isGoal(it)));
@@ -197,8 +197,8 @@ test("deleting a goal drops its block from the rest of a running session", () =>
 });
 
 test("a copied workout keeps its goals, and goals survive a save", () => {
-  const state = store.copyWorkout(withGoal(), "push_a", "w_copy");
-  assert.equal(goalOf(state).workouts.join(","), "push_a,w_copy");
+  const state = store.copyWorkout(withGoal(), "push", "w_copy");
+  assert.equal(goalOf(state).workouts.join(","), "push,w_copy");
   const back = storage.fromSaved(storage.toSaved(state));
   assert.equal(goalOf(back).name, "Handstand push-up");
   assert.equal(goalOf(back).steps.length, 3);
@@ -222,16 +222,16 @@ test("a fresh install comes with the handstand push-up, switched off until you t
   assert.equal(goals.isStarted(hspu), false);
   // Taken up: in Push A from today, and on Progress since then.
   const before = Date.now();
-  const taken = store.practiseIn(state, "handstand_push_up", "push_a", true);
+  const taken = store.practiseIn(state, "handstand_push_up", "push", true);
   const on = store.goalById(taken, "handstand_push_up");
   assert.ok(on.since >= before);
   assert.equal(goals.isStarted(on), true);
-  const both = store.practiseIn(taken, "handstand_push_up", "push_b", true);
+  const both = store.practiseIn(taken, "handstand_push_up", "pull", true);
   assert.equal(store.goalById(both, "handstand_push_up").since, on.since);
   // Started from a later step without a workout, it is dated too.
   const jumped = store.goalById(store.startFrom(state, "handstand_push_up", 3), "handstand_push_up");
   assert.ok(jumped.since >= before);
-  const block = store.buildWorkout(store.setNextWorkout(taken, "push_a")).active.items.find((it) => store.isGoal(it));
+  const block = store.buildWorkout(store.setNextWorkout(taken, "push")).active.items.find((it) => store.isGoal(it));
   assert.equal(block.step, "crow");
   // Deleted, it stays deleted.
   const gone = store.deleteGoal(state, "handstand_push_up");

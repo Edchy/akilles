@@ -173,71 +173,51 @@ type Authored = Omit<Workout, "exercises"> & { exercises: Omit<Entry, "id">[] };
 
 const FULL_CYCLE: Authored[] = [
   /*
-   * Push, pull, legs, push, pull. Each slot names its exercise; the swap
-   * button offers everything else in the catalogue of the same movement type.
+   * Push, pull, legs: three workouts, each once a lap, so legs come round as
+   * often as the rest, and three visits a week is about a lap a week. Each
+   * slot names its exercise; the swap button offers everything else in the
+   * catalogue of the same movement type.
    *
-   * Every slot climbs 6 → 8 → 10 → 12, so a lift on two days is one record
-   * at one weight, progressed by both. Pull-ups and dips are "as many as you
-   * can" on paper — here they climb the range like anything else, and
-   * hitting the top adds weight or takes off assistance.
+   * The picks are ones a first-timer can lower slowly and lift without
+   * swinging from the first day — dumbbells, cables and machines, nothing
+   * that needs a spotter or a teacher. The harder versions (pull-ups, dips,
+   * barbell squats and rows) are one swap away.
+   *
+   * Every slot climbs 6 → 8 → 10 → 12, then adds weight and starts again.
    */
   {
-    id: "push_a",
-    name: "Push A",
-    subtitle: "chest focus",
+    id: "push",
+    name: "Push",
+    subtitle: "chest, shoulders",
     exercises: [
       { slot: "Horizontal press", pattern: "horizontal_push", options: ["db_bench"], scheme: DEFAULT_SCHEME },
       { slot: "Vertical press", pattern: "vertical_push", options: ["db_shoulder"], scheme: DEFAULT_SCHEME },
       { slot: "Chest fly", pattern: "chest_iso", options: ["cable_crossover"], scheme: DEFAULT_SCHEME },
-      { slot: "Dips", pattern: "triceps", options: ["dips"], scheme: DEFAULT_SCHEME },
-      { slot: "Abs", pattern: "abs", options: ["hanging_leg_raise"], scheme: DEFAULT_SCHEME },
+      { slot: "Triceps", pattern: "triceps", options: ["pushdown"], scheme: DEFAULT_SCHEME },
+      { slot: "Abs", pattern: "abs", options: ["machine_crunch"], scheme: DEFAULT_SCHEME },
     ],
   },
   {
-    id: "pull_a",
-    name: "Pull A",
-    subtitle: "vertical pull focus",
+    id: "pull",
+    name: "Pull",
+    subtitle: "back, arms",
     exercises: [
-      { slot: "Vertical pull", pattern: "vertical_pull", options: ["pullup"], scheme: DEFAULT_SCHEME },
-      { slot: "Heavy row", pattern: "horizontal_pull", options: ["bb_row"], scheme: DEFAULT_SCHEME },
-      { slot: "Machine row", pattern: "horizontal_pull", options: ["machine_row"], scheme: DEFAULT_SCHEME },
-      { slot: "Biceps", pattern: "biceps", options: ["bb_curl"], scheme: DEFAULT_SCHEME },
-      { slot: "Abs", pattern: "abs", options: ["ab_machine"], scheme: DEFAULT_SCHEME },
+      { slot: "Vertical pull", pattern: "vertical_pull", options: ["lat_pulldown"], scheme: DEFAULT_SCHEME },
+      { slot: "Row", pattern: "horizontal_pull", options: ["cable_row"], scheme: DEFAULT_SCHEME },
+      { slot: "Rear shoulders", pattern: "shoulders", options: ["face_pull"], scheme: DEFAULT_SCHEME },
+      { slot: "Biceps", pattern: "biceps", options: ["db_curl"], scheme: DEFAULT_SCHEME },
+      { slot: "Abs", pattern: "abs", options: ["plank"], scheme: DEFAULT_SCHEME },
     ],
   },
   {
     id: "legs",
     name: "Legs",
-    subtitle: "squat focus",
+    subtitle: "legs, hips",
     exercises: [
-      { slot: "Squat", pattern: "squat", options: ["back_squat"], scheme: DEFAULT_SCHEME },
-      { slot: "Hinge", pattern: "hinge", options: ["rdl"], scheme: DEFAULT_SCHEME },
-      { slot: "Single leg", pattern: "lunge", options: ["bulgarian"], scheme: DEFAULT_SCHEME, sets: 2 },
-      { slot: "Abs", pattern: "abs", options: ["hanging_leg_raise"], scheme: DEFAULT_SCHEME },
-    ],
-  },
-  {
-    id: "push_b",
-    name: "Push B",
-    subtitle: "shoulder focus",
-    exercises: [
-      { slot: "Vertical press", pattern: "vertical_push", options: ["db_shoulder"], scheme: DEFAULT_SCHEME },
-      { slot: "Horizontal press", pattern: "horizontal_push", options: ["db_bench"], scheme: DEFAULT_SCHEME },
-      { slot: "Chest fly", pattern: "chest_iso", options: ["cable_crossover"], scheme: DEFAULT_SCHEME },
-      { slot: "Triceps", pattern: "triceps", options: ["pushdown"], scheme: DEFAULT_SCHEME },
-      { slot: "Abs", pattern: "abs", options: ["ab_machine"], scheme: DEFAULT_SCHEME },
-    ],
-  },
-  {
-    id: "pull_b",
-    name: "Pull B",
-    subtitle: "row focus",
-    exercises: [
-      { slot: "Vertical pull", pattern: "vertical_pull", options: ["lat_pulldown"], scheme: DEFAULT_SCHEME },
-      { slot: "Single-arm row", pattern: "horizontal_pull", options: ["db_row"], scheme: DEFAULT_SCHEME },
-      { slot: "Machine row", pattern: "horizontal_pull", options: ["machine_row"], scheme: DEFAULT_SCHEME },
-      { slot: "Biceps", pattern: "biceps", options: ["db_curl"], scheme: DEFAULT_SCHEME },
-      { slot: "Abs", pattern: "abs", options: ["hanging_leg_raise"], scheme: DEFAULT_SCHEME },
+      { slot: "Squat", pattern: "squat", options: ["goblet_squat"], scheme: DEFAULT_SCHEME },
+      { slot: "Hinge", pattern: "hinge", options: ["db_rdl"], scheme: DEFAULT_SCHEME },
+      { slot: "Leg press", pattern: "quads", options: ["leg_press"], scheme: DEFAULT_SCHEME },
+      { slot: "Hamstrings", pattern: "hamstrings", options: ["leg_curl"], scheme: DEFAULT_SCHEME },
     ],
   },
 ];

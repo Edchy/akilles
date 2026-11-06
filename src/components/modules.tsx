@@ -11,7 +11,14 @@ import { Mark } from "@/components/mark";
 import { RoutineEditor } from "@/components/routine";
 import { Segments } from "@/components/segments";
 import { Swipe } from "@/components/swipe";
-import { BigButton, OpenRow, SectionLabel, Sheet, TextButton } from "@/components/sheet";
+import {
+  BigButton,
+  OpenRow,
+  SHEET_SWAP_MS,
+  SectionLabel,
+  Sheet,
+  TextButton,
+} from "@/components/sheet";
 import { WeightField } from "@/components/weight-field";
 import { FAMILY, colors, fonts, radii } from "@/constants/theme";
 import {
@@ -112,6 +119,15 @@ export function Modules({ onDragChange }: { onDragChange: (dragging: boolean) =>
     setEditing(id);
   };
 
+  // From inside a workout's own sheet: that sheet slides away first, then the
+  // copy's slides up, named and ready to rename, so it reads as a new workout
+  // rather than the same one changing under your finger.
+  const copyFromSheet = (fromId: string) => {
+    setEditing(null);
+    setFresh(null);
+    setTimeout(() => copy(fromId), SHEET_SWAP_MS);
+  };
+
   const workout = state.workouts.find((w) => w.id === editing);
 
   return (
@@ -150,6 +166,7 @@ export function Modules({ onDragChange }: { onDragChange: (dragging: boolean) =>
         workout={workout}
         isNext={workout?.id === next}
         naming={!!workout && fresh === workout.id}
+        onCopy={() => workout && copyFromSheet(workout.id)}
         onClose={() => {
           setEditing(null);
           setFresh(null);
@@ -465,11 +482,14 @@ function WorkoutSheet({
   workout,
   isNext,
   naming,
+  onCopy,
   onClose,
 }: {
   workout: Workout | undefined;
   isNext: boolean;
   naming: boolean;
+  /** A new workout like this one, at the bottom of the loop, opened to rename. */
+  onCopy: () => void;
   onClose: () => void;
 }) {
   const { state, setState } = useSession();
@@ -564,6 +584,8 @@ function WorkoutSheet({
               onPress={() => setState((s) => setNextWorkout(s, workout.id))}
             />
           )}
+
+          <BigButton label="Make a copy" quiet onPress={onCopy} />
 
           <BigButton
             label="Pause workout"
@@ -1188,6 +1210,9 @@ function Field({
       placeholder={placeholder}
       placeholderTextColor={colors.faint}
       autoFocus={autoFocus}
+      // Opened to be named — a new workout or a copy — the name starts
+      // selected, so typing replaces "Push 2" rather than adding to it.
+      selectTextOnFocus={autoFocus}
       returnKeyType="done"
       style={{
         minHeight: size ? 64 : 52,

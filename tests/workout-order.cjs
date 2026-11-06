@@ -23,8 +23,19 @@ function load(name) {
 
 const store = load("@/store/session");
 const storage = load("@/store/storage");
-const ids = store.initialState.workouts.map((w) => w.id);
-const fresh = (next = ids[0], workouts = store.initialState.workouts) => ({
+// Five workouts, two of them twice, so putting off and skipping have room
+// to show what they do. Built from the starting three; the order rules do
+// not care what is in them.
+const [push, pull, legs] = store.initialState.workouts;
+const FIVE = [
+  { ...push, id: "push_a", name: "Push A" },
+  { ...pull, id: "pull_a", name: "Pull A" },
+  legs,
+  { ...push, id: "push_b", name: "Push B" },
+  { ...pull, id: "pull_b", name: "Pull B" },
+];
+const ids = FIVE.map((w) => w.id);
+const fresh = (next = ids[0], workouts = FIVE) => ({
   ...store.resetToDefault(), workouts, nextWorkout: next,
 });
 const next = (state) => store.upNext(state).id;
@@ -61,7 +72,7 @@ test("postponing across the end of the cycle does not repeat or omit a workout",
 });
 
 test("a two-workout cycle returns to its normal order", () => {
-  assert.deepEqual(order(store.postponeWorkout(fresh(ids[0], store.initialState.workouts.slice(0, 2))), 4), [ids[1], ids[0], ids[1], ids[0]]);
+  assert.deepEqual(order(store.postponeWorkout(fresh(ids[0], FIVE.slice(0, 2))), 4), [ids[1], ids[0], ids[1], ids[0]]);
 });
 
 test("reopening the app preserves the one-time queue and next-workout preview", () => {
@@ -111,7 +122,7 @@ test("postponing twice never swaps back to the workout just put off", () => {
 });
 
 test("with everything else waiting there is nothing to put off for", () => {
-  const two = store.postponeWorkout(fresh(ids[0], store.initialState.workouts.slice(0, 2)));
+  const two = store.postponeWorkout(fresh(ids[0], FIVE.slice(0, 2)));
   assert.equal(next(two), ids[1]);
   assert.equal(store.postponeWorkout(two), two);
 });

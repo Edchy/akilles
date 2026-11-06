@@ -78,7 +78,7 @@ test("a workout's cardio length is its own", () => {
   state = store.nudgeCardio(state, "legs", "open", 1);
   state = store.nudgeCardio(state, "legs", "open", 1);
   assert.equal(blocks(state, "legs")[0].course, 2);
-  assert.equal(blocks(state, "push_a")[0].course, 1);
+  assert.equal(blocks(state, "push")[0].course, 1);
 
   // Switching to the clock measures the distance in minutes instead.
   state = store.setCardioMode(state, "legs", "close", "time");
@@ -86,8 +86,8 @@ test("a workout's cardio length is its own", () => {
   assert.deepEqual(blocks(state, "legs")[1], { slot: "Cardio · finish", id: "ski_erg", minutes: 6 });
 
   // A machine on the clock can be timed over a distance.
-  state = store.setCardioMode(state, "push_a", "close", "distance");
-  assert.deepEqual(blocks(state, "push_a")[1], { slot: "Cardio · finish", id: "ski_erg", course: 1000 });
+  state = store.setCardioMode(state, "push", "close", "distance");
+  assert.deepEqual(blocks(state, "push")[1], { slot: "Cardio · finish", id: "ski_erg", course: 1000 });
 });
 
 test("cardio length stays on whole steps and within bounds", () => {
@@ -102,14 +102,14 @@ test("cardio length stays on whole steps and within bounds", () => {
 
 test("blocks come out of a workout and go back in", () => {
   let state = fresh();
-  state = store.setCardio(state, "push_a", "open", null);
-  state = store.setMobility(state, "push_a", null);
-  assert.deepEqual(blocks(state, "push_a"), [{ slot: "Cardio · finish", id: "ski_erg", minutes: 5 }]);
-  assert.equal(blocks(state, "pull_a").length, 3);
+  state = store.setCardio(state, "push", "open", null);
+  state = store.setMobility(state, "push", null);
+  assert.deepEqual(blocks(state, "push"), [{ slot: "Cardio · finish", id: "ski_erg", minutes: 5 }]);
+  assert.equal(blocks(state, "pull").length, 3);
 
-  state = store.setCardio(state, "push_a", "open", undefined);
-  state = store.setMobility(state, "push_a", undefined);
-  assert.deepEqual(blocks(state, "push_a"), blocks(fresh(), "push_a"));
+  state = store.setCardio(state, "push", "open", undefined);
+  state = store.setMobility(state, "push", undefined);
+  assert.deepEqual(blocks(state, "push"), blocks(fresh(), "push"));
 });
 
 test("choosing a machine or routine changes only that workout", () => {
@@ -118,8 +118,8 @@ test("choosing a machine or routine changes only that workout", () => {
   state = store.setMobility(state, "legs", "m_mine");
   assert.equal(blocks(state, "legs")[1].id, "row");
   assert.equal(blocks(state, "legs")[2].id, "m_mine");
-  assert.equal(blocks(state, "push_a")[1].id, "ski_erg");
-  assert.equal(blocks(state, "push_a")[2].id, "everyday");
+  assert.equal(blocks(state, "push")[1].id, "ski_erg");
+  assert.equal(blocks(state, "push")[2].id, "everyday");
 });
 
 test("swapping mid-session is for today only", () => {
@@ -187,9 +187,9 @@ test("a workout can get a copy of its routine, leaving the others alone", () => 
   assert.equal(store.mobilityPlan(state, workout(state, "legs")).name, "Legs stretch");
   state = store.addHold(state, "m_legs", { stretch: "calf_wall" });
   assert.equal(store.mobilityPlan(state, workout(state, "legs")).moves.length, 7);
-  assert.equal(store.mobilityPlan(state, workout(state, "push_a")).moves.length, 6);
+  assert.equal(store.mobilityPlan(state, workout(state, "push")).moves.length, 6);
   assert.deepEqual(plain(store.workoutsUsing(state, "m_legs").map((w) => w.id)), ["legs"]);
-  assert.equal(store.workoutsUsing(state, "everyday").length, 4);
+  assert.equal(store.workoutsUsing(state, "everyday").length, 2);
 });
 
 test("a removed machine falls back, and comes back when restored", () => {
@@ -229,8 +229,8 @@ test("version 9 saves move the shared cardio into every workout", () => {
     // A retired built-in routine gives way to the everyday stretch.
     assert.equal(w.mobility, undefined);
   }
-  assert.equal(store.mobilityPlan(restored, workout(restored, "pull_a")).id, "everyday");
-  assert.deepEqual(blocks(restored, "push_a")[0], { slot: "Cardio · open", id: "treadmill", course: 1.5 });
+  assert.equal(store.mobilityPlan(restored, workout(restored, "pull")).id, "everyday");
+  assert.deepEqual(blocks(restored, "push")[0], { slot: "Cardio · open", id: "treadmill", course: 1.5 });
 });
 
 test("version 9 saves keep a routine of your own on every workout", () => {
@@ -252,10 +252,10 @@ test("version 9 saves keep a routine of your own on every workout", () => {
 test("per-workout blocks survive a save and reload", () => {
   let state = fresh();
   state = store.nudgeCardio(state, "legs", "open", 1);
-  state = store.setMobility(state, "pull_b", null);
+  state = store.setMobility(state, "push", null);
   const restored = storage.fromSaved(storage.toSaved(state));
   assert.deepEqual(blocks(restored, "legs"), blocks(state, "legs"));
-  assert.deepEqual(blocks(restored, "pull_b"), blocks(state, "pull_b"));
+  assert.deepEqual(blocks(restored, "push"), blocks(state, "push"));
 });
 
 test("a session in progress on a retired routine is dealt the everyday stretch", () => {
@@ -279,7 +279,7 @@ test("a weight changed and then skipped is not carried to next time", () => {
     state = store.editWeight(state, opened + 10);
     log(state.active.items, at);
     state = store.finishWorkout(state);
-    const next = store.buildWorkout(store.setNextWorkout(state, "push_a"));
+    const next = store.buildWorkout(store.setNextWorkout(state, "push"));
     return { opened, next: next.active.items.find((it) => it.exerciseId === "db_bench").weight };
   };
   // Trained at the new weight: it carries.

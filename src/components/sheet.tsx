@@ -109,6 +109,12 @@ export function SectionLabel({ children }: { children: string }) {
   );
 }
 
+/**
+ * Long enough for one sheet to slide away before the next opens. iOS will
+ * not show a sheet over one that is still leaving.
+ */
+export const SHEET_SWAP_MS = 450;
+
 /** A full-width action at the foot of a sheet. */
 export function BigButton({
   label,

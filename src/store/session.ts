@@ -317,6 +317,12 @@ export type SessionState = {
    * it; Plan's ? opens it any time.
    */
   introSeen?: number;
+  /**
+   * Test mode only: every workout runs just its first two exercises, so a
+   * whole session can be tried in minutes. Switched from Progress › Test
+   * mode, and never shown for your real training.
+   */
+  shortWorkouts?: boolean;
   /** Cardio machines and mobility routines you have added. */
   customCardio: CardioExercise[];
   customMobility: MobilityRoutine[];
@@ -703,8 +709,15 @@ export type PreviewRow = {
   family: Family;
 };
 
+/**
+ * The exercises a workout runs: all of them, or the first two when workouts
+ * are short — test mode's switch, or the `EXPO_PUBLIC_SHORT_WORKOUTS` build.
+ */
+export const exercisesToRun = (state: SessionState, workout: Workout): Entry[] =>
+  SHORT_WORKOUTS || state.shortWorkouts ? workout.exercises.slice(0, 2) : workout.exercises;
+
 export const workoutPreview = (state: SessionState, workout: Workout): PreviewRow[] => {
-  const lifts = workout.exercises.map((entry): PreviewRow => {
+  const lifts = exercisesToRun(state, workout).map((entry): PreviewRow => {
     const ex = byId(chosen(state, workout.id, entry))!;
     const known = state.history[key(ex.id, entry.scheme)];
     const st = known ?? freshState(ex);
@@ -1368,7 +1381,7 @@ export const buildWorkout = (
         // The first exercise of each muscle group gets a warm-up; by the time
         // the second push or pull comes round you are already warm.
         const warmed = new Set<Group>();
-        const entries = SHORT_WORKOUTS ? workout.exercises.slice(0, 2) : workout.exercises;
+        const entries = exercisesToRun(state, workout);
         const lifts = entries.map((e) => {
           const exerciseId = chosen(state, workout.id, e);
           const ex = byId(exerciseId)!;

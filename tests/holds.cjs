@@ -94,12 +94,14 @@ test("a plank holds 30, 40, 50, then 60 seconds, and stays at a minute", () => {
   assert.equal(prog.applyResult(record("plank", 0, { rung: 3 }), SCHEME, [60, 55], NOW).downStreak, 1);
 });
 
-/** Push A's abs, done: every set at its target, with the slot holding `rec`. */
+/** Push's abs, done: every set at its target, with the slot holding `rec`. */
 const absDone = (rec, reps) => {
   const base = store.resetToDefault();
   let state = store.buildWorkout({ ...base, history: { [`${rec.exerciseId}:6-12`]: rec } });
-  const at = state.active.items.findIndex((it) => it.exerciseId === "hanging_leg_raise");
-  assert.ok(at >= 0, "Push A has hanging leg raises");
+  const at = state.active.items.findIndex(
+    (it) => it.exerciseId && exercises.byId(it.exerciseId)?.patterns.includes("abs"),
+  );
+  assert.ok(at >= 0, "Push has an abs exercise");
   const goal = prog.ladderOf(exercises.byId(rec.exerciseId), SCHEME)[rec.rung];
   const items = state.active.items.map((it, i) =>
     i === at
@@ -175,7 +177,7 @@ test("a version 11 save turns kilograms on a holds lift into seconds, and leaves
       "dips:6-12": record("dips", 10, { lastTrainedAt: NOW - 2 * DAY }),
     },
     log: [{
-      workoutId: "push_a", name: "Push A", startedAt: NOW - 2 * DAY, finishedAt: NOW - 2 * DAY,
+      workoutId: "push", name: "Push A", startedAt: NOW - 2 * DAY, finishedAt: NOW - 2 * DAY,
       entries: [
         { kind: "lift", exerciseId: "hanging_leg_raise", scheme: "6-12", weight: 2.5, reps: [12, 12], target: 12, outcome: "hit" },
         { kind: "lift", exerciseId: "dips", scheme: "6-12", weight: 10, reps: [8, 8, 8], target: 8, outcome: "hit" },

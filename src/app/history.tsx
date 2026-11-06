@@ -11,6 +11,7 @@ import { Results } from "@/components/results";
 import { COLUMN } from "@/components/screen";
 import { Segments } from "@/components/segments";
 import { Sheet } from "@/components/sheet";
+import { TestMode } from "@/components/test-mode";
 import { FAMILY, colors, fonts, radii } from "@/constants/theme";
 import { cardioById, courseLabel, distanceLabel, timeLabel } from "@/data/conditioning";
 import { byId, GROUP_LABEL, GROUP_ORDER, groupOf, type Exercise } from "@/data/exercises";
@@ -40,6 +41,7 @@ export default function HistoryScreen() {
   const barSpace = useBarSpace();
   const [segment, setSegment] = useState<Segment>("results");
   const [backup, setBackup] = useState(false);
+  const [testing, setTesting] = useState(false);
 
   return (
     <ScrollView
@@ -108,6 +110,33 @@ export default function HistoryScreen() {
 
       <Sheet visible={backup} title="Backup" closeLabel="Done" onClose={() => setBackup(false)}>
         <Backup />
+      </Sheet>
+
+      {/* Test mode, under the same kind of quiet row: for trying things out
+          on this phone without touching the real training. */}
+      <Pressable
+        accessibilityRole="button"
+        onPress={() => setTesting(true)}
+        style={({ pressed }) => ({
+          flexDirection: "row",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: 6,
+          minHeight: 48,
+          opacity: pressed ? 0.5 : 1,
+        })}
+      >
+        <Text style={{ color: colors.faint, fontSize: 14, fontWeight: "700" }}>Test mode</Text>
+        <Icon name="open" size={13} color={colors.faint} />
+      </Pressable>
+
+      <Sheet
+        visible={testing}
+        title="Test mode"
+        closeLabel="Done"
+        onClose={() => setTesting(false)}
+      >
+        <TestMode onDone={() => setTesting(false)} />
       </Sheet>
     </ScrollView>
   );

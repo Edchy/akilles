@@ -31,41 +31,41 @@ const names = (state, workoutId) => {
 
 test("adding an exercise puts it at the bottom of the workout, in its own movement's slot", () => {
   const s = store.resetToDefault();
-  const before = names(s, "push_a").length;
-  const added = store.addExerciseToWorkout(s, "push_a", "pullup");
-  const w = store.workoutById(added, "push_a");
+  const before = names(s, "push").length;
+  const added = store.addExerciseToWorkout(s, "push", "pullup");
+  const w = store.workoutById(added, "push");
   assert.equal(w.exercises.length, before + 1);
   const entry = w.exercises.at(-1);
   assert.equal(entry.pattern, "vertical_pull");
-  assert.equal(store.chosen(added, "push_a", entry), "pullup");
+  assert.equal(store.chosen(added, "push", entry), "pullup");
 });
 
 test("one from the library joins your exercises on the way in", () => {
   const s = store.resetToDefault();
   const hidden = s.hidden[0];
   assert.ok(hidden, "the default pool hides something");
-  const added = store.addExerciseToWorkout(s, "push_a", hidden);
+  const added = store.addExerciseToWorkout(s, "push", hidden);
   assert.ok(!added.hidden.includes(hidden));
   assert.ok(store.catalogue(added).some((e) => e.id === hidden));
 });
 
 test("an exercise the workout already has is refused", () => {
   const s = store.resetToDefault();
-  const w = store.workoutById(s, "push_a");
-  const already = store.chosen(s, "push_a", w.exercises[0]);
-  assert.equal(store.addExerciseToWorkout(s, "push_a", already), s);
+  const w = store.workoutById(s, "push");
+  const already = store.chosen(s, "push", w.exercises[0]);
+  assert.equal(store.addExerciseToWorkout(s, "push", already), s);
 });
 
 test("creating one makes it yours and puts it straight in", () => {
   const s = store.resetToDefault();
-  const made = store.createExerciseInWorkout(s, "pull_a", {
+  const made = store.createExerciseInWorkout(s, "pull", {
     id: "custom_meadows_row",
     name: "Meadows row",
     patterns: ["horizontal_pull"],
     increment: 2.5,
   });
   assert.ok(made.custom.some((e) => e.name === "Meadows row"));
-  assert.equal(names(made, "pull_a").at(-1), "Meadows row");
+  assert.equal(names(made, "pull").at(-1), "Meadows row");
 });
 
 test("search finds what people type, best first", () => {
