@@ -20,7 +20,9 @@ const FRAME_MS = 1100;
  *
  * A film where Milo has one (see `motion/`): the movement drawn flat in
  * Milo's marks, a rep from the side and a rep from the front — except as a
- * thumbnail, where the photo stays. Otherwise a photo (see
+ * thumbnail, where the photo stays. Given `plays`, a film loops that many
+ * times and then holds its still, so a picture on screen through a whole
+ * hold or set isn't drawing all the while. Otherwise a photo (see
  * `data/photos.ts`); a lift's start and finish frames flip back and forth so
  * the movement reads like a short loop. Both frames are mounted and only
  * their opacity changes, so the flip never waits on an image to load.
@@ -32,17 +34,20 @@ export function Illustration({
   id,
   style,
   compact,
+  plays,
 }: {
   id: string;
   style?: ViewStyle;
   /** A thumbnail in a list: the placeholder is just a small icon, no words. */
   compact?: boolean;
+  /** How many times a film loops before it rests on its still; by default, as long as it shows. */
+  plays?: number;
 }) {
   const frames = PHOTOS[id];
   const count = frames?.length ?? 0;
   const [frame, setFrame] = useState(0);
 
-  const film = !compact && MOVES[id] !== undefined;
+  const film = !compact && id in MOVES;
 
   useEffect(() => {
     setFrame(0);
@@ -52,7 +57,8 @@ export function Illustration({
   }, [id, count, film]);
 
   if (film) {
-    return <Film key={id} id={id} colors={filmColors(familyOfPicture(id))} style={style} />;
+    const colors = filmColors(familyOfPicture(id));
+    return <Film key={id} id={id} colors={colors} style={style} plays={plays} />;
   }
 
   if (frames) {

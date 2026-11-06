@@ -1980,7 +1980,8 @@ function MobilityCard({ card, left, position }: { card: Card; left: number; posi
       }}
     >
       <View style={{ flex: 1 }}>
-        <Illustration id={pictureOf(move)} style={{ flex: 1 }} />
+        {/* Twice, then still: the card is up for the whole hold. */}
+        <Illustration id={pictureOf(move)} plays={2} style={{ flex: 1 }} />
         <View style={{ position: "absolute", top: 12, right: 12 }}>
           <GuideButton id={pictureOf(move)} name={move.name} cue={move.cue} onPicture />
         </View>

@@ -11,10 +11,11 @@ import { Vec3 } from "@/motion/vector";
  * quarter-round for each foot. A thin gap of the field round every part keeps
  * the parts apart where they overlap, and the far limbs are a tint of the ink.
  *
- * Equipment is drawn in line, behind the body. A plate the body is behind is
- * see-through instead: an ink line on the field, a cut of the field where it
- * crosses the body — so from the side the bar reads as on the back, where it
- * is, and never hides the lifter.
+ * Equipment is drawn in line, behind the body. Equipment in front of the body
+ * is see-through instead: an ink line on the field, a cut of the field where
+ * it crosses the parts behind it — so from the side the bar reads as on the
+ * back, where it is; a bar held in front crosses the thighs; and nothing
+ * ever hides the lifter.
  */
 
 /** The field, its one ink, and the ink's tint for the far side. */
@@ -27,14 +28,14 @@ export type Paint = {
   fill?: string;
   stroke?: string;
   width?: number;
-  /** Painted only where it crosses the body (`Drawing.body`). */
-  clipped?: boolean;
+  /** Painted only where it crosses the parts behind it: `Drawing.clips[clip]`. */
+  clip?: number;
 };
 
 export type Drawing = {
   paints: Paint[];
-  /** The body's outline, every part in one path, for clipping. */
-  body: string;
+  /** Outlines of parts of the body, each in one path, for clipping. */
+  clips: string[];
 };
 
 // Sizes, in metres; the body's own are `SIZE`.
@@ -51,6 +52,12 @@ const FLOOR = 0.012;
  * across) on each side and its end a little ring.
  */
 const BAR = { from: 0.24, half: 1.1, plateAt: 0.69, plate: 0.17, end: 0.03 };
+/** A fixed bar to hang from, 1.1 m long. */
+const FIXED = { half: 0.55 };
+/** A kettlebell: the bell's middle below the handle, its radius, and the handle's. */
+const KETTLEBELL = { drop: 0.125, bell: 0.1, wide: 0.06, handle: 0.015 };
+/** A dumbbell: its heads' middles either side of the hand, and their radius. */
+const DUMBBELL = { headAt: 0.1, head: 0.065, handle: 0.017 };
 
 type Pt = [number, number];
 
@@ -82,12 +89,25 @@ export function draw(
     floorY - v.y * scale,
   ];
   const toward = (v: Vec3) => v.dot(toCamera);
+  /** The edge of a disc of radius `r` round `c`, square to `normal`, as seen. */
+  const ring = (c: Vec3, normal: Vec3, r: number) => {
+    const n = normal.clone().normalize();
+    const u = new Vec3().crossVectors(n, Math.abs(n.y) < 0.9 ? UP : new Vec3(1, 0, 0)).normalize();
+    const v = new Vec3().crossVectors(n, u);
+    const points: Pt[] = [];
+    for (let k = 0; k < 32; k++) {
+      const t = (k / 32) * 2 * Math.PI;
+      const p = c.clone().addScaledVector(u, r * Math.cos(t)).addScaledVector(v, r * Math.sin(t));
+      points.push(at(p));
+    }
+    return points;
+  };
 
   const parts: { depth: number; paints: Paint[] }[] = [];
-  const outlines: string[] = [];
-  const cuts: Paint[] = [];
+  const outlines: { d: string; depth: number }[] = [];
+  const cuts: { paint: Paint; depth: number }[] = [];
   const shape = (key: string, d: string, fill: string, depth: number) => {
-    outlines.push(d);
+    outlines.push({ d, depth });
     parts.push({
       depth,
       paints: [
@@ -149,8 +169,12 @@ export function draw(
 
   pose.legs.forEach((leg, i) => {
     const color = colorOf(i);
-    const side = new Vec3().crossVectors(UP, leg.foot).normalize();
-    const floor = new Vec3(leg.end.x, 0, leg.end.z);
+    // The foot's top and side, and its sole under the heel: on the floor
+    // standing; hanging, pointed.
+    const up = leg.top ?? UP;
+    const top = up.clone().addScaledVector(leg.foot, -up.dot(leg.foot)).normalize();
+    const side = new Vec3().crossVectors(top, leg.foot).normalize();
+    const sole = leg.end.clone().addScaledVector(top, -BODY.ankle);
     const profile: Pt[] = [[-FOOT.back, 0]];
     for (let k = 0; k <= 16; k++) {
       const t = (k / 16) * (Math.PI / 2);
@@ -159,15 +183,19 @@ export function draw(
     const foot: Pt[] = [];
     for (const [along, up] of profile) {
       for (const s of [-1, 1]) {
-        const v = floor.clone().addScaledVector(leg.foot, along).addScaledVector(UP, up);
+        const v = sole.clone().addScaledVector(leg.foot, along).addScaledVector(top, up);
         foot.push(at(v.addScaledVector(side, s * FOOT.half)));
       }
     }
-    const heel = floor.clone().addScaledVector(leg.foot, 0.06);
-    shape(`foot${i}`, polygon(hull(foot)), color, relative(heel));
+    const heel = sole.clone().addScaledVector(leg.foot, 0.06);
+    // Off the floor, the foot is pointed: the shin simply runs on to the toes
+    // and ends round, as a pictogram's gymnast does.
+    const pointed = !(leg.planted ?? leg.end.y < BODY.ankle + 0.05);
+    if (!pointed) shape(`foot${i}`, polygon(hull(foot)), color, relative(heel));
     const thigh = pill(at(leg.root), at(leg.mid), SIZE.thigh * scale);
     shape(`thigh${i}`, thigh, color, between(leg.root, leg.mid));
-    const shin = pill(at(leg.mid), at(leg.end), SIZE.shin * scale);
+    const toes = pointed ? leg.end.clone().addScaledVector(leg.foot, FOOT.long / 2) : leg.end;
+    const shin = pill(at(leg.mid), at(toes), SIZE.shin * scale);
     shape(`shin${i}`, shin, color, between(leg.mid, leg.end) + 0.002);
   });
 
@@ -182,26 +210,115 @@ export function draw(
   });
 
   const bar = pose.bar;
-  if (move.kit.bar && bar) {
+  const kind = move.kit.bar;
+  if (kind && bar) {
     const along = (z: number) => bar.clone().add(new Vec3(0, 0, z));
+    const span = (a: number, b: number) => `M${pt(at(along(a)))}L${pt(at(along(b)))}`;
     // Round things on the bar face along it: circles from the side, lines
     // face on, ellipses between.
     const disc = (z: number, r: number) =>
       ellipse(at(along(z)), r * Math.abs(Math.cos(angle)) * scale, r * scale);
-    const cut = (key: string, d: string) =>
-      cuts.push({ key, d, stroke: colors.field, width: LINE * scale, clipped: true });
+    const cut = (key: string, d: string, depth: number) =>
+      cuts.push({ paint: { key, d, stroke: colors.field, width: LINE * scale }, depth });
+    const half = kind === "barbell" ? BAR.half : FIXED.half;
+    // A bar across the back shows from the shoulders out: whole, it would
+    // show through the neck. Held in front, it's whole, and between the
+    // hands it cuts across whatever it passes in front of.
+    const barDepth = relative(bar);
+    const from = barDepth < torsoDepth - 0.01 ? BAR.from : 0;
+    if (barDepth > torsoDepth + 0.01) {
+      const grips = pose.arms.map((arm) => arm.end.z - bar.z);
+      const [lo, hi] = [Math.min(...grips) + SIZE.forearm, Math.max(...grips) - SIZE.forearm];
+      if (hi > lo) cut("bar-cut", span(lo, hi), barDepth);
+    }
     [1, -1].forEach((s, i) => {
-      const ends = `M${pt(at(along(s * BAR.from)))}L${pt(at(along(s * BAR.half)))}`;
-      line(`bar${i}`, ends, hands[i] - 0.004);
-      const plate = toward(along(s * BAR.plateAt));
-      line(`plate${i}`, disc(s * BAR.plateAt, BAR.plate), plate);
+      line(`bar${i}`, span(s * from, s * half), hands[i] - 0.004);
+      // A plate, or a fixed bar's end, nearer than the trunk is see-through,
+      // with the bar's end a little ring.
+      const plate = toward(along(s * (kind === "barbell" ? BAR.plateAt : half)));
+      const r = move.kit.plate ?? BAR.plate;
+      if (kind === "barbell") line(`plate${i}`, disc(s * BAR.plateAt, r), plate);
       if (plate > torsoDepth) {
-        cut(`plate${i}-cut`, disc(s * BAR.plateAt, BAR.plate));
-        line(`end${i}`, disc(s * BAR.half, BAR.end), plate);
-        cut(`end${i}-cut`, disc(s * BAR.half, BAR.end));
+        if (kind === "barbell") cut(`plate${i}-cut`, disc(s * BAR.plateAt, r), plate);
+        line(`end${i}`, disc(s * half, BAR.end), plate);
+        cut(`end${i}-cut`, disc(s * half, BAR.end), plate);
       }
     });
   }
+
+  // Dumbbells: solid, like the body — two round heads and the handle between,
+  // the far one in the tint — so a held weight reads at any size.
+  const dumbbells = pose.dumbbells ?? [];
+  dumbbells.forEach(({ at: middle, axis }, i) => {
+    const end = (side: number) => middle.clone().addScaledVector(axis, side * DUMBBELL.headAt);
+    const heads = [1, -1].map((side) => polygon(ring(end(side), axis, DUMBBELL.head)));
+    const handle = pill(at(end(-1)), at(end(1)), DUMBBELL.handle * scale);
+    const color = dumbbells.length === 2 ? colorOf(i) : colors.ink;
+    // Over the forearm that holds it.
+    const [a, b] = pose.arms;
+    const arm = a.end.distanceTo(middle) <= b.end.distanceTo(middle) ? a : b;
+    const over = between(arm.mid, arm.end) + 0.003;
+    shape(`dumbbell${i}`, heads.join("") + handle, color, Math.max(relative(middle) + 0.01, over));
+  });
+
+  // Props: lines, pads and rings in line; balls and kettlebells solid.
+  const propCut = (key: string, d: string, depth: number) => {
+    if (depth > torsoDepth + 0.01) {
+      cuts.push({ paint: { key, d, stroke: colors.field, width: LINE * scale }, depth });
+    }
+  };
+  (pose.props ?? []).forEach((prop, i) => {
+    const key = `prop${i}`;
+    if (prop.kind === "line") {
+      const d = `M${pt(at(prop.from))}L${pt(at(prop.to))}`;
+      const depth = between(prop.from, prop.to);
+      line(key, d, depth);
+      propCut(`${key}-cut`, d, depth);
+    } else if (prop.kind === "ring") {
+      const d = polygon(ring(prop.at, prop.normal, prop.r));
+      const depth = relative(prop.at);
+      line(key, d, depth);
+      propCut(`${key}-cut`, d, depth);
+    } else if (prop.kind === "pad") {
+      const along = prop.to.clone().sub(prop.from);
+      const across = (prop.across ?? new Vec3(0, 0, 1)).clone().normalize();
+      const up = prop.up ?? new Vec3().crossVectors(across, along).normalize();
+      if (up.y < 0 && !prop.up) up.negate();
+      const box: Pt[] = [];
+      for (const end of [prop.from, prop.to]) {
+        for (const h of [0, -prop.thick]) {
+          for (const w of [-prop.half, prop.half]) {
+            box.push(at(end.clone().addScaledVector(up, h).addScaledVector(across, w)));
+          }
+        }
+      }
+      const d = rounded(hull(box), 0.02 * scale);
+      // Behind the body, a pad covers what's behind it; well in front, it's an outline.
+      const depth = between(prop.from, prop.to);
+      line(key, d, Math.min(depth, torsoDepth - 0.05), colors.field);
+      if (prop.through) {
+        const paint = { key: `${key}-cut`, d, stroke: colors.field, width: LINE * scale };
+        cuts.push({ paint, depth: torsoDepth + 0.02 });
+      } else if (depth > torsoDepth + 0.15) propCut(`${key}-cut`, d, depth);
+    } else if (prop.kind === "ball") {
+      shape(key, circle(at(prop.at), prop.r * scale), colors.ink, relative(prop.at) + 0.01);
+    } else {
+      // The bell, and the handle's loop above it, always seen face on.
+      const down = prop.down.clone().normalize();
+      const cross = new Vec3().crossVectors(down, toCamera);
+      const side = (cross.length() < 1e-3 ? right.clone() : cross).normalize();
+      const bell = prop.at.clone().addScaledVector(down, KETTLEBELL.drop);
+      const corner = (s: number, h: number) =>
+        at(prop.at.clone().addScaledVector(side, s * KETTLEBELL.wide).addScaledVector(down, h));
+      const r = KETTLEBELL.handle * scale;
+      const handle =
+        pill(corner(-1, 0), corner(1, 0), r) +
+        pill(corner(-1, 0), corner(-1, KETTLEBELL.drop), r) +
+        pill(corner(1, 0), corner(1, KETTLEBELL.drop), r);
+      const d = circle(at(bell), KETTLEBELL.bell * scale) + handle;
+      shape(key, d, colors.ink, relative(bell) + 0.01);
+    }
+  });
 
   // A bench: its pad in outline over the field, two legs, a rail on the floor.
   const bench = move.kit.bench;
@@ -223,17 +340,29 @@ export function draw(
   }
 
   parts.sort((a, b) => a.depth - b.depth);
+  // Each cut shows only over the parts behind it.
+  const clips: string[] = [];
+  const over: Paint[] = [];
+  for (const { paint, depth } of cuts) {
+    const behind = outlines
+      .filter((o) => o.depth < depth)
+      .map((o) => o.d)
+      .join("");
+    if (!behind) continue;
+    if (!clips.includes(behind)) clips.push(behind);
+    over.push({ ...paint, clip: clips.indexOf(behind) });
+  }
   const ground: Paint = {
     key: "floor",
     d: `M0,${f(floorY)}H${f(width)}`,
     stroke: colors.tint,
     width: FLOOR * scale,
   };
-  return { paints: [ground, ...parts.flatMap((p) => p.paints), ...cuts], body: outlines.join("") };
+  return { paints: [ground, ...parts.flatMap((p) => p.paints), ...over], clips };
 }
 
-// Every outline runs clockwise on screen, so all of them in one path still
-// fill as their union — the body's outline for clipping.
+// Every outline runs clockwise on screen, so any of them in one path still
+// fill as their union — an outline for clipping.
 
 const pt = ([x, y]: Pt) => `${f(x)},${f(y)}`;
 

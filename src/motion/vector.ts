@@ -46,6 +46,11 @@ export class Vec3 {
     return this;
   }
 
+  setZ(z: number) {
+    this.z = z;
+    return this;
+  }
+
   dot(v: Vec3) {
     return this.x * v.x + this.y * v.y + this.z * v.z;
   }
