@@ -294,6 +294,54 @@ const LIFTS: Record<string, Guide> = {
     ],
     "Shrugging instead of pulling back with the elbows.",
   ),
+  db_floor_press: g(
+    [
+      "Lie on the floor, knees up, feet flat, a dumbbell in each hand over your chest.",
+      "Lower until your upper arms rest on the floor, elbows a little out from your sides.",
+      "Press straight back up.",
+    ],
+    "Dropping the elbows onto the floor with a bump.",
+  ),
+  kb_floor_press: g(
+    [
+      "Lie on the floor, knees up, feet flat. Hold each bell by the handle, the bell on the back of your wrist.",
+      "Lower until your upper arms rest on the floor.",
+      "Press straight back up. One bell? Do one arm, then the other.",
+    ],
+    "Letting the wrist bend back under the bell.",
+  ),
+  db_pullover: g(
+    [
+      "Lie on a bench and hold one dumbbell by the handle in both hands, over your chest, arms long.",
+      "Lower it in an arc behind your head until your upper arms are by your ears.",
+      "Pull it back over your chest, arms staying long.",
+    ],
+    "Bending the elbows to make it a triceps lift.",
+  ),
+  kb_row: g(
+    [
+      "Hand and knee on a bench or a sturdy chair, back flat.",
+      "Pull the bell toward the hip, elbow close.",
+      "Lower to a straight arm and a stretch.",
+    ],
+    "Twisting the torso open to heave the weight.",
+  ),
+  kb_rdl: g(
+    [
+      "Stand tall, the bell in both hands in front of your thighs, knees soft.",
+      "Push your hips back and let the bell slide down your legs, back flat.",
+      "Stop at a big stretch behind your thighs, then stand up by pushing the hips forward.",
+    ],
+    "Rounding the back to reach the bell lower.",
+  ),
+  kb_curl: g(
+    [
+      "Stand tall, holding the bell by the sides of its handle, arms straight.",
+      "Curl it up toward your chest. Only your forearms move.",
+      "Lower all the way to straight arms.",
+    ],
+    "Swinging it up with the hips.",
+  ),
   db_row: g(
     [
       "Hand and knee on a bench, back flat.",
@@ -1254,6 +1302,12 @@ const MOBILITY: Record<string, Guide> = {
 const OWN: Record<string, string> = {
   bench: "Pause with the bar on your chest. No bounce.",
   db_bench: "Pause for a second in the stretch at the bottom.",
+  db_floor_press: "Rest your upper arms on the floor for a second.",
+  kb_floor_press: "Rest your upper arms on the floor for a second.",
+  db_pullover: "Pause in the stretch behind your head.",
+  kb_row: "Hold the bell at your hip for a second.",
+  kb_rdl: "Pause in the stretch, back flat.",
+  kb_curl: "Hold at the top for a second, elbows still.",
   incline_bench: "Pause on the upper chest. No bounce.",
   machine_chest: "Pause in the stretch before each press.",
   incline_db_press: "Pause for a second in the stretch at the bottom.",

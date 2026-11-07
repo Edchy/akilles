@@ -565,7 +565,7 @@ function machineRow(): Move {
  * dumbbell toward the hip, elbow close, and lower to a straight arm and a
  * stretch. Seen from the side of the working arm.
  */
-function dumbbellRow(): Move {
+function dumbbellRow(kettlebell = false): Move {
   const top = 0.46;
   const lean = rad(78);
   const { trunk } = frameOf(lean);
@@ -578,7 +578,7 @@ function dumbbellRow(): Move {
   const shoulders = shouldersAt(pelvis, lean);
   const benchHand = new Vec3(shoulders[1].x + 0.03, top + 0.04, -0.17);
   return {
-    kit: { dumbbells: true },
+    kit: kettlebell ? {} : { dumbbells: true },
     film: {
       views: [0],
       lifts: true,
@@ -600,8 +600,9 @@ function dumbbellRow(): Move {
         kneePole: [new Vec3(1, 0, 0.3), new Vec3(0, -1, 0)],
       });
       pose.legs[1] = { ...pose.legs[1], planted: false };
-      pose.dumbbells = [{ at: hand, axis: new Vec3(1, 0, 0) }];
+      if (!kettlebell) pose.dumbbells = [{ at: hand, axis: new Vec3(1, 0, 0) }];
       pose.props = [
+        ...(kettlebell ? [{ kind: "kettlebell" as const, at: hand, down: new Vec3(0, -1, 0) }] : []),
         { kind: "pad", from: new Vec3(-0.55, top, -0.12), to: new Vec3(0.75, top, -0.12), ...PAD },
         rod(new Vec3(-0.4, top - PAD.thick, -0.12), new Vec3(-0.4, 0, -0.12)),
         rod(new Vec3(0.6, top - PAD.thick, -0.12), new Vec3(0.6, 0, -0.12)),
@@ -739,7 +740,8 @@ export const PULL: Record<string, () => Move> = {
   cable_row: cableRow,
   chest_supported_row: chestSupportedRow,
   machine_row: machineRow,
-  db_row: dumbbellRow,
+  db_row: () => dumbbellRow(),
+  kb_row: () => dumbbellRow(true),
   tbar_row: tBarRow,
   inverted_row: invertedRow,
   cable_curl: () => standingCurl("cable"),

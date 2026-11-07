@@ -3,6 +3,7 @@ import {
   chestAt,
   clearOfTrunk,
   elbowUpright,
+  clamp01,
   halve,
   handsOn,
   held,
@@ -114,9 +115,29 @@ function backSquat(smith = false): Move {
  * the elbows about 45° from the sides; up, it drifts back to over the
  * shoulders.
  */
-function benchPress(dumbbells = false): Move {
+function benchPress(
+  dumbbells = false,
+  {
+    floor = false,
+    kettlebells = false,
+    pullover = false,
+  }: {
+    /**
+     * Lying on the floor, knees up and feet flat: the elbows stop when the
+     * upper arms touch it.
+     */
+    floor?: boolean;
+    /** A kettlebell in each hand, the bell resting on the back of the forearm. */
+    kettlebells?: boolean;
+    /**
+     * One dumbbell held by the handle in both hands over the chest, arms long,
+     * lowered in an arc behind the head until the upper arms are by the ears.
+     */
+    pullover?: boolean;
+  } = {},
+): Move {
   const bench: Bench = {
-    top: 0.44,
+    top: floor ? 0 : 0.44,
     pad: 0.065,
     from: -0.86,
     to: 0.34,
@@ -172,37 +193,86 @@ function benchPress(dumbbells = false): Move {
     Vec3,
     Vec3,
   ];
-  const ankles = SIDES.map((s) => new Vec3(0.4, BODY.ankle, s * 0.3)) as [Vec3, Vec3];
+  const ankles = SIDES.map((s) =>
+    floor ? new Vec3(0.55, BODY.ankle, s * 0.2) : new Vec3(0.4, BODY.ankle, s * 0.3),
+  ) as [Vec3, Vec3];
+
+  /** The pullover: the arms `swing` from straight up over the shoulders back past the head. */
+  const over = (swing: number) => {
+    const long = 0.96 * (BODY.upperArm + BODY.forearm);
+    const middle = shoulders
+      .clone()
+      .add(new Vec3(-Math.sin(swing) * long, Math.cos(swing) * long, 0));
+    const pose = poseFrom({
+      pelvis,
+      lean,
+      ankles,
+      feet,
+      hands: handsOn(middle, 0.05),
+      elbowPole: SIDES.map((s) => new Vec3(0.2, 0, s)) as [Vec3, Vec3],
+    });
+    // Both hands round the handle, between the heads.
+    pose.dumbbells = [{ at: middle, axis: new Vec3(0, 0, 1) }];
+    pose.head = new Vec3(pose.head.x, bench.top + SIZE.head, 0);
+    pose.arch = arch;
+    return pose;
+  };
+
+  const pressAt = (d: number) => {
+    // Straight down at first, drifting to the chest late; up, back over
+    // the shoulders early.
+    const bar = new Vec3(lerp(top.x, bottom.x, d * d), lerp(top.y, bottom.y, d), 0);
+    const pose = poseFrom({
+      pelvis,
+      lean,
+      ankles,
+      feet,
+      hands: handsOn(bar, dumbbells ? lerp(narrow, grip, d) : grip),
+      elbowPole: new Vec3(0, -1, 0),
+      bar: dumbbells ? undefined : bar,
+      // On the floor the knees point up.
+      kneePole: floor ? new Vec3(0, 1, 0) : undefined,
+    });
+    if (kettlebells) {
+      pose.props = pose.arms.map((arm, i) => ({
+        kind: "kettlebell" as const,
+        at: arm.end,
+        down: new Vec3(-0.45, -0.85, SIDES[i] * 0.25).normalize(),
+      }));
+    } else if (dumbbells) {
+      pose.dumbbells = pose.arms.map((arm) => ({ at: arm.end, axis: new Vec3(0, 0, 1) }));
+    }
+    // The forearms upright all the way down.
+    pose.arms = pose.arms.map((arm) => {
+      const mid = elbowUpright(arm.root, arm.end, "side") ?? arm.mid;
+      return { ...arm, mid };
+    }) as [Limb, Limb];
+    // The head rests on the bench.
+    pose.head = new Vec3(pose.head.x, bench.top + SIZE.head, 0);
+    pose.arch = arch;
+    return pose;
+  };
+  // On the floor, down only until the elbows touch it.
+  const elbowLow = (d: number) =>
+    Math.min(...pressAt(d).arms.map((arm) => arm.mid.y)) - SIZE.upperArm;
+  const deepest = floor && elbowLow(1) < 0 ? halve((d) => -elbowLow(d), 0, 1) : 1;
 
   return {
-    kit: dumbbells ? { dumbbells, bench } : { bar: "barbell", bench },
-    film: { views: [0], middle: new Vec3(-0.15, 0, 0), room: { height: 1.45, width: 1.8 } },
+    kit: kettlebells
+      ? {}
+      : floor
+        ? { dumbbells }
+        : dumbbells
+          ? { dumbbells, bench }
+          : { bar: "barbell", bench },
+    film: floor
+      ? { views: [0], middle: new Vec3(0, 0, 0), room: { height: 1.1, width: 1.8 } }
+      : pullover
+        ? { views: [0], middle: new Vec3(-0.3, 0, 0), room: { height: 1.45, width: 2.0 } }
+        : { views: [0], middle: new Vec3(-0.15, 0, 0), room: { height: 1.45, width: 1.8 } },
     pose(depth) {
-      const d = Math.min(Math.max(depth, 0), 1);
-      // Straight down at first, drifting to the chest late; up, back over
-      // the shoulders early.
-      const bar = new Vec3(lerp(top.x, bottom.x, d * d), lerp(top.y, bottom.y, d), 0);
-      const pose = poseFrom({
-        pelvis,
-        lean,
-        ankles,
-        feet,
-        hands: handsOn(bar, dumbbells ? lerp(narrow, grip, d) : grip),
-        elbowPole: new Vec3(0, -1, 0),
-        bar: dumbbells ? undefined : bar,
-      });
-      if (dumbbells) {
-        pose.dumbbells = pose.arms.map((arm) => ({ at: arm.end, axis: new Vec3(0, 0, 1) }));
-      }
-      // The forearms upright all the way down.
-      pose.arms = pose.arms.map((arm) => {
-        const mid = elbowUpright(arm.root, arm.end, "side") ?? arm.mid;
-        return { ...arm, mid };
-      }) as [Limb, Limb];
-      // The head rests on the bench.
-      pose.head = new Vec3(pose.head.x, bench.top + SIZE.head, 0);
-      pose.arch = arch;
-      return pose;
+      const d = clamp01(depth);
+      return pullover ? over(lerp(rad(10), rad(100), d)) : pressAt(d * deepest);
     },
   };
 }
@@ -432,10 +502,11 @@ function pullUp(grip = 0.28): Move {
  * the palms turn from facing in to facing up on the way; in a hammer curl
  * they face in throughout.
  */
-function dumbbellCurl(hammer: boolean): Move {
+function dumbbellCurl(hammer: boolean, kettlebell = false): Move {
   const { feet, ankles, midFoot } = stand(0.15, rad(10));
   const tuck = 0.2;
-  const grip = 0.24;
+  // A kettlebell is held in both hands by the sides of its handle.
+  const grip = kettlebell ? 0.07 : 0.24;
   const out = rad(4);
   const load = 0.3;
   const topBend = rad(140);
@@ -458,7 +529,12 @@ function dumbbellCurl(hammer: boolean): Move {
     const facingIn = new Vec3(Math.cos(a), Math.sin(a), 0);
     const turn = hammer ? 0 : (bend / topBend) * (Math.PI / 2);
     const axis = facingIn.multiplyScalar(Math.cos(turn)).add(new Vec3(0, 0, Math.sin(turn)));
-    pose.dumbbells = hands.map((at) => ({ at, axis }));
+    if (kettlebell) {
+      // The bell hangs under the hands, against the forearms at the top.
+      const at = held(pose);
+      const lift = bend / topBend;
+      pose.props = [{ kind: "kettlebell", at, down: new Vec3(-0.6 * lift, -1, 0).normalize() }];
+    } else pose.dumbbells = hands.map((at) => ({ at, axis }));
     return pose;
   };
   // The lifter just far enough back to balance halfway up.
@@ -468,7 +544,7 @@ function dumbbellCurl(hammer: boolean): Move {
   }, 0, -0.05);
 
   return {
-    kit: { dumbbells: true },
+    kit: kettlebell ? {} : { dumbbells: true },
     film: {
       views: [0, 90],
       lifts: true,
@@ -543,14 +619,15 @@ function gobletSquat(kettlebell = false): Move {
  * stretch, the weight sliding down the legs, never drifting from them. The
  * lifter stays balanced over mid-foot.
  */
-function romanianDeadlift(dumbbells: boolean): Move {
+function romanianDeadlift(dumbbells: boolean, kettlebell = false): Move {
   const { feet, ankles, midFoot } = stand(0.15, rad(8));
   const knees = 18;
   const deepest = rad(65);
-  const load = dumbbells ? 0.4 : 0.8;
-  const grip = dumbbells ? 0.13 : 0.24;
-  /** What touches the legs: the bar, or a dumbbell's head. */
-  const thick = dumbbells ? 0.06 : BAR_RADIUS;
+  const load = dumbbells ? 0.4 : kettlebell ? 0.3 : 0.8;
+  // One kettlebell, both hands side by side on its handle.
+  const grip = dumbbells ? 0.13 : kettlebell ? 0.05 : 0.24;
+  /** What touches the legs: the bar, a dumbbell's head, or the bell. */
+  const thick = dumbbells ? 0.06 : kettlebell ? 0.09 : BAR_RADIUS;
   const reach = 0.998 * (BODY.upperArm + BODY.forearm);
   const hang = Math.sqrt(reach ** 2 - (grip - BODY.shoulder) ** 2);
 
@@ -569,9 +646,10 @@ function romanianDeadlift(dumbbells: boolean): Move {
       feet,
       hands,
       elbowPole: new Vec3(-1, 0, 0),
-      bar: dumbbells ? undefined : weight,
+      bar: dumbbells || kettlebell ? undefined : weight,
     });
     if (dumbbells) pose.dumbbells = hands.map((at) => ({ at, axis: new Vec3(0, 0, 1) }));
+    if (kettlebell) pose.props = [{ kind: "kettlebell", at: weight, down: new Vec3(0, -1, 0) }];
     return pose;
   };
   const legsClear = (pose: Pose) => {
@@ -611,7 +689,7 @@ function romanianDeadlift(dumbbells: boolean): Move {
   });
 
   return {
-    kit: dumbbells ? { dumbbells } : { bar: "barbell" },
+    kit: dumbbells ? { dumbbells } : kettlebell ? {} : { bar: "barbell" },
     film: { views: [0], middle: new Vec3(-0.05, 0, 0), room: { height: 1.85, width: 1.9 } },
     pose(depth) {
       const t = Math.min(Math.max(depth, 0), 1) * STEPS;
@@ -699,16 +777,21 @@ export const MOVES: Record<string, Move> = lazily({
   speed_squat: () => backSquat(),
   bench: () => benchPress(),
   db_bench: () => benchPress(true),
+  db_floor_press: () => benchPress(true, { floor: true }),
+  kb_floor_press: () => benchPress(true, { floor: true, kettlebells: true }),
+  db_pullover: () => benchPress(true, { pullover: true }),
   pullup: () => pullUp(),
   chinup: () => pullUp(0.2),
   bb_row: barbellRow,
   bb_curl: barbellCurl,
   db_curl: () => dumbbellCurl(false),
+  kb_curl: () => dumbbellCurl(true, true),
   hammer_curl: () => dumbbellCurl(true),
   goblet_squat: () => gobletSquat(),
   kb_goblet_squat: () => gobletSquat(true),
   rdl: () => romanianDeadlift(false),
   db_rdl: () => romanianDeadlift(true),
+  kb_rdl: () => romanianDeadlift(false, true),
   lateral_raise: lateralRaise,
   ...PUSH,
   ...ARMS,

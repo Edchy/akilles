@@ -112,17 +112,30 @@ const MODE_KEY = "achilles/mode";
  * 13 — triceps, biceps, shoulders, calves and core climb 10 → 12 → 14 in any
  *     slot. Their weights are kept and their ladders start again at 10 —
  *     see `toHighReps`.
- * 14 — the bodyweight squat, split squat and pike push-up, for training away from a gym,
+ * 14 — the bodyweight squat and split squat, for training away from a gym,
  *     start in the library — see `ADDED_IN_14`.
+ * 15 — the pike push-up and the kettlebell and floor lifts for training at
+ *     home start in the library too — see `ADDED_IN_15`.
  */
-const VERSION = 14;
+const VERSION = 15;
 
 /**
  * Version 14: lifts for training away from a gym. They start in the library
  * on every phone, as on a fresh install; Milo reaches for them away from the
  * gym whether or not they are in your catalogue.
  */
-const ADDED_IN_14: string[] = ["bw_squat", "bw_split_squat", "pike_push_up"];
+const ADDED_IN_14: string[] = ["bw_squat", "bw_split_squat"];
+
+/** Version 15: more of the same, as version 14. */
+const ADDED_IN_15: string[] = [
+  "pike_push_up",
+  "kb_row",
+  "kb_rdl",
+  "kb_curl",
+  "db_floor_press",
+  "kb_floor_press",
+  "db_pullover",
+];
 
 /**
  * Version 11: the built-ins added in this version.
@@ -502,6 +515,12 @@ export const fromSaved = (raw: string): SessionState | Unreadable => {
       migrated.hidden = [
         ...migrated.hidden,
         ...ADDED_IN_14.filter((id) => !migrated.hidden.includes(id)),
+      ];
+    }
+    if (saved.version < 15) {
+      migrated.hidden = [
+        ...migrated.hidden,
+        ...ADDED_IN_15.filter((id) => !migrated.hidden.includes(id)),
       ];
     }
 

@@ -64,6 +64,9 @@ const NEEDS: Record<string, Gear[]> = {
   // horizontal push
   bench: ["barbell", "bench"],
   db_bench: ["dumbbells", "bench"],
+  db_floor_press: ["dumbbells"],
+  kb_floor_press: ["kettlebell"],
+  db_pullover: ["dumbbells", "bench"],
   incline_bench: ["barbell", "bench"],
   machine_chest: ["machine"],
   incline_db_press: ["dumbbells", "bench"],
@@ -101,6 +104,7 @@ const NEEDS: Record<string, Gear[]> = {
   chest_supported_row: ["machine"],
   machine_row: ["machine"],
   db_row: ["dumbbells"],
+  kb_row: ["kettlebell"],
   tbar_row: ["gym"],
   // A low bar in a gym; at home, the edge of a sturdy table.
   inverted_row: [],
@@ -120,6 +124,7 @@ const NEEDS: Record<string, Gear[]> = {
   hip_thrust: ["barbell", "bench"],
   back_ext: ["gym"],
   db_rdl: ["dumbbells"],
+  kb_rdl: ["kettlebell"],
   nordic_curl: ["gym"],
   kb_swing: ["kettlebell"],
   sumo_deadlift: ["barbell"],
@@ -155,6 +160,7 @@ const NEEDS: Record<string, Gear[]> = {
   bb_shrug: ["barbell"],
   // biceps
   db_curl: ["dumbbells"],
+  kb_curl: ["kettlebell"],
   bb_curl: ["barbell"],
   hammer_curl: ["dumbbells"],
   cable_curl: ["cable"],
@@ -216,6 +222,8 @@ const NEEDS: Record<string, Gear[]> = {
 export const TWIN: Record<string, string> = {
   kb_goblet_squat: "goblet_squat",
   kb_press: "db_shoulder",
+  kb_row: "db_row",
+  kb_floor_press: "db_bench",
 };
 
 /** Whether a built-in exercise has its needs listed. For the test. */
