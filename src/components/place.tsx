@@ -112,7 +112,7 @@ export function PlaceLine() {
 }
 
 /** Pick the place, and for somewhere else, what is there. */
-function PlaceSheet({ onClose }: { onClose: () => void }) {
+export function PlaceSheet({ onClose }: { onClose: () => void }) {
   const { state, setState } = useSession();
   const [place, setPlaceDraft] = useState<Place>(placeOf(state));
   const [kit, setKit] = useState<Kit>(kitAt(state, "away"));
@@ -293,7 +293,8 @@ export function Option({
         borderRadius: 18,
         borderCurve: "continuous",
         backgroundColor: on ? colors.riseWash : colors.surface,
-        opacity: pressed ? 0.7 : 1,
+        opacity: pressed ? 0.8 : 1,
+        transform: [{ scale: pressed ? 0.98 : 1 }],
       })}
     >
       {icon}
@@ -357,7 +358,7 @@ function Chip({ label, on, onPress }: { label: string; on: boolean; onPress: () 
  * bar between two brackets, a bench's pad on its legs — and for nothing, the
  * figure itself.
  */
-function GearIcon({ gear }: { gear: Gear | "none" }) {
+export function GearIcon({ gear }: { gear: Gear | "none" | "home" }) {
   const ink = colors.text;
   const shape = (() => {
     switch (gear) {
@@ -396,6 +397,29 @@ function GearIcon({ gear }: { gear: Gear | "none" }) {
             <Rect x={3} y={11} width={26} height={5} rx={2.5} fill={ink} />
             <Rect x={7} y={16} width={3} height={9} rx={1.5} fill={ink} />
             <Rect x={22} y={16} width={3} height={9} rx={1.5} fill={ink} />
+          </>
+        );
+      case "gym":
+        return (
+          <>
+            <Rect x={2} y={14.5} width={28} height={3} rx={1.5} fill={ink} />
+            <Rect x={6} y={7} width={4} height={18} rx={2} fill={ink} />
+            <Rect x={10.5} y={9.5} width={3} height={13} rx={1.5} fill={ink} />
+            <Rect x={22} y={7} width={4} height={18} rx={2} fill={ink} />
+            <Rect x={18.5} y={9.5} width={3} height={13} rx={1.5} fill={ink} />
+          </>
+        );
+      case "home":
+        return (
+          <>
+            <Path
+              d="M4 15 L16 5 L28 15 V27 H4 Z"
+              fill={ink}
+              stroke={ink}
+              strokeWidth={2}
+              strokeLinejoin="round"
+            />
+            <Rect x={13} y={18} width={6} height={9} rx={1} fill={colors.bg} />
           </>
         );
       case "none":

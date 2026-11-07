@@ -320,18 +320,16 @@ The kit sheet asks which weights are there ("Any weight", or tick 10 kg). Then:
 
 ## Status (2026-11-07)
 
-**Built, tested, checked on the simulator (not committed):**
+**Built, tested, checked on the simulator, committed:**
 
 1. **Equipment.** Every exercise says what it needs (`src/data/kit.ts`); `src/lib/fill.ts` picks a slot's exercise from a kit, weights included. Progression steps to the next weight on hand and marks a lift outgrown at the heaviest (`src/lib/progression.ts`).
-2. **The place switch.** One line on Today ("At the gym · Change"), the "Where are you training?" sheet with weights to tick (`src/components/place.tsx`). Away: slots filled from the kit, machine cardio and the band warm-up left out, what sits out said plainly, gym numbers untouched.
-3. **Onboarding.** Where, home kit, time, the plan, Make it mine, then the intro (`src/components/onboarding.tsx`, `src/data/templates.ts`). Only on a phone that has never trained.
-4. **Started:** bodyweight squat, bodyweight split squat and pike push-up, with guides and films in Milo's marks. Storage version 14 puts them in the library on existing phones.
-5. **No sparse workouts.** A slot with nothing of its own kind takes the nearest kind (no bar to pull down on: a row), and a plan tops a short workout up with extras (bench dips, planks) to its template's length. Bodyweight only now gives full body A: squat, push-up, inverted row; B: glute bridge, pike push-up, inverted row.
+2. **The place switch** lives in Settings (the gear on Plan), with the "Where are you training?" sheet and weights to tick (`src/components/place.tsx`, `src/app/settings.tsx`). Today says nothing at your usual place; away, one quiet line says where you are and why the workout changed. Away: slots filled from the kit, machine cardio and the band warm-up left out, what sits out said plainly, gym numbers untouched.
+3. **Onboarding, one flow.** Welcome (a film of Milo's marks), where, home kit, time, the plan, Make it mine, then three how-it-works pages — the last with your own workouts — under one progress line, each page sliding in (`src/components/onboarding.tsx`). The old six-page intro is three pages (the wrestler and the building blocks are gone) and opens again from Settings.
+4. **Home lifts:** bodyweight squat and split squat, pike push-up, KB row, KB Romanian deadlift, KB curl, DB and KB floor press, DB pullover — guides and films in Milo's marks. Storage versions 14 and 15 put them in the library on existing phones.
+5. **No sparse workouts.** A slot with nothing of its own kind takes the nearest kind (no bar to pull down on: a row), and a plan tops a short workout up with extras (bench dips, planks) to its template's length.
 6. **The kit picker** has a drawn icon for each thing and "Another weight" to type any weight.
 
-**Still to do in step 4** (each film needs your look):
+**Still to do in step 4:**
 
-- DB and KB floor press, DB pullover, KB row, KB deadlift, KB curl.
 - Home cardio: walk or jog outside, skipping rope.
 - A band-free shoulder warm-up (arm circles, wall slides, prone Y-raises).
-- The intro's last page showing the user's own workouts.

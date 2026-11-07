@@ -11,21 +11,21 @@ import { FAMILY, colors, fonts, radii } from "@/constants/theme";
 import type { Family } from "@/data/families";
 import { useReduceMotion } from "@/lib/use-reduce-motion";
 import { Onboarding } from "@/components/onboarding";
-import { seeIntro, useSession, wantsIntro, wantsOnboarding } from "@/store/session";
+import { seeIntro, useSession, wantsIntro, wantsOnboarding, workoutFamily } from "@/store/session";
 
 /**
- * How Milo works, in six pages: why first — a little at a time, every visit
- * counts, Milo tells you what to do, light and slow — then how: exercises
- * are building blocks, and workouts take turns.
+ * How Milo works, in three pages: Milo tells you what to do, light and slow,
+ * and your workouts take turns — the last drawn with your own workouts.
  *
  * Written so that someone who has never trained, and never used an app like
  * this, understands it the first time: each heading says what it means
  * rather than being a slogan, and no gym word goes unexplained. Each page is
  * one picture and a few sentences with room around them, nothing more.
  *
- * It opens by itself on a phone that has trained nothing yet, and from
- * Plan's ? any time after. Skip is always there; finishing or skipping it
- * once is enough.
+ * A new phone meets these pages at the end of the onboarding, as part of the
+ * same flow (see `onboarding.tsx`). This modal shows them again from
+ * Settings, and opens by itself only on a phone that trained before the
+ * onboarding existed and never saw them. Skip is always there.
  */
 
 const Open = createContext<() => void>(() => {});
@@ -40,6 +40,7 @@ export function IntroProvider({ children }: { children: ReactNode }) {
   // The plan's questions come first; the intro follows them.
   const asking = wantsOnboarding(state);
   const first = wantsIntro(state) && !asking;
+  const turns = state.workouts.map((w) => ({ name: w.name, family: workoutFamily(state, w) }));
 
   return (
     <Open.Provider value={() => setAgain(true)}>
@@ -48,6 +49,7 @@ export function IntroProvider({ children }: { children: ReactNode }) {
       <Intro
         visible={first || again}
         again={!first}
+        turns={turns}
         onDone={() => {
           setAgain(false);
           setState((s) => seeIntro(s));
@@ -66,10 +68,12 @@ const FOOT = 100;
 function Intro({
   visible,
   again,
+  turns,
   onDone,
 }: {
   visible: boolean;
   again: boolean;
+  turns: Turn[];
   onDone: () => void;
 }) {
   const { width, height } = useWindowDimensions();
@@ -77,7 +81,7 @@ function Intro({
   const still = useReduceMotion();
   const pager = useRef<ScrollView>(null);
   const [page, setPage] = useState(0);
-  const last = page === PAGES.length - 1;
+  const last = page === HOW.length - 1;
 
   const column = Math.min(width, COLUMN);
   const inner = column - 44;
@@ -143,7 +147,7 @@ function Intro({
           onScroll={(e) => setPage(Math.round(e.nativeEvent.contentOffset.x / width))}
           style={{ flex: 1 }}
         >
-          {PAGES.map((p) => (
+          {HOW.map((p) => (
             <View key={p.title} style={{ width, alignItems: "center" }}>
               <View
                 accessibilityElementsHidden
@@ -155,8 +159,12 @@ function Intro({
                   justifyContent: "center",
                 }}
               >
-                <View style={{ transform: [{ scale: Math.min(1, (art - 16) / p.height) }] }}>
-                  {p.art(inner)}
+                <View
+                  style={{
+                    transform: [{ scale: Math.min(1, (art - 16) / p.height(turns.length)) }],
+                  }}
+                >
+                  {p.art(inner, turns)}
                 </View>
               </View>
               <View style={{ width: column, paddingHorizontal: 22, paddingTop: 20, gap: 14 }}>
@@ -199,7 +207,7 @@ function Intro({
           <Dots page={page} />
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel={last ? undefined : `Next, page ${page + 2} of ${PAGES.length}`}
+            accessibilityLabel={last ? undefined : `Next, page ${page + 2} of ${HOW.length}`}
             onPress={() => (last ? close() : go(page + 1))}
             style={({ pressed }) => ({
               height: 60,
@@ -232,7 +240,7 @@ function Dots({ page }: { page: number }) {
       importantForAccessibility="no-hide-descendants"
       style={{ flexDirection: "row", justifyContent: "center", gap: 5 }}
     >
-      {PAGES.map((p, i) => (
+      {HOW.map((p, i) => (
         <View
           key={p.title}
           style={{
@@ -250,45 +258,29 @@ function Dots({ page }: { page: number }) {
 
 // ---- the pages ----
 
-type Page = {
+/** A workout as the last page draws it. */
+export type Turn = { name: string; family: Family };
+
+export type HowPage = {
   title: string;
   body: string;
-  /** The picture, given the width of the column. */
-  art: (width: number) => ReactNode;
+  /** The picture, given the width of the column and your workouts. */
+  art: (width: number, turns: Turn[]) => ReactNode;
   /** The picture's own height, so a small phone can draw it smaller. */
-  height: number;
+  height: (turns: number) => number;
 };
 
-const TURNS: { family: Family; name: string; note?: string; next?: boolean }[] = [
-  { family: "push", name: "Push", note: "last time" },
-  { family: "pull", name: "Pull", note: "next", next: true },
-  { family: "legs", name: "Legs" },
-];
-
-// Three roomy rows, and the line from the last back up to the first.
+/** At most this many workouts drawn; a longer plan shows its first few. */
+const MOST_TURNS = 4;
 const TURN_ROW = 64;
 const TURN_GAP = 16;
-const TURNS_HEIGHT = TURNS.length * TURN_ROW + (TURNS.length - 1) * TURN_GAP;
-const FIRST = TURN_ROW / 2;
-const LAST = TURNS_HEIGHT - TURN_ROW / 2;
+const turnsHeight = (n: number) => {
+  const rows = Math.max(1, Math.min(n, MOST_TURNS));
+  return rows * TURN_ROW + (rows - 1) * TURN_GAP;
+};
 
-const PAGES: Page[] = [
-  {
-    title: "A little at a time.",
-    body:
-      "Long ago, a wrestler named Milo carried a newborn calf every day. The calf grew, and so " +
-      "did his strength, until he could carry a grown bull. This app trains you the same way.",
-    art: () => <Growing />,
-    height: 210,
-  },
-  {
-    title: "Every visit counts.",
-    body:
-      "Five minutes is a good day. There's no schedule to keep up with. Miss a day, or a week, " +
-      "and Milo carries on where you left off.",
-    art: (w) => <Week width={w} />,
-    height: 152,
-  },
+/** How Milo works: shared by the onboarding and by Settings. */
+export const HOW: HowPage[] = [
   {
     // "what to do" kept together, or it breaks as "…what / to do."
     title: "Milo tells you what\u00a0to\u00a0do.",
@@ -296,32 +288,23 @@ const PAGES: Page[] = [
       "Each exercise shows the weight to use. Each circle is one round: lift it that many times, " +
       "rest, then tap the circle. Milo plans next time for you.",
     art: () => <Lift />,
-    height: 312,
+    height: () => 312,
   },
   {
     title: "Light and slow.",
     body:
-      "Leave your ego at the door. Pick a weight you can lower slowly and lift without swinging. " +
-      "When you can lift it 12 times, Milo adds a little. Now and then you stay at a weight a " +
-      "while longer, to be sure.",
+      "Pick a weight you can lower slowly and lift without swinging. When you can lift it 12 " +
+      "times, Milo adds a little. Now and then you stay at a weight a while longer, to be sure.",
     art: () => <Climb />,
-    height: 246,
-  },
-  {
-    title: "Exercises are building blocks.",
-    body:
-      "A workout is a few exercises put together, and you can make your own. Each exercise " +
-      "remembers its weight, so in a new workout it starts where you left it.",
-    art: (w) => <Blocks width={w} />,
-    height: 298,
+    height: () => 246,
   },
   {
     title: "Your workouts take turns.",
     body:
-      "They go in order, then start again at the top. There are no set days: whenever you come " +
-      "back, the next one is ready. Change any of it under Plan.",
-    art: (w) => <Turns width={w} />,
-    height: TURNS_HEIGHT,
+      "There are no set days. Whenever you come, the next one is ready. Miss a day, or a week, " +
+      "and Milo carries on where you left off.",
+    art: (w, turns) => <Turns width={w} turns={turns} />,
+    height: (n) => turnsHeight(n),
   },
 ];
 
@@ -333,111 +316,8 @@ const caps = {
   textTransform: "uppercase",
 } as const;
 
-/** The name, over a calf becoming a bull: five dots, each a little bigger. */
-function Growing() {
-  return (
-    <View style={{ alignItems: "center", gap: 44 }}>
-      <Text
-        style={{
-          color: colors.text,
-          fontFamily: fonts.display,
-          fontSize: 108,
-          lineHeight: 116,
-          letterSpacing: -1,
-        }}
-      >
-        Milo
-      </Text>
-      <View style={{ flexDirection: "row", alignItems: "flex-end", gap: 18 }}>
-        {[12, 18, 26, 36, 50].map((d) => (
-          <View
-            key={d}
-            style={{
-              width: d,
-              height: d,
-              borderRadius: d / 2,
-              backgroundColor: colors.text,
-            }}
-          />
-        ))}
-      </View>
-    </View>
-  );
-}
-
-const DAYS = ["M", "T", "W", "T", "F", "S", "S"];
-const VISITS: Record<number, string> = { 0: "40 min", 2: "10 min", 5: "25 min" };
-
-/** A week like Progress shows it: three visits, one of them ten minutes. */
-function Week({ width }: { width: number }) {
-  return (
-    <View
-      style={{
-        width,
-        paddingTop: 24,
-        paddingHorizontal: 22,
-        paddingBottom: 26,
-        borderRadius: radii.card,
-        borderCurve: "continuous",
-        backgroundColor: colors.surface,
-        gap: 20,
-      }}
-    >
-      <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
-        <Text style={caps}>This week</Text>
-        <Text style={[caps, { color: colors.rise }]}>3 visits</Text>
-      </View>
-      <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
-        {DAYS.map((d, i) => {
-          const done = i in VISITS;
-          return (
-            <View key={i} style={{ width: 38, alignItems: "center", gap: 8 }}>
-              <View
-                style={{
-                  width: 38,
-                  height: 38,
-                  borderRadius: 19,
-                  alignItems: "center",
-                  justifyContent: "center",
-                  backgroundColor: done ? colors.rise : "transparent",
-                  borderWidth: done ? 0 : 1.5,
-                  borderColor: colors.line,
-                }}
-              >
-                <Text
-                  style={{
-                    color: done ? colors.ink : colors.faint,
-                    fontFamily: done ? fonts.medium : fonts.regular,
-                    fontSize: 17,
-                  }}
-                >
-                  {d}
-                </Text>
-              </View>
-              {done ? (
-                <Text
-                  numberOfLines={1}
-                  style={{
-                    width: 64,
-                    textAlign: "center",
-                    color: colors.muted,
-                    fontFamily: fonts.regular,
-                    fontSize: 14,
-                  }}
-                >
-                  {VISITS[i]}
-                </Text>
-              ) : null}
-            </View>
-          );
-        })}
-      </View>
-    </View>
-  );
-}
-
 /** A lift as the workout shows it, with what each part means written in. */
-function Lift() {
+export function Lift() {
   const blue = FAMILY.push.field;
   const note = {
     color: colors.white,
@@ -527,7 +407,7 @@ const CLIMB = [
 ];
 
 /** How the weight grows: a step at a time, one of them taken twice. */
-function Climb() {
+export function Climb() {
   return (
     <View style={{ alignItems: "center", gap: 22 }}>
       <Text style={caps}>How the weight grows</Text>
@@ -576,164 +456,28 @@ function Climb() {
   );
 }
 
-/**
- * One exercise, in two workouts: a line down from it to each. The second is
- * one you might make, drawn dashed like Plan's "New workout".
- */
-function Blocks({ width }: { width: number }) {
-  const card = (width - 18) / 2;
-  const line = FAMILY.push.mark;
-  const bar = { position: "absolute", width: 2, backgroundColor: line } as const;
-  return (
-    <View style={{ width }}>
-      <View
-        style={{
-          alignSelf: "center",
-          height: 58,
-          paddingHorizontal: 26,
-          borderRadius: 29,
-          backgroundColor: `${FAMILY.push.mark}1F`,
-          flexDirection: "row",
-          alignItems: "center",
-          gap: 12,
-        }}
-      >
-        <Mark family="push" size={18} />
-        <Text
-          style={{
-            color: colors.text,
-            fontFamily: fonts.medium,
-            fontSize: 22,
-          }}
-        >
-          Bench press
-        </Text>
-        <Text
-          style={{
-            color: colors.muted,
-            fontFamily: fonts.regular,
-            fontSize: 20,
-          }}
-        >
-          22.5 kg
-        </Text>
-      </View>
-      <View style={{ height: 54 }}>
-        <View style={[bar, { left: width / 2 - 1, top: 0, height: 24 }]} />
-        <View style={[bar, { left: card / 2 - 1, top: 24, width: width - card + 2, height: 2 }]} />
-        <View style={[bar, { left: card / 2 - 1, top: 24, height: 30 }]} />
-        <View style={[bar, { left: width - card / 2 - 1, top: 24, height: 30 }]} />
-      </View>
-      <View style={{ flexDirection: "row", gap: 18 }}>
-        <Card
-          name="Push"
-          rows={[
-            ["push", "Bench press", true],
-            ["push", "Shoulder press"],
-            ["push", "Pushdown"],
-          ]}
-        />
-        <Card
-          name="Upper body"
-          yours
-          rows={[
-            ["pull", "Lat pulldown"],
-            ["push", "Bench press", true],
-            ["pull", "Cable row"],
-          ]}
-        />
-      </View>
-    </View>
-  );
-}
-
-function Card({
-  name,
-  rows,
-  yours = false,
-}: {
-  name: string;
-  rows: [Family, string, boolean?][];
-  yours?: boolean;
-}) {
-  return (
-    <View
-      style={{
-        flex: 1,
-        paddingTop: 20,
-        paddingHorizontal: 14,
-        paddingBottom: 22,
-        borderRadius: 26,
-        borderCurve: "continuous",
-        backgroundColor: yours ? "transparent" : colors.surface,
-        borderWidth: yours ? 1.5 : 0,
-        borderStyle: "dashed",
-        borderColor: colors.line,
-        gap: 8,
-      }}
-    >
-      <Text
-        style={{
-          paddingHorizontal: 8,
-          paddingBottom: 6,
-          color: colors.text,
-          fontFamily: fonts.medium,
-          fontSize: 22,
-          lineHeight: 26,
-        }}
-      >
-        {name}
-      </Text>
-      {rows.map(([family, label, it]) => (
-        <View
-          key={label}
-          style={{
-            height: 32,
-            paddingHorizontal: 8,
-            borderRadius: 16,
-            backgroundColor: it ? `${FAMILY.push.mark}24` : "transparent",
-            flexDirection: "row",
-            alignItems: "center",
-            gap: 9,
-          }}
-        >
-          <Mark family={family} size={12} />
-          <Text
-            numberOfLines={1}
-            adjustsFontSizeToFit
-            minimumFontScale={0.8}
-            style={{
-              flex: 1,
-              color: colors.text,
-              fontFamily: it ? fonts.medium : fonts.regular,
-              fontSize: 17,
-            }}
-          >
-            {label}
-          </Text>
-        </View>
-      ))}
-    </View>
-  );
-}
-
-/** The workouts in order, with the way back to the top. */
-function Turns({ width }: { width: number }) {
+/** The workouts in order, with the way back to the top; the first is next. */
+function Turns({ width, turns }: { width: number; turns: Turn[] }) {
+  const shown = turns.slice(0, MOST_TURNS);
+  const height = turnsHeight(shown.length);
+  const first = TURN_ROW / 2;
+  const last = height - TURN_ROW / 2;
   return (
     <View style={{ width, flexDirection: "row" }}>
       <View style={{ flex: 1, gap: TURN_GAP }}>
-        {TURNS.map((t) => {
+        {shown.map((t, i) => {
           const c = FAMILY[t.family].mark;
+          const next = i === 0;
           return (
             <View
-              key={t.name}
+              key={`${t.name}-${i}`}
               style={{
                 height: TURN_ROW,
-                paddingHorizontal: t.next ? 20 : 22,
+                paddingHorizontal: next ? 20 : 22,
                 borderRadius: TURN_ROW / 2,
                 borderCurve: "continuous",
                 backgroundColor: `${c}1A`,
-                borderWidth: t.next ? 2 : 0,
+                borderWidth: next ? 2 : 0,
                 borderColor: c,
                 flexDirection: "row",
                 alignItems: "center",
@@ -742,6 +486,7 @@ function Turns({ width }: { width: number }) {
             >
               <Mark family={t.family} size={20} />
               <Text
+                numberOfLines={1}
                 style={{
                   flex: 1,
                   color: colors.text,
@@ -751,40 +496,35 @@ function Turns({ width }: { width: number }) {
               >
                 {t.name}
               </Text>
-              {t.note ? (
+              {next ? (
                 <Text
-                  style={{
-                    color: t.next ? colors.text : colors.muted,
-                    fontFamily: t.next ? fonts.mediumItalic : fonts.italic,
-                    fontSize: 17,
-                  }}
+                  style={{ color: colors.text, fontFamily: fonts.mediumItalic, fontSize: 17 }}
                 >
-                  {t.note}
+                  first
                 </Text>
               ) : null}
             </View>
           );
         })}
       </View>
-      <Svg width={56} height={TURNS_HEIGHT} viewBox={`0 0 56 ${TURNS_HEIGHT}`} fill="none">
-        <Path
-          d={
-            `M4 ${LAST} H18 Q38 ${LAST} 38 ${LAST - 20} ` +
-            `V${FIRST + 20} Q38 ${FIRST} 18 ${FIRST} H6`
-          }
-          stroke={colors.muted}
-          strokeWidth={2}
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-        <Path
-          d={`M14 ${FIRST - 8} L6 ${FIRST} L14 ${FIRST + 8}`}
-          stroke={colors.muted}
-          strokeWidth={2}
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-      </Svg>
+      {shown.length > 1 ? (
+        <Svg width={56} height={height} viewBox={`0 0 56 ${height}`} fill="none">
+          <Path
+            d={`M4 ${last} H18 Q38 ${last} 38 ${last - 20} V${first + 20} Q38 ${first} 18 ${first} H6`}
+            stroke={colors.muted}
+            strokeWidth={2}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+          <Path
+            d={`M14 ${first - 8} L6 ${first} L14 ${first + 8}`}
+            stroke={colors.muted}
+            strokeWidth={2}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </Svg>
+      ) : null}
     </View>
   );
 }

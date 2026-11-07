@@ -28,6 +28,7 @@ import {
   exerciseCount,
   finishWorkout,
   pendingDecays,
+  placeOf,
   postponeWorkout,
   sittingOut,
   skipWorkout,
@@ -169,8 +170,9 @@ export default function TodayScreen() {
           gap: 28,
         }}
       >
-        {/* Where you are training: one quiet line, and the way to change it. */}
-        {inProgress ? null : (
+        {/* Away from your usual place: one quiet line, so a changed workout
+            has its reason, and the way back. At home base, nothing. */}
+        {inProgress || placeOf(state) !== "away" ? null : (
           <View style={{ marginBottom: -16 }}>
             <PlaceLine />
           </View>

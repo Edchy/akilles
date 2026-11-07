@@ -1,3 +1,4 @@
+import { useRouter } from "expo-router";
 import { useState } from "react";
 import { Pressable, ScrollView, View } from "react-native";
 import { Text } from "@/components/text";
@@ -6,7 +7,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useBarSpace } from "@/components/bottom-bar";
 import { Catalogue } from "@/components/catalogue";
 import { Goals } from "@/components/goals";
-import { useOpenIntro } from "@/components/intro";
+import { Icon } from "@/components/icon";
 import { Modules } from "@/components/modules";
 import { COLUMN } from "@/components/screen";
 import { Segments } from "@/components/segments";
@@ -26,7 +27,7 @@ export default function PlanScreen() {
   const insets = useSafeAreaInsets();
   const barSpace = useBarSpace();
   const [segment, setSegment] = useState<Segment>("modules");
-  const openIntro = useOpenIntro();
+  const router = useRouter();
   // Frozen while a row is being dragged, or the drag would scroll the page too.
   const [dragging, setDragging] = useState(false);
 
@@ -55,12 +56,12 @@ export default function PlanScreen() {
         >
           Plan
         </Text>
-        {/* How it all fits together: the intro's six pages, again. Here
-            because Plan is where you meet workouts, exercises and goals. */}
+        {/* Settings: where you train, how Milo works, backup. Here because
+            Plan is where you set things up. */}
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="How Milo works"
-          onPress={openIntro}
+          accessibilityLabel="Settings"
+          onPress={() => router.push("/settings")}
           hitSlop={6}
           style={({ pressed }) => ({
             width: 44,
@@ -72,16 +73,7 @@ export default function PlanScreen() {
             opacity: pressed ? 0.6 : 1,
           })}
         >
-          <Text
-            style={{
-              color: colors.text,
-              fontFamily: fonts.medium,
-              fontSize: 24,
-              lineHeight: 28,
-            }}
-          >
-            ?
-          </Text>
+          <Icon name="settings" size={22} color={colors.text} />
         </Pressable>
       </View>
 

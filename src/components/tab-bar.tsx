@@ -23,8 +23,13 @@ export function TabButtons() {
           key={tab.href}
           icon={tab.icon}
           label={tab.label}
-          // The workout's own screens — its Done among them — belong to Today.
-          active={pathname === tab.href || (tab.href === "/" && pathname === "/workout")}
+          // The workout's own screens — its Done among them — belong to Today;
+          // Settings, opened from Plan, to Plan.
+          active={
+            pathname === tab.href ||
+            (tab.href === "/" && pathname === "/workout") ||
+            (tab.href === "/plan" && pathname === "/settings")
+          }
           onPress={() => router.replace(tab.href as never)}
         />
       ))}
