@@ -63,6 +63,23 @@ export const STAND_IN: Partial<Record<Pattern, Pattern>> = {
 };
 
 /**
+ * When nothing of a slot's own kind can be done here — no bar to pull down
+ * on, nothing to press overhead with — the nearest kind that still trains the
+ * same muscles, so a bodyweight workout isn't left with one exercise in it.
+ * Used only when the slot's own kind and its stand-ins have nothing.
+ */
+export const FALL_BACK: Partial<Record<Pattern, Pattern[]>> = {
+  vertical_pull: ["horizontal_pull"],
+  horizontal_pull: ["vertical_pull"],
+  vertical_push: ["horizontal_push"],
+  chest_iso: ["horizontal_push"],
+  shoulders: ["vertical_push"],
+  biceps: ["horizontal_pull", "vertical_pull"],
+  quads: ["lunge", "squat"],
+  hamstrings: ["hinge"],
+};
+
+/**
  * Pick the exercise for a slot. `candidates` are the slot's own, in order of
  * preference, already limited to what the kit has and you have not ruled
  * out; `standIns` are single-leg lifts that may take the place of a lift too

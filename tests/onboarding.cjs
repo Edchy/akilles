@@ -91,3 +91,12 @@ test("each slot holds the exercise its template names, even one not yet in the c
   const lower = plan({ time: "medium" }).find((w) => w.id === "lower");
   assert.equal(ids(lower).join(), "goblet_squat,db_rdl,split_squat,leg_curl,plank");
 });
+
+test("bodyweight only, every workout still has a full set of lifts", () => {
+  for (const time of ["short", "medium"]) {
+    for (const w of plan({ time, home: kit.BODYWEIGHT })) {
+      const want = templates.SHAPES[time === "short" ? "full" : "upper_lower"].find((t) => t.id === w.id);
+      assert.equal(w.exercises.length, want.exercises.length, `${time} ${w.id}: ${ids(w).join()}`);
+    }
+  }
+});

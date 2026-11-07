@@ -55,10 +55,10 @@ test("at the gym every slot holds exactly what it holds today", () => {
   }
 });
 
-test("with nothing but you, push day is push-ups and bench dips, and the rest sits out", () => {
+test("with nothing but you, push day is push-ups, pike push-ups and bench dips", () => {
   const got = filled(fresh(), "push", kit.BODYWEIGHT);
   assert.equal(got["Horizontal press"], "push_up");
-  assert.equal(got["Vertical press"], null);
+  assert.equal(got["Vertical press"], "pike_push_up");
   assert.equal(got["Chest fly"], null);
   assert.equal(got["Triceps"], "bench_dip");
   for (const id of Object.values(got)) if (id) assert.ok(kit.fits({ id }, kit.BODYWEIGHT), id);
@@ -127,7 +127,7 @@ test("a lift never done is never judged by a guess", () => {
 
 test("too heavy to do well: the slot gives way or sits out", () => {
   const state = withRecord(fresh(), "db_shoulder", 12);
-  assert.equal(filled(state, "push", KB(32))["Vertical press"], null);
+  assert.notEqual(filled(state, "push", KB(32))["Vertical press"], "kb_press");
   assert.equal(filled(state, "push", KB(12))["Vertical press"], "kb_press");
 });
 
@@ -194,7 +194,7 @@ test("away with nothing: the same workout comes next, with what can be done anyw
   // What sits out is said, not hidden.
   assert.deepEqual(
     store.sittingOut(state, workout(state, "push")).map((e) => e.slot).join(),
-    "Vertical press,Chest fly",
+    "Chest fly",
   );
 });
 

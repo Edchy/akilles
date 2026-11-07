@@ -170,6 +170,9 @@ export const EXERCISES: Exercise[] = [
   { id: "smith_shoulder_press", name: "Smith machine shoulder press", patterns: ["vertical_push"], increment: 2.5,
     aliases: ["smith shoulder press", "smith overhead press", "smith military press"] },
 
+  { id: "pike_push_up", name: "Pike push-up", patterns: ["vertical_push"], increment: 1, bodyweight: true, holds: true,
+    cue: "Hips high. Lower the top of your head toward the floor.",
+    aliases: ["pike push up", "pike press", "bodyweight shoulder press"] },
   // ---------- vertical pull ----------
   { id: "pullup", name: "Pull-up", patterns: ["vertical_pull"], increment: 2.5, bodyweight: true, assistable: true, cue: "Chest to bar, full hang each rep.",
     aliases: ["pull up", "pull ups", "pull-ups", "pullups", "assisted pull-up", "assisted pull up"] },

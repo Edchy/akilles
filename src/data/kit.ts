@@ -85,6 +85,7 @@ const NEEDS: Record<string, Gear[]> = {
   db_shoulder: ["dumbbells"],
   machine_shoulder: ["machine"],
   kb_press: ["kettlebell"],
+  pike_push_up: [],
   arnold_press: ["dumbbells"],
   smith_shoulder_press: ["machine"],
   // vertical pull

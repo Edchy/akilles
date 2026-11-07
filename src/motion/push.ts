@@ -665,6 +665,67 @@ function pushUp(): Move {
 }
 
 /**
+ * The pike push-up: hands and toes on the floor, hips high, the body an
+ * upside-down V with the arms in line with the trunk. Bend the elbows to
+ * lower the top of the head toward the floor just in front of the hands,
+ * elbows back toward the feet, hips staying high; press back up. An
+ * overhead press, upside down, with nothing to hold.
+ */
+function pikePushUp(): Move {
+  const ankleY = 0.15;
+  const ankle = new Vec3(0.04, ankleY, 0);
+  const feet = mirror(new Vec3(-0.25, -1, 0).normalize());
+  const legs = 0.995 * (BODY.thigh + BODY.shin);
+  const reach = 0.998 * (BODY.upperArm + BODY.forearm);
+  const grip = 0.22;
+  const handY = 0.03;
+  /** Legs `rise` above the floor, the trunk `drop` below level toward the hands. */
+  const frame = (rise: number, drop: number) => {
+    const pelvis = ankle.clone().add(new Vec3(Math.cos(rise), Math.sin(rise), 0).multiplyScalar(legs));
+    const down = new Vec3(Math.cos(drop), -Math.sin(drop), 0);
+    const shoulders = pelvis.clone().addScaledVector(down, BODY.torso);
+    return { pelvis, shoulders, down };
+  };
+  // At the top the arms are straight, in line with the trunk, hands on the floor.
+  const riseTop = rad(55);
+  const dropTop = secant(
+    (d) => {
+      const { shoulders, down } = frame(riseTop, d);
+      return shoulders.y + down.y * Math.sqrt(reach ** 2 - (grip - BODY.shoulder) ** 2) - handY;
+    },
+    rad(45),
+    rad(55),
+  );
+  const { shoulders: topShoulders, down: topDown } = frame(riseTop, dropTop);
+  const handX =
+    topShoulders.x + topDown.x * Math.sqrt(reach ** 2 - (grip - BODY.shoulder) ** 2);
+  // Lowering, the hips come forward over the hands a little, so the head
+  // travels down and forward into the triangle the hands make.
+  const riseBottom = rad(42);
+  const at = (rise: number, drop: number) =>
+    poseFrom({
+      pelvis: frame(rise, drop).pelvis,
+      lean: Math.PI / 2 + drop,
+      ankles: SIDES.map((s) => ankle.clone().setZ(s * 0.1)) as [Vec3, Vec3],
+      feet,
+      hands: SIDES.map((s) => new Vec3(handX, handY, s * grip)) as [Vec3, Vec3],
+      // Elbows bend up and back toward the feet, forearms near upright.
+      elbowPole: mirror(new Vec3(-0.4, 1, 0.2)),
+      kneePole: new Vec3(0, -1, 0),
+    });
+  // At the bottom the top of the head is just off the floor.
+  const dropBottom = secant((d) => at(riseBottom, d).head.y - SIZE.head - 0.04, rad(60), rad(75));
+  return {
+    kit: {},
+    film: { views: [0], middle: new Vec3(0.65, 0, 0), room: { height: 1.3, width: 1.8 } },
+    pose: (depth) => {
+      const d = clamp01(depth);
+      return at(lerp(riseTop, riseBottom, d), lerp(dropTop, dropBottom, d));
+    },
+  };
+}
+
+/**
  * The standing overhead press: the bar on the front of the shoulders, grip
  * just outside them; braced, glutes tight, press straight up past the face,
  * then push the head through so the bar finishes over the middle of the
@@ -840,6 +901,7 @@ export const PUSH: Record<string, () => Move> = {
   cable_crossover: cableCrossover,
   dips,
   push_up: pushUp,
+  pike_push_up: pikePushUp,
   ohp: overheadPress,
   kb_press: kettlebellPress,
 };

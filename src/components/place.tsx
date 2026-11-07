@@ -1,9 +1,11 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { Pressable, View } from "react-native";
+import Svg, { Circle, Path, Rect } from "react-native-svg";
 
 import { Icon } from "@/components/icon";
 import { BigButton, SectionLabel, Sheet } from "@/components/sheet";
-import { Text } from "@/components/text";
+import { Text, TextInput } from "@/components/text";
+import { parseWeight } from "@/components/weight-field";
 import { colors, radii } from "@/constants/theme";
 import type { Gear, Kit, Load } from "@/data/kit";
 import { kitAt, placeOf, setPlace, useSession, type Place } from "@/store/session";
@@ -169,7 +171,13 @@ export function KitPicker({ kit, onChange }: { kit: Kit; onChange: (kit: Kit) =>
     <View style={{ gap: 12 }}>
       {THINGS.map(({ gear, label }) => (
         <View key={gear} style={{ gap: 12 }}>
-          <Option label={label} on={has(gear)} check onPress={() => toggle(gear)} />
+          <Option
+            label={label}
+            icon={<GearIcon gear={gear} />}
+            on={has(gear)}
+            check
+            onPress={() => toggle(gear)}
+          />
           {(gear === "dumbbells" || gear === "kettlebell") && has(gear) ? (
             <WeightChips
               load={gear}
@@ -181,6 +189,7 @@ export function KitPicker({ kit, onChange }: { kit: Kit; onChange: (kit: Kit) =>
       ))}
       <Option
         label="Nothing, just me"
+        icon={<GearIcon gear="none" />}
         on={kit.gear.length === 0}
         onPress={() => onChange({ gear: [] })}
       />
@@ -198,10 +207,21 @@ function WeightChips({
   chosen: number[];
   onChange: (list: number[]) => void;
 }) {
+  const [typing, setTyping] = useState(false);
+  const [text, setText] = useState("");
+  const typed = parseWeight(text);
   const toggle = (w: number) =>
     onChange(
       chosen.includes(w) ? chosen.filter((x) => x !== w) : [...chosen, w].sort((a, b) => a - b),
     );
+  const add = () => {
+    if (typed === null || typed <= 0) return;
+    if (!chosen.includes(typed)) onChange([...chosen, typed].sort((a, b) => a - b));
+    setText("");
+    setTyping(false);
+  };
+  // The usual weights, and any you typed that aren't among them.
+  const shown = [...new Set([...WEIGHTS[load], ...chosen])].sort((a, b) => a - b);
   return (
     <View style={{ gap: 10, paddingLeft: 16 }}>
       <Text style={{ color: colors.faint, fontSize: 15 }}>
@@ -209,10 +229,36 @@ function WeightChips({
       </Text>
       <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
         <Chip label="Any weight" on={chosen.length === 0} onPress={() => onChange([])} />
-        {WEIGHTS[load].map((w) => (
+        {shown.map((w) => (
           <Chip key={w} label={`${w} kg`} on={chosen.includes(w)} onPress={() => toggle(w)} />
         ))}
+        {typing ? null : <Chip label="Another weight" on={false} onPress={() => setTyping(true)} />}
       </View>
+      {typing ? (
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+          <TextInput
+            value={text}
+            onChangeText={setText}
+            autoFocus
+            keyboardType="decimal-pad"
+            placeholder="18"
+            placeholderTextColor={colors.dim}
+            accessibilityLabel={`Another ${load === "kettlebell" ? "kettlebell" : "dumbbell"} weight, in kg`}
+            selectionColor={colors.text}
+            style={{
+              flex: 1,
+              minHeight: 52,
+              paddingHorizontal: 16,
+              borderRadius: 16,
+              backgroundColor: colors.surface,
+              color: colors.text,
+              fontSize: 20,
+            }}
+          />
+          <Text style={{ color: colors.muted, fontSize: 17 }}>kg</Text>
+          <Chip label="Add" on={typed !== null && typed > 0} onPress={add} />
+        </View>
+      ) : null}
     </View>
   );
 }
@@ -220,11 +266,14 @@ function WeightChips({
 /** One answer: a full-width row, with a tick or a dot when it is the one. */
 export function Option({
   label,
+  icon,
   on,
   check,
   onPress,
 }: {
   label: string;
+  /** A small picture of the thing, before its name. */
+  icon?: ReactNode;
   on: boolean;
   /** Several can be on at once: a tick rather than a dot. */
   check?: boolean;
@@ -247,6 +296,7 @@ export function Option({
         opacity: pressed ? 0.7 : 1,
       })}
     >
+      {icon}
       <Text style={{ flex: 1, color: colors.text, fontSize: 18, fontWeight: on ? "600" : "400" }}>
         {label}
       </Text>
@@ -298,5 +348,76 @@ function Chip({ label, on, onPress }: { label: string; on: boolean; onPress: () 
         {label}
       </Text>
     </Pressable>
+  );
+}
+
+/**
+ * The gear, drawn the way Milo's marks draw it in the films: flat ink shapes
+ * with rounded ends. A dumbbell's two heads, a kettlebell's bell and handle, a
+ * bar between two brackets, a bench's pad on its legs — and for nothing, the
+ * figure itself.
+ */
+function GearIcon({ gear }: { gear: Gear | "none" }) {
+  const ink = colors.text;
+  const shape = (() => {
+    switch (gear) {
+      case "dumbbells":
+        return (
+          <>
+            <Rect x={9} y={14.5} width={14} height={3} rx={1.5} fill={ink} />
+            <Rect x={4} y={9} width={6} height={14} rx={3} fill={ink} />
+            <Rect x={22} y={9} width={6} height={14} rx={3} fill={ink} />
+          </>
+        );
+      case "kettlebell":
+        return (
+          <>
+            <Path
+              d="M11 14 V10 a5 5 0 0 1 10 0 V14"
+              stroke={ink}
+              strokeWidth={3}
+              strokeLinecap="round"
+              fill="none"
+            />
+            <Circle cx={16} cy={20} r={8} fill={ink} />
+          </>
+        );
+      case "pullup_bar":
+        return (
+          <>
+            <Rect x={3} y={10} width={26} height={3} rx={1.5} fill={ink} />
+            <Rect x={4} y={7} width={4} height={9} rx={2} fill={ink} />
+            <Rect x={24} y={7} width={4} height={9} rx={2} fill={ink} />
+          </>
+        );
+      case "bench":
+        return (
+          <>
+            <Rect x={3} y={11} width={26} height={5} rx={2.5} fill={ink} />
+            <Rect x={7} y={16} width={3} height={9} rx={1.5} fill={ink} />
+            <Rect x={22} y={16} width={3} height={9} rx={1.5} fill={ink} />
+          </>
+        );
+      case "none":
+        return (
+          <>
+            <Circle cx={16} cy={7.5} r={4.5} fill={ink} />
+            <Path
+              d="M9 14 H23 L16 28 Z"
+              fill={ink}
+              stroke={ink}
+              strokeWidth={2}
+              strokeLinejoin="round"
+            />
+          </>
+        );
+      default:
+        return null;
+    }
+  })();
+  return (
+    <Svg width={32} height={32} viewBox="0 0 32 32" accessibilityElementsHidden>
+      {shape}
+    </Svg>
   );
 }

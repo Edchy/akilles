@@ -325,11 +325,13 @@ The kit sheet asks which weights are there ("Any weight", or tick 10 kg). Then:
 1. **Equipment.** Every exercise says what it needs (`src/data/kit.ts`); `src/lib/fill.ts` picks a slot's exercise from a kit, weights included. Progression steps to the next weight on hand and marks a lift outgrown at the heaviest (`src/lib/progression.ts`).
 2. **The place switch.** One line on Today ("At the gym · Change"), the "Where are you training?" sheet with weights to tick (`src/components/place.tsx`). Away: slots filled from the kit, machine cardio and the band warm-up left out, what sits out said plainly, gym numbers untouched.
 3. **Onboarding.** Where, home kit, time, the plan, Make it mine, then the intro (`src/components/onboarding.tsx`, `src/data/templates.ts`). Only on a phone that has never trained.
-4. **Started:** bodyweight squat and bodyweight split squat, with guides and films in Milo's marks. Storage version 14 puts them in the library on existing phones.
+4. **Started:** bodyweight squat, bodyweight split squat and pike push-up, with guides and films in Milo's marks. Storage version 14 puts them in the library on existing phones.
+5. **No sparse workouts.** A slot with nothing of its own kind takes the nearest kind (no bar to pull down on: a row), and a plan tops a short workout up with extras (bench dips, planks) to its template's length. Bodyweight only now gives full body A: squat, push-up, inverted row; B: glute bridge, pike push-up, inverted row.
+6. **The kit picker** has a drawn icon for each thing and "Another weight" to type any weight.
 
 **Still to do in step 4** (each film needs your look):
 
-- Pike push-up, DB and KB floor press, DB pullover, KB row, KB deadlift, KB curl.
+- DB and KB floor press, DB pullover, KB row, KB deadlift, KB curl.
 - Home cardio: walk or jog outside, skipping rope.
 - A band-free shoulder warm-up (arm circles, wall slides, prone Y-raises).
 - The intro's last page showing the user's own workouts.

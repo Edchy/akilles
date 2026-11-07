@@ -111,6 +111,21 @@ export const SHAPES: Record<Shape, Workout[]> = {
 };
 
 /**
+ * What tops a workout up when the place can't fill its own slots — a
+ * bodyweight Upper day has no curl and only one row. The plan adds slots of
+ * these kinds, in order, until the workout is as long as its template.
+ */
+export const EXTRAS: Record<string, Pattern[]> = {
+  full_a: ["abs", "lunge", "triceps"],
+  full_b: ["abs", "lunge", "triceps"],
+  upper: ["triceps", "abs", "shoulders"],
+  lower: ["calves", "lunge", "abs"],
+  push: ["triceps", "abs"],
+  pull: ["abs", "biceps"],
+  legs: ["calves", "abs", "lunge"],
+};
+
+/**
  * Parts of the body to go easy on, and the exercises that load them most.
  * Not medical advice and never presented as such — a preference, like any
  * other. A slot left with nothing is dropped from the plan.
@@ -160,6 +175,7 @@ export const EASY_ON: Record<Easy, string[]> = {
     "kb_press",
     "arnold_press",
     "smith_shoulder_press",
+    "pike_push_up",
     "dips",
     "upright_row",
     "skullcrusher",

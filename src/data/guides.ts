@@ -174,6 +174,14 @@ const LIFTS: Record<string, Guide> = {
     ],
     "Arching the lower back off the seat to finish a rep.",
   ),
+  pike_push_up: g(
+    [
+      "Hands and feet on the floor, hips high, so your body makes an upside-down V.",
+      "Bend your elbows and lower the top of your head toward the floor just in front of your hands.",
+      "Push back up until your arms are straight. Hips stay high the whole time.",
+    ],
+    "Letting the hips drop until it turns into an ordinary push-up.",
+  ),
   kb_press: g(
     [
       "Clean the bell to the shoulder, resting on the back of the forearm.",
@@ -1264,6 +1272,7 @@ const OWN: Record<string, string> = {
   ohp: "Hold the lockout overhead for a second, ribs down.",
   db_shoulder: "Pause at the bottom, dumbbells by your ears.",
   kb_press: "Pause in the rack, then press. No dip from the legs.",
+  pike_push_up: "Pause with your head just off the floor.",
   machine_shoulder: "Pause at the bottom without resting the stack.",
   arnold_press: "Pause at the bottom, palms facing you.",
   smith_shoulder_press: "Pause at the bottom without resting the bar.",
@@ -1383,6 +1392,7 @@ const OWN_ANY = "Lower it slowly and hold where it's hardest.";
 const HOLD: Record<string, string> = {
   push_up: "Pause for {s} with your chest just off the floor.",
   bw_squat: "Pause for {s} at the bottom, chest up, heels down.",
+  pike_push_up: "Pause for {s} with your head just off the floor.",
   bw_split_squat: "Pause for {s} with the back knee just off the floor.",
   inverted_row: "Hold your chest at the bar for {s}.",
   nordic_curl: "Pause halfway down for {s}, hips straight.",

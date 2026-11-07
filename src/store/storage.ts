@@ -112,7 +112,7 @@ const MODE_KEY = "achilles/mode";
  * 13 — triceps, biceps, shoulders, calves and core climb 10 → 12 → 14 in any
  *     slot. Their weights are kept and their ladders start again at 10 —
  *     see `toHighReps`.
- * 14 — the bodyweight squat and split squat, for training away from a gym,
+ * 14 — the bodyweight squat, split squat and pike push-up, for training away from a gym,
  *     start in the library — see `ADDED_IN_14`.
  */
 const VERSION = 14;
@@ -122,7 +122,7 @@ const VERSION = 14;
  * on every phone, as on a fresh install; Milo reaches for them away from the
  * gym whether or not they are in your catalogue.
  */
-const ADDED_IN_14: string[] = ["bw_squat", "bw_split_squat"];
+const ADDED_IN_14: string[] = ["bw_squat", "bw_split_squat", "pike_push_up"];
 
 /**
  * Version 11: the built-ins added in this version.

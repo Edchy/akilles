@@ -71,8 +71,8 @@ import {
 } from "@/data/split";
 import { warmupFor, weightLabel, type WarmupSet } from "@/lib/warmup";
 import { BODYWEIGHT, GYM, fits, nearestWeight, TWIN, weightsFor, type Kit } from "@/data/kit";
-import { pick, STAND_IN, type Candidate } from "@/lib/fill";
-import { avoidFor, SHAPE_FOR, SHAPES, type Easy, type Shape, type Time } from "@/data/templates";
+import { FALL_BACK, pick, STAND_IN, type Candidate } from "@/lib/fill";
+import { avoidFor, EXTRAS, SHAPE_FOR, SHAPES, type Easy, type Shape, type Time } from "@/data/templates";
 import type { Outcome, Say } from "@/data/voice";
 import { familyOf, type Family } from "@/data/families";
 import {
@@ -757,14 +757,22 @@ export const fillWorkout = (
           .filter((e) => isPattern(e, standIn))
           .map((e) => e.id)
       : [];
+    const ofKind = (pattern: Pattern) =>
+      [...catalogue(state).filter((e) => !e.restricted), ...library]
+        .filter((e) => isPattern(e, pattern) && usable(e.id))
+        .map((e) => candidate(entry)(e.id));
     const id =
       mine && pool.includes(mine) && usable(mine)
         ? mine
-        : pick(
+        : (pick(
             pool.filter(usable).map(candidate(entry)),
             standIns.filter(usable).map(candidate(entry)),
             kit,
-          );
+          ) ??
+          (FALL_BACK[entry.pattern] ?? []).reduce<string | null>(
+            (found, pattern) => found ?? pick(ofKind(pattern), [], kit),
+            null,
+          ));
     filled[entry.id] = id;
     if (id) taken.add(id);
   }
@@ -3382,13 +3390,36 @@ export const makePlan = (state: SessionState, answers: Answers): Workout[] => {
   const shape = SHAPES[answers.shape ?? SHAPE_FOR[answers.time]];
   const blank: SessionState = { ...state, workouts: shape, choices: {}, avoid };
   return shape.flatMap((w) => {
-    const filled = fillWorkout(blank, w, kit, {}, avoid);
-    const exercises = w.exercises.flatMap((e) => {
-      const id = filled[e.id];
-      return id ? [{ ...e, options: [id] }] : [];
-    });
+    // The template's slots, then extras to top it up where the place falls
+    // short; only as many extras as the slots left empty.
+    const extras = (EXTRAS[w.id] ?? []).map((pattern, i) => ({
+      id: `extra_${i}`,
+      slot: PATTERN_LABEL[pattern],
+      pattern,
+      options: [] as string[],
+      scheme: defaultScheme(pattern),
+    }));
+    const all = { ...w, exercises: [...w.exercises, ...extras] };
+    const filled = fillWorkout({ ...blank, workouts: [all] }, all, kit, {}, avoid);
+    const own = w.exercises.flatMap((e) => (filled[e.id] ? [settle(e, filled[e.id]!)] : []));
+    const more = extras
+      .flatMap((e) => (filled[e.id] ? [settle(e, filled[e.id]!)] : []))
+      .slice(0, w.exercises.length - own.length);
+    const exercises = [...own, ...more];
     return exercises.length > 0 ? [{ ...w, exercises }] : [];
   });
+};
+
+/**
+ * A slot holding the exercise it was filled with. One filled from a nearer
+ * kind — a row where the bar to pull down on is missing — becomes a slot of
+ * that kind, so Plan, swaps and Today all agree on what it is.
+ */
+const settle = (entry: Entry, id: string): Entry => {
+  const ex = byId(id)!;
+  if (isPattern(ex, entry.pattern)) return { ...entry, options: [id] };
+  const pattern = ex.patterns[0];
+  return { ...entry, slot: PATTERN_LABEL[pattern], pattern, options: [id] };
 };
 
 /** Start training on the plan these answers make. */
