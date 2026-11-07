@@ -169,6 +169,7 @@ test("Today opens both choices, cancels without changes, and Undo restores an ex
     if (name === "@/components/icon") return { Icon: "Icon" };
     if (name === "@/components/text") return { Text: "Text" };
     if (name === "@/components/mark") return { Mark: "Mark" };
+    if (name === "@/components/place") return { PlaceLine: "PlaceLine" };
     return load(name);
   };
   const module = { exports: {} };

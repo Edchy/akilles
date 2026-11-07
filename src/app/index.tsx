@@ -6,6 +6,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useBarSpace } from "@/components/bottom-bar";
 import { Mark } from "@/components/mark";
+import { PlaceLine } from "@/components/place";
 import { Column, COLUMN } from "@/components/screen";
 import { Sheet, OpenRow } from "@/components/sheet";
 import { colors, FAMILY, fonts, radii } from "@/constants/theme";
@@ -28,6 +29,7 @@ import {
   finishWorkout,
   pendingDecays,
   postponeWorkout,
+  sittingOut,
   skipWorkout,
   trainedToday,
   upNext,
@@ -95,6 +97,8 @@ export default function TodayScreen() {
 
   const rows = workoutPreview(state, workout);
   const family = workoutFamily(state, workout);
+  // Slots with nothing here to do them with, said rather than hidden.
+  const missing = inProgress ? [] : sittingOut(state, workout);
 
   // Milo says something only when there is something to say: a day that
   // is not ordinary, or what changed since you last did these lifts. An
@@ -165,6 +169,12 @@ export default function TodayScreen() {
           gap: 28,
         }}
       >
+        {/* Where you are training: one quiet line, and the way to change it. */}
+        {inProgress ? null : (
+          <View style={{ marginBottom: -16 }}>
+            <PlaceLine />
+          </View>
+        )}
         {inProgress ? null : offers.length > 0 ? (
           <DecayPrompt
             offers={offers}
@@ -226,6 +236,11 @@ export default function TodayScreen() {
           </View>
 
           <Preview rows={rows} />
+          {missing.length > 0 ? (
+            <Text style={{ marginLeft: INDENT, color: colors.muted, fontSize: 16, lineHeight: 22 }}>
+              {missingLine(missing.map((e) => e.slot))}
+            </Text>
+          ) : null}
         </View>
       </ScrollView>
 
@@ -317,6 +332,14 @@ function names(state: SessionState, ids: string[] | undefined): string {
     return w ? [w.name] : [];
   });
   return list.length < 2 ? (list[0] ?? "") : `${list.slice(0, -1).join(", ")} and ${list.at(-1)}`;
+}
+
+/** "No chest fly or vertical press today. Nothing here to do them with." */
+function missingLine(slots: string[]): string {
+  const list = slots.map((s) => s.toLowerCase());
+  const named =
+    list.length < 2 ? list[0] : `${list.slice(0, -1).join(", ")} or ${list.at(-1)}`;
+  return `No ${named} today. Nothing here to do ${list.length === 1 ? "it" : "them"} with.`;
 }
 
 /** What a choice leads to: "Pull A today → Push A → Legs". */

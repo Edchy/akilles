@@ -70,6 +70,9 @@ import {
   type Workout,
 } from "@/data/split";
 import { warmupFor, weightLabel, type WarmupSet } from "@/lib/warmup";
+import { BODYWEIGHT, GYM, fits, nearestWeight, TWIN, weightsFor, type Kit } from "@/data/kit";
+import { pick, STAND_IN, type Candidate } from "@/lib/fill";
+import { avoidFor, SHAPE_FOR, SHAPES, type Easy, type Shape, type Time } from "@/data/templates";
 import type { Outcome, Say } from "@/data/voice";
 import { familyOf, type Family } from "@/data/families";
 import {
@@ -322,6 +325,27 @@ export type SessionState = {
    * it; Plan's ? opens it any time.
    */
   introSeen?: number;
+  /**
+   * Where you are training: your usual place, or somewhere else for a while —
+   * a week away with one kettlebell. The plan and the loop stay the same;
+   * only what fills each slot changes. Absent means your usual place.
+   */
+  place?: Place;
+  /**
+   * What each place has. Your usual place is a gym unless you say otherwise;
+   * somewhere else is just you until you say what is there.
+   */
+  kits?: Partial<Record<Place, Kit>>;
+  /**
+   * Exercises ruled out when the plan was made — the ones that load a part
+   * you asked Milo to go easy on. Never used to fill a slot, anywhere.
+   */
+  avoid?: string[];
+  /**
+   * When the first-launch questions were answered and the plan made from
+   * them. Absent on a phone that has never been asked — see `wantsOnboarding`.
+   */
+  onboarded?: number;
   /**
    * Test mode only: every workout runs just its first two exercises, so a
    * whole session can be tried in minutes. Switched from Progress › Test
@@ -683,6 +707,140 @@ export const chosen = (
   return pool.find((id) => !taken.has(id)) ?? pool[0];
 };
 
+/**
+ * Fill every slot of a workout with what this kit allows, top to bottom.
+ *
+ * `choices` are swaps you made for this kit — your own pick wins as long as
+ * the kit has what it needs. `avoid` is what you have ruled out. A slot gets
+ * null when nothing fits, and sits that workout out. Each exercise fills one
+ * slot at most, so a glute bridge can't be both the hinge and the hamstrings.
+ *
+ * With a gym's kit and the usual choices this is exactly `chosen`, slot by
+ * slot. See `lib/fill.ts` for how a lift too light or too heavy for the
+ * weights on hand gives way.
+ */
+export const fillWorkout = (
+  state: SessionState,
+  workout: Workout,
+  kit: Kit,
+  choices: Record<string, string> = state.choices,
+  avoid: readonly string[] = state.avoid ?? [],
+): Record<string, string | null> => {
+  const taken = new Set<string>();
+  const usable = (id: string) => !avoid.includes(id) && !taken.has(id) && fits({ id }, kit);
+  const candidate = (entry: Entry) => (id: string): Candidate => {
+    const ex = byId(id)!;
+    const own = state.history[key(id, entry.scheme)];
+    if (own) return { ex, due: own.weight, maxed: own.maxed, known: true };
+    const twin = TWIN[id] && state.history[key(TWIN[id], entry.scheme)];
+    if (twin) return { ex, due: twin.weight, known: true };
+    return { ex, due: freshState(ex).weight };
+  };
+  // Your catalogue first, then the library: a gym catalogue has no push-ups
+  // in it, and a hotel room needs them.
+  const library = hiddenExercises(state).filter((e) => !e.restricted);
+  const filled: Record<string, string | null> = {};
+  for (const entry of workout.exercises) {
+    // The slot's own options lead even from the library: a plan made at
+    // first launch names exercises nobody has added yet.
+    const pool = [
+      ...new Set([
+        ...entry.options.filter((id) => byId(id) && !avoid.includes(id)),
+        ...poolFor(state, workout.id, entry),
+        ...library.filter((e) => isPattern(e, entry.pattern)).map((e) => e.id),
+      ]),
+    ];
+    const mine = choices[slotKey(workout.id, entry.id)];
+    const standIn = STAND_IN[entry.pattern];
+    const standIns = standIn
+      ? [...catalogue(state).filter((e) => !e.restricted), ...library]
+          .filter((e) => isPattern(e, standIn))
+          .map((e) => e.id)
+      : [];
+    const id =
+      mine && pool.includes(mine) && usable(mine)
+        ? mine
+        : pick(
+            pool.filter(usable).map(candidate(entry)),
+            standIns.filter(usable).map(candidate(entry)),
+            kit,
+          );
+    filled[entry.id] = id;
+    if (id) taken.add(id);
+  }
+  return filled;
+};
+
+/** Your usual place, or somewhere else. */
+export type Place = "usual" | "away";
+
+export const placeOf = (state: SessionState): Place => state.place ?? "usual";
+
+/** What a place has to train with. */
+export const kitAt = (state: SessionState, place: Place = placeOf(state)): Kit =>
+  state.kits?.[place] ?? (place === "away" ? BODYWEIGHT : GYM);
+
+/** At a full gym, where every slot simply holds what Plan says. */
+const atGym = (state: SessionState): boolean => placeOf(state) === "usual" && !state.kits?.usual;
+
+/** Whether the cardio machines are here — a gym, or somewhere with machines. */
+const hasMachines = (state: SessionState): boolean => kitAt(state).gear.includes("machine");
+
+/**
+ * Move to a place, and say what it has. Only on Today: a workout in progress
+ * keeps the place it started in.
+ */
+export const setPlace = (state: SessionState, place: Place, kit?: Kit): SessionState =>
+  state.active
+    ? state
+    : {
+        ...state,
+        place,
+        kits: kit ? { ...state.kits, [place]: kit } : state.kits,
+      };
+
+/**
+ * The lifts a workout runs here, each with the exercise filling it. A slot
+ * with nothing here to do it with is left out.
+ */
+export const liftsToRun = (
+  state: SessionState,
+  workout: Workout,
+): { entry: Entry; exerciseId: string }[] => {
+  const entries = exercisesToRun(state, workout);
+  if (atGym(state)) {
+    return entries.map((entry) => ({ entry, exerciseId: chosen(state, workout.id, entry) }));
+  }
+  const filled = fillWorkout(state, workout, kitAt(state));
+  return entries.flatMap((entry) => {
+    const exerciseId = filled[entry.id];
+    return exerciseId ? [{ entry, exerciseId }] : [];
+  });
+};
+
+/** The slots a workout leaves out here, for want of anything to do them with. */
+export const sittingOut = (state: SessionState, workout: Workout): Entry[] => {
+  const running = new Set(liftsToRun(state, workout).map((l) => l.entry.id));
+  return exercisesToRun(state, workout).filter((e) => !running.has(e.id));
+};
+
+/**
+ * The weight you are due on a lift: its own record, else the dumbbell lift
+ * it matches weight for weight (see `TWIN`), else the opening guess.
+ */
+const dueRecord = (state: SessionState, exerciseId: string, scheme: Scheme) => {
+  const own = state.history[key(exerciseId, scheme)];
+  if (own) return own;
+  const ex = byId(exerciseId)!;
+  const twin = TWIN[exerciseId] && state.history[key(TWIN[exerciseId], scheme)];
+  const start = freshState(ex);
+  return twin ? { ...start, weight: roundTo(twin.weight, ex.increment || 1) } : start;
+};
+
+/** The weight to use here: the one you are due, or the nearest the place has. */
+const weightHere = (state: SessionState, ex: Exercise, due: number): number =>
+  nearestWeight(weightsFor(ex, kitAt(state)), due);
+
 // ---- the workouts ----
 
 export const workoutById = (state: SessionState, id: string): Workout | undefined =>
@@ -722,10 +880,11 @@ export const exercisesToRun = (state: SessionState, workout: Workout): Entry[] =
   SHORT_WORKOUTS || state.shortWorkouts ? workout.exercises.slice(0, 2) : workout.exercises;
 
 export const workoutPreview = (state: SessionState, workout: Workout): PreviewRow[] => {
-  const lifts = exercisesToRun(state, workout).map((entry): PreviewRow => {
-    const ex = byId(chosen(state, workout.id, entry))!;
+  const lifts = liftsToRun(state, workout).map(({ entry, exerciseId }): PreviewRow => {
+    const ex = byId(exerciseId)!;
     const known = state.history[key(ex.id, entry.scheme)];
-    const st = known ?? freshState(ex);
+    const due = dueRecord(state, ex.id, entry.scheme);
+    const st = { ...due, weight: weightHere(state, ex, due.weight) };
     const p = prescribe(st, entry.scheme, setsFor(entry));
     // Speed work takes its weight from another lift on the day; jumps have none.
     const loaded = !entry.derive && !ex.unloaded;
@@ -753,14 +912,14 @@ export const workoutPreview = (state: SessionState, workout: Workout): PreviewRo
     };
   });
   const block = (where: CardioEnd): PreviewRow[] => {
-    const plan = cardioPlan(state, workout, where);
+    const plan = hasMachines(state) ? cardioPlan(state, workout, where) : null;
     if (!plan) return [];
     return [
       { id: CARDIO_SLOTS[where], name: plan.machine.name, amount: cardioAmount(plan), family: "cardio" },
     ];
   };
   const routine = mobilityPlan(state, workout);
-  const warmup = warmupPlan(state, workout);
+  const warmup = warmupHere(state, workout);
   const goals = goalsIn(state, workout.id).map(
     (g): PreviewRow => ({
       id: `goal/${g.id}`,
@@ -1397,16 +1556,14 @@ export const buildWorkout = (
         // The first exercise of each muscle group gets a warm-up; by the time
         // the second push or pull comes round you are already warm.
         const warmed = new Set<Group>();
-        const entries = exercisesToRun(state, workout);
-        const lifts = entries.map((e) => {
-          const exerciseId = chosen(state, workout.id, e);
+        const lifts = liftsToRun(state, workout).map(({ entry: e, exerciseId }) => {
           const ex = byId(exerciseId)!;
           const group = groupOf(ex);
           const first = !warmed.has(group);
           warmed.add(group);
           // A derived lift takes a fraction of another exercise's current
           // working weight, so it keeps up on its own.
-          const own = state.history[key(exerciseId, e.scheme)] ?? freshState(ex);
+          const own = dueRecord(state, exerciseId, e.scheme);
           const weight = e.derive
             ? roundTo(
                 (
@@ -1415,7 +1572,7 @@ export const buildWorkout = (
                 ).weight * e.derive.fraction,
                 ex.increment || 2.5,
               )
-            : own.weight;
+            : weightHere(state, ex, own.weight);
 
           return {
             ...e,
@@ -1787,7 +1944,7 @@ export const swapForSession = (state: SessionState, exerciseId: string): Session
   return patchItem(state, (it) => ({
     ...it,
     exerciseId,
-    weight: (state.history[key(exerciseId, it.scheme)] ?? freshState(ex)).weight,
+    weight: weightHere(state, ex, dueRecord(state, exerciseId, it.scheme).weight),
     logged: Array<number | null>(setsFor(it)).fill(null),
   }));
 };
@@ -1802,7 +1959,14 @@ export const currentPool = (state: SessionState): string[] => {
   const item = state.active.items[state.active.cursor];
   if (!item) return [];
   if (isConditioning(item)) return conditioningPool(state, item).map((o) => o.id);
-  return poolFor(state, state.active.workoutId, item);
+  const pool = poolFor(state, state.active.workoutId, item);
+  if (atGym(state)) return pool;
+  // Away: only what this place has, from the library too.
+  const kit = kitAt(state);
+  const library = hiddenExercises(state)
+    .filter((e) => !e.restricted && isPattern(e, item.pattern))
+    .map((e) => e.id);
+  return [...pool, ...library].filter((id) => fits({ id }, kit));
 };
 
 /**
@@ -2072,7 +2236,12 @@ export const finishWorkout = (
     // over. Skipped: nothing was lifted, so the record keeps the weight it
     // already had — a weight nudged up and then skipped was never trained at.
     const base = performed ? { ...prior, weight } : prior;
-    const after = performed ? applyResult(base, scheme, logged, now) : markSkipped(base);
+    // Only some weights here — one kettlebell — and a step up goes to the
+    // next one there is, or nowhere.
+    const weights = weightsFor(byId(exerciseId)!, kitAt(state));
+    const after = performed
+      ? applyResult(base, scheme, logged, now, weights)
+      : markSkipped(base);
     history[k] = after;
 
     const ladder = ladderOf(byId(exerciseId), scheme);
@@ -2313,8 +2482,8 @@ const PRESSING: Pattern[] = ["horizontal_push", "vertical_push", "chest_iso"];
 
 /** Whether any lift in a workout presses — the days the shoulder warm-up is for. */
 export const presses = (state: SessionState, workout: Workout): boolean =>
-  workout.exercises.some((e) => {
-    const ex = byId(chosen(state, workout.id, e));
+  liftsToRun(state, workout).some(({ exerciseId }) => {
+    const ex = byId(exerciseId);
     return !!ex && PRESSING.some((p) => isPattern(ex, p));
   });
 
@@ -2332,6 +2501,15 @@ export const warmupPlan = (state: SessionState, workout: Workout): MobilityRouti
   return presses(state, workout) ? (usable(SHOULDER_WARMUP) ?? null) : null;
 };
 
+/**
+ * The warm-up as it runs here. The shoulder warm-up needs a ball and a band,
+ * so away from a gym it is left out — the lifts still ramp up.
+ */
+const warmupHere = (state: SessionState, workout: Workout): MobilityRoutine | null => {
+  const plan = warmupPlan(state, workout);
+  return plan?.id === SHOULDER_WARMUP && !hasMachines(state) ? null : plan;
+};
+
 /** The workouts that open or end on a routine, so an edit can say who else it reaches. */
 export const workoutsUsing = (state: SessionState, routineId: string): Workout[] =>
   state.workouts.filter(
@@ -2340,7 +2518,8 @@ export const workoutsUsing = (state: SessionState, routineId: string): Workout[]
 
 /** A cardio block for one end of the session, or null if the workout has none there. */
 const cardioBlock = (state: SessionState, workout: Workout, where: CardioEnd): Item | null => {
-  const plan = cardioPlan(state, workout, where);
+  // The machines are in the gym. Away, the session starts with the lifts.
+  const plan = hasMachines(state) ? cardioPlan(state, workout, where) : null;
   if (!plan) return null;
   const slot = CARDIO_SLOTS[where];
   return {
@@ -2365,7 +2544,7 @@ const mobilityBlock = (state: SessionState, workout: Workout): Item | null =>
 
 /** The warm-up block after the opening cardio, or null if the workout has none. */
 const warmupBlock = (state: SessionState, workout: Workout): Item | null =>
-  routineBlock(warmupPlan(state, workout), WARMUP_SLOT);
+  routineBlock(warmupHere(state, workout), WARMUP_SLOT);
 
 /** A routine as a block in the session, under its slot. */
 const routineBlock = (routine: MobilityRoutine | null, slot: string): Item | null => {
@@ -3185,6 +3364,63 @@ export const startFrom = (state: SessionState, goalId: string, index: number): S
  * already knows their way round — from before the intro, or a backup put
  * back — so it waits behind Plan's ? instead.
  */
+/**
+ * The answers a plan is made from: where you usually train (null for a gym,
+ * else what home has), how long a visit is, what to go easy on, and a shape
+ * of your own if you would rather not have the one your time gets.
+ */
+export type Answers = { home: Kit | null; time: Time; easy: Easy[]; shape?: Shape };
+
+/**
+ * The plan for a set of answers: the shape your time gets, each slot filled
+ * from what your usual place has and nothing you ruled out. A slot with
+ * nothing to fill it is left out, and a workout left with nothing goes too.
+ */
+export const makePlan = (state: SessionState, answers: Answers): Workout[] => {
+  const kit = answers.home ?? GYM;
+  const avoid = avoidFor(answers.easy);
+  const shape = SHAPES[answers.shape ?? SHAPE_FOR[answers.time]];
+  const blank: SessionState = { ...state, workouts: shape, choices: {}, avoid };
+  return shape.flatMap((w) => {
+    const filled = fillWorkout(blank, w, kit, {}, avoid);
+    const exercises = w.exercises.flatMap((e) => {
+      const id = filled[e.id];
+      return id ? [{ ...e, options: [id] }] : [];
+    });
+    return exercises.length > 0 ? [{ ...w, exercises }] : [];
+  });
+};
+
+/** Start training on the plan these answers make. */
+export const applyPlan = (
+  state: SessionState,
+  answers: Answers,
+  now = Date.now(),
+): SessionState => {
+  const workouts = makePlan(state, answers);
+  if (workouts.length === 0) return state;
+  const used = new Set(workouts.flatMap((w) => w.exercises.flatMap((e) => e.options)));
+  return {
+    ...state,
+    workouts,
+    nextWorkout: workouts[0].id,
+    workoutQueue: undefined,
+    postponed: undefined,
+    removedWorkouts: [],
+    choices: {},
+    // What the plan uses is in your catalogue, so Plan shows it as yours.
+    hidden: state.hidden.filter((id) => !used.has(id)),
+    place: "usual",
+    kits: { ...state.kits, usual: answers.home ?? undefined },
+    avoid: avoidFor(answers.easy),
+    onboarded: now,
+  };
+};
+
+/** The first-launch questions: only on a phone that has never trained. */
+export const wantsOnboarding = (state: SessionState): boolean =>
+  !state.onboarded && wantsIntro(state);
+
 export const wantsIntro = (state: SessionState): boolean =>
   !state.introSeen &&
   !state.active &&

@@ -112,8 +112,17 @@ const MODE_KEY = "achilles/mode";
  * 13 — triceps, biceps, shoulders, calves and core climb 10 → 12 → 14 in any
  *     slot. Their weights are kept and their ladders start again at 10 —
  *     see `toHighReps`.
+ * 14 — the bodyweight squat and split squat, for training away from a gym,
+ *     start in the library — see `ADDED_IN_14`.
  */
-const VERSION = 13;
+const VERSION = 14;
+
+/**
+ * Version 14: lifts for training away from a gym. They start in the library
+ * on every phone, as on a fresh install; Milo reaches for them away from the
+ * gym whether or not they are in your catalogue.
+ */
+const ADDED_IN_14: string[] = ["bw_squat", "bw_split_squat"];
 
 /**
  * Version 11: the built-ins added in this version.
@@ -489,6 +498,12 @@ export const fromSaved = (raw: string): SessionState | Unreadable => {
     const ranged = saved.version < 9 ? toEvenRanges(held) : held;
     const conditioned = saved.version < 10 ? toWorkoutConditioning(ranged) : ranged;
     const migrated = saved.version < 13 ? toHighReps(conditioned) : conditioned;
+    if (saved.version < 14) {
+      migrated.hidden = [
+        ...migrated.hidden,
+        ...ADDED_IN_14.filter((id) => !migrated.hidden.includes(id)),
+      ];
+    }
 
     // Yesterday's abandoned workout is not resumed. It is closed out exactly
     // as if you had pressed Leave: whatever you trained counts, the rest is

@@ -65,6 +65,7 @@ No users other than the author, and no testimonials, metrics or press. None shou
 4. No guilt: a short session is a complete session, and skipping is always one tap and never punished.
 5. Own the weight. Control beats load: the app slows progress on purpose, says why, and never rewards a heavier number for its own sake.
 6. Clear to anyone. An 80-year-old opening the app for the first time should understand exactly what is going on. Plain words in full sentences, a heading that says what it means rather than a slogan, and no gym word (rep, set, reload) left unexplained where someone new meets it.
+7. Simple is the product. Milo is the answer to gym apps that are far too cluttered, and that is its reason to exist. Every new feature has to stay minimal, clean and intuitive and add no cognitive load: one smart default beats a setting, one quiet line beats a new screen, and an option that doesn't change what Milo builds gets cut. Grow by filling real gaps, never by adding more for its own sake.
 
 ## Accessibility & Inclusion
 

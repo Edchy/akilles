@@ -536,7 +536,7 @@ function singleLegRdl(): Move {
  * back knee straight down, the trunk tall, and drive up through the front
  * heel. Dumbbells hang at the sides.
  */
-function splitSquat(bench: boolean): Move {
+function splitSquat(bench: boolean, loaded = true): Move {
   const toeOut = rad(8);
   const front = new Vec3(0.34, BODY.ankle, 0.11);
   const back = bench ? new Vec3(-0.62, 0.46 + 0.05, -0.11) : new Vec3(-0.5, 0.15, -0.11);
@@ -546,6 +546,7 @@ function splitSquat(bench: boolean): Move {
   const at = (y: number) => {
     const pelvis = new Vec3(0, y, 0);
     const shoulders = shouldersAt(pelvis, lean);
+    // The arms hang at the sides, holding dumbbells or nothing.
     const hands = SIDES.map((s, i) =>
       shoulders[i].clone().add(new Vec3(0.02, -ARM * 0.99, 0.04 * s)),
     ) as [Vec3, Vec3];
@@ -559,7 +560,7 @@ function splitSquat(bench: boolean): Move {
       kneePole: [undefined, new Vec3(0.2, -1, 0)],
     });
     if (bench) pose.legs[1] = { ...pose.legs[1], planted: false };
-    pose.dumbbells = hands.map((h) => ({ at: h, axis: new Vec3(1, 0, 0) }));
+    if (loaded) pose.dumbbells = hands.map((h) => ({ at: h, axis: new Vec3(1, 0, 0) }));
     pose.props = bench
       ? [
           { kind: "pad", from: new Vec3(-1.1, 0.46, 0), to: new Vec3(-0.55, 0.46, 0), ...PAD },
@@ -582,13 +583,52 @@ function splitSquat(bench: boolean): Move {
   };
   while (bottom > 0.3 && !deep(bottom)) bottom -= 0.005;
   return {
-    kit: { dumbbells: true },
+    kit: loaded ? { dumbbells: true } : {},
     film: {
       views: [0],
       middle: new Vec3(bench ? -0.25 : -0.05, 0, 0),
       room: { height: 1.8, width: bench ? 2.1 : 1.8 },
     },
     pose: (depth) => at(lerp(top, bottom, ease(clamp01(depth)))),
+  };
+}
+
+/**
+ * The bodyweight squat. Arms reach straight forward at shoulder height as a
+ * counterweight; feet a little wider than the hips, turned out. Down to below
+ * parallel, chest up, heels down, the knees over the toes; balanced over
+ * mid-foot all the way.
+ */
+function bodyweightSquat(): Move {
+  const stance = 0.24;
+  const toeOut = rad(25);
+  const { feet, ankles, midFoot } = stand(stance, toeOut);
+  const reach = 0.9995 * (BODY.thigh + BODY.shin);
+  const topX = 0.05;
+  const topY = BODY.ankle + Math.sqrt(reach ** 2 - topX ** 2 - (stance - BODY.hip) ** 2);
+  const [bottomX, bottomY] = [-0.12, 0.34];
+  const at = (pelvis: Vec3, lean: number) => {
+    const shoulders = shouldersAt(pelvis, lean);
+    const hands = shoulders.map((sh) => sh.clone().add(new Vec3(ARM * 0.98, -0.02, 0))) as [
+      Vec3,
+      Vec3,
+    ];
+    return poseFrom({ pelvis, lean, ankles, feet, hands, elbowPole: new Vec3(0, -1, 0) });
+  };
+  return {
+    kit: {},
+    film: { views: [0, 90], middle: new Vec3(midFoot, 0, 0), room: { height: 1.85, width: 1.6 } },
+    pose(depth) {
+      const d = clamp01(depth);
+      const pelvis = new Vec3(
+        lerp(topX, bottomX, Math.sin((d * Math.PI) / 2)),
+        lerp(topY, bottomY, d),
+        0,
+      );
+      // The trunk leans exactly as far as keeps the lifter over mid-foot.
+      const lean = secant((l) => centreOfMass(at(pelvis, l)).x - midFoot, 0.1, 0.3);
+      return at(pelvis, lean);
+    },
   };
 }
 
@@ -1647,6 +1687,8 @@ export const LEGS: Record<string, () => Move> = {
   single_leg_rdl: singleLegRdl,
   bulgarian: () => splitSquat(true),
   split_squat: () => splitSquat(false),
+  bw_split_squat: () => splitSquat(false, false),
+  bw_squat: bodyweightSquat,
   reverse_lunge: () => lunge(false),
   walking_lunge: () => lunge(true),
   step_up: stepUp,

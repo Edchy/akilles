@@ -21,6 +21,7 @@
  */
 
 import { byId, highReps, type Exercise, type Pattern } from "@/data/exercises";
+import { nextWeightUp } from "@/data/kit";
 import {
   HIGH_REPS_RANGE,
   HIGH_REPS_SCHEME,
@@ -75,6 +76,13 @@ export type ExerciseState = {
    * weight already topped out. Finishing that climb earns the next step up.
    */
   reloading?: boolean;
+  /**
+   * Topped out with nowhere further to go: the top of the ladder done at the
+   * heaviest weight on hand — one 10 kg kettlebell — or the longest hold.
+   * Away from the gym, a lift in this state gives its slot to a harder one;
+   * see `lib/fill.ts`.
+   */
+  maxed?: boolean;
   /**
    * A time-based cut applied but not yet trained through. Kept so the screen
    * can explain today's number, and cleared the moment the exercise is
@@ -459,6 +467,12 @@ export const applyResult = (
   reps: (number | null)[],
   /** When the session happened. Defaults to now; passed in so it is testable. */
   now: number = Date.now(),
+  /**
+   * The weights on hand, when only some are — see `Kit.weights`. A step up
+   * then goes to the next weight there is, however far, and with none
+   * heavier the lift stays at the top. Absent means any weight.
+   */
+  weights: number[] | null = null,
 ): ExerciseState => {
   const exercise = byId(state.exerciseId)!;
   const ladder = ladderOf(exercise, scheme);
@@ -481,6 +495,7 @@ export const applyResult = (
   if (hitTarget(reps, target)) {
     const hit = {
       ...trained,
+      maxed: undefined,
       downStreak: 0,
       deloads: 0,
       skippedLast: false,
@@ -493,8 +508,9 @@ export const applyResult = (
     // its longest: it stays at the top. Starting the ladder again would only
     // make the same lift easier for no reason. Jumps are the exception: they
     // have no top to stay at, and simply go round again.
-    if (!exercise.unloaded && !canStepUp(exercise, state.weight)) {
-      return { ...hit, reloading: false };
+    const next = nextWeightUp(weights, state.weight, exercise.increment);
+    if (!exercise.unloaded && (!canStepUp(exercise, state.weight) || next === null)) {
+      return { ...hit, reloading: false, maxed: true };
     }
 
     // The top, after two steps up since the last reload: the weight stays and
@@ -503,13 +519,18 @@ export const applyResult = (
     // A reload just climbed is never followed by another — its own top is
     // what earns the step. Nothing to reload where there is no step to hold.
     const climbs = state.climbs ?? 0;
-    if (!state.reloading && climbs >= RELOAD_AFTER && canStepUp(exercise, state.weight)) {
+    if (
+      !state.reloading &&
+      climbs >= RELOAD_AFTER &&
+      canStepUp(exercise, state.weight) &&
+      next !== null
+    ) {
       return { ...hit, rung: reloadRung(ladder), climbs: 0, reloading: true };
     }
     // The top: add weight and drop back to the bottom rung.
     return {
       ...hit,
-      weight: state.weight + exercise.increment,
+      weight: next ?? state.weight + exercise.increment,
       rung: 0,
       climbs: climbs + 1,
       reloading: false,
@@ -535,6 +556,7 @@ export const applyResult = (
   return {
     ...trained,
     weight: cutWeight(state.weight, 0.1, exercise.increment, !!exercise.assistable),
+    maxed: undefined,
     rung: 0,
     downStreak: 0,
     deloads: state.deloads + 1,

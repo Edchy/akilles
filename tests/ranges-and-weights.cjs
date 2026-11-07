@@ -141,6 +141,7 @@ test("Today continues a workout you stepped out of, and End commits it", () => {
     if (name === "@/components/icon") return { Icon: "Icon" };
     if (name === "@/components/text") return { Text: "Text" };
     if (name === "@/components/mark") return { Mark: "Mark" };
+    if (name === "@/components/place") return { PlaceLine: "PlaceLine" };
     return load(name);
   };
   const module = { exports: {} };

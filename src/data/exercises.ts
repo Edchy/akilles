@@ -210,6 +210,9 @@ export const EXERCISES: Exercise[] = [
     aliases: ["dumbbell goblet squat", "db goblet squat"] },
   { id: "kb_goblet_squat", name: "KB goblet squat", patterns: ["squat"], increment: 4, cue: "Bell held by the horns at the chest. Elbows inside the knees.",
     aliases: ["kettlebell goblet squat"] },
+  { id: "bw_squat", name: "Bodyweight squat", patterns: ["squat"], increment: 1, bodyweight: true, holds: true,
+    cue: "Arms forward, sit down between your heels.",
+    aliases: ["air squat", "body weight squat", "squat with no weight"] },
   // Squat-pattern machines: they fill a Squat slot as well as quad work.
   { id: "hack_squat", name: "Hack squat", patterns: ["squat", "quads"], increment: 5,
     aliases: ["hack squat machine", "machine hack squat"] },
@@ -258,6 +261,9 @@ export const EXERCISES: Exercise[] = [
     aliases: ["reverse lunges", "dumbbell reverse lunge", "step back lunge", "rear lunge"] },
   { id: "split_squat", name: "Split squat", patterns: ["lunge", "quads"], increment: 2.5, perHand: true,
     aliases: ["split squats", "static lunge", "stationary lunge", "dumbbell split squat"] },
+  { id: "bw_split_squat", name: "Bodyweight split squat", patterns: ["lunge", "quads"], increment: 1, bodyweight: true, holds: true,
+    cue: "Arms at your sides. Drop the back knee straight down.",
+    aliases: ["body weight split squat", "split squat with no weight", "bodyweight static lunge"] },
 
   // ---------- quads / hams isolation ----------
   { id: "leg_ext", name: "Leg extension", patterns: ["quads"], increment: 5,

@@ -334,6 +334,14 @@ const LIFTS: Record<string, Guide> = {
     ],
     "Heels lifting — widen the stance if they do.",
   ),
+  bw_squat: g(
+    [
+      "Feet a little wider than your hips, toes turned out a touch.",
+      "Reach your arms forward and sit down between your heels, chest up.",
+      "Go below level with your knees, then stand up tall.",
+    ],
+    "Heels lifting, or knees falling in toward each other.",
+  ),
   kb_goblet_squat: g(
     [
       "Hold the bell by the horns at the chest, elbows down.",
@@ -501,6 +509,14 @@ const LIFTS: Record<string, Guide> = {
       "Drive through the front heel to step back up.",
     ],
     "Stepping back so short that the front heel lifts.",
+  ),
+  bw_split_squat: g(
+    [
+      "Long split stance, arms at your sides, back heel up.",
+      "Drop the back knee straight down until it nearly touches.",
+      "Drive up through the front heel, feet staying put.",
+    ],
+    "Leaning forward and pushing off the back foot instead of the front leg.",
   ),
   split_squat: g(
     [
@@ -1268,6 +1284,7 @@ const OWN: Record<string, string> = {
   front_squat: "Pause at the bottom, elbows high. Then stand.",
   goblet_squat: "Pause at the bottom, chest up.",
   kb_goblet_squat: "Pause at the bottom, chest up.",
+  bw_squat: "Pause at the bottom, chest up, heels down.",
   hack_squat: "Pause at the bottom. No bounce out of it.",
   leg_press: "Pause at the bottom. No bounce out of it.",
   smith_squat: "Pause at the bottom, staying tight. Then stand.",
@@ -1289,6 +1306,7 @@ const OWN: Record<string, string> = {
   step_up: "Stand tall on the box for a second. No push from the back foot.",
   reverse_lunge: "Pause with the back knee just off the floor.",
   split_squat: "Pause at the bottom, front heel down.",
+  bw_split_squat: "Pause at the bottom, front heel down.",
   leg_ext: "Hold the legs straight for a second.",
   leg_curl: "Hold the squeeze for a second.",
   seated_leg_curl: "Hold the squeeze for a second.",
@@ -1364,6 +1382,8 @@ const OWN_ANY = "Lower it slowly and hold where it's hardest.";
  */
 const HOLD: Record<string, string> = {
   push_up: "Pause for {s} with your chest just off the floor.",
+  bw_squat: "Pause for {s} at the bottom, chest up, heels down.",
+  bw_split_squat: "Pause for {s} with the back knee just off the floor.",
   inverted_row: "Hold your chest at the bar for {s}.",
   nordic_curl: "Pause halfway down for {s}, hips straight.",
   bench_dip: "Pause at the bottom for {s}, upper arms level.",

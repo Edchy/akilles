@@ -10,7 +10,8 @@ import { Text } from "@/components/text";
 import { FAMILY, colors, fonts, radii } from "@/constants/theme";
 import type { Family } from "@/data/families";
 import { useReduceMotion } from "@/lib/use-reduce-motion";
-import { seeIntro, useSession, wantsIntro } from "@/store/session";
+import { Onboarding } from "@/components/onboarding";
+import { seeIntro, useSession, wantsIntro, wantsOnboarding } from "@/store/session";
 
 /**
  * How Milo works, in six pages: why first — a little at a time, every visit
@@ -36,11 +37,14 @@ export const useOpenIntro = () => useContext(Open);
 export function IntroProvider({ children }: { children: ReactNode }) {
   const { state, setState } = useSession();
   const [again, setAgain] = useState(false);
-  const first = wantsIntro(state);
+  // The plan's questions come first; the intro follows them.
+  const asking = wantsOnboarding(state);
+  const first = wantsIntro(state) && !asking;
 
   return (
     <Open.Provider value={() => setAgain(true)}>
       {children}
+      <Onboarding />
       <Intro
         visible={first || again}
         again={!first}
