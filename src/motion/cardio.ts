@@ -1,6 +1,8 @@
 import {
   armFrom,
   chestAt,
+  stand,
+  standingHips,
   keyframes,
   mirror,
   mixed,
@@ -61,10 +63,11 @@ function planted(pose: Pose, flat: [boolean, boolean]) {
 
 /**
  * The treadmill: an easy run, upright, the arms swinging — not holding the
- * rails. One stride a turn.
+ * rails. One stride a turn. `outside`, the same run on the ground, with no
+ * machine: a walk or jog out of the door.
  */
-function treadmill(): Move {
-  const belt = 0.14;
+function treadmill(outside = false): Move {
+  const belt = outside ? 0 : 0.14;
   const lean = rad(7);
   /** One leg, `p` of the way round its stride: thigh angle, knee bend. */
   const leg = (p: number) => {
@@ -116,6 +119,7 @@ function treadmill(): Move {
       );
       withArms(pose, arms);
       planted(pose, onBelt);
+      if (outside) return pose;
       pose.props = [
         {
           kind: "pad",
@@ -574,9 +578,68 @@ function skiErg(): Move {
   };
 }
 
-/** The cardio machines, by id. */
+/**
+ * Skipping rope, from the front: elbows in by the sides, the hands turning
+ * the rope at the hips; a small hop on the balls of the feet as it passes
+ * under them, over the head and round again. One turn of the rope a turn.
+ */
+function skipping(): Move {
+  const stance = 0.1;
+  const { feet, ankles: standing } = stand(stance, rad(5));
+  const SEGMENTS = 14;
+  return {
+    kit: {},
+    film: {
+      views: [90],
+      cycle: 0.55,
+      middle: new Vec3(0, 0, 0),
+      room: { height: 2.15, width: 1.7 },
+    },
+    pose(t) {
+      // Up off the floor as the rope comes under the feet, at the start of the turn.
+      const hop = 0.07 * Math.max(0, Math.cos(TAU * t)) ** 2;
+      const pelvis = standingHips(0, stance).add(new Vec3(0, hop - 0.025, 0));
+      const ankles = standing.map((a) => a.clone().add(new Vec3(0, hop, 0))) as [Vec3, Vec3];
+      const top = pelvis.clone().addScaledVector(UP, BODY.torso);
+      const arms = SIDES.map((s) =>
+        armFrom(
+          top.clone().setZ(s * BODY.shoulder),
+          new Vec3(0.08, -1, s * 0.12),
+          new Vec3(0.45, -0.25, s * 0.85),
+        ),
+      ) as [Limb, Limb];
+      const pose = withArms(
+        poseFrom({
+          pelvis,
+          lean: 0,
+          ankles,
+          feet,
+          hands: [arms[0].end, arms[1].end],
+          elbowPole: DOWN,
+        }),
+        arms,
+      );
+      planted(pose, [hop < 0.005, hop < 0.005]);
+      // The rope: a loop from hand to hand, swinging round the line between them.
+      const [a, b] = [arms[0].end, arms[1].end];
+      const reach = a.y - 0.02;
+      const turn = TAU * t;
+      const out = new Vec3(Math.sin(turn) * 0.35, -Math.cos(turn), 0);
+      const points = Array.from({ length: SEGMENTS + 1 }, (_, i) => {
+        const u = i / SEGMENTS;
+        return mixed(a, b, u).addScaledVector(out, reach * Math.sin(Math.PI * u));
+      });
+      pose.props = points.slice(1).map((p, i) => rod(points[i], p));
+      return pose;
+    },
+  };
+}
+
+/** The cardio machines, by id — and the cardio that needs none. */
 export const CARDIO: Record<string, () => Move> = {
-  treadmill,
+  treadmill: () => treadmill(),
+  outdoor: () => treadmill(true),
+  skipping,
   row: rower,
   ski_erg: skiErg,
   bike,

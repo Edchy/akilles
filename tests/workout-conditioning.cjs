@@ -64,8 +64,8 @@ test("out of the box, every workout ends on the everyday stretch", () => {
 
 test("every stretch has a photo and a guide, and so does every hold in the everyday stretch", () => {
   const photos = fs.readFileSync(path.resolve(__dirname, "../src/data/photos.ts"), "utf8");
-  // No photo matches the ball on the wall: its thumbnail is its film's still.
-  const filmOnly = ["ball_shoulder"];
+  // No photo matches these: each thumbnail is its film's still.
+  const filmOnly = ["ball_shoulder", "arm_circles", "wall_slide", "prone_y_raise"];
   for (const s of conditioning.STRETCHES) {
     if (!filmOnly.includes(s.id)) {
       assert.match(photos, new RegExp(`\\n  ${s.id}: \\[require`), `${s.id} has no photo`);

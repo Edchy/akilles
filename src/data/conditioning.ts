@@ -18,7 +18,7 @@
 /** What a machine measures, and in what unit the number is entered. */
 export type CardioMetric = {
   /** Unit the distance is entered and stored in. */
-  unit: "km" | "m";
+  unit: "km" | "m" | "skips";
   /** Decimals shown and accepted. Metres are whole; kilometres are fine. */
   decimals: number;
   /** Nudge size for the +/- steppers. */
@@ -28,6 +28,8 @@ export type CardioMetric = {
 const KM: CardioMetric = { unit: "km", decimals: 2, step: 0.05 };
 // Five minutes on a rower or ski-erg is a four-figure distance — step it in hundreds.
 const METRES: CardioMetric = { unit: "m", decimals: 0, step: 100 };
+// Skipping counts turns of the rope, if you count them at all.
+const SKIPS: CardioMetric = { unit: "skips", decimals: 0, step: 10 };
 
 export type CardioExercise = {
   id: string;
@@ -59,6 +61,17 @@ export const CARDIO: CardioExercise[] = [
   { id: "assault_bike", name: "Assault bike", metric: KM, cue: "Arms and legs, same effort." },
   { id: "stair", name: "Stair climber", metric: KM, cue: "Stand tall, off the handrails." },
   { id: "elliptical", name: "Elliptical", metric: KM },
+];
+
+/**
+ * Cardio that needs no machine, for away from the gym: it opens a workout in
+ * place of the machine there. Not in the machine pool, so a gym's list is
+ * never longer for it. The distance or count is yours to enter if you know
+ * it; the minutes are what matter.
+ */
+export const AWAY_CARDIO: CardioExercise[] = [
+  { id: "outdoor", name: "Walk or jog outside", metric: KM, cue: "Out of the door and back. Enter the distance if you know it." },
+  { id: "skipping", name: "Skipping rope", metric: SKIPS, cue: "Small hops on the balls of your feet. Count the skips if you like." },
 ];
 
 /** The two ends of a session a cardio block can sit at. */
@@ -168,6 +181,10 @@ export const STRETCHES: Stretch[] = [
   { id: "ball_shoulder", name: "Ball on the wall", seconds: 45, perSide: true, cue: "Ball under the front of the shoulder. Lean in and roll slowly." },
   { id: "band_pull_apart", name: "Band pull-apart", seconds: 45, reps: 15, cue: "Arms straight, squeeze the shoulder blades together." },
   { id: "band_external_rotation", name: "Band external rotation", seconds: 36, reps: 12, perSide: true, cue: "Elbow pinned to your side. Turn the hand out slowly." },
+  // The same job with nothing to hold, for away from the gym.
+  { id: "arm_circles", name: "Arm circles", seconds: 30, cue: "Arms straight out. Small circles, then bigger." },
+  { id: "wall_slide", name: "Wall slide", seconds: 30, reps: 10, cue: "Back and arms against a wall. Slide up slowly, then down." },
+  { id: "prone_y_raise", name: "Lying Y-raise", seconds: 30, reps: 10, cue: "Face down, arms in a Y, thumbs up. Lift them off the floor." },
 ];
 
 export const stretchById = (id: string): Stretch | undefined => STRETCHES.find((s) => s.id === id);
@@ -275,6 +292,18 @@ export const MOBILITY: MobilityRoutine[] = [
   },
 ];
 
+/**
+ * The shoulder warm-up with nothing to hold: what a workout that presses
+ * opens with away from the gym, where there is no ball or band. Not in the
+ * routine pool: the gym one stays the one you see and change.
+ */
+export const AWAY_WARMUP: MobilityRoutine = {
+  id: "shoulder_warmup_away",
+  name: "Shoulder warm-up",
+  subtitle: "before you press, nothing needed",
+  moves: [hold("arm_circles"), hold("wall_slide"), hold("prone_y_raise")],
+};
+
 /** Routines earlier versions shipped, all retired for `everyday`. Read only by the save migration. */
 export const RETIRED_MOBILITY = ["full_body", "hips", "shoulders", "spine", "quick"];
 
@@ -330,9 +359,12 @@ const withMobilityEdits = (routine: MobilityRoutine): MobilityRoutine => {
 };
 
 export const cardioById = (id: string): CardioExercise | undefined =>
-  CARDIO.find((c) => c.id === id) ?? customCardio.find((c) => c.id === id);
+  CARDIO.find((c) => c.id === id) ??
+  AWAY_CARDIO.find((c) => c.id === id) ??
+  customCardio.find((c) => c.id === id);
 
 export const mobilityById = (id: string): MobilityRoutine | undefined => {
+  if (id === AWAY_WARMUP.id) return AWAY_WARMUP;
   const builtIn = MOBILITY.find((m) => m.id === id);
   return builtIn ? withMobilityEdits(builtIn) : customMobility.find((m) => m.id === id);
 };
@@ -382,7 +414,7 @@ export const courseLabel = (cardio: CardioExercise, distance: number): string =>
  * distance keeps its own record, so a free choice would scatter your times
  * across 1.35, 1.4 and 1.55 km with nothing to compare against.
  */
-export const COURSE_STEP: Record<CardioMetric["unit"], number> = { km: 0.5, m: 500 };
+export const COURSE_STEP: Record<CardioMetric["unit"], number> = { km: 0.5, m: 500, skips: 100 };
 
 /** How far − and + move a time, in seconds. */
 export const TIME_STEP = 5;

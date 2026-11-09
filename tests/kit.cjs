@@ -187,10 +187,17 @@ test("away with nothing: the same workout comes next, with what can be done anyw
   const ids = lifts(built).map((it) => it.exerciseId);
   assert.ok(ids.includes("push_up"));
   for (const id of ids) assert.ok(kit.fits({ id }, kit.BODYWEIGHT), id);
-  // No machines, no band: the lifts come first and the stretch still ends it.
-  assert.ok(!built.active.items.some((it) => it.kind === "cardio"));
-  assert.ok(!built.active.items.some((it) => it.slot === store.WARMUP_SLOT));
+  // No machines, no band: a walk or jog outside opens it, the warm-up needs
+  // nothing, nothing closes it but the stretch.
+  const cardio = built.active.items.filter((it) => it.kind === "cardio");
+  assert.equal(cardio.map((it) => it.exerciseId).join(), "outdoor");
+  assert.equal(cardio[0].minutes, 5);
+  const warmup = built.active.items.find((it) => it.slot === store.WARMUP_SLOT);
+  assert.equal(warmup.exerciseId, "shoulder_warmup_away");
   assert.ok(built.active.items.some((it) => it.slot === store.MOBILITY_SLOT));
+  // Skipping rope is one swap away; the gym's machines aren't.
+  const opening = { ...built, active: { ...built.active, cursor: built.active.items.indexOf(cardio[0]) } };
+  assert.equal(store.conditioningPool(opening, cardio[0]).map((o) => o.id).join(), "outdoor,skipping");
   // What sits out is said, not hidden.
   assert.deepEqual(
     store.sittingOut(state, workout(state, "push")).map((e) => e.slot).join(),

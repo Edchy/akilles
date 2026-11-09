@@ -24,6 +24,8 @@ import {
 } from "@/data/exercises";
 import {
   CARDIO_DEFAULT,
+  AWAY_CARDIO,
+  AWAY_WARMUP,
   CARDIO_MINUTES,
   COURSE_STEP,
   MINUTES_MAX,
@@ -920,7 +922,7 @@ export const workoutPreview = (state: SessionState, workout: Workout): PreviewRo
     };
   });
   const block = (where: CardioEnd): PreviewRow[] => {
-    const plan = hasMachines(state) ? cardioPlan(state, workout, where) : null;
+    const plan = cardioHere(state, workout, where);
     if (!plan) return [];
     return [
       { id: CARDIO_SLOTS[where], name: plan.machine.name, amount: cardioAmount(plan), family: "cardio" },
@@ -2465,6 +2467,23 @@ export const cardioPlan = (
   return { machine: fallback, ...lengthOf(fallback) };
 };
 
+/**
+ * The cardio as it runs here. At the gym, the workout's machine. Without
+ * machines, the opening block becomes a walk or jog outside — skipping rope
+ * one swap away — for as many minutes as the workout's own block runs, and
+ * the closing block is left out.
+ */
+export const cardioHere = (
+  state: SessionState,
+  workout: Workout,
+  where: CardioEnd,
+): CardioPlan | null => {
+  if (hasMachines(state)) return cardioPlan(state, workout, where);
+  const block = workout.cardio?.[where];
+  if (where === "close" || block === null) return null;
+  return { machine: AWAY_CARDIO[0], minutes: block?.minutes ?? CARDIO_MINUTES };
+};
+
 /** "1 km" or "5 min". */
 export const cardioAmount = (plan: CardioPlan): string =>
   plan.course !== undefined ? courseLabel(plan.machine, plan.course) : `${plan.minutes} min`;
@@ -2511,11 +2530,11 @@ export const warmupPlan = (state: SessionState, workout: Workout): MobilityRouti
 
 /**
  * The warm-up as it runs here. The shoulder warm-up needs a ball and a band,
- * so away from a gym it is left out — the lifts still ramp up.
+ * so away from a gym it becomes the one that needs nothing.
  */
 const warmupHere = (state: SessionState, workout: Workout): MobilityRoutine | null => {
   const plan = warmupPlan(state, workout);
-  return plan?.id === SHOULDER_WARMUP && !hasMachines(state) ? null : plan;
+  return plan?.id === SHOULDER_WARMUP && !hasMachines(state) ? AWAY_WARMUP : plan;
 };
 
 /** The workouts that open or end on a routine, so an edit can say who else it reaches. */
@@ -2526,8 +2545,7 @@ export const workoutsUsing = (state: SessionState, routineId: string): Workout[]
 
 /** A cardio block for one end of the session, or null if the workout has none there. */
 const cardioBlock = (state: SessionState, workout: Workout, where: CardioEnd): Item | null => {
-  // The machines are in the gym. Away, the session starts with the lifts.
-  const plan = hasMachines(state) ? cardioPlan(state, workout, where) : null;
+  const plan = cardioHere(state, workout, where);
   if (!plan) return null;
   const slot = CARDIO_SLOTS[where];
   return {
@@ -2842,7 +2860,10 @@ export const conditioningPool = (
   item: Item,
 ): { id: string; name: string }[] =>
   isCardio(item)
-    ? cardioPool(state.hiddenConditioning).map((c) => ({ id: c.id, name: c.name }))
+    ? (hasMachines(state) ? cardioPool(state.hiddenConditioning) : AWAY_CARDIO).map((c) => ({
+        id: c.id,
+        name: c.name,
+      }))
     : mobilityPool(state.hiddenConditioning).map((m) => ({ id: m.id, name: m.name }));
 
 // ---- mobility routines: their holds ----

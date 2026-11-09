@@ -870,6 +870,120 @@ function bandExternalRotation(): Move {
   };
 }
 
+/**
+ * Arm circles, from the front: arms straight out to the sides at shoulder
+ * height, drawing small circles. One circle a turn.
+ */
+function armCircles(): Move {
+  const TAU = 2 * Math.PI;
+  return {
+    kit: {},
+    film: { views: [90], cycle: 1.1, middle: new Vec3(0, 0, 0), room: { height: 2.0, width: 2.0 } },
+    pose(t) {
+      const pelvis = standingHips(0, 0.15);
+      const { feet, ankles } = stand(0.15, rad(10));
+      const top = pelvis.clone().addScaledVector(UP, BODY.torso);
+      const turn = TAU * t;
+      const arms = SIDES.map((s) => {
+        const dir = new Vec3(0.22 * Math.cos(turn), 0.22 * Math.sin(turn), s).normalize();
+        return armFrom(top.clone().setZ(s * BODY.shoulder), dir, dir);
+      }) as [Limb, Limb];
+      return withArms(
+        poseFrom({
+          pelvis,
+          lean: 0,
+          ankles,
+          feet,
+          hands: [arms[0].end, arms[1].end],
+          elbowPole: DOWN,
+        }),
+        arms,
+      );
+    },
+  };
+}
+
+/**
+ * The wall slide, from the front: back against a wall, arms on it in a W —
+ * elbows bent square, a little below the shoulders — slid up into a Y, arms
+ * nearly straight, and slowly back down.
+ */
+function wallSlide(): Move {
+  return {
+    kit: {},
+    film: { views: [90], lifts: true, middle: new Vec3(0, 0, 0), room: { height: 2.3, width: 2.0 } },
+    pose(depth) {
+      const d = ease(clamp01(depth));
+      const pelvis = standingHips(0, 0.15);
+      const { feet, ankles } = stand(0.15, rad(10));
+      const top = pelvis.clone().addScaledVector(UP, BODY.torso);
+      const arms = SIDES.map((s) => {
+        const upper = blend(unit(-0.05, -0.25, s), unit(-0.05, 1, s * 0.55), d);
+        const fore = blend(unit(-0.05, 1, s * 0.05), unit(-0.05, 1, s * 0.5), d);
+        return armFrom(top.clone().setZ(s * BODY.shoulder), upper, fore);
+      }) as [Limb, Limb];
+      return withArms(
+        poseFrom({
+          pelvis,
+          lean: 0,
+          ankles,
+          feet,
+          hands: [arms[0].end, arms[1].end],
+          elbowPole: DOWN,
+        }),
+        arms,
+      );
+    },
+  };
+}
+
+/**
+ * The lying Y-raise: face down on the floor, arms overhead in a Y, thumbs
+ * up; lift the arms off the floor from the shoulder blades, hold, and lower.
+ * Seen from the side.
+ */
+function proneYRaise(): Move {
+  const lean = Math.PI / 2;
+  const pelvis = new Vec3(0, SIZE.trunk.side * 0.75, 0);
+  const top = pelvis.clone().addScaledVector(AHEAD, BODY.torso);
+  // Legs long behind, the ankles a little lower than the hips.
+  const reach = 0.99 * (BODY.thigh + BODY.shin);
+  const back = Math.sqrt(reach ** 2 - (pelvis.y - 0.07) ** 2 - (0.1 - BODY.hip) ** 2);
+  const ankles = SIDES.map((s) => new Vec3(-back, 0.07, s * 0.1)) as [Vec3, Vec3];
+  const foot = unit(-1, -0.2, 0);
+  return {
+    kit: {},
+    film: hold(0.05, { height: 0.9, width: 2.6 }),
+    pose(depth) {
+      const d = ease(clamp01(depth));
+      const lift = rad(lerp(-6, 22, d));
+      const arms = SIDES.map((s) => {
+        const dir = new Vec3(
+          Math.cos(lift) * Math.cos(rad(35)),
+          Math.sin(lift),
+          s * Math.cos(lift) * Math.sin(rad(35)),
+        );
+        return armFrom(top.clone().setZ(s * BODY.shoulder), dir, dir);
+      }) as [Limb, Limb];
+      const pose = withArms(
+        poseFrom({
+          pelvis,
+          lean,
+          ankles,
+          feet: [foot, foot],
+          hands: [arms[0].end, arms[1].end],
+          elbowPole: UP,
+          kneePole: DOWN,
+        }),
+        arms,
+      );
+      flat(pose, [false, false]);
+      pose.props = [mat(-back - 0.15, top.x + ARM + 0.1)];
+      return pose;
+    },
+  };
+}
+
 /** The stretches, by id. */
 export const STRETCHES: Record<string, () => Move> = {
   couch,
@@ -889,6 +1003,9 @@ export const STRETCHES: Record<string, () => Move> = {
   ball_shoulder: ballShoulder,
   band_pull_apart: bandPullApart,
   band_external_rotation: bandExternalRotation,
+  arm_circles: armCircles,
+  wall_slide: wallSlide,
+  prone_y_raise: proneYRaise,
 };
 
 void feetFlat;

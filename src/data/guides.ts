@@ -1091,6 +1091,22 @@ const LIFTS: Record<string, Guide> = {
 // ---- cardio ----
 
 const CARDIO: Record<string, Guide> = {
+  outdoor: g(
+    [
+      "Head out of the door at a brisk walk, or an easy jog.",
+      "Go out for half the minutes, then turn round and come back.",
+      "Keep it easy enough to talk. The lifts come next.",
+    ],
+    "Racing it — this is a warm-up, not the workout.",
+  ),
+  skipping: g(
+    [
+      "Hold the handles at your hips, elbows in by your sides.",
+      "Turn the rope with your wrists, not your arms.",
+      "Small hops on the balls of your feet, just high enough for the rope.",
+    ],
+    "Jumping high and landing on the heels.",
+  ),
   treadmill: g(
     [
       "Start easy for the first minute.",
@@ -1272,6 +1288,30 @@ const MOBILITY: Record<string, Guide> = {
       "Stop on a tender spot and breathe. Then the back of the shoulder.",
     ],
     "Pressing so hard you tense up — firm, but you should be able to relax into it.",
+  ),
+  arm_circles: g(
+    [
+      "Stand tall and hold your arms straight out to the sides.",
+      "Draw small circles with your hands, growing them slowly bigger.",
+      "Halfway through, circle the other way.",
+    ],
+    "Shrugging the shoulders up toward the ears.",
+  ),
+  wall_slide: g(
+    [
+      "Stand with your back against a wall, feet a step out from it.",
+      "Put your arms on the wall in a W: elbows bent, a little below the shoulders.",
+      "Slide them up into a Y, keeping them on the wall, then slowly back down.",
+    ],
+    "Arching the lower back away from the wall to get the arms higher.",
+  ),
+  prone_y_raise: g(
+    [
+      "Lie face down, arms overhead in a Y, thumbs pointing up.",
+      "Squeeze the shoulder blades and lift your arms a hand's width off the floor.",
+      "Hold for a moment, then lower slowly.",
+    ],
+    "Lifting the head and chest instead of the arms.",
   ),
   band_pull_apart: g(
     [

@@ -54,6 +54,7 @@ import {
   type FinishedMood,
 } from "@/data/voice";
 import {
+  AWAY_CARDIO,
   courseLabel,
   distanceLabel,
   EFFORT,
@@ -1315,6 +1316,10 @@ function CardioBody({
   const timed = isTimed(item);
   const score = scoreOf(item);
   const { decimals, unit } = cardio.metric;
+  // Skipping is counted, not measured; anything away from the gym is
+  // no machine, and its number is optional.
+  const counted = unit === "skips";
+  const away = AWAY_CARDIO.some((c) => c.id === cardio.id);
   // Untouched, the box holds last time's score: that is what Done records.
   const shown = score ?? last;
 
@@ -1359,7 +1364,7 @@ function CardioBody({
               // A number pad on both: a time types as 4.52 or 452 and reads back as 4:52.
               keyboardType="decimal-pad"
               selectTextOnFocus
-              accessibilityLabel={timed ? "Your time" : `Distance in ${unit}`}
+              accessibilityLabel={timed ? "Your time" : counted ? "Skips" : `Distance in ${unit}`}
               style={[number, { width: timed ? 190 : 150, padding: 0, color: colors.text, textAlign: timed ? "center" : "right" }]}
             />
             {timed ? null : <Text style={{ color: colors.text, fontFamily: fonts.regular, fontSize: 22 }}>{unit}</Text>}
@@ -1402,7 +1407,7 @@ function CardioBody({
               <Text style={{ color: colors.text, fontFamily: fonts.medium, fontSize: 19 }}>{label(record.last)}</Text>
             </View>
             <Text numberOfLines={1} style={line}>
-              {timed ? "Fastest" : "Furthest"} {label(record.best)} · {record.sessions}{" "}
+              {timed ? "Fastest" : counted ? "Most" : "Furthest"} {label(record.best)} · {record.sessions}{" "}
               {record.sessions === 1 ? "time" : "times"}
             </Text>
           </>
@@ -1410,15 +1415,17 @@ function CardioBody({
           <Text numberOfLines={3} style={line}>
             {timed
               ? `First ${courseLabel(cardio, item.course!)} on the ${cardio.name.toLowerCase()}. Enter your time when you finish — it becomes the mark to beat.`
-              : `First ${item.minutes} minutes on the ${cardio.name.toLowerCase()}. Enter the distance when the clock runs out — it becomes the mark to beat.`}
+              : away
+                ? `${item.minutes} minutes. ${counted ? "Count the skips" : "Enter the distance"} if you like — it becomes the mark to beat.`
+                : `First ${item.minutes} minutes on the ${cardio.name.toLowerCase()}. Enter the distance when the clock runs out — it becomes the mark to beat.`}
           </Text>
         )}
         {/* Said only when it is true — a line that always shows says nothing. */}
         {isBest || beat ? (
           <Text style={{ color: colors.text, fontFamily: fonts.italic, fontSize: 22 }}>
             {isBest
-              ? timed ? "Fastest yet." : "Furthest yet."
-              : timed ? "Faster than last time." : "Past last time."}
+              ? timed ? "Fastest yet." : counted ? "Most yet." : "Furthest yet."
+              : timed ? "Faster than last time." : counted ? "More than last time." : "Past last time."}
           </Text>
         ) : null}
       </View>

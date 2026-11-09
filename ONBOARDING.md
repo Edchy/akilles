@@ -323,13 +323,12 @@ The kit sheet asks which weights are there ("Any weight", or tick 10 kg). Then:
 **Built, tested, checked on the simulator, committed:**
 
 1. **Equipment.** Every exercise says what it needs (`src/data/kit.ts`); `src/lib/fill.ts` picks a slot's exercise from a kit, weights included. Progression steps to the next weight on hand and marks a lift outgrown at the heaviest (`src/lib/progression.ts`).
-2. **The place switch** lives in Settings (the gear on Plan), with the "Where are you training?" sheet and weights to tick (`src/components/place.tsx`, `src/app/settings.tsx`). Today says nothing at your usual place; away, one quiet line says where you are and why the workout changed. Away: slots filled from the kit, machine cardio and the band warm-up left out, what sits out said plainly, gym numbers untouched.
+2. **The place switch** lives in Settings (the gear on Plan), with the "Where are you training?" sheet and weights to tick (`src/components/place.tsx`, `src/app/settings.tsx`). Today says nothing at your usual place; away, one quiet line says where you are and why the workout changed. Away: slots filled from the kit, what sits out said plainly, gym numbers untouched.
 3. **Onboarding, one flow.** Welcome (a film of Milo's marks), where, home kit, time, the plan, Make it mine, then three how-it-works pages — the last with your own workouts — under one progress line, each page sliding in (`src/components/onboarding.tsx`). The old six-page intro is three pages (the wrestler and the building blocks are gone) and opens again from Settings.
 4. **Home lifts:** bodyweight squat and split squat, pike push-up, KB row, KB Romanian deadlift, KB curl, DB and KB floor press, DB pullover — guides and films in Milo's marks. Storage versions 14 and 15 put them in the library on existing phones.
 5. **No sparse workouts.** A slot with nothing of its own kind takes the nearest kind (no bar to pull down on: a row), and a plan tops a short workout up with extras (bench dips, planks) to its template's length.
 6. **The kit picker** has a drawn icon for each thing and "Another weight" to type any weight.
 
-**Still to do in step 4:**
+7. **Cardio and warm-up away.** Without machines, a workout opens with "Walk or jog outside" for its usual minutes, skipping rope one swap away; the closing block is left out. A pressing day's warm-up becomes arm circles, wall slides and lying Y-raises — nothing to hold. Each with a film and a guide. The gym's machines and routines are untouched.
 
-- Home cardio: walk or jog outside, skipping rope.
-- A band-free shoulder warm-up (arm circles, wall slides, prone Y-raises).
+Step 4 is done.
