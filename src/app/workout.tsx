@@ -1,4 +1,5 @@
 import * as Haptics from "expo-haptics";
+import { activateKeepAwakeAsync, deactivateKeepAwake } from "expo-keep-awake";
 import { router } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import {
@@ -1446,9 +1447,12 @@ function CardioBody({
 /**
  * The mobility routine as a deck of cards: one per stretch, one per side where
  * a stretch has two. Each card is the picture, the name, a line on how, and a
- * countdown. Start it, hold, and when it runs out swipe — or press Next — for
- * the next one. The button is the whole control, so it never moves: Start,
- * Pause, Resume, Next, and Finish on the last card.
+ * countdown. Start it once and it runs itself: when a hold runs out the phone
+ * buzzes, the next card comes up, and after a moment to change position its
+ * clock starts — so the phone can lie on the floor from the first stretch to
+ * the last, and the screen stays on while it runs. The button is the whole
+ * control, so it never moves: Start, Pause, Resume, Done for a stretch done
+ * for reps, and Finish on the last card.
  *
  * Nothing here is recorded: a pose is marked done once its timer has run out
  * on every side, only so the session knows the block was worked through.
@@ -1973,6 +1977,11 @@ function GoalWhy({
 
 type Card = { move: MobilityMove; index: number; side: "Left side" | "Right side" | null };
 
+/** Seconds between one hold and the next, to change side or position. */
+const CHANGE_SECONDS = 5;
+/** What keeps the screen on while the routine runs itself. */
+const AWAKE = "mobility";
+
 function MobilityDeck({
   routine,
   barSpace,
@@ -2006,6 +2015,31 @@ function MobilityDeck({
   // time rather than counted down tick by tick, so a slow frame or a locked
   // phone cannot stretch the hold.
   const [running, setRunning] = useState<{ page: number; endAt: number } | null>(null);
+  // Running itself: started, and not paused since. Each hold then follows
+  // the last without a tap.
+  const [flowing, setFlowing] = useState(false);
+
+  // A phone that locks would stop the clock, and the routine with it.
+  useEffect(() => {
+    if (!flowing) return;
+    activateKeepAwakeAsync(AWAKE).catch(() => {});
+    return () => {
+      deactivateKeepAwake(AWAKE).catch(() => {});
+    };
+  }, [flowing]);
+
+  // Between holds: the card on screen starts by itself after a moment to
+  // change position. A stretch done for reps has no clock, and waits for Done.
+  const waiting = flowing && !running && left[page] > 0 && !cards[page].move.reps;
+  useEffect(() => {
+    if (!waiting) return;
+    const timer = setTimeout(() => {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      setRunning({ page, endAt: Date.now() + left[page] * 1000 });
+    }, CHANGE_SECONDS * 1000);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [waiting, page]);
 
   useEffect(() => {
     if (!running) return;
@@ -2019,6 +2053,8 @@ function MobilityDeck({
       setRunning(null);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       finish(running.page);
+      // On to the next by itself; the last one waits for Finish.
+      if (running.page < cards.length - 1) goTo(running.page + 1);
     }, 200);
     return () => clearInterval(tick);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -2035,6 +2071,7 @@ function MobilityDeck({
     });
 
   const pause = () => {
+    setFlowing(false);
     if (!running) return;
     const rem = Math.max(0, (running.endAt - Date.now()) / 1000);
     setLeft((l) => l.map((v, i) => (i === running.page ? rem : v)));
@@ -2047,7 +2084,7 @@ function MobilityDeck({
   const done = left[page] <= 0;
   const last = page === cards.length - 1;
   const started = left[page] < card.move.seconds;
-  const action = running
+  const action = running || waiting
     ? { label: "Pause", onPress: pause }
     : done
       ? last
@@ -2059,12 +2096,16 @@ function MobilityDeck({
             label: "Done",
             onPress: () => {
               finish(page);
+              setFlowing(true);
               if (!last) goTo(page + 1);
             },
           }
         : {
             label: started ? "Resume" : `Start · ${timeLabel(card.move.seconds)}`,
-            onPress: () => setRunning({ page, endAt: Date.now() + left[page] * 1000 }),
+            onPress: () => {
+              setFlowing(true);
+              setRunning({ page, endAt: Date.now() + left[page] * 1000 });
+            },
           };
 
   return (
@@ -2085,7 +2126,8 @@ function MobilityDeck({
               const p = Math.round(e.nativeEvent.contentOffset.x / width);
               if (p !== page && p >= 0 && p < cards.length) {
                 // Swiping away mid-hold pauses it; the time left is kept.
-                pause();
+                // Between holds a swipe only chooses which one starts next.
+                if (running) pause();
                 setPage(p);
               }
             }}
@@ -2109,7 +2151,7 @@ function MobilityDeck({
         <Column style={{ gap: 8 }}>
           {/* Always laid out, so the hint appearing moves nothing. */}
           <Text style={{ height: 22, textAlign: "center", color: colors.text, fontFamily: fonts.regular, fontSize: 17 }}>
-            {done && !last ? "Swipe for the next one" : ""}
+            {waiting ? "Get into position" : done && !last ? "Swipe for the next one" : ""}
           </Text>
           <Action label={action.label} fill onPress={action.onPress} />
         </Column>
