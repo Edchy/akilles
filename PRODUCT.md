@@ -32,12 +32,23 @@ Leave the ego at the door. Milo is the opposite of the typical gym-bro app, and 
 - **Reload as you climb.** After two steps up, a lift climbs the same weight again before the next. Progress calls it, never the calendar. The only calendar rule is the layoff: easing back after weeks away, offered and never forced.
 - **Make control the flex.** Reloads, honest short counts and slow reps are what Milo praises. Momentum and ego are what it teases. The only pitch that reaches gym bros is control as the harder, more impressive thing, so say it in their language: "lighter is the flex", "owned, not borrowed".
 
+## The Core (November 2026)
+
+Milo is being cut back to its core and rebuilt from it. What was put away is listed in `ARCHIVE.md`.
+
+- **Move every day.** The aim is that everyone trains every day, not three times a week: the hard thing done daily until it is not so hard. A day can be small — twenty minutes of cardio and a stretch — but there is always something for today, and Milo has it worked out. Start small, build up, drop back a little, build up again.
+- **Two people.** Someone who has trained for years and never stayed consistent, and someone anxious about the gym who doesn't know where to go or what to do. Both get the same app: everything decided, easy to change, never a reason to feel ashamed.
+- **Make a light weight feel heavy.** That is the skill. Every lift's instructions say how to breathe, how fast to move, and where to pause.
+- **Never wait.** A lift you skip comes back after the others, so a taken bench costs nothing. Swapping the exercise for today is the other way round it.
+- **The one that gets done.** The stretch, the cardio, the whole day: what is easy enough to do beats what is best on paper.
+- **Still to design:** the ladder of day sizes, one tap to train with the equipment at hand (barbell, dumbbells, kettlebell, machines, nothing), a core of the best exercises in place of the long catalogue, a short intro, a voice that talks you through the stretch, and goals in a simpler form.
+
 ## Operating Context
 
 - Three tabs: **Today** (the next workout, Start or Skip), **Progress** (this week, then Results — the good news — Sessions — each workout set by set — and Lifts — each exercise's weight and past), **Plan** (Workouts and Exercises segments, both accordions).
 - The workout screen takes over the whole display: the exercise name and the weight are the surface. You log each set by tapping its circle, and at the end you give a thumbs up or down on how it felt.
-- Cardio blocks open and close each session, and mobility ends it. Each workout sets its own machine, length and routine in Plan, and can drop any of them. A block is either timed minutes scored by distance, or a set distance (the treadmill, 1 km by default, in 0.5 km steps) scored by time. Mobility defaults to one everyday stretch routine, every stretch with a photo and a guide; routines are edited in Plan and run as a checklist.
-- A persistent bottom bar, mounted once, carries the tabs or the workout actions (Back / Leave / Skip).
+- Cardio blocks open and close each session, and mobility ends it. Each workout sets its own machine, length and routine in Plan, and can drop any of them. A block is either timed minutes scored by distance, or a set distance (the treadmill, 1 km by default, in 0.5 km steps) scored by time. Mobility defaults to one everyday stretch routine, every stretch with a photo and a guide; routines are edited in Plan and, once started, run themselves from the first stretch to the last.
+- A persistent bottom bar, mounted once, carries the tabs or the workout actions (Back / Leave / Skip — which reads Later on a lift that will come back).
 - It ships to the phone through Expo Go and EAS Update. There is no standalone build and no paid Apple developer account.
 
 ## Capabilities and Constraints

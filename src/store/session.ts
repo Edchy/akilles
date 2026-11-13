@@ -78,18 +78,19 @@ import { avoidFor, EXTRAS, SHAPE_FOR, SHAPES, type Easy, type Shape, type Time }
 import type { Outcome, Say } from "@/data/voice";
 import { familyOf, type Family } from "@/data/families";
 import {
-  GOAL_HOLD_STEP,
-  GOAL_SETS,
-  STARTING_GOALS,
-  TARGET_LIMITS,
   applyGoal,
   currentStep,
-  isStarted,
-  onTarget,
   type Goal,
+  GOAL_HOLD_STEP,
+  GOAL_SETS,
   type GoalOutcome,
+  GOALS_ON,
   type GoalStep,
+  isStarted,
   type Measure,
+  onTarget,
+  STARTING_GOALS,
+  TARGET_LIMITS,
 } from "@/data/goals";
 import {
   applyDecay,
@@ -3180,7 +3181,9 @@ export const goalById = (state: SessionState, id: string): Goal | undefined =>
  * to do.
  */
 export const goalsIn = (state: SessionState, workoutId: string): Goal[] =>
-  state.goals.filter((g) => !g.learned && g.steps.length > 0 && g.workouts.includes(workoutId));
+  GOALS_ON
+    ? state.goals.filter((g) => !g.learned && g.steps.length > 0 && g.workouts.includes(workoutId))
+    : [];
 
 /** The workouts a goal is practised in, by name, in loop order. */
 export const goalWorkouts = (state: SessionState, goal: Goal): Workout[] =>

@@ -6,6 +6,7 @@ import { AddExerciseSheet } from "@/components/add-exercise";
 import { Count, Setting, Step } from "@/components/controls";
 import { DragList, type Drag } from "@/components/drag-list";
 import { WorkoutGoals } from "@/components/goals";
+import { GOALS_ON } from "@/data/goals";
 import { Icon } from "@/components/icon";
 import { Mark } from "@/components/mark";
 import { RoutineEditor } from "@/components/routine";
@@ -545,7 +546,7 @@ function WorkoutSheet({
           <MobilityRow workout={workout} where="warmup" onOpen={() => setBlock("warmup")} />
         </View>
 
-        <WorkoutGoals workoutId={workout.id} />
+        {GOALS_ON ? <WorkoutGoals workoutId={workout.id} /> : null}
 
         <View style={{ gap: 12 }}>
           <SectionLabel>Exercises</SectionLabel>

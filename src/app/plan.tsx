@@ -7,6 +7,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useBarSpace } from "@/components/bottom-bar";
 import { Catalogue } from "@/components/catalogue";
 import { Goals } from "@/components/goals";
+import { GOALS_ON } from "@/data/goals";
 import { Icon } from "@/components/icon";
 import { Modules } from "@/components/modules";
 import { COLUMN } from "@/components/screen";
@@ -21,7 +22,8 @@ type Segment = "modules" | "exercises" | "goals";
  * made of. Kept on one tab because you rarely need the raw catalogue — but
  * kept as separate lists, since a program and a catalogue answer different
  * questions. A third, Goals, holds what you are learning — skills you climb
- * to a step at a time, done inside the workouts you choose.
+ * to a step at a time, done inside the workouts you choose; it is put away
+ * for now (see `GOALS_ON`).
  */
 export default function PlanScreen() {
   const insets = useSafeAreaInsets();
@@ -81,7 +83,7 @@ export default function PlanScreen() {
         options={[
           { value: "modules", label: "Workouts" },
           { value: "exercises", label: "Exercises" },
-          { value: "goals", label: "Goals" },
+          ...(GOALS_ON ? [{ value: "goals" as const, label: "Goals" }] : []),
         ]}
         value={segment}
         onChange={setSegment}

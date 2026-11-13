@@ -61,6 +61,14 @@ export type Goal = {
 export const OWN_AFTER = 2;
 
 /**
+ * Goals are put away while Milo is cut back to its core (see ARCHIVE.md):
+ * no Goals in Plan, none in a workout, none on Progress. Everything behind
+ * them is kept, and saved goals stay saved, so turning this on brings them
+ * back as they were. They return when they have a simpler design.
+ */
+export const GOALS_ON: boolean = false;
+
+/**
  * Whether a goal has begun: it is in a workout, or it has climbed. One that
  * is only written down — the starting goal, or one of yours not placed yet —
  * waits in Plan, not in Progress.

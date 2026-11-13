@@ -4,6 +4,7 @@ import { Text } from "@/components/text";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { GoalProgress } from "@/components/goal-progress";
+import { GOALS_ON } from "@/data/goals";
 import { useBarSpace } from "@/components/bottom-bar";
 import { Results } from "@/components/results";
 import { COLUMN } from "@/components/screen";
@@ -62,7 +63,7 @@ export default function HistoryScreen() {
 
       <Week state={state} />
 
-      <GoalProgress />
+      {GOALS_ON ? <GoalProgress /> : null}
 
       <Segments
         options={[
