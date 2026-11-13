@@ -48,6 +48,25 @@ test("the test save and the real one never touch", async () => {
   assert.equal((await storage.load("test")).shortWorkouts, true);
 });
 
+test("a save that cannot be read is kept aside before a fresh start writes over it", async () => {
+  for (const unreadable of ["{ not json", JSON.stringify({ version: 9999, state: { history: {} } })]) {
+    disk.clear();
+    disk.set("achilles/state", unreadable);
+    const fresh = await storage.load("real");
+    assert.equal(fresh.log.length, 0);
+    // What the app does next: save the fresh state over the old one.
+    await storage.save(fresh, "real");
+    const kept = [...disk.keys()].filter((k) => k.startsWith("achilles/kept/real/"));
+    assert.equal(kept.length, 1);
+    assert.equal(disk.get(kept[0]), unreadable);
+  }
+  // A save that reads keeps nothing aside.
+  disk.clear();
+  await storage.save(mine(), "real");
+  await storage.load("real");
+  assert.deepEqual([...disk.keys()], ["achilles/state"]);
+});
+
 test("test mode left on is still on next launch; leaving forgets it", async () => {
   disk.clear();
   assert.equal(await storage.loadProfile(), "real");

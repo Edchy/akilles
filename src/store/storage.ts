@@ -64,11 +64,19 @@ export type Profile = "real" | "test";
 const KEYS: Record<Profile, string> = { real: "achilles/state", test: "achilles/test" };
 /** Present, as "test", only while test mode is on — so it survives a restart. */
 const MODE_KEY = "achilles/mode";
+/**
+ * Where a save that could not be read is kept, untouched, before the app
+ * starts afresh and writes over it: `achilles/kept/<profile>/<when>`. Nothing
+ * reads these back by itself; they are there so training is never lost to a
+ * save the app could not understand.
+ */
+const KEPT = "achilles/kept";
 
 /**
  * Bumped whenever the saved shape changes in a way older blobs cannot satisfy.
- * A blob from a newer version than we understand is left alone rather than
- * overwritten, so downgrading the app does not destroy training history.
+ * A blob from a newer version than we understand is not read, and is kept
+ * aside before anything is written over it (see `KEPT`), so downgrading the
+ * app does not destroy training history.
  *
  * 2 — added cardio records and the conditioning catalogue. A version-1 blob
  *     is migrated rather than dropped: everything it holds is still valid, it
@@ -550,7 +558,9 @@ export const toSaved = (state: SessionState): string => {
  *
  * Anything unreadable — absent, corrupt, or written by a future version —
  * yields a fresh state rather than throwing, since failing to start is a
- * worse outcome than starting empty.
+ * worse outcome than starting empty. The next change is saved over what was
+ * there, so a save that is there but unreadable is first kept aside, as it
+ * is (see `KEPT`): a fresh start must never cost the training behind it.
  */
 export const load = async (profile: Profile = "real"): Promise<SessionState> => {
   try {
@@ -559,7 +569,9 @@ export const load = async (profile: Profile = "real"): Promise<SessionState> => 
     // nothing of the other profile's lingers after a switch.
     if (!raw) return resetToDefault();
     const state = fromSaved(raw);
-    return typeof state === "string" ? resetToDefault() : state;
+    if (typeof state !== "string") return state;
+    await AsyncStorage.setItem(`${KEPT}/${profile}/${Date.now()}`, raw);
+    return resetToDefault();
   } catch {
     return resetToDefault();
   }
