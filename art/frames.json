@@ -1,4 +1,15 @@
 {
+  "milo": {
+    "family": "legs",
+    "sheet": true,
+    "frames": [
+      {
+        "photo": "standing-calf-raises-0.jpg",
+        "moment": "The character sheet: the figure simply standing tall and relaxed, arms hanging straight down at the sides with the near arm in front of the torso, feet flat and together, looking straight ahead. No equipment at all, only the figure and the floor line.",
+        "view": "The person faces right."
+      }
+    ]
+  },
   "back_squat": {
     "family": "legs",
     "frames": [
@@ -51,6 +62,44 @@
         "photo": "childs-pose-0.jpg",
         "moment": "Child's pose stretch, the hold: kneeling with the knees apart, sitting back onto the heels, torso folded forward between the thighs, forehead resting on the floor, arms stretched forward along the floor, palms down.",
         "view": "The person faces right, arms reaching to the right."
+      }
+    ]
+  },
+  "db_row": {
+    "family": "pull",
+    "frames": [
+      {
+        "photo": "one-arm-dumbbell-row-0.jpg",
+        "moment": "One-arm dumbbell row, the bottom: one hand and the same-side knee on a flat bench, the other foot on the floor, back flat and level, the free arm hanging straight down holding a dumbbell.",
+        "view": "The person faces left, as in the photo: the hand on the bench at the left, the standing leg at the right. The arm with the dumbbell is the near one."
+      },
+      {
+        "photo": "one-arm-dumbbell-row-1.jpg",
+        "moment": "One-arm dumbbell row, the top: one hand and the same-side knee on a flat bench, the other foot on the floor, back flat and level, the dumbbell pulled up to the hip with the elbow bent, close to the body and pointing up above the back.",
+        "view": "The person faces left, as in the photo: the hand on the bench at the left, the standing leg at the right. The arm with the dumbbell is the near one."
+      }
+    ]
+  },
+  "goblet_squat": {
+    "family": "legs",
+    "frames": [
+      {
+        "photo": "goblet-squat-0.jpg",
+        "moment": "Goblet squat, standing: feet a little wider than the hips, holding one dumbbell upright against the chest with both hands, elbows under it.",
+        "view": "The person faces right.",
+        "feel": "the near thigh, from the hip to the knee"
+      },
+      {
+        "photo": "goblet-squat-1.jpg",
+        "moment": "Goblet squat, half way down: exactly between standing and the deep squat. The knees bent to about a right angle between thigh and shin opening wide, the thighs sloping at 45 degrees, hips a little back, heels flat. The torso tall and nearly upright, chest up, back straight. One dumbbell held upright against the chest with both hands, elbows pointing down. The head is half way between its standing height and its height in a deep squat.",
+        "view": "The person faces right. The far leg shows in grey just behind the near one, bent the same way.",
+        "feel": "the near thigh, from the hip to the knee"
+      },
+      {
+        "photo": "goblet-squat-1.jpg",
+        "moment": "Goblet squat, the bottom: a deep squat, the thighs just below level, heels flat on the floor, knees forward over the toes. The torso stays tall and nearly upright with the chest up and the back straight, not curled forward. One dumbbell held upright against the chest with both hands, elbows pointing down inside the knees.",
+        "view": "The person faces right. The far leg shows in grey just behind the near one, bent the same way, as in the standing frame.",
+        "feel": "the near thigh, from the hip to the knee"
       }
     ]
   }

@@ -34,6 +34,7 @@ import {
   type Shape,
   type Time,
 } from "@/data/templates";
+import { DECORATIVE } from "@/lib/decorative";
 import { useReduceMotion } from "@/lib/use-reduce-motion";
 import {
   applyPlan,
@@ -458,7 +459,7 @@ function Welcome() {
         }}
       >
         <Animated.View style={{ flex: 1, opacity: fade }}>
-          <Illustration id={WELCOME_FILMS[at]} style={{ width: side, height: side }} />
+          <Illustration id={WELCOME_FILMS[at]} film style={{ width: side, height: side }} />
         </Animated.View>
       </View>
       <View style={{ flexDirection: "row", gap: 14, marginTop: 18 }}>
@@ -661,7 +662,7 @@ function Page({
 }
 
 const Svg32 = ({ children }: { children: ReactNode }) => (
-  <Svg width={32} height={32} viewBox="0 0 32 32" accessibilityElementsHidden>
+  <Svg width={32} height={32} viewBox="0 0 32 32" {...DECORATIVE}>
     {children}
   </Svg>
 );

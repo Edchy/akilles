@@ -6,7 +6,8 @@
 Needs numpy, pillow and potracer (pip install numpy pillow potracer).
 
 Each drawing has three tones: white ground, black ink (the near side of the
-body) and grey tint (the far limbs and all equipment). Every pixel is snapped
+body) and grey tint (the far limbs and all equipment). Some have a fourth: red,
+the part of the body the movement works, traced as the frame's accent. Every pixel is snapped
 to the nearest of the three, the thin grey halo antialiasing leaves around
 black shapes is opened away, and each tone is traced with potrace into one SVG
 path. The tint path covers everything that isn't ground, so the ink drawn over
@@ -36,10 +37,16 @@ FLOOR, FLOOR_THICK = 461, 3
 
 
 def masks(png: Path):
-    grey = Image.open(png).convert("L").resize((W, H), Image.LANCZOS)
-    v = np.asarray(grey)
-    ink = v < INK_BELOW
-    tint = (v >= INK_BELOW) & (v <= GROUND_ABOVE)
+    image = Image.open(png).convert("RGB").resize((W, H), Image.LANCZOS)
+    r, g, b = (np.asarray(image)[..., i].astype(int) for i in range(3))
+    # The accent — where the movement works — is drawn red: far more red than
+    # green or blue. It is part of the near side of the body, so of the ink too.
+    accent = (r - np.maximum(g, b)) > 90
+    a = Image.fromarray((accent * 255).astype(np.uint8))
+    accent = np.asarray(a.filter(ImageFilter.MinFilter(3)).filter(ImageFilter.MaxFilter(3))) > 127
+    v = np.asarray(image.convert("L"))
+    ink = (v < INK_BELOW) | accent
+    tint = (v >= INK_BELOW) & (v <= GROUND_ABOVE) & ~accent
     # Antialiasing between black and white passes through grey: a halo one or
     # two pixels wide. Opening the grey mask removes it and keeps real shapes.
     t = Image.fromarray((tint * 255).astype(np.uint8))
@@ -52,12 +59,12 @@ def masks(png: Path):
     tint = tint.copy()
     tint[rows] = False
     shift = FLOOR - round(rows.mean())
-    ink, tint = (np.roll(m, shift, axis=0) for m in (ink, tint))
+    ink, tint, accent = (np.roll(m, shift, axis=0) for m in (ink, tint, accent))
     if shift > 0:
-        ink[:shift] = tint[:shift] = False
+        ink[:shift] = tint[:shift] = accent[:shift] = False
     elif shift < 0:
-        ink[shift:] = tint[shift:] = False
-    return ink, tint | ink
+        ink[shift:] = tint[shift:] = accent[shift:] = False
+    return ink, tint | ink, accent
 
 
 def trace(mask) -> str:
@@ -89,15 +96,17 @@ FIELDS = {
 }
 
 
-def coloured(ink, tint, family):
+def coloured(ink, tint, accent, family):
     field, dark = FIELDS[family]
     field, ink_rgb = hex_rgb(field), hex_rgb(WHITE if dark else NAVY)
+    accent_rgb = hex_rgb(NAVY if dark else WHITE)
     tint_rgb = mix(ink_rgb, field, TINT)
     img = np.zeros((H, W, 3), np.uint8)
     img[:] = field
     img[FLOOR - FLOOR_THICK // 2 : FLOOR + FLOOR_THICK - FLOOR_THICK // 2] = tint_rgb
     img[tint] = tint_rgb
     img[ink] = ink_rgb
+    img[accent] = accent_rgb
     return Image.fromarray(img)
 
 
@@ -125,15 +134,21 @@ def main():
     pv = sys.argv[sys.argv.index("--preview") + 1] if "--preview" in sys.argv else None
     entries, rows = [], []
     for id, movement in frames.items():
+        # The character sheet is a reference for drawing, not a movement.
+        if movement.get("sheet"):
+            continue
         specs = movement["frames"]
         traced, row = [], []
         for n in range(len(specs)):
             png = ART / "drawn" / f"{id}-{n}.png"
             if not png.exists():
                 break
-            ink, tint = masks(png)
-            traced.append({"tint": trace(tint), "ink": trace(ink)})
-            row.append(coloured(ink, tint, movement["family"]))
+            ink, tint, accent = masks(png)
+            frame = {"tint": trace(tint), "ink": trace(ink)}
+            if accent.any():
+                frame["accent"] = trace(accent)
+            traced.append(frame)
+            row.append(coloured(ink, tint, accent, movement["family"]))
         if len(traced) == len(specs):
             entries.append((id, traced))
             rows.append(row)
@@ -145,10 +160,12 @@ def main():
         " * Milo's own pictures of each movement, traced from the drawings in art/drawn",
         " * by art/trace.py. Don't edit by hand: redraw and retrace. Each frame is two",
         " * paths on a 768 x 512 view box: `tint` (the far limbs and the equipment, and",
-        " * under everything) and `ink` (the near side of the body, drawn on top).",
+        " * under everything) and `ink` (the near side of the body, drawn on top) —",
+        " * and, where the drawing shows it, `accent`: the part of the body that works,",
+        " * drawn over the ink.",
         " */",
         "",
-        "export type ArtFrame = { tint: string; ink: string };",
+        "export type ArtFrame = { tint: string; ink: string; accent?: string };",
         "",
         f"export const ART_BOX = {{ width: {W}, height: {H} }};",
         "",
@@ -160,7 +177,8 @@ def main():
     for id, traced in entries:
         lines.append(f"  {id}: [")
         for fr in traced:
-            lines.append(f"    {{\n      tint: \"{fr['tint']}\",\n      ink: \"{fr['ink']}\",\n    }},")
+            accent = f"      accent: \"{fr['accent']}\",\n" if "accent" in fr else ""
+            lines.append(f"    {{\n      tint: \"{fr['tint']}\",\n      ink: \"{fr['ink']}\",\n{accent}    }},")
         lines.append("  ],")
     lines.append("};")
     OUT.write_text("\n".join(lines) + "\n")

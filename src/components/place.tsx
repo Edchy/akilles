@@ -8,6 +8,7 @@ import { Text, TextInput } from "@/components/text";
 import { parseWeight } from "@/components/weight-field";
 import { colors, radii } from "@/constants/theme";
 import type { Gear, Kit, Load } from "@/data/kit";
+import { DECORATIVE } from "@/lib/decorative";
 import { kitAt, placeOf, setPlace, useSession, type Place } from "@/store/session";
 
 /**
@@ -440,7 +441,7 @@ export function GearIcon({ gear }: { gear: Gear | "none" | "home" }) {
     }
   })();
   return (
-    <Svg width={32} height={32} viewBox="0 0 32 32" accessibilityElementsHidden>
+    <Svg width={32} height={32} viewBox="0 0 32 32" {...DECORATIVE}>
       {shape}
     </Svg>
   );

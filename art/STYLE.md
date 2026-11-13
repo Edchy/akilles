@@ -8,7 +8,7 @@ The first attached image is a photo of a real person in exactly this moment. Cop
 precisely: joint angles, back angle, head position, where the hands grip, where the feet stand,
 where the weight sits on the body. This picture teaches form, so the form must be correct.
 Ignore the photo's camera angle, room, clothes and colours; only the pose matters.
-{style_ref}
+{style_ref}{feel}
 VIEW
 A true side view, flat and orthographic, with no perspective. {view}
 

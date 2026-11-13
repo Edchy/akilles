@@ -40,6 +40,15 @@ test("every exercise, cardio machine and stretch has a film", () => {
   assert.deepEqual(ids.filter((id) => !(id in MOVES)), []);
 });
 
+test("a film waiting to be reshot has a photo to show instead", () => {
+  const { RESHOOT } = load("@/motion/moves");
+  const photos = fs.readFileSync(path.resolve(__dirname, "../src/data/photos.ts"), "utf8");
+  for (const id of RESHOOT) {
+    assert.ok(id in MOVES, `${id} is not a film`);
+    assert.match(photos, new RegExp(`\\n  ${id}: \\[require`), `${id} has no photo`);
+  }
+});
+
 test("every bone keeps its length at every depth", () => {
   for (const [id, move] of Object.entries(ALL)) {
     for (const d of DEPTHS) {

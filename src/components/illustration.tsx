@@ -2,15 +2,24 @@ import { useEffect, useState } from "react";
 import { Image, View, type ViewStyle } from "react-native";
 import { Text } from "@/components/text";
 
+import { Drawing } from "@/components/drawing";
 import { Film } from "@/components/film";
 import { Icon } from "@/components/icon";
 import { colors, FAMILY } from "@/constants/theme";
+import { ART } from "@/data/art";
 import { CARDIO, STRETCHES } from "@/data/conditioning";
 import { byId } from "@/data/exercises";
 import { familyOf, type Family } from "@/data/families";
 import { PHOTOS } from "@/data/photos";
 import { mix } from "@/motion/marks";
-import { MOVES } from "@/motion/moves";
+import { MOVES, RESHOOT } from "@/motion/moves";
+
+/**
+ * The movements shown in Milo's own drawings (see `components/drawing.tsx`):
+ * each drawn against Milo's character sheet and looked over, frame by frame.
+ * The rest of `ART` is drawn but not yet passed.
+ */
+const DRAWN: ReadonlySet<string> = new Set(["goblet_squat"]);
 
 /** How long each frame of a lift shows before flipping to the other. */
 const FRAME_MS = 1100;
@@ -18,9 +27,12 @@ const FRAME_MS = 1100;
 /**
  * The picture of a movement — a lift, a machine or a stretch — by its id.
  *
- * A film where Milo has one (see `motion/`): the movement drawn flat in
+ * Milo's own drawing where one has passed (`DRAWN`): Milo moving at the pace
+ * of a rep, the part that works in the accent. Otherwise,
+ * a film where Milo has one (see `motion/`): the movement drawn flat in
  * Milo's marks, a rep from the side and a rep from the front — except as a
- * thumbnail, where the photo stays if there is one. Given `plays`, a film loops that many
+ * thumbnail, where the photo stays if there is one, and a film that doesn't
+ * read yet (`RESHOOT`), which shows its photo. Given `plays`, a film loops that many
  * times and then holds its still, so a picture on screen through a whole
  * hold or set isn't drawing all the while. Otherwise a photo (see
  * `data/photos.ts`); a lift's start and finish frames flip back and forth so
@@ -35,9 +47,12 @@ export function Illustration({
   style,
   compact,
   plays,
+  film: filmed,
 }: {
   id: string;
   style?: ViewStyle;
+  /** Always the film, where there is one: pictures shown in turn are one kind. */
+  film?: boolean;
   /** A thumbnail in a list: the placeholder is just a small icon, no words. */
   compact?: boolean;
   /** How many times a film loops before it rests on its still; by default, as long as it shows. */
@@ -47,15 +62,33 @@ export function Illustration({
   const count = frames?.length ?? 0;
   const [frame, setFrame] = useState(0);
 
-  // A thumbnail keeps the photo; one with no photo shows the film's still.
-  const film = id in MOVES && (!compact || !frames);
+  // A thumbnail keeps the photo, and so does a film waiting to be reshot;
+  // with no photo, the film shows — as a thumbnail, its still.
+  const always = !!filmed && id in MOVES;
+  const drawn = !always && DRAWN.has(id) && id in ART && (!compact || !frames);
+  const film = always || (!drawn && id in MOVES && (!frames || (!compact && !RESHOOT.has(id))));
 
   useEffect(() => {
     setFrame(0);
-    if (film || count < 2) return;
+    if (drawn || film || count < 2) return;
     const flip = setInterval(() => setFrame((f) => (f + 1) % count), FRAME_MS);
     return () => clearInterval(flip);
-  }, [id, count, film]);
+  }, [id, count, film, drawn]);
+
+  if (drawn) {
+    const family = familyOfPicture(id);
+    // The part that works is in the field's other ink, so it stands out of the figure.
+    const accent = FAMILY[family].dark ? colors.text : colors.white;
+    return (
+      <Drawing
+        key={id}
+        id={id}
+        colors={{ ...filmColors(family), accent }}
+        style={style}
+        plays={compact ? 0 : plays}
+      />
+    );
+  }
 
   if (film) {
     const colors = filmColors(familyOfPicture(id));

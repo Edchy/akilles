@@ -803,6 +803,31 @@ export const MOVES: Record<string, Move> = lazily({
 });
 
 /**
+ * Films that don't read yet — limbs piled on the trunk, a back that should
+ * round, a machine that buries the lifter. Each shows its photo instead (see
+ * `components/illustration.tsx`) until it is reshot and passes a look, so each
+ * must have one (see `data/photos.ts`).
+ */
+export const RESHOOT: ReadonlySet<string> = new Set([
+  "db_row",
+  "good_morning",
+  "back_ext",
+  "spider_curl",
+  "leg_press",
+  "leg_press_calf",
+  "hack_squat",
+  "figure_four",
+  "supine_twist",
+  "knees_to_chest",
+  "seated_hamstring",
+  "childs_pose",
+  "cat_cow",
+  "forward_fold",
+  "chest_opener",
+  "band_external_rotation",
+]);
+
+/**
  * Movements filmed but not yet shown in the app: each waits for a look on a
  * sheet of its family before it moves into `MOVES`. Built only when asked
  * for, so the app never pays for them.

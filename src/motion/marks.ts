@@ -1,4 +1,4 @@
-import { BODY, SIZE } from "@/motion/figure";
+import { BODY, SIDES, SIZE } from "@/motion/figure";
 import type { Moment } from "@/motion/film";
 import type { Move } from "@/motion/moves";
 import { Vec3 } from "@/motion/vector";
@@ -78,8 +78,12 @@ export function draw(
   { width, height }: { width: number; height: number },
 ): Drawing {
   const pose = move.pose(depth);
-  const { room, middle } = move.film;
-  const scale = Math.min((height * 0.88) / room.height, width / room.width);
+  const { middle } = move.film;
+  // The film's own room, or closer where the movement leaves it empty.
+  const fit = (r: Move["film"]["room"]) => Math.min((height * 0.88) / r.height, width / r.width);
+  const needed = neededBy(move);
+  const room = fit(needed) > fit(move.film.room) ? needed : move.film.room;
+  const scale = fit(room);
   const floorY = Math.min(height * 0.88, (height + room.height * scale) / 2 + height * 0.05);
   const angle = (turn * Math.PI) / 180;
   const toCamera = new Vec3(Math.sin(angle), 0, Math.cos(angle));
@@ -123,6 +127,17 @@ export function draw(
       paints: [
         { key: `${key}-gap`, d, fill, stroke: colors.field, width: HALO * scale },
         { key, d, stroke: colors.ink, width: LINE * scale },
+      ],
+    });
+
+  // What the lifter sits, lies or leans on is solid, in the tint: it has
+  // weight, and still stands back from the body.
+  const slab = (key: string, d: string, depth: number) =>
+    parts.push({
+      depth: depth - 100,
+      paints: [
+        { key: `${key}-gap`, d, stroke: colors.field, width: HALO * scale },
+        { key, d, fill: colors.tint },
       ],
     });
 
@@ -295,7 +310,7 @@ export function draw(
       const d = rounded(hull(box), 0.02 * scale);
       // Behind the body, a pad covers what's behind it; well in front, it's an outline.
       const depth = between(prop.from, prop.to);
-      line(key, d, Math.min(depth, torsoDepth - 0.05), colors.field);
+      slab(key, d, Math.min(depth, torsoDepth - 0.05));
       if (prop.through) {
         const paint = { key: `${key}-cut`, d, stroke: colors.field, width: LINE * scale };
         cuts.push({ paint, depth: torsoDepth + 0.02 });
@@ -330,7 +345,7 @@ export function draw(
         for (const z of [-bench.half, bench.half]) box.push(at(new Vec3(x, y, z)));
       }
     }
-    line("pad", rounded(hull(box), 0.02 * scale), torsoDepth - 0.05, colors.field);
+    slab("pad", rounded(hull(box), 0.02 * scale), torsoDepth - 0.05);
     bench.legs.forEach((x, i) => {
       const leg = `M${pt(at(new Vec3(x, under, 0)))}L${pt(at(new Vec3(x, 0, 0)))}`;
       line(`leg${i}`, leg, torsoDepth - 0.06);
@@ -359,6 +374,94 @@ export function draw(
     width: FLOOR * scale,
   };
   return { paints: [ground, ...parts.flatMap((p) => p.paints), ...over], clips };
+}
+
+/** Clear space kept above the highest point, and either side of the widest. */
+const HEADROOM = 1.06;
+const ELBOW_ROOM = 1.08;
+/** How many moments of a rep, and of a turn, are measured. */
+const MEASURED = { depths: 8, turns: 3 };
+
+const rooms = new WeakMap<Move, Move["film"]["room"]>();
+
+/**
+ * The room a film needs, through every rep and turn: the height of the
+ * lifter and whatever they hold or sit on, and the width of everything. A
+ * film is drawn this close where its own room (see `Move.film`) leaves the
+ * picture empty — never further off — so a wall, a tower or a cable may run
+ * out of the top, as they run out of sight in a gym. Measured once, when the
+ * film is first drawn.
+ */
+function neededBy(move: Move) {
+  const known = rooms.get(move);
+  if (known) return known;
+  const { middle, views } = move.film;
+  let top = 0;
+  let reach = 0;
+  const measure = (depth: number, turn: number) => {
+    const pose = move.pose(depth);
+    const angle = (turn * Math.PI) / 180;
+    const right = new Vec3(Math.cos(angle), 0, -Math.sin(angle));
+    /** Something round `v`, `r` across; `high`: it counts for the height too. */
+    const hold = (v: Vec3, r = 0, high = true) => {
+      reach = Math.max(reach, Math.abs(v.clone().sub(middle).dot(right)) + r);
+      if (high) top = Math.max(top, v.y + r);
+    };
+    const offset = (v: Vec3, along: Vec3, by: number) => v.clone().addScaledVector(along, by);
+    hold(pose.head, SIZE.head);
+    const shoulders = offset(pose.pelvis, pose.trunk, BODY.torso + SIZE.trunk.up);
+    for (const s of SIDES) hold(offset(shoulders, pose.across, s * SIZE.trunk.front));
+    hold(offset(pose.pelvis, pose.trunk, SIZE.trunk.down));
+    for (const leg of pose.legs) {
+      for (const joint of [leg.root, leg.mid, leg.end]) hold(joint, SIZE.thigh);
+      hold(offset(leg.end, leg.foot, FOOT.long), FOOT.half);
+    }
+    for (const arm of pose.arms) {
+      for (const joint of [arm.root, arm.mid, arm.end]) hold(joint, SIZE.upperArm);
+    }
+    for (const { at, axis } of pose.dumbbells ?? []) {
+      for (const s of SIDES) hold(offset(at, axis, s * DUMBBELL.headAt), DUMBBELL.head);
+    }
+    const kind = move.kit.bar;
+    if (kind && pose.bar) {
+      const z = new Vec3(0, 0, 1);
+      for (const s of SIDES) {
+        hold(offset(pose.bar, z, s * (kind === "barbell" ? BAR.half : FIXED.half)), BAR.end);
+        if (kind === "barbell") {
+          const plate = offset(pose.bar, z, s * BAR.plateAt);
+          const r = move.kit.plate ?? BAR.plate;
+          hold(plate, r * Math.abs(Math.cos(angle)));
+          hold(offset(plate, UP, r));
+        }
+      }
+    }
+    for (const prop of pose.props ?? []) {
+      if (prop.kind === "line") {
+        hold(prop.from, 0, false);
+        hold(prop.to, 0, false);
+      } else if (prop.kind === "pad") {
+        // A pad as tall as the lifter is a wall: it may run out of the top.
+        const wall = Math.abs(prop.to.y - prop.from.y) > 1.2;
+        hold(prop.from, prop.thick, !wall);
+        hold(prop.to, prop.thick, !wall);
+      } else if (prop.kind === "kettlebell") {
+        hold(offset(prop.at, prop.down.clone().normalize(), KETTLEBELL.drop), KETTLEBELL.bell);
+      } else hold(prop.at, prop.r);
+    }
+    const bench = move.kit.bench;
+    if (bench) for (const x of [bench.from, bench.to]) hold(new Vec3(x, bench.top, 0));
+  };
+  views.forEach((view, i) => {
+    for (let k = 0; k <= MEASURED.depths; k++) measure(k / MEASURED.depths, view);
+    // Turning to the next view, at the start of the rep.
+    const next = views[(i + 1) % views.length];
+    for (let k = 1; k < MEASURED.turns; k++) {
+      measure(0, view + ((next - view) * k) / MEASURED.turns);
+    }
+  });
+  const needed = { height: top * HEADROOM, width: 2 * reach * ELBOW_ROOM };
+  rooms.set(move, needed);
+  return needed;
 }
 
 // Every outline runs clockwise on screen, so any of them in one path still

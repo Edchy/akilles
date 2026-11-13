@@ -9,7 +9,11 @@
 // --base, the drawing is an edit of the lift's other frame instead, so the two
 // flip without the figure, the camera or the equipment jumping. The
 // drawings are greyscale on purpose: trace.py snaps them to three tones and turns
-// them into paths the app colours with the family's field and ink.
+// them into paths the app colours with the family's field and ink. A frame with
+// `feel` in frames.json has the parts that work in red: the app's accent.
+//
+// Every figure is Milo: draw a movement's first frame with --ref art/drawn/milo-0.png,
+// the character sheet, and its second with --base, from the first.
 
 import { spawnSync } from "node:child_process";
 import { copyFileSync, mkdirSync, readFileSync, readdirSync, statSync } from "node:fs";
@@ -45,13 +49,22 @@ const styleRef = base
       " white gaps, tones and scale exactly. It shows a different moment, so take nothing of its" +
       " pose from it.\n"
     : "";
+// Where the movement works: those parts of the body in a fourth tone, which
+// trace.py lifts out as the frame's accent.
+const feel = spec.feel
+  ? "\nWHERE IT WORKS\nOne exception to the three tones: draw " +
+    spec.feel +
+    " in pure bright red (#FF0000) instead of black — that whole body part, edge to edge, still" +
+    " separated from its neighbours by the white gap. Nothing else in the picture is red.\n"
+  : "";
 const prompt =
   "Use your image generation tool to make the image described below. Do not write any code or" +
   " files; just generate the image once and reply 'done'.\n\n" +
   readFileSync(join(here, "STYLE.md"), "utf8")
     .replace("{moment}", spec.moment)
     .replace("{view}", spec.view)
-    .replace("{style_ref}", styleRef);
+    .replace("{style_ref}", styleRef)
+    .replace("{feel}", feel);
 
 const photo = join(here, "..", "assets", "photos", spec.photo);
 const second = base ?? ref;
