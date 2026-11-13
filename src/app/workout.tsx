@@ -117,6 +117,7 @@ import {
   scoreOf,
   setGot,
   setScore,
+  comesBack,
   skipExercise,
   supersetOptions,
   swapConditioning,
@@ -195,6 +196,8 @@ export default function WorkoutScreen() {
   const [skipWarned, setSkipWarned] = useState(false);
   useEffect(() => setSkipWarned(false), [active?.cursor, inWarmup]);
 
+  const later = !inWarmup && comesBack(state);
+
   // The bar itself lives in the root layout; this only swaps its buttons.
   useBarActions(
     active && !done ? (
@@ -222,7 +225,8 @@ export default function WorkoutScreen() {
         />
         <ActionButton
           icon="next"
-          label="Skip"
+          // A lift put off comes back after the others; anything else is skipped.
+          label={later ? "Later" : "Skip"}
           onPress={() => {
             setPicking(false);
             setMenu(null);
@@ -238,7 +242,7 @@ export default function WorkoutScreen() {
         />
       </>
     ) : null,
-    [active?.cursor, done, inWarmup, skipWarned],
+    [active?.cursor, done, inWarmup, skipWarned, later],
   );
 
   // A lift done well gets its moment — see `useCheer` — and a send-off on

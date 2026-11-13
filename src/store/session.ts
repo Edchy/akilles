@@ -170,6 +170,11 @@ export type Item = Entry & {
   /** Skipped this session. Only written to history when the workout ends. */
   skipped?: boolean;
   /**
+   * Put off once this session — the bench was taken — and come back after the
+   * other lifts. It is not put off twice: skipped again, it is left out.
+   */
+  later?: boolean;
+  /**
    * Show a warm-up ramp before this exercise — set on the first exercise of
    * each muscle group when the workout is built. Cleared once you move past
    * the warm-up screen, so Back doesn't make you sit through it again.
@@ -2034,7 +2039,27 @@ export const previousExercise = (state: SessionState): SessionState => {
 };
 
 /**
+ * Whether skipping the lift on screen only puts it off: it is a lift, it has
+ * not been put off already, and another lift is still to come. It then comes
+ * back after the last of them (see `skipExercise`) — so a taken bench never
+ * means waiting, or losing the lift. Cardio, a warm-up and the stretch are
+ * simply skipped.
+ */
+export const comesBack = (state: SessionState): boolean => {
+  if (!state.active) return false;
+  const { items, cursor } = state.active;
+  const item = items[cursor];
+  if (!item || !isLift(item) || item.later) return false;
+  return items.slice(cursor + 1).some(isLift);
+};
+
+/**
  * Skip the exercise on screen and move to the next.
+ *
+ * A lift is put off rather than dropped, the first time (see `comesBack`):
+ * it moves to after the last lift, with any superset partner it carries, and
+ * the next one takes its place on screen. Skipped again when it comes back,
+ * it is left out like anything else.
  *
  * A folded-in superset partner is NOT skipped with its host — it goes back to
  * the end of the workout as its own exercise, so skipping bench doesn't also
@@ -2048,6 +2073,19 @@ export const skipExercise = (state: SessionState): SessionState => {
   if (!state.active) return state;
   const { items, cursor } = state.active;
   const item = items[cursor];
+
+  if (comesBack(state)) {
+    // The cursor stays: the next lift slides in under it.
+    const rest = items.filter((_, i) => i !== cursor);
+    const after = rest.findLastIndex(isLift) + 1;
+    return {
+      ...state,
+      active: {
+        ...state.active,
+        items: [...rest.slice(0, after), { ...item, later: true }, ...rest.slice(after)],
+      },
+    };
+  }
 
   // Unpair the partner and re-queue it at the end, keeping anything already
   // logged against it.
