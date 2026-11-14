@@ -183,6 +183,7 @@ function CategorySheet({
       onClose={close}
     >
       <View style={{ gap: 12, paddingTop: 12 }}>
+        <AddLink label="Add exercise" onPress={() => setAdding(true)} />
         {list.map((exercise) => (
           <OpenRow
             key={exercise.id}
@@ -196,7 +197,6 @@ function CategorySheet({
             Nothing here yet.
           </Text>
         ) : null}
-        <AddLink label="Add exercise" onPress={() => setAdding(true)} />
       </View>
 
       <ExerciseSheet
@@ -278,9 +278,26 @@ function AddPanel({
         marginBottom: 8,
       }}
     >
+      {creating ? (
+        create
+      ) : (
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => setCreating(true)}
+          style={({ pressed }) => ({
+            justifyContent: "center",
+            minHeight: 48,
+            opacity: pressed ? 0.5 : 1,
+          })}
+        >
+          <Text style={{ color: colors.muted, fontSize: 14, fontWeight: "700" }}>
+            + Create your own
+          </Text>
+        </Pressable>
+      )}
       {library.length > 0 ? (
         <>
-          <Label>From the library</Label>
+          <Label>Available exercises</Label>
           {library.map((row) => (
             <Pressable
               key={row.id}
@@ -304,23 +321,7 @@ function AddPanel({
         </>
       ) : null}
 
-      {creating ? (
-        create
-      ) : (
-        <Pressable
-          accessibilityRole="button"
-          onPress={() => setCreating(true)}
-          style={({ pressed }) => ({
-            justifyContent: "center",
-            minHeight: 48,
-            opacity: pressed ? 0.5 : 1,
-          })}
-        >
-          <Text style={{ color: colors.muted, fontSize: 14, fontWeight: "700" }}>
-            + Create your own
-          </Text>
-        </Pressable>
-      )}
+
     </View>
   );
 }
@@ -416,7 +417,7 @@ function ExerciseEditor({ exercise, onRemoved }: { exercise: Exercise; onRemoved
           </View>
           <Text style={{ color: validStep ? colors.muted : colors.bend, fontSize: 13, lineHeight: 19 }}>
             {validStep
-              ? `How much one press of − or + moves the weight${exercise.perHand ? ", per dumbbell" : ""}. Changes save automatically.`
+              ? `Used by the − and + buttons and automatic weight increases${exercise.perHand ? ", per dumbbell" : ""}. Changes save automatically.`
               : "Enter a number greater than 0. Your previous step is kept until then."}
           </Text>
         </View>
@@ -424,7 +425,7 @@ function ExerciseEditor({ exercise, onRemoved }: { exercise: Exercise; onRemoved
 
       <View style={{ gap: 12 }}>
         <SectionLabel>Note</SectionLabel>
-        <NoteField id={exercise.id} hint="Shows under the name when you lift it, until you change it." />
+        <NoteField id={exercise.id} hint="Shared by every workout that uses this exercise. Notes edited during training are for that session only." />
       </View>
 
       <View style={{ gap: 8 }}>
@@ -456,7 +457,7 @@ function ExerciseEditor({ exercise, onRemoved }: { exercise: Exercise; onRemoved
             ? "The last of its kind stays, or a slot would have nothing to use."
             : mine
               ? "Deleting keeps its history, in case you make it again."
-              : "Removing puts it back in the library, history and all."}
+              : "Hides this exercise from your list. You can add it again later; your history is kept."}
         </Text>
       </View>
     </View>
@@ -900,7 +901,7 @@ function RemoveConditioning({
           ? "The last one stays, or the block would have nothing to offer."
           : mine
             ? "Deleting it keeps its records."
-            : "Removing puts it back in the library, records and all."}
+            : "Hides it from your list. You can add it again later; your records are kept."}
       </Text>
     </View>
   );

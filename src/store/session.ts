@@ -303,6 +303,8 @@ export type SessionState = {
    * workouts you made, which used to be deleted outright.)
    */
   removedWorkouts: { workout: Workout; at: number }[];
+  /** Display order in Plan, including paused workouts. */
+  planOrder?: string[];
   /**
    * Your chosen exercise per slot, keyed by `workoutId/entryId`. Absent means
    * the slot's first option. Set from the Plan screen or by swapping
@@ -417,6 +419,8 @@ export type SessionState = {
     startedAt: number;
     /** When a lift set was last logged; persists so rest includes time away. */
     lastSetAt?: number;
+    /** Notes edited during this session only. */
+    notes?: Record<string, string>;
   } | null;
 };
 
@@ -511,6 +515,12 @@ export const noteFor = (
   id: string,
   kind: "lift" | "cardio" = "lift",
 ): string => state.notes[noteKey(id, kind)]?.trim() ?? "";
+
+export const sessionNoteFor = (state: SessionState, id: string, kind: "lift" | "cardio" = "lift"): string =>
+  (state.active?.notes?.[noteKey(id, kind)] ?? noteFor(state, id, kind)).trim();
+
+export const setSessionNote = (state: SessionState, id: string, text: string, kind: "lift" | "cardio" = "lift"): SessionState =>
+  state.active ? { ...state, active: { ...state.active, notes: { ...state.active.notes, [noteKey(id, kind)]: text.slice(0, NOTE_MAX) } } } : state;
 
 /**
  * Write a note, as typed — it saves as you go, so spaces are kept until you
@@ -1116,6 +1126,23 @@ export const renameWorkout = (
   patch: { name?: string; subtitle?: string },
 ): SessionState => patchWorkout(state, id, (w) => ({ ...w, ...patch }));
 
+/** All workouts in their Plan positions, including paused ones. Older saves are reconstructed. */
+export const planWorkouts = (state: SessionState): Workout[] => {
+  const rows = [...state.workouts];
+  for (const r of [...state.removedWorkouts].reverse()) rows.splice(Math.min(r.at, rows.length), 0, r.workout);
+  const order = state.planOrder ?? rows.map((w) => w.id);
+  return [...rows].sort((a, b) => {
+    const rank = (id: string) => order.includes(id) ? order.indexOf(id) : order.length + rows.findIndex((w) => w.id === id);
+    return rank(a.id) - rank(b.id);
+  });
+};
+
+export const movePlanWorkout = (state: SessionState, from: number, to: number): SessionState => {
+  const rows = move(planWorkouts(state), from, to);
+  const running = new Set(state.workouts.map((w) => w.id));
+  return { ...state, planOrder: rows.map((w) => w.id), workouts: rows.filter((w) => running.has(w.id)) };
+};
+
 /** Whether a workout can be paused. The last one stays: the loop needs something in it. */
 export const canPauseWorkout = (state: SessionState): boolean => state.workouts.length > 1;
 
@@ -1135,6 +1162,7 @@ export const pauseWorkout = (state: SessionState, id: string): SessionState => {
   if (at === -1) return state;
   return {
     ...state,
+    planOrder: planWorkouts(state).map((w) => w.id),
     workouts: state.workouts.filter((w) => w.id !== id),
     nextWorkout: state.nextWorkout === id ? following(state, id) : state.nextWorkout,
     workoutQueue: state.workoutQueue?.filter((queued) => queued !== id),
@@ -1170,10 +1198,13 @@ export const resumeWorkout = (state: SessionState, id: string): SessionState => 
   const entry = state.removedWorkouts.find((r) => r.workout.id === id);
   if (!entry || workoutById(state, id)) return state;
   const workouts = [...state.workouts];
-  workouts.splice(Math.min(entry.at, workouts.length), 0, entry.workout);
+  const order = planWorkouts(state);
+  const position = order.filter((w) => state.workouts.some((active) => active.id === w.id) || w.id === id).findIndex((w) => w.id === id);
+  workouts.splice(position, 0, entry.workout);
   return {
     ...state,
     workouts,
+    planOrder: order.map((w) => w.id),
     removedWorkouts: state.removedWorkouts.filter((r) => r.workout.id !== id),
   };
 };
@@ -2778,6 +2809,13 @@ export const itemLength = (item: Item): CardioLength =>
  * to make it stick. The score goes back to unentered, since a time over 1 km
  * says nothing about 2; each length keeps its own records.
  */
+export const setTodayLength = (state: SessionState, value: number): SessionState => {
+  if (!Number.isFinite(value) || value <= 0) return state;
+  return patchItem(state, (it) => isCardio(it)
+    ? { ...it, ...lengthFields(it.course !== undefined ? { course: value } : { minutes: value }) }
+    : it);
+};
+
 export const nudgeTodayLength = (state: SessionState, direction: 1 | -1): SessionState =>
   patchItem(state, (it) => {
     const machine = isCardio(it) ? cardioById(it.exerciseId) : undefined;

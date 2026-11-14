@@ -74,12 +74,12 @@ export function WeightField({ exerciseId }: { exerciseId: string }) {
           }}
         />
         <Text style={{ color: colors.muted, fontSize: 17 }}>
-          {holds ? "s" : exercise.perHand ? "kg ×2" : "kg"}
+          {holds ? "s" : exercise.perHand ? "kg / hand" : "kg"}
         </Text>
       </View>
       <Text style={{ color: valid ? colors.muted : colors.bend, fontSize: 13, lineHeight: 19 }}>
         {valid
-          ? `${hint} Changes save automatically.`
+          ? `${hint} Shared by every workout using this exercise. Changes save automatically.`
           : holds
             ? "Enter a number of seconds, 0 or more. The previous one is kept until then."
             : `Enter a weight in kg${assisted ? "" : ", 0 or more"}. The previous one is kept until then.`}

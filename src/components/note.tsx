@@ -6,7 +6,7 @@ import { Icon } from "@/components/icon";
 import { Sheet, TextButton } from "@/components/sheet";
 import { Text, TextInput } from "@/components/text";
 import { colors, fonts } from "@/constants/theme";
-import { NOTE_MAX, noteFor, setNote, useSession } from "@/store/session";
+import { NOTE_MAX, noteFor, setNote, sessionNoteFor, setSessionNote, useSession } from "@/store/session";
 
 /**
  * Notes to yourself: one per exercise or machine — "speed 10.5, incline 1",
@@ -73,18 +73,20 @@ export function NoteField({
   id,
   kind = "lift",
   autoFocus,
+  sessionOnly = false,
   hint,
   onDone,
 }: {
   id: string;
   kind?: Kind;
   autoFocus?: boolean;
+  sessionOnly?: boolean;
   hint: string;
   onDone?: () => void;
 }) {
   const { state, setState } = useSession();
   // Kept here as typed: the store trims what it shows, not what you type.
-  const [draft, setDraft] = useState(() => noteFor(state, id, kind));
+  const [draft, setDraft] = useState(() => sessionOnly ? sessionNoteFor(state, id, kind) : noteFor(state, id, kind));
 
   return (
     <View style={{ gap: 10 }}>
@@ -93,7 +95,7 @@ export function NoteField({
         onChangeText={(text) => {
           const line = text.replace(/\s*\n\s*/g, " ");
           setDraft(line);
-          setState((s) => setNote(s, id, line, kind));
+          setState((s) => sessionOnly ? setSessionNote(s, id, line, kind) : setNote(s, id, line, kind));
         }}
         autoFocus={autoFocus}
         multiline
@@ -141,7 +143,7 @@ export function NoteSheet({
   onClose: () => void;
 }) {
   const { state, setState } = useSession();
-  const has = !!noteFor(state, id, kind);
+  const has = !!sessionNoteFor(state, id, kind);
 
   return (
     <Sheet visible={visible} title={name} closeLabel="Done" onClose={onClose}>
@@ -152,14 +154,15 @@ export function NoteSheet({
             id={id}
             kind={kind}
             autoFocus
-            hint="Shows under the name every time, until you change it."
+            sessionOnly
+            hint="For this session only. Edit the exercise in Plan to save a usual note."
             onDone={onClose}
           />
           {has ? (
             <TextButton
               label="Delete note"
               onPress={() => {
-                setState((s) => setNote(s, id, "", kind));
+                setState((s) => setSessionNote(s, id, "", kind));
                 onClose();
               }}
             />

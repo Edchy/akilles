@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Image, View, type ViewStyle } from "react-native";
 import { Text } from "@/components/text";
 
+import { useCardActive } from "@/components/card-context";
 import { Drawing } from "@/components/drawing";
 import { Film } from "@/components/film";
 import { Icon } from "@/components/icon";
@@ -58,6 +59,7 @@ export function Illustration({
   /** How many times a film loops before it rests on its still; by default, as long as it shows. */
   plays?: number;
 }) {
+  const active = useCardActive();
   const frames = PHOTOS[id];
   const count = frames?.length ?? 0;
   const [frame, setFrame] = useState(0);
@@ -70,10 +72,10 @@ export function Illustration({
 
   useEffect(() => {
     setFrame(0);
-    if (drawn || film || count < 2) return;
+    if (!active || drawn || film || count < 2) return;
     const flip = setInterval(() => setFrame((f) => (f + 1) % count), FRAME_MS);
     return () => clearInterval(flip);
-  }, [id, count, film, drawn]);
+  }, [id, count, film, drawn, active]);
 
   if (drawn) {
     const family = familyOfPicture(id);
@@ -85,14 +87,14 @@ export function Illustration({
         id={id}
         colors={{ ...filmColors(family), accent }}
         style={style}
-        plays={compact ? 0 : plays}
+        plays={compact || !active ? 0 : plays}
       />
     );
   }
 
   if (film) {
     const colors = filmColors(familyOfPicture(id));
-    return <Film key={id} id={id} colors={colors} style={style} plays={compact ? 0 : plays} />;
+    return <Film key={id} id={id} colors={colors} style={style} plays={compact || !active ? 0 : plays} />;
   }
 
   if (frames) {

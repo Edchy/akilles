@@ -7,8 +7,8 @@ type Tab = { href: string; label: string; icon: IconName };
 
 const TABS: Tab[] = [
   { href: "/", label: "Today", icon: "today" },
-  { href: "/history", label: "Progress", icon: "progress" },
   { href: "/plan", label: "Plan", icon: "plan" },
+  { href: "/profile", label: "Profile", icon: "profile" },
 ];
 
 /** Default bar contents: the three tabs, whenever a screen has nothing else. */
@@ -24,11 +24,11 @@ export function TabButtons() {
           icon={tab.icon}
           label={tab.label}
           // The workout's own screens — its Done among them — belong to Today;
-          // Settings, opened from Plan, to Plan.
+          // Progress and Settings belong to Profile.
           active={
             pathname === tab.href ||
             (tab.href === "/" && pathname === "/workout") ||
-            (tab.href === "/plan" && pathname === "/settings")
+            (tab.href === "/profile" && ["/settings", "/history"].includes(pathname))
           }
           onPress={() => router.replace(tab.href as never)}
         />

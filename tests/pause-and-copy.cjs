@@ -94,3 +94,27 @@ test("a paused workout can be copied into the loop", () => {
   assert.equal(store.workoutById(copied, "w_copy").name, "Legs 2");
   assert.deepEqual([...paused(copied)], ["legs"]);
 });
+
+
+test("Plan preserves positions across multiple pauses, reordering and resuming", () => {
+  let s = store.resetToDefault();
+  const original = [...ids(s)];
+  s = store.pauseWorkout(s, original[0]);
+  s = store.pauseWorkout(s, original[1]);
+  assert.deepEqual([...store.planWorkouts(s).map((w) => w.id)], original);
+  s = store.movePlanWorkout(s, 2, 0);
+  const expected = [original[2], original[0], original[1]];
+  assert.deepEqual([...store.planWorkouts(s).map((w) => w.id)], expected);
+  s = store.resumeWorkout(s, original[1]);
+  s = store.resumeWorkout(s, original[0]);
+  assert.deepEqual([...ids(s)], expected);
+});
+
+test("a save from before Plan ordering reconstructs paused workouts in place", () => {
+  let s = store.resetToDefault();
+  const original = [...ids(s)];
+  s = store.pauseWorkout(s, original[0]);
+  s = store.pauseWorkout(s, original[1]);
+  delete s.planOrder;
+  assert.deepEqual([...store.planWorkouts(s).map((w) => w.id)], original);
+});

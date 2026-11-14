@@ -9,3 +9,7 @@ import { createContext, useContext } from "react";
 export const CardContext = createContext(false);
 
 export const useOnCard = (): boolean => useContext(CardContext);
+
+/** Full card content stays mounted; only the current card animates. */
+export const CardActiveContext = createContext(true);
+export const useCardActive = () => useContext(CardActiveContext);

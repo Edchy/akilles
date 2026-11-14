@@ -68,3 +68,18 @@ test("a note survives the workout it was written in", () => {
   state = store.finishWorkout(state);
   assert.equal(store.noteFor(state, "db_bench"), "Bench on the third notch");
 });
+
+
+test("today's note overrides the usual note without changing Plan and survives a restart", () => {
+  let s = store.setNote(store.resetToDefault(), "db_bench", "Usual bench");
+  s = store.buildWorkout(s);
+  s = store.setSessionNote(s, "db_bench", "Different bench today");
+  assert.equal(store.noteFor(s, "db_bench"), "Usual bench");
+  assert.equal(store.sessionNoteFor(s, "db_bench"), "Different bench today");
+  s = storage.fromSaved(storage.toSaved(s));
+  assert.equal(store.sessionNoteFor(s, "db_bench"), "Different bench today");
+  s = store.setSessionNote(s, "db_bench", "");
+  assert.equal(store.sessionNoteFor(s, "db_bench"), "");
+  s = store.finishWorkout(s);
+  assert.equal(store.sessionNoteFor(s, "db_bench"), "Usual bench");
+});

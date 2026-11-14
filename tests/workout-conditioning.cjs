@@ -352,3 +352,29 @@ test("the finishing block is told apart from the warm-up, and each says how hard
   // A machine's own tip is about how to use it, never how hard.
   assert.doesNotMatch(conditioning.cardioById("treadmill").cue, /tank|fast|hard/i);
 });
+
+
+test("custom cardio targets accept exact values, clear scores and leave Plan untouched", () => {
+  let s = store.buildWorkout(fresh());
+  const before = JSON.stringify(s.workouts);
+  s = store.setScore(s, 347);
+  s = store.setTodayLength(s, 1.37);
+  assert.equal(s.active.items[s.active.cursor].course, 1.37);
+  assert.equal(store.scoreOf(s.active.items[s.active.cursor]), null);
+  assert.equal(JSON.stringify(s.workouts), before);
+  assert.equal(store.setTodayLength(s, 0), s);
+  assert.equal(store.setTodayLength(s, NaN), s);
+  s = store.swapConditioning(s, "row");
+  s = store.setTodayLength(s, 7.5);
+  assert.equal(s.active.items[s.active.cursor].minutes, 7.5);
+  assert.equal(JSON.stringify(s.workouts), before);
+});
+
+test("Plan display order survives save and reload alongside paused workouts", () => {
+  let s = fresh();
+  const order = s.workouts.map((w) => w.id);
+  s = store.pauseWorkout(s, order[0]);
+  s = store.movePlanWorkout(s, 0, 2);
+  const back = storage.fromSaved(storage.toSaved(s));
+  assert.deepEqual(plain(store.planWorkouts(back).map((w) => w.id)), [order[1], order[2], order[0]]);
+});
