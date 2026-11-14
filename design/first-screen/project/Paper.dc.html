@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>First screen, direction B: Paper</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600&family=EB+Garamond:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; padding: 64px 32px 40px; display: flex; flex-direction: column; background: #FFFFFF; color: {{ink}}; font-family: 'EB Garamond', serif; overflow: hidden">
+<div style="display: flex; align-items: center; gap: 10px">
+<svg aria-hidden="true" viewBox="0 0 40 12" style="width: 40px; height: 12px">
+<circle cx="6" cy="6" r="6" fill="#2277BB"></circle>
+<path d="M14 12 L20 0 L26 12 Z" fill="#23864D"></path>
+<rect x="28" y="0" width="12" height="12" fill="#F08A24"></rect>
+</svg>
+<div style="font-family: 'Barlow Condensed', sans-serif; font-size: 20px; font-weight: 600; letter-spacing: 0.16em; text-transform: uppercase">Again</div>
+</div>
+
+<div style="flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 28px">
+<h1 style="margin: 0; font-size: 50px; line-height: 1.04; font-weight: 400; letter-spacing: -0.01em">A gym app that wants you to <em style="font-style: italic">put it down.</em></h1>
+<div style="width: 44px; height: 2px; background: {{ink}}"></div>
+<p style="margin: 0; font-size: 22px; line-height: 1.4; font-weight: 400">Lift less. Lower it slowly. Pause where it is hardest. Then put the phone away and get on with your day.</p>
+</div>
+
+<div style="display: flex; flex-direction: column; gap: 14px">
+<button type="button" style="height: 62px; border: 0; border-radius: 18px; background: {{ink}}; color: #FFFFFF; font-family: 'Barlow Condensed', sans-serif; font-size: 26px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase">Start</button>
+<p style="margin: 0; text-align: center; font-size: 18px; line-height: 1.3; font-style: italic">No questions first. Your first workout is ready.</p>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"ink":{"editor":"color","default":"#13325B","options":["#13325B","#141413","#1F3D2B"]},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+renderVals() {
+return { ink: this.props.ink ?? '#13325B' };
+}
+}
+</script>
+</body>
+</html>

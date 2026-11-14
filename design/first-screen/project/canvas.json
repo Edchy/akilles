@@ -1,0 +1,17 @@
+{
+  "v": 3,
+  "createdOnFiles": { "v": 1, "at": "2026-11-13T16:20:00Z" },
+  "title": "First screen: three directions",
+  "launch": { "view": "canvas" },
+  "pages": [],
+  "boards": {
+    "Main.dc.html": { "x": 0, "y": 0, "w": 390, "h": 844, "title": "A · Field", "radius": 36 },
+    "Paper.dc.html": { "x": 470, "y": 0, "w": 390, "h": 844, "title": "B · Paper", "radius": 36 },
+    "Weight.dc.html": { "x": 940, "y": 0, "w": 390, "h": 844, "title": "C · Weight", "radius": 36 },
+    "Hold.dc.html": { "x": 1410, "y": 0, "w": 390, "h": 844, "title": "Hold · press and hold", "radius": 36, "is_interactive": true },
+    "Deck.dc.html": { "x": 1880, "y": 0, "w": 390, "h": 844, "title": "Deck · swipe the cards", "radius": 36, "is_interactive": true }
+  },
+  "order": ["Main.dc.html", "Paper.dc.html", "Weight.dc.html", "Hold.dc.html", "Deck.dc.html"],
+  "notes": {},
+  "designSystems": []
+}

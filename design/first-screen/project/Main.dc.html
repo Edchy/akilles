@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>First screen, direction A: Field</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; padding: 64px 28px 40px; display: flex; flex-direction: column; background: {{field}}; color: #FFFFFF; font-family: 'Barlow Condensed', sans-serif; overflow: hidden">
+<div style="font-size: 22px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase">Again</div>
+
+<div style="flex: 1; position: relative; margin: 12px -28px 0">
+<svg aria-hidden="true" viewBox="0 0 390 330" style="position: absolute; left: 0; bottom: 8px; width: 390px; height: 330px">
+<circle cx="268" cy="150" r="150" fill="#FFFFFF"></circle>
+<path d="M28 300 L150 88 L272 300 Z" fill="#13325B"></path>
+<rect x="28" y="232" width="68" height="68" fill="#F6C12A"></rect>
+</svg>
+</div>
+
+<div style="display: flex; flex-direction: column; gap: 14px">
+<h1 style="margin: 0; font-size: 68px; line-height: 0.94; font-weight: 700; text-transform: uppercase; letter-spacing: -0.005em">Lift less.<br>Own every rep.</h1>
+<p style="margin: 0; font-size: 24px; line-height: 1.2; font-weight: 500">A gym app that wants you to put it down.</p>
+</div>
+
+<button type="button" style="margin-top: 30px; height: 62px; border: 0; border-radius: 18px; background: #FFFFFF; color: #13325B; font-family: 'Barlow Condensed', sans-serif; font-size: 26px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase">Start</button>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"field":{"editor":"color","default":"#2277BB","options":["#2277BB","#23864D","#D6287E","#6A4AB0"]},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+renderVals() {
+return { field: this.props.field ?? '#2277BB' };
+}
+}
+</script>
+</body>
+</html>

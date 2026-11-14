@@ -1,0 +1,346 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>A workout as a deck of cards</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=EB+Garamond:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div onPointerMove="{{ move }}" onPointerUp="{{ up }}" onPointerLeave="{{ up }}" onPointerCancel="{{ up }}" style="position: relative; width: 390px; height: 844px; overflow: hidden; background: #F3E6D6; color: #13325B; font-family: 'EB Garamond', serif; user-select: none; -webkit-user-select: none; touch-action: none; perspective: 1300px">
+
+<div style="position: absolute; left: 28px; right: 28px; top: 62px; display: flex; align-items: center; justify-content: space-between">
+<div style="display: flex; align-items: center; gap: 10px">
+<div style="width: 16px; height: 16px; border-radius: 50%; background: #2277BB"></div>
+<div style="font-family: 'Barlow Condensed', sans-serif; font-size: 24px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase">Push</div>
+</div>
+<div style="display: flex; align-items: center; gap: 8px" role="img" aria-label="{{ progressLabel }}">
+<sc-for list="{{ dots }}" as="dot" hint-placeholder-count="5">
+<div style="width: 12px; height: 12px; border-radius: 50%; border: 2px solid #13325B; box-sizing: border-box; background: {{ dot.fill }}"></div>
+</sc-for>
+</div>
+</div>
+
+<sc-for list="{{ stack }}" as="card" hint-placeholder-count="3">
+<div onPointerDown="{{ card.down }}" style="position: absolute; left: 28px; top: 118px; width: 334px; height: 548px; box-sizing: border-box; padding: 26px 26px 24px; display: flex; flex-direction: column; border-radius: 30px; background: #FFFFFF; border: 1.5px solid #13325B; transform-origin: center bottom; transform: {{ card.transform }}; box-shadow: {{ card.shadow }}; opacity: {{ card.opacity }}; z-index: {{ card.z }}; pointer-events: {{ card.pointer }}; cursor: grab; will-change: transform">
+
+<div style="position: absolute; left: 0; right: 0; top: -20px; display: flex; justify-content: center; opacity: {{ card.stampOpacity }}; pointer-events: none">
+<div style="display: flex; align-items: baseline; gap: 10px; padding: 8px 18px; border-radius: 20px; background: #13325B; color: #FFFFFF">
+<div style="font-family: 'Barlow Condensed', sans-serif; font-size: 24px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase">{{ card.stamp }}</div>
+<div style="font-size: 19px; font-style: italic">{{ card.stampNote }}</div>
+</div>
+</div>
+
+<div style="display: flex; align-items: baseline; justify-content: space-between; font-family: 'Barlow Condensed', sans-serif; font-size: 19px; font-weight: 500; letter-spacing: 0.14em; text-transform: uppercase">
+<div>{{ card.slot }}</div>
+<div>{{ card.status }}</div>
+</div>
+<h2 style="margin: 18px 0 0; font-size: 40px; line-height: 1.04; font-weight: 400; min-height: 84px">{{ card.name }}</h2>
+<div style="margin-top: 12px; display: flex; align-items: baseline; gap: 10px">
+<div style="font-family: 'Barlow Condensed', sans-serif; font-size: 100px; line-height: 0.9; font-weight: 700">{{ card.weight }}</div>
+<div style="font-size: 24px">{{ card.unit }}</div>
+</div>
+<p style="margin: 16px 0 0; font-size: 22px; line-height: 1.3; font-style: italic; min-height: 58px">{{ card.cue }}</p>
+
+<div style="height: 48px; margin-top: 6px">
+<sc-if value="{{ card.canTurn }}" hint-placeholder-val="{{ true }}">
+<button type="button" aria-label="{{ card.turnLabel }}" onClick="{{ card.turn }}" style="display: flex; align-items: center; gap: 10px; height: 48px; padding: 0; border: 0; background: transparent; color: #13325B; font-family: 'EB Garamond', serif; font-size: 19px; text-align: left; cursor: pointer">
+<svg aria-hidden="true" viewBox="0 0 24 24" style="width: 24px; height: 24px; flex: none" fill="none" stroke="#13325B" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+<path d="M4 12a8 8 0 0 1 13.7-5.6L20 9"></path>
+<path d="M20 4v5h-5"></path>
+<path d="M20 12a8 8 0 0 1-13.7 5.6L4 15"></path>
+<path d="M4 20v-5h5"></path>
+</svg>
+<span><span style="font-style: italic">Other side:</span> {{ card.other }}</span>
+</button>
+</sc-if>
+</div>
+
+<div style="margin-top: auto; display: flex; justify-content: space-between">
+<sc-for list="{{ card.sets }}" as="set" hint-placeholder-count="3">
+<button type="button" aria-label="{{ set.label }}" onClick="{{ set.tap }}" style="width: 82px; height: 82px; border-radius: 50%; border: 2px solid #13325B; background: {{ set.fill }}; color: {{ set.ink }}; font-family: 'Barlow Condensed', sans-serif; font-size: 38px; font-weight: 600; cursor: pointer">{{ set.text }}</button>
+</sc-for>
+</div>
+</div>
+</sc-for>
+
+<sc-if value="{{ finished }}" hint-placeholder-val="{{ false }}">
+<div style="position: absolute; left: 32px; right: 32px; top: 300px; display: flex; flex-direction: column; gap: 18px; text-align: center">
+<h1 style="margin: 0; font-size: 46px; line-height: 1.05; font-weight: 400">That is the visit.</h1>
+<p style="margin: 0; font-size: 24px; line-height: 1.35">Five cards, done slowly. Put the phone away.</p>
+</div>
+</sc-if>
+
+<div style="position: absolute; left: 28px; right: 28px; top: 690px; height: 44px; display: flex; align-items: center; justify-content: center; gap: 12px; font-size: 20px; font-style: italic; text-align: center">
+<div>{{ line }}</div>
+<sc-if value="{{ canUndo }}" hint-placeholder-val="{{ false }}">
+<button type="button" onClick="{{ undo }}" style="height: 44px; padding: 0 6px; border: 0; background: transparent; color: #13325B; font-family: 'EB Garamond', serif; font-size: 20px; font-style: italic; text-decoration: underline; cursor: pointer">Undo</button>
+</sc-if>
+</div>
+
+<div style="position: absolute; left: 28px; right: 28px; top: 742px; display: flex; gap: 12px">
+<sc-if value="{{ showNext }}" hint-placeholder-val="{{ false }}">
+<button type="button" onClick="{{ next }}" style="flex: 1; height: 62px; border: 0; border-radius: 18px; background: #13325B; color: #FFFFFF; font-family: 'Barlow Condensed', sans-serif; font-size: 26px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; cursor: pointer">Next card</button>
+</sc-if>
+<sc-if value="{{ finished }}" hint-placeholder-val="{{ false }}">
+<button type="button" onClick="{{ deal }}" style="flex: 1; height: 62px; border: 1.5px solid #13325B; border-radius: 18px; background: transparent; color: #13325B; font-family: 'Barlow Condensed', sans-serif; font-size: 26px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; cursor: pointer">Deal again</button>
+</sc-if>
+</div>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"throwAt":{"editor":"range","default":110,"min":60,"max":200,"step":10,"unit":"px"},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+cards() {
+return {
+press: { slot: 'Press', alts: [
+{ name: 'Dumbbell bench press', weight: '20', unit: 'kg each', reps: 8, cue: 'Down for three. Pause on the chest. Up.' },
+{ name: 'Machine chest press', weight: '40', unit: 'kg', reps: 8, cue: 'Let it come back for three. Pause. Press.' },
+{ name: 'Push-up', weight: 'Body', unit: 'weight', reps: 10, cue: 'Chest to the floor, slowly. Pause. Up.' },
+] },
+overhead: { slot: 'Overhead', alts: [
+{ name: 'Dumbbell shoulder press', weight: '12', unit: 'kg each', reps: 8, cue: 'Lower to the ears, slowly. Pause. Press.' },
+{ name: 'Shoulder press machine', weight: '25', unit: 'kg', reps: 8, cue: 'Down for three. Pause. Press, no bounce.' },
+] },
+fly: { slot: 'Chest', alts: [
+{ name: 'Cable fly', weight: '10', unit: 'kg each side', reps: 12, cue: 'Open wide, slowly. Pause in the stretch. Hug.' },
+{ name: 'Dumbbell fly', weight: '8', unit: 'kg each', reps: 12, cue: 'Open wide, slowly. Pause. Bring them together.' },
+] },
+triceps: { slot: 'Arms', alts: [
+{ name: 'Rope pushdown', weight: '20', unit: 'kg', reps: 12, cue: 'Elbows still. Down, pause, let it rise slowly.' },
+{ name: 'Bench dip', weight: 'Body', unit: 'weight', reps: 10, cue: 'Lower for three. Pause at the bottom. Up.' },
+] },
+core: { slot: 'Core', alts: [
+{ name: 'Hanging knee raise', weight: 'Body', unit: 'weight', reps: 10, cue: 'Lift slowly. Hold at the top. Lower slower.' },
+{ name: 'Cable crunch', weight: '25', unit: 'kg', reps: 12, cue: 'Curl down slowly. Pause. Uncurl slower.' },
+] },
+};
+}
+fresh() {
+return { deck: ['press', 'overhead', 'fly', 'triceps', 'core'], done: [], logs: {}, alt: {}, dx: 0, anim: null, toast: null, taught: false };
+}
+now() {
+return Object.assign(this.fresh(), this.state || {});
+}
+isDone(s, id) {
+const l = s.logs[id] || [];
+return !!(l[0] && l[1] && l[2]);
+}
+started(s, id) {
+return (s.logs[id] || []).some(Boolean);
+}
+// How far the cards behind have stepped forward for a top card this far out.
+peek(dx) {
+return Math.min(1, Math.abs(dx) / 300) * 0.5;
+}
+componentDidMount() {
+this.vx = 0;
+this.last = performance.now();
+const tick = (now) => {
+const dt = Math.min(0.04, (now - this.last) / 1000);
+this.last = now;
+this.step(dt);
+this.raf = requestAnimationFrame(tick);
+};
+this.raf = requestAnimationFrame(tick);
+}
+componentWillUnmount() {
+cancelAnimationFrame(this.raf);
+clearTimeout(this.toastTimer);
+}
+step(dt) {
+const s = this.now();
+const a = s.anim;
+if (!a) return;
+const top = s.deck[0];
+if (a.kind === 'spring') {
+// Let go early: it springs back to the top of the deck.
+let v = this.vx;
+let x = s.dx;
+v += (-260 * x - 24 * v) * dt;
+x += v * dt;
+this.vx = v;
+if (Math.abs(x) < 0.5 && Math.abs(v) < 8) this.setState({ dx: 0, anim: null });
+else this.setState({ dx: x });
+return;
+}
+if (a.kind === 'out') {
+const t = Math.min(1, a.t + dt / 0.22);
+if (t < 1) { this.setState({ anim: Object.assign({}, a, { t }) }); return; }
+// Out to the side; now round to the back, where it tucks in.
+clearTimeout(this.toastTimer);
+this.setState({ deck: s.deck.slice(1).concat(top), dx: 0, anim: { kind: 'tuck', id: top, dir: a.dir, t: 0 }, toast: top, taught: true });
+this.toastTimer = setTimeout(() => this.setState({ toast: null }), 5000);
+return;
+}
+if (a.kind === 'tuck') {
+const t = Math.min(1, a.t + dt / 0.3);
+this.setState({ anim: t < 1 ? Object.assign({}, a, { t }) : null });
+return;
+}
+if (a.kind === 'up') {
+const t = Math.min(1, a.t + dt / 0.28);
+if (t < 1) this.setState({ anim: Object.assign({}, a, { t }) });
+else this.setState({ deck: s.deck.slice(1), done: s.done.concat(top), dx: 0, anim: null });
+return;
+}
+if (a.kind === 'flip') {
+const t = Math.min(1, a.t + dt / 0.36);
+// Edge on at half way: that is when the other side comes round.
+if (t >= 0.5 && !a.turned) {
+this.setState({ alt: Object.assign({}, s.alt, { [top]: (s.alt[top] || 0) + 1 }), anim: Object.assign({}, a, { t, turned: true }) });
+} else this.setState({ anim: t < 1 ? Object.assign({}, a, { t }) : null });
+}
+}
+sendLater(dir) {
+const s = this.now();
+if (s.anim && s.anim.kind !== 'spring') return;
+if (s.deck.length < 2) { this.vx = 0; this.setState({ anim: { kind: 'spring' } }); return; }
+this.setState({ anim: { kind: 'out', dir, t: 0, x0: s.dx, from: this.peek(s.dx) } });
+}
+complete() {
+const s = this.now();
+if ((s.anim && s.anim.kind !== 'spring') || !s.deck.length) return;
+clearTimeout(this.toastTimer);
+this.setState({ anim: { kind: 'up', t: 0, x0: s.dx }, toast: null });
+}
+renderVals() {
+const s = this.now();
+const cards = this.cards();
+const top = s.deck[0];
+const a = s.anim;
+const throwAt = this.props.throwAt ?? 110;
+const pick = (id, by) => cards[id].alts[((s.alt[id] || 0) + (by || 0)) % cards[id].alts.length];
+const ease = (t) => 1 - Math.pow(1 - t, 3);
+const lerp = (p, q, t) => p + (q - p) * t;
+const clamp = (v) => Math.min(1, Math.max(0, v));
+const topDone = top ? this.isDone(s, top) : false;
+
+// The top card: where it is, how it is turned.
+let x = s.dx, y = 0, scale = 1, flip = 0, advance = this.peek(s.dx);
+if (a && a.kind === 'out') {
+const e = ease(a.t);
+x = lerp(a.x0, a.dir * 350, e); y = 30 * e; scale = 1 - 0.1 * e; advance = lerp(a.from, 1, e);
+} else if (a && a.kind === 'up') {
+const e = a.t * a.t;
+x = a.x0; y = -800 * e; advance = ease(a.t);
+} else if (a && a.kind === 'flip') {
+flip = a.t < 0.5 ? 180 * a.t : -180 * (1 - a.t);
+}
+
+const stack = s.deck.map((id, i) => {
+const c = pick(id);
+const logs = s.logs[id] || [];
+const done = this.isDone(s, id);
+const isTop = i === 0;
+const pose = isTop ? 0 : Math.max(0, i - advance);
+let cx = isTop ? x : 0;
+let cy = isTop ? y : 14 * pose;
+let cs = isTop ? scale : 1 - 0.05 * pose;
+let opacity = pose >= 3 ? 0 : pose > 2 ? 3 - pose : 1;
+if (a && a.kind === 'tuck' && a.id === id) {
+// Coming in behind the others, from the side it left by.
+const e = ease(a.t);
+cx = a.dir * 350 * (1 - e); cy = lerp(30, cy, e); cs = lerp(0.9, cs, e); opacity = Math.max(opacity, 1 - e);
+}
+const tilt = cx / 22;
+const lift = isTop ? clamp(Math.abs(cx) / 90) : 0;
+const near = isTop ? clamp((Math.abs(cx) - 24) / 70) : 0;
+const alone = s.deck.length < 2;
+return {
+slot: cards[id].slot,
+name: c.name,
+weight: c.weight,
+unit: c.unit,
+cue: c.cue,
+status: done ? 'Done' : c.reps + ' reps',
+transform: 'translate3d(' + cx.toFixed(1) + 'px,' + cy.toFixed(1) + 'px,0) rotateZ(' + tilt.toFixed(2) + 'deg) rotateY(' + (isTop ? (flip + cx / 34).toFixed(2) : 0) + 'deg) scale(' + cs.toFixed(3) + ')',
+shadow: '0 ' + (6 + 22 * lift).toFixed(0) + 'px ' + (14 + 34 * lift).toFixed(0) + 'px rgba(19,50,91,' + (isTop ? 0.1 + 0.14 * lift : 0).toFixed(2) + ')',
+opacity,
+z: 10 - i,
+pointer: isTop && !a ? 'auto' : 'none',
+stamp: done ? 'Done' : alone ? 'The last one' : 'Later',
+stampNote: done ? '' : alone ? '' : 'to the back of the deck',
+stampOpacity: a && a.kind === 'up' ? 0 : near,
+canTurn: isTop && !this.started(s, id) && cards[id].alts.length > 1,
+other: pick(id, 1).name,
+turnLabel: 'Turn the card over to ' + pick(id, 1).name,
+turn: () => {
+if (this.dragged || this.now().anim) return;
+this.setState({ anim: { kind: 'flip', t: 0 } });
+},
+down: (ev) => {
+if (!isTop || (this.now().anim && this.now().anim.kind !== 'spring')) return;
+this.drag = { x: ev.clientX - this.now().dx, active: false, lastX: ev.clientX, lastT: performance.now(), v: 0 };
+},
+sets: [0, 1, 2].map((n) => ({
+text: logs[n] ? '✓' : String(c.reps),
+label: 'Set ' + (n + 1) + ' of ' + c.name + (logs[n] ? ', done' : ', not done'),
+fill: logs[n] ? '#13325B' : '#FFFFFF',
+ink: logs[n] ? '#FFFFFF' : '#13325B',
+tap: () => {
+// A drag that ends on a circle is not a tap.
+if (this.dragged) return;
+const next = logs.slice();
+next[n] = !next[n];
+this.setState({ logs: Object.assign({}, s.logs, { [id]: next }) });
+},
+})),
+};
+});
+
+const total = 5;
+const finished = s.deck.length === 0;
+const toastName = s.toast ? pick(s.toast).name : '';
+return {
+stack,
+finished,
+dots: Array.from({ length: total }, (_, i) => ({ fill: i < s.done.length ? '#13325B' : 'transparent' })),
+progressLabel: s.done.length + ' of ' + total + ' cards done',
+showNext: !finished && topDone,
+canUndo: !!s.toast,
+line: finished ? '' : s.toast ? toastName + ' is at the back.' : topDone ? 'All three done. Swipe it away.' : s.taught ? '' : 'Machine taken? Swipe the card away.',
+move: (ev) => {
+const d = this.drag;
+if (!d) return;
+const dx = ev.clientX - d.x;
+const t = performance.now();
+if (t > d.lastT) d.v = (ev.clientX - d.lastX) / ((t - d.lastT) / 1000);
+d.lastX = ev.clientX; d.lastT = t;
+if (!d.active && Math.abs(dx - this.now().dx) > 10) d.active = true;
+if (d.active) this.setState({ dx, anim: null });
+},
+up: () => {
+const d = this.drag;
+if (!d) return;
+this.drag = null;
+if (!d.active) return;
+this.dragged = true;
+setTimeout(() => { this.dragged = false; }, 60);
+const dx = this.now().dx;
+// Far enough, or a quick flick the same way.
+const thrown = Math.abs(dx) > throwAt || (Math.abs(d.v) > 700 && Math.abs(dx) > 36 && d.v * dx > 0);
+if (!thrown) { this.vx = d.v; this.setState({ anim: { kind: 'spring' } }); return; }
+if (topDone) this.complete();
+else this.sendLater(dx > 0 ? 1 : -1);
+},
+next: () => this.complete(),
+undo: () => {
+if (this.now().anim || !s.toast) return;
+clearTimeout(this.toastTimer);
+const back = s.deck[s.deck.length - 1];
+this.setState({ deck: [back].concat(s.deck.slice(0, -1)), toast: null, dx: 0 });
+},
+deal: () => this.setState(Object.assign(this.fresh(), { taught: true })),
+};
+}
+}
+</script>
+</body>
+</html>

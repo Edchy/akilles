@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>First screen, direction C: Weight</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+/* One rep, at the pace the app teaches: ready, lower slowly, pause, come up. */
+@keyframes rep{
+0%,14%{transform:translateY(0)}
+60%,76%{transform:translateY(150px)}
+100%{transform:translateY(0)}
+}
+.plate{animation:rep 5.2s ease-in-out infinite}
+@media (prefers-reduced-motion: reduce){.plate{animation:none;transform:translateY(150px)}}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; padding: 64px 28px 40px; display: flex; flex-direction: column; background: #0C1626; color: #FFFFFF; font-family: 'Barlow Condensed', sans-serif; overflow: hidden">
+<div style="font-size: 22px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase">Again</div>
+
+<div style="flex: 1; position: relative; margin: 0 -28px">
+<div class="plate" style="position: absolute; left: 75px; top: 6px; width: 240px; height: 240px">
+<svg aria-hidden="true" viewBox="0 0 240 240" style="display: block; width: 240px; height: 240px">
+<circle cx="120" cy="120" r="120" fill="{{accent}}"></circle>
+<circle cx="120" cy="120" r="84" fill="none" stroke="#0C1626" stroke-width="3"></circle>
+<circle cx="120" cy="120" r="20" fill="#0C1626"></circle>
+</svg>
+</div>
+<div style="position: absolute; left: 0; right: 0; top: 398px; height: 3px; background: #3A4A63"></div>
+</div>
+
+<div style="display: flex; flex-direction: column; gap: 14px">
+<h1 style="margin: 0; font-size: 60px; line-height: 0.95; font-weight: 700; text-transform: uppercase">Make a light weight feel heavy.</h1>
+<p style="margin: 0; font-size: 24px; line-height: 1.2; font-weight: 500; color: #C9D3E2">Down slowly. Pause. Up. That is the whole skill.</p>
+</div>
+
+<button type="button" style="margin-top: 30px; height: 62px; border: 0; border-radius: 18px; background: {{accent}}; color: #0C1626; font-family: 'Barlow Condensed', sans-serif; font-size: 26px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase">Start</button>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"accent":{"editor":"color","default":"#F08A24","options":["#F08A24","#F6C12A","#3CC2CB","#FFFFFF"]},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+renderVals() {
+return { accent: this.props.accent ?? '#F08A24' };
+}
+}
+</script>
+</body>
+</html>

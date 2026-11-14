@@ -12,6 +12,7 @@ import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useMemo } from "react";
 import { View } from "react-native";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
 import {
   SafeAreaInsetsContext,
   SafeAreaProvider,
@@ -90,6 +91,7 @@ export default function RootLayout() {
   }
 
   return (
+    <GestureHandlerRootView style={{ flex: 1 }}>
     <SafeAreaProvider>
       <TestModeContext.Provider value={testMode}>
         <SessionContext.Provider value={{ state, setState }}>
@@ -103,5 +105,6 @@ export default function RootLayout() {
         </SessionContext.Provider>
       </TestModeContext.Provider>
     </SafeAreaProvider>
+    </GestureHandlerRootView>
   );
 }

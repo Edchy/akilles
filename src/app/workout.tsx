@@ -38,6 +38,7 @@ import { Icon, type IconName } from "@/components/icon";
 import { Mark } from "@/components/mark";
 import { NoteLine, NoteSheet } from "@/components/note";
 import { GuideButton, GuideSheet } from "@/components/guide";
+import { DeckCard } from "@/components/deck";
 import { Illustration } from "@/components/illustration";
 import { GoalSheet, Pips, hasTutorial, openTutorial } from "@/components/goals";
 import { BigButton, Sheet } from "@/components/sheet";
@@ -408,8 +409,26 @@ export default function WorkoutScreen() {
   // Before it is measured, a fair guess at what sits under the name.
   const under = underName ?? (note ? 28 : 0) + (myNote ? 39 : 0);
 
+  // The lift is the top card of the deck: pulled aside, it goes to the back
+  // and the next lift comes up from under it — see `DeckCard`.
+  const behindItem = later ? active.items[active.cursor + 1] : undefined;
+  const behind = behindItem
+    ? { family: itemFamily(behindItem), name: byId(behindItem.exerciseId)?.name ?? "" }
+    : null;
+
   return (
     <OnField family={family} sendOff={sendOff}>
+    <DeckCard
+      key={item.slot}
+      face={item.exerciseId}
+      enabled={later}
+      behind={behind}
+      onAway={() => {
+        setPicking(false);
+        setMenu(null);
+        setState((s) => skipExercise(s));
+      }}
+    >
     <View
       ref={root}
       onStartShouldSetResponderCapture={() => {
@@ -595,6 +614,7 @@ export default function WorkoutScreen() {
       </Sheet>
       {noteSheet}
     </View>
+    </DeckCard>
     </OnField>
   );
 }
