@@ -7,7 +7,6 @@ import {
   createContext,
   useContext,
   useEffect,
-  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -32,7 +31,6 @@ import Reanimated, {
   useAnimatedStyle,
   useSharedValue,
   withSpring,
-  withTiming,
   type SharedValue,
 } from "react-native-reanimated";
 import { Text, TextInput } from "@/components/text";
@@ -175,13 +173,14 @@ const CIRCLES = {
 
 /**
  * The deck: the margin either side of a card, how far each card under the
- * top one shows below it, how much smaller each is, how round the corners
- * are, and how far aside the top card must be pulled — or how fast flicked,
- * in points a second — before letting go sends it.
+ * top one shows below it, how much smaller each is, and how round the
+ * corners are. A swipe turns the deck by one card over `travel` of the
+ * deck's width; let go past `away` of the way, or flicked faster than
+ * `flick` points a second, and it goes — sooner, and it comes back.
  */
-const DECK = { side: 14, peek: 13, shrink: 0.045, corner: 30, away: 96, flick: 650 };
-/** How a card settles into its place in the deck: quick, with a little give. */
-const SETTLE = { damping: 20, stiffness: 240, mass: 1 };
+const DECK = { side: 14, peek: 13, shrink: 0.045, corner: 30, travel: 0.8, away: 0.28, flick: 600 };
+/** How the deck comes to rest on a card: quick, and without a wobble. */
+const SETTLE = { damping: 26, stiffness: 260, mass: 1 };
 
 /**
  * A workout, as a deck of cards: the cardio, the warm-up, each lift, the
@@ -218,47 +217,62 @@ function Deck() {
   const foot = Math.max(insets.bottom, 12);
   const cardHeight = Math.max(0, room.height - foot - 2 * DECK.peek);
 
-  /** How far aside the thumb has the top card, in points: left is on, right is back. */
-  const drag = useSharedValue(0);
-  // The deck has turned: whatever the thumb was doing is over.
-  useLayoutEffect(() => {
-    drag.value = 0;
-  }, [top, drag]);
+  /**
+   * Where the deck is: which card is on top, as a number that moves — 3.4 is
+   * card 3 two fifths of the way off. Every card is drawn from this alone
+   * (see `DeckCard`), on the same thread as the thumb, so the thumb, the
+   * settle and a card's Done button all turn the one deck and nothing can
+   * fall out of step. It runs on past the last card rather than back to 0:
+   * the deck goes round.
+   */
+  const turned = useSharedValue(top);
+  /** The card the deck is on, or on its way to. */
+  const aim = useSharedValue(top);
+  /** Where the deck was when the thumb came down. */
+  const from = useSharedValue(top);
 
-  const turn = (by: 1 | -1) => {
+  // The session moved some other way — a card's Done, the overview, the end
+  // card's list: the deck turns to it, the short way round.
+  useEffect(() => {
+    const at = ((Math.round(aim.value) % cards) + cards) % cards;
+    if (at === top) return;
+    let by = top - at;
+    if (by > cards / 2) by -= cards;
+    if (by < -cards / 2) by += cards;
+    aim.value = Math.round(aim.value) + by;
+    turned.value = still ? aim.value : withSpring(aim.value, SETTLE);
+  }, [top, cards, still, aim, turned]);
+
+  const land = (on: number) => {
     Haptics.selectionAsync();
-    setState((s) => {
-      if (!s.active) return s;
-      const count = s.active.items.length + 1;
-      return goToCard(s, (Math.min(s.active.cursor, count - 1) + by + count) % count);
-    });
+    setState((s) => goToCard(s, ((on % cards) + cards) % cards));
   };
 
   const { width } = room;
   const pan = Gesture.Pan()
     // Sideways turns the deck; up and down is left to a card's own scrolling.
-    .activeOffsetX([-14, 14])
+    .activeOffsetX([-12, 12])
     .failOffsetY([-14, 14])
+    .onStart(() => {
+      // Caught mid-turn, it carries on from where it is.
+      from.value = turned.value;
+    })
     .onChange((e) => {
-      drag.value = e.translationX;
+      const by = -e.translationX / (width * DECK.travel);
+      // One card either way from where it was heading, never more.
+      turned.value = Math.min(Math.max(from.value + by, aim.value - 1), aim.value + 1);
     })
     .onEnd((e) => {
-      const far = Math.abs(drag.value) > DECK.away;
-      const flicked = Math.abs(e.velocityX) > DECK.flick && e.velocityX * drag.value > 0;
-      if (!far && !flicked) {
-        drag.value = withSpring(0, { ...SETTLE, velocity: e.velocityX });
-        return;
-      }
-      const by = drag.value < 0 ? 1 : -1;
-      if (still) {
-        scheduleOnRN(turn, by);
-        return;
-      }
-      // Off to the left, or the last card all the way in from it; then the
-      // deck turns, and `drag` is let go of above.
-      drag.value = withTiming(by === 1 ? -width * 1.2 : width, { duration: 200 }, (finished) => {
-        if (finished) scheduleOnRN(turn, by);
-      });
+      const moved = turned.value - aim.value;
+      const flicked = Math.abs(e.velocityX) > DECK.flick && e.velocityX * moved < 0;
+      const goes = Math.abs(moved) > DECK.away || (flicked && Math.abs(moved) > 0.04);
+      const to = goes ? aim.value + (moved > 0 ? 1 : -1) : aim.value;
+      const changed = to !== aim.value;
+      aim.value = to;
+      turned.value = still
+        ? to
+        : withSpring(to, { ...SETTLE, velocity: -e.velocityX / (width * DECK.travel) });
+      if (changed) scheduleOnRN(land, to);
     });
 
   return (
@@ -275,10 +289,10 @@ function Deck() {
             ? Array.from({ length: cards }, (_, i) => (
                 <DeckCard
                   key={i}
-                  // How far down the deck this card is: 0 is the top.
-                  place={(i - top + cards) % cards}
+                  index={i}
                   count={cards}
-                  drag={drag}
+                  turned={turned}
+                  onTop={i === top}
                   width={width}
                   height={cardHeight}
                 >
@@ -316,62 +330,60 @@ function Deck() {
 }
 
 /**
- * One card of the deck, wherever it lies. The top card follows the thumb to
- * the left, tilting as it goes; the two under it show their lower edges,
- * each a little smaller, and step up as the top one leaves. The rest are out
- * of sight underneath — but for the last one, which waits off the left edge
- * and comes back in over the top when the thumb goes right.
+ * One card of the deck, drawn from where the deck is (`turned`) and nothing
+ * else. How far this card is from the top, going round:
+ *
+ * - 0 is the top card; 1 and 2 lie under it, each a little smaller and lower,
+ *   so their feet show; further down, out of sight.
+ * - Between 0 and −1 it is on its way off to the left — or, the same thing
+ *   backwards, on its way back in over the top. At −1 it is gone, which in a
+ *   deck that goes round is the bottom.
+ *
+ * So swiping on and swiping back are one movement, run forwards or
+ * backwards, and there is no moment where a card has to jump.
  */
 function DeckCard({
-  place,
+  index,
   count,
-  drag,
+  turned,
+  onTop,
   width,
   height,
   children,
 }: PropsWithChildren<{
-  place: number;
+  index: number;
   count: number;
-  drag: SharedValue<number>;
+  turned: SharedValue<number>;
+  /** Whether the session is on this card: the one the thumb can use. */
+  onTop: boolean;
   width: number;
   height: number;
 }>) {
-  /** Where the card lies, moving: it settles into `place`. */
-  const lies = useSharedValue(place);
-  const was = useRef(place);
-  useLayoutEffect(() => {
-    if (was.current === place) return;
-    // Round from the top to the bottom, or back, is not a slide through the
-    // deck; and a card the thumb has already brought up has nowhere to slide.
-    const stepped = Math.abs(place - was.current) === 1;
-    was.current = place;
-    lies.value = stepped && drag.value === 0 ? withSpring(place, SETTLE) : place;
-  }, [place, lies, drag]);
-
-  // The one before the top card: it comes back when the deck is turned back.
-  // In a deck of three or fewer it is also one of those showing, so stays there.
-  const last = count > 3 && place === count - 1;
-  const top = place === 0;
-
   const style = useAnimatedStyle(() => {
-    if (last) {
-      const x = drag.value > 0 ? Math.min(0, -width * 1.1 + drag.value * 1.6) : -width * 1.1;
-      return { opacity: drag.value > 0 ? 1 : 0, zIndex: count + 1, transform: [{ translateX: x }, { translateY: 0 }, { rotateZ: `${x / 40}deg` }, { scale: 1 }] };
+    // How far down the deck, from −1 (just gone) up to the bottom.
+    let place = (((index - turned.value) % count) + count) % count;
+    if (place > count - 1) place -= count;
+
+    if (place < 0) {
+      // Leaving to the left, or coming back from it: over everything else.
+      const gone = -place;
+      const x = -width * 1.12 * gone;
+      return {
+        opacity: 1,
+        zIndex: count + 2,
+        transform: [{ translateX: x }, { translateY: 0 }, { rotateZ: `${-9 * gone}deg` }, { scale: 1 }],
+      };
     }
-    // Under a card going left, the others are already on their way up.
-    const leaving = top ? 0 : Math.min(1, Math.max(0, -drag.value / (width * 0.9)));
-    const down = Math.min(Math.max(lies.value - leaving, 0), 3);
+    const down = Math.min(place, 3);
     const scale = 1 - DECK.shrink * down;
-    // The top card goes freely to the left; to the right it only gives a little.
-    const x = top ? Math.min(drag.value, 0) + Math.max(drag.value, 0) * 0.2 : 0;
     return {
       opacity: down <= 2 ? 1 : 3 - down,
-      zIndex: count - place,
+      zIndex: count - Math.round(place),
       transform: [
-        { translateX: x },
+        { translateX: 0 },
         // Smaller, and lower by its share of the peek: its foot shows under the card above.
         { translateY: DECK.peek * down + (height * (1 - scale)) / 2 },
-        { rotateZ: `${x / 26}deg` },
+        { rotateZ: "0deg" },
         { scale },
       ],
     };
@@ -380,8 +392,8 @@ function DeckCard({
   return (
     <Reanimated.View
       // Only the top card is for the thumb; the rest are the deck.
-      accessibilityElementsHidden={!top}
-      importantForAccessibility={top ? "auto" : "no-hide-descendants"}
+      accessibilityElementsHidden={!onTop}
+      importantForAccessibility={onTop ? "auto" : "no-hide-descendants"}
       style={[
         {
           position: "absolute",
@@ -393,7 +405,7 @@ function DeckCard({
           borderRadius: DECK.corner,
           borderCurve: "continuous",
           backgroundColor: colors.surface,
-          pointerEvents: top ? "auto" : "none",
+          pointerEvents: onTop ? "auto" : "none",
           // A line of the ground between one card and the next, so the deck reads as cards.
           borderWidth: 1.5,
           borderColor: colors.bg,
