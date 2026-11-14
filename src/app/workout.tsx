@@ -7,6 +7,7 @@ import {
   createContext,
   useContext,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -17,7 +18,6 @@ import {
   Animated,
   Easing,
   Keyboard,
-  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -27,8 +27,17 @@ import {
   type TextStyle,
   type ViewStyle,
 } from "react-native";
+import { Gesture, GestureDetector } from "react-native-gesture-handler";
+import Reanimated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+  withTiming,
+  type SharedValue,
+} from "react-native-reanimated";
 import { Text, TextInput } from "@/components/text";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { scheduleOnRN } from "react-native-worklets";
 import Svg, { Circle } from "react-native-svg";
 
 import { Column, COLUMN } from "@/components/screen";
@@ -165,22 +174,29 @@ const CIRCLES = {
 } as const;
 
 /**
- * The row of cards: the gap at the left of a card — so also between two — the
- * width kept at the right for the next card's gap and its edge, and how round
- * a card's corners are.
+ * The deck: the margin either side of a card, how far each card under the
+ * top one shows below it, how much smaller each is, how round the corners
+ * are, and how far aside the top card must be pulled — or how fast flicked,
+ * in points a second — before letting go sends it.
  */
-const ROW = { side: 12, peek: 34, corner: 30 };
+const DECK = { side: 14, peek: 13, shrink: 0.045, corner: 30, away: 96, flick: 650 };
+/** How a card settles into its place in the deck: quick, with a little give. */
+const SETTLE = { damping: 20, stiffness: 240, mass: 1 };
 
 /**
- * A workout, as a row of cards: the cardio, the warm-up, each lift, the
- * stretch — one card each, in order, and after the last of them the end.
- * Swipe left for the next card and right for the one before; any card, done
- * or not, so a taken bench is passed and come back to. The edge of the next
- * card always shows at the right, and a tap on it goes there too. Above the
- * row, its header: one mark for each card, filled as it is done (see
- * `CardDot`) — tap it for all the cards at once.
+ * A workout, as a deck of cards: the cardio, the warm-up, each lift, the
+ * stretch — one card each, in order — and after the last of them, the end.
+ * It looks like a deck: the top card, and the edges of the next two under it.
  *
- * The bottom bar is put away while the row is up, so a card has the screen.
+ * Swipe the top card off to the left and it goes underneath: the next one is
+ * on top. Swipe to the right and the last one comes back. Any card, done or
+ * not — so a taken bench is passed and come round to again — and the deck
+ * goes round: after the end comes the first card. Above the deck, its
+ * header: one mark for each card, filled as it is done (see `CardDot`) — tap
+ * it for all the cards at once.
+ *
+ * Everything done here is for this session only; the plan is changed in Plan.
+ * The bottom bar is put away while the deck is up, so a card has the screen.
  */
 export default function WorkoutScreen() {
   const { state } = useSession();
@@ -191,111 +207,97 @@ export default function WorkoutScreen() {
 
 function Deck() {
   const { state, setState } = useSession();
-  const { width } = useWindowDimensions();
   const insets = useSafeAreaInsets();
+  const still = useReduceMotion();
   const active = state.active!;
   const cards = active.items.length + 1;
-  const page = Math.min(active.cursor, cards - 1);
+  const top = Math.min(active.cursor, cards - 1);
   const [overview, setOverview] = useState(false);
-
-  // A card and the gap after it: all but the sliver of the next card.
-  const stride = Math.min(width, COLUMN + 2 * ROW.side) - ROW.peek;
-  const pager = useRef<ScrollView>(null);
-  // The row's own height: a sideways scroller does not stretch what is in it
-  // to its height, so each card is given it.
-  const [height, setHeight] = useState(0);
+  // The deck's own room, measured: cards are laid out in it by hand.
+  const [room, setRoom] = useState({ width: 0, height: 0 });
   const foot = Math.max(insets.bottom, 12);
-  // The card the row has scrolled to. When the session moves on some other
-  // way — a button on a card, the overview — the row follows it.
-  const shown = useRef(-1);
-  useEffect(() => {
-    if (shown.current === page) return;
-    const first = shown.current === -1;
-    shown.current = page;
-    pager.current?.scrollTo({ x: page * stride, animated: !first });
-  }, [page, stride]);
+  const cardHeight = Math.max(0, room.height - foot - 2 * DECK.peek);
 
-  // Come to rest on a card: that one is on screen now.
-  const settle = (x: number) => {
-    const at = Math.min(Math.max(Math.round(x / stride), 0), cards - 1);
-    if (at === shown.current) return;
-    shown.current = at;
+  /** How far aside the thumb has the top card, in points: left is on, right is back. */
+  const drag = useSharedValue(0);
+  // The deck has turned: whatever the thumb was doing is over.
+  useLayoutEffect(() => {
+    drag.value = 0;
+  }, [top, drag]);
+
+  const turn = (by: 1 | -1) => {
     Haptics.selectionAsync();
-    setState((s) => goToCard(s, at));
+    setState((s) => {
+      if (!s.active) return s;
+      const count = s.active.items.length + 1;
+      return goToCard(s, (Math.min(s.active.cursor, count - 1) + by + count) % count);
+    });
   };
-  // Not every platform says when a swipe has come to rest, so a moment
-  // without movement counts as rest too.
-  const idle = useRef<ReturnType<typeof setTimeout> | null>(null);
-  useEffect(() => () => void (idle.current && clearTimeout(idle.current)), []);
+
+  const { width } = room;
+  const pan = Gesture.Pan()
+    // Sideways turns the deck; up and down is left to a card's own scrolling.
+    .activeOffsetX([-14, 14])
+    .failOffsetY([-14, 14])
+    .onChange((e) => {
+      drag.value = e.translationX;
+    })
+    .onEnd((e) => {
+      const far = Math.abs(drag.value) > DECK.away;
+      const flicked = Math.abs(e.velocityX) > DECK.flick && e.velocityX * drag.value > 0;
+      if (!far && !flicked) {
+        drag.value = withSpring(0, { ...SETTLE, velocity: e.velocityX });
+        return;
+      }
+      const by = drag.value < 0 ? 1 : -1;
+      if (still) {
+        scheduleOnRN(turn, by);
+        return;
+      }
+      // Off to the left, or the last card all the way in from it; then the
+      // deck turns, and `drag` is let go of above.
+      drag.value = withTiming(by === 1 ? -width * 1.2 : width, { duration: 200 }, (finished) => {
+        if (finished) scheduleOnRN(turn, by);
+      });
+    });
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.bg }}>
       <StatusBar style="dark" />
       <DeckHeader onOpen={() => setOverview(true)} />
 
-      <ScrollView
-        ref={pager}
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
-        // One card at a time: on a phone the row snaps by a card's width; a
-        // browser snaps to each card's leading edge.
-        snapToInterval={Platform.OS === "web" ? undefined : stride}
-        pagingEnabled={Platform.OS === "web"}
-        disableIntervalMomentum
-        decelerationRate="fast"
-        scrollEventThrottle={16}
-        onLayout={(e) => {
-          setHeight(e.nativeEvent.layout.height);
-          pager.current?.scrollTo({ x: shown.current * stride, animated: false });
-        }}
-        onMomentumScrollEnd={(e) => settle(e.nativeEvent.contentOffset.x)}
-        onScroll={(e) => {
-          const x = e.nativeEvent.contentOffset.x;
-          if (idle.current) clearTimeout(idle.current);
-          idle.current = setTimeout(() => settle(x), 180);
-        }}
-        style={{ flex: 1, marginTop: 12 }}
-        // Room after the last card, so it too comes to rest at the left.
-        contentContainerStyle={{ paddingRight: Math.max(0, width - stride) }}
-      >
-        {Array.from({ length: cards }, (_, i) => (
-          // Each card stands in a stride of the row, a stride from the last,
-          // so the row comes to rest with a card's margin at the left.
-          <View key={i} style={{ width: stride, height, paddingLeft: ROW.side, paddingBottom: foot }}>
-          <View
-            style={{
-              flex: 1,
-              overflow: "hidden",
-              borderRadius: ROW.corner,
-              borderCurve: "continuous",
-              backgroundColor: colors.surface,
-            }}
-          >
-            {i === cards - 1 ? (
-              <CardContext.Provider value>
-                <Finished hasSession onCard={(index) => setState((s) => goToCard(s, index))} />
-              </CardContext.Provider>
-            ) : (
-              // Every card has its real content from the start. Only the
-              // current card plays its illustrations.
-              <CardActiveContext.Provider value={i === page}><CardStep index={i} /></CardActiveContext.Provider>
-            )}
-            {i !== page ? (
-              // A card to the side is a way there, not a place to tap sets.
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={
-                  i === cards - 1 ? "Go to the end" : `Go to ${cardName(state, i)}`
-                }
-                onPress={() => setState((s) => goToCard(s, i))}
-                style={StyleSheet.absoluteFill}
-              />
-            ) : null}
-          </View>
-          </View>
-        ))}
-      </ScrollView>
+      <GestureDetector gesture={pan}>
+        <View
+          onLayout={(e) => setRoom({ width: e.nativeEvent.layout.width, height: e.nativeEvent.layout.height })}
+          style={{ flex: 1, marginTop: 12 }}
+        >
+          {cardHeight > 0
+            ? Array.from({ length: cards }, (_, i) => (
+                <DeckCard
+                  key={i}
+                  // How far down the deck this card is: 0 is the top.
+                  place={(i - top + cards) % cards}
+                  count={cards}
+                  drag={drag}
+                  width={width}
+                  height={cardHeight}
+                >
+                  {i === cards - 1 ? (
+                    <CardContext.Provider value>
+                      <Finished hasSession onCard={(index) => setState((s) => goToCard(s, index))} />
+                    </CardContext.Provider>
+                  ) : (
+                    // Every card has its real content from the start. Only the
+                    // top card plays its illustrations.
+                    <CardActiveContext.Provider value={i === top}>
+                      <CardStep index={i} />
+                    </CardActiveContext.Provider>
+                  )}
+                </DeckCard>
+              ))
+            : null}
+        </View>
+      </GestureDetector>
 
       <Sheet visible={overview} title={currentWorkout(state).name || "Workout"} closeLabel="Close" onClose={() => setOverview(false)}>
         <Overview
@@ -310,6 +312,97 @@ function Deck() {
         />
       </Sheet>
     </View>
+  );
+}
+
+/**
+ * One card of the deck, wherever it lies. The top card follows the thumb to
+ * the left, tilting as it goes; the two under it show their lower edges,
+ * each a little smaller, and step up as the top one leaves. The rest are out
+ * of sight underneath — but for the last one, which waits off the left edge
+ * and comes back in over the top when the thumb goes right.
+ */
+function DeckCard({
+  place,
+  count,
+  drag,
+  width,
+  height,
+  children,
+}: PropsWithChildren<{
+  place: number;
+  count: number;
+  drag: SharedValue<number>;
+  width: number;
+  height: number;
+}>) {
+  /** Where the card lies, moving: it settles into `place`. */
+  const lies = useSharedValue(place);
+  const was = useRef(place);
+  useLayoutEffect(() => {
+    if (was.current === place) return;
+    // Round from the top to the bottom, or back, is not a slide through the
+    // deck; and a card the thumb has already brought up has nowhere to slide.
+    const stepped = Math.abs(place - was.current) === 1;
+    was.current = place;
+    lies.value = stepped && drag.value === 0 ? withSpring(place, SETTLE) : place;
+  }, [place, lies, drag]);
+
+  // The one before the top card: it comes back when the deck is turned back.
+  // In a deck of three or fewer it is also one of those showing, so stays there.
+  const last = count > 3 && place === count - 1;
+  const top = place === 0;
+
+  const style = useAnimatedStyle(() => {
+    if (last) {
+      const x = drag.value > 0 ? Math.min(0, -width * 1.1 + drag.value * 1.6) : -width * 1.1;
+      return { opacity: drag.value > 0 ? 1 : 0, zIndex: count + 1, transform: [{ translateX: x }, { translateY: 0 }, { rotateZ: `${x / 40}deg` }, { scale: 1 }] };
+    }
+    // Under a card going left, the others are already on their way up.
+    const leaving = top ? 0 : Math.min(1, Math.max(0, -drag.value / (width * 0.9)));
+    const down = Math.min(Math.max(lies.value - leaving, 0), 3);
+    const scale = 1 - DECK.shrink * down;
+    // The top card goes freely to the left; to the right it only gives a little.
+    const x = top ? Math.min(drag.value, 0) + Math.max(drag.value, 0) * 0.2 : 0;
+    return {
+      opacity: down <= 2 ? 1 : 3 - down,
+      zIndex: count - place,
+      transform: [
+        { translateX: x },
+        // Smaller, and lower by its share of the peek: its foot shows under the card above.
+        { translateY: DECK.peek * down + (height * (1 - scale)) / 2 },
+        { rotateZ: `${x / 26}deg` },
+        { scale },
+      ],
+    };
+  });
+
+  return (
+    <Reanimated.View
+      // Only the top card is for the thumb; the rest are the deck.
+      accessibilityElementsHidden={!top}
+      importantForAccessibility={top ? "auto" : "no-hide-descendants"}
+      style={[
+        {
+          position: "absolute",
+          top: 0,
+          left: DECK.side,
+          right: DECK.side,
+          height,
+          overflow: "hidden",
+          borderRadius: DECK.corner,
+          borderCurve: "continuous",
+          backgroundColor: colors.surface,
+          pointerEvents: top ? "auto" : "none",
+          // A line of the ground between one card and the next, so the deck reads as cards.
+          borderWidth: 1.5,
+          borderColor: colors.bg,
+        },
+        style,
+      ]}
+    >
+      {children}
+    </Reanimated.View>
   );
 }
 
@@ -394,7 +487,7 @@ function DeckHeader({ onOpen }: { onOpen: () => void }) {
           accessibilityRole="button"
           accessibilityLabel={`${currentWorkout(state).name}. ${done} of ${active.items.length} cards done. Show all cards`}
           onPress={onOpen}
-          style={({ pressed }) => ({ gap: 10, padding: 16, borderRadius: ROW.corner, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.line, opacity: pressed ? 0.6 : 1 })}
+          style={({ pressed }) => ({ gap: 10, padding: 16, borderRadius: DECK.corner, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.line, opacity: pressed ? 0.6 : 1 })}
         >
           <View style={{ flexDirection: "row", alignItems: "center", gap: 12, height: 32 }}>
             <Text numberOfLines={1} style={{ flex: 1, color: colors.text, fontFamily: fonts.medium, fontSize: 19 }}>
