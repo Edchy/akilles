@@ -76,11 +76,11 @@ test("the screen hears about the first reload session, then the climb", () => {
   assert.equal(prog.prescribe(record("db_bench", 25), SCHEME, 3).reload, undefined);
 });
 
-test("two misses during a reload deload it, and the count starts again", () => {
+test("two misses during a reload take it a rung down, and the count starts again", () => {
   let st = record("db_bench", 25, { rung: 2, reloading: true });
   st = miss(miss(st));
-  assert.equal(st.weight, 22.5);
-  assert.equal(st.rung, 0);
+  assert.equal(st.weight, 25);
+  assert.equal(st.rung, 1);
   assert.ok(!st.reloading);
   assert.equal(st.climbs, 0);
 });
@@ -91,6 +91,27 @@ test("a deload gives an assisted lift more help, never added weight", () => {
   assert.ok(twice(record("dips", 0)).weight < 0);
   // A plain bodyweight lift has nothing to take off.
   assert.equal(twice(record("hanging_leg_raise", 0)).weight, 0);
+});
+
+test("two misses take the reps down a rung first; only on the bottom rung does the weight drop", () => {
+  // 60 kg at 10 reps, short twice: 60 kg at 8.
+  let st = miss(miss(record("rdl", 60, { rung: 2 })));
+  assert.equal(st.weight, 60);
+  assert.equal(target(st), 8);
+  assert.equal(st.deloadHeld, true);
+  const shown = prog.prescribe(st, SCHEME, 3);
+  assert.equal(shown.deloaded, true);
+  assert.equal(shown.deloadHeld, true);
+  st = miss(miss(st));
+  assert.equal(target(st), 6);
+  assert.equal(st.weight, 60);
+  // On 6, nothing left to drop but the weight: 10% off 60 is 54, so 55.
+  st = miss(miss(st));
+  assert.equal(st.weight, 55);
+  assert.equal(target(st), 6);
+  assert.equal(st.deloadHeld, false);
+  // Light dumbbells still go down a whole step from the bottom rung.
+  assert.equal(miss(miss(record("db_bench", 10))).weight, 7.5);
 });
 
 test("a lift with no weight step never reloads", () => {

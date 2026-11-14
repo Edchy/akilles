@@ -177,7 +177,13 @@ export const STRETCHES: Stretch[] = [
   { id: "chest_opener", name: "Chest and shoulder opener", seconds: 45, cue: "A stick or empty bar, wide grip, up and back." },
   { id: "lat_wall", name: "Lat stretch on a wall", seconds: 30, perSide: true, cue: "Forearm on the wall, sink the chest away." },
   { id: "cross_body", name: "Cross-body shoulder stretch", seconds: 30, perSide: true, cue: "Pull the arm across at chest height." },
-  // The shoulder warm-up's: to ready the shoulders to press, not to stretch them.
+  // Every warm-up opens with these two: the legs and hips, whatever the day.
+  { id: "wide_stance", name: "Wide stance", seconds: 30, cue: "Feet wide, sit down between your heels, chest up." },
+  { id: "side_stance", name: "Side stance", seconds: 30, perSide: true, cue: "Sit to one side. The other leg straight, toes up." },
+  // A leg day's: the legs moving through what they are about to do.
+  { id: "leg_swing", name: "Leg swings", seconds: 30, reps: 10, perSide: true, cue: "Hold on to something. Swing one leg, easy and loose." },
+  { id: "bodyweight_squat", name: "Bodyweight squat", seconds: 30, reps: 10, cue: "Sit down slowly, pause at the bottom, stand up." },
+  // A push or pull day's: to ready the shoulders, not to stretch them.
   { id: "ball_shoulder", name: "Ball on the wall", seconds: 45, perSide: true, cue: "Ball under the front of the shoulder. Lean in and roll slowly." },
   { id: "band_pull_apart", name: "Band pull-apart", seconds: 45, reps: 15, cue: "Arms straight, squeeze the shoulder blades together." },
   { id: "band_external_rotation", name: "Band external rotation", seconds: 36, reps: 12, perSide: true, cue: "Elbow pinned to your side. Turn the hand out slowly." },
@@ -258,10 +264,16 @@ export type MobilityEdit = { name?: string; moves?: MobilityMove[] };
 export const DEFAULT_MOBILITY = "everyday";
 
 /**
- * The routine a workout that presses opens with, after the cardio, until you
- * choose another or take it out. Shoulders are the joint pressing hurts most.
- * Not "shoulders": that id belonged to a routine retired in version 10.
+ * The warm-ups, one for each kind of day. Each opens the same way — the wide
+ * stance, then the side stance for the hamstrings — and ends on what the day
+ * is about to work: shoulders and chest on a push day, the back on a pull
+ * day, the legs on a leg day. A workout opens with its day's, straight after
+ * the cardio, unless you choose another in Plan.
  */
+export const WARMUP = { push: "warmup_push", pull: "warmup_pull", legs: "warmup_legs" } as const;
+export type WarmupDay = keyof typeof WARMUP;
+
+/** Retired for the day warm-ups. Read only by old saves and sessions. */
 export const SHOULDER_WARMUP = "shoulder_warmup";
 
 /**
@@ -285,27 +297,66 @@ export const MOBILITY: MobilityRoutine[] = [
     ],
   },
   {
+    id: WARMUP.push,
+    name: "Push warm-up",
+    subtitle: "legs and hips, then shoulders and chest",
+    moves: [hold("wide_stance"), hold("side_stance"), hold("arm_circles"), hold("band_pull_apart"), hold("band_external_rotation")],
+  },
+  {
+    id: WARMUP.pull,
+    name: "Pull warm-up",
+    subtitle: "legs and hips, then the back",
+    moves: [hold("wide_stance"), hold("side_stance"), hold("cat_cow", { seconds: 30 }), hold("lat_wall"), hold("band_pull_apart")],
+  },
+  {
+    id: WARMUP.legs,
+    name: "Leg warm-up",
+    subtitle: "legs and hips, a bit more",
+    moves: [hold("wide_stance"), hold("side_stance"), hold("leg_swing"), hold("bodyweight_squat"), hold("worlds_greatest")],
+  },
+];
+
+/**
+ * Away from a gym there is no band: each band move becomes one that needs
+ * nothing and does the same job.
+ */
+const AWAY = ":away";
+const AWAY_SWAP: Record<string, string> = {
+  band_pull_apart: "prone_y_raise",
+  band_external_rotation: "wall_slide",
+};
+
+/** The version of a routine that needs nothing, or the routine itself if it already doesn't. */
+export const awayVersion = (routine: MobilityRoutine): MobilityRoutine => {
+  if (!routine.moves.some((m) => m.stretch && AWAY_SWAP[m.stretch])) return routine;
+  return {
+    ...routine,
+    id: `${routine.id}${AWAY}`,
+    moves: routine.moves.map((m) => {
+      const swap = m.stretch ? AWAY_SWAP[m.stretch] : undefined;
+      return swap ? hold(swap) : m;
+    }),
+  };
+};
+
+/** The shoulder warm-up as it last shipped, so a session started with it still reads. */
+const OLD_WARMUPS: MobilityRoutine[] = [
+  {
     id: SHOULDER_WARMUP,
     name: "Shoulder warm-up",
     subtitle: "before you press",
     moves: [hold("ball_shoulder"), hold("band_pull_apart"), hold("band_external_rotation")],
   },
+  {
+    id: "shoulder_warmup_away",
+    name: "Shoulder warm-up",
+    subtitle: "before you press, nothing needed",
+    moves: [hold("arm_circles"), hold("wall_slide"), hold("prone_y_raise")],
+  },
 ];
 
-/**
- * The shoulder warm-up with nothing to hold: what a workout that presses
- * opens with away from the gym, where there is no ball or band. Not in the
- * routine pool: the gym one stays the one you see and change.
- */
-export const AWAY_WARMUP: MobilityRoutine = {
-  id: "shoulder_warmup_away",
-  name: "Shoulder warm-up",
-  subtitle: "before you press, nothing needed",
-  moves: [hold("arm_circles"), hold("wall_slide"), hold("prone_y_raise")],
-};
-
 /** Routines earlier versions shipped, all retired for `everyday`. Read only by the save migration. */
-export const RETIRED_MOBILITY = ["full_body", "hips", "shoulders", "spine", "quick"];
+export const RETIRED_MOBILITY = ["full_body", "hips", "shoulders", "spine", "quick", SHOULDER_WARMUP];
 
 /**
  * The lean starting pools: the two machines the blocks default to plus one
@@ -318,7 +369,7 @@ export const RETIRED_MOBILITY = ["full_body", "hips", "shoulders", "spine", "qui
  * Everything else ships removed and is one tap from coming back.
  */
 export const LEAN_CARDIO: string[] = ["treadmill", "ski_erg", "row"];
-export const LEAN_MOBILITY: string[] = [DEFAULT_MOBILITY, SHOULDER_WARMUP];
+export const LEAN_MOBILITY: string[] = [DEFAULT_MOBILITY, WARMUP.push, WARMUP.pull, WARMUP.legs];
 
 /** Built-in machines and routines that start out removed. */
 export const leanHiddenConditioning = (): string[] => [
@@ -364,7 +415,12 @@ export const cardioById = (id: string): CardioExercise | undefined =>
   customCardio.find((c) => c.id === id);
 
 export const mobilityById = (id: string): MobilityRoutine | undefined => {
-  if (id === AWAY_WARMUP.id) return AWAY_WARMUP;
+  if (id.endsWith(AWAY)) {
+    const home = mobilityById(id.slice(0, -AWAY.length));
+    return home && awayVersion(home);
+  }
+  const old = OLD_WARMUPS.find((m) => m.id === id);
+  if (old) return old;
   const builtIn = MOBILITY.find((m) => m.id === id);
   return builtIn ? withMobilityEdits(builtIn) : customMobility.find((m) => m.id === id);
 };

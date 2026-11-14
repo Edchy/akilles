@@ -96,4 +96,9 @@ export const PHOTOS: Record<string, ImageSourcePropType[]> = {
   // The ball on the wall has no true match: its thumbnail is its film's still.
   band_pull_apart: [require("../../assets/photos/band-pull-apart-0.jpg"), require("../../assets/photos/band-pull-apart-1.jpg")],
   band_external_rotation: [require("../../assets/photos/external-rotation-with-band-0.jpg"), require("../../assets/photos/external-rotation-with-band-1.jpg")],
+  arm_circles: [require("../../assets/photos/arm-circles-0.jpg"), require("../../assets/photos/arm-circles-1.jpg")],
+  // The day warm-ups' leg moves. The wide and side stances have no photo
+  // without a barbell or dumbbell in it, which would say a warm-up needs one.
+  leg_swing: [require("../../assets/photos/front-leg-raises-0.jpg"), require("../../assets/photos/front-leg-raises-1.jpg")],
+  bodyweight_squat: [require("../../assets/photos/bodyweight-squat-0.jpg"), require("../../assets/photos/bodyweight-squat-1.jpg")],
 };

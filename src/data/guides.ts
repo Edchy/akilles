@@ -1329,6 +1329,38 @@ const MOBILITY: Record<string, Guide> = {
     ],
     "Letting the elbow drift away from your side — it does the work for the shoulder.",
   ),
+  wide_stance: g(
+    [
+      "Stand with your feet wide, well past your shoulders, toes turned out a little.",
+      "Sit down between your heels as far as is comfortable, chest up, knees out over the toes.",
+      "Stay there and breathe. Push the knees gently apart with the elbows if you like.",
+    ],
+    "Letting the knees fall in, or rounding the back to get lower.",
+  ),
+  side_stance: g(
+    [
+      "From the wide stance, shift your weight over to one side and bend that knee.",
+      "Keep the other leg straight, heel down and toes pointing up.",
+      "Sink until you feel the back and inside of the straight leg. Then the other side.",
+    ],
+    "Rounding the back or lifting the heel of the bent leg.",
+  ),
+  leg_swing: g(
+    [
+      "Stand side-on to a wall or rail and hold it with one hand.",
+      "Swing the outside leg forward and back, easy and loose, a little higher each time.",
+      "Keep the body tall and still. Then turn round for the other leg.",
+    ],
+    "Kicking hard, or leaning back to get the leg higher.",
+  ),
+  bodyweight_squat: g(
+    [
+      "Feet shoulder width, arms out in front for balance.",
+      "Sit down slowly, as deep as you can with the chest up, and pause at the bottom.",
+      "Stand up, pushing the floor away.",
+    ],
+    "Dropping fast into the bottom, or the heels coming up.",
+  ),
 };
 
 // ---- owning it ----

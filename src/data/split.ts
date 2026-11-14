@@ -171,8 +171,8 @@ export type Workout = {
   cardio?: Partial<Record<CardioEnd, CardioBlock | null>>;
   /**
    * The routine it opens with, after the opening cardio. Absent means the
-   * shoulder warm-up if the workout presses — see `SHOULDER_WARMUP` — and
-   * nothing otherwise; null means none even then.
+   * warm-up for its kind of day — see `WARMUP` and `warmupDay`; null means
+   * none.
    */
   warmup?: string | null;
   /**

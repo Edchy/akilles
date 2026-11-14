@@ -25,7 +25,7 @@ import {
 import {
   CARDIO_DEFAULT,
   AWAY_CARDIO,
-  AWAY_WARMUP,
+  awayVersion,
   CARDIO_MINUTES,
   COURSE_STEP,
   MINUTES_MAX,
@@ -35,7 +35,8 @@ import {
   HOLD_STEP,
   MOBILITY,
   REPS_RANGE_MOVE,
-  SHOULDER_WARMUP,
+  WARMUP,
+  type WarmupDay,
   TIME_STEP,
   cardioById,
   cardioPool,
@@ -1855,7 +1856,8 @@ const verdictFor = (state: SessionState, item: Item): Verdict | null => {
   if (outcome === "drop") {
     const fact =
       after.weight >= before.weight
-        ? `Back to ${target} next time.`
+        ? // Nothing to say about the weight on a bodyweight lift.
+          `${after.weight <= 0 ? "Back" : exercise.holds ? "Same hold, back" : "Same weight, back"} to ${target} next time.`
         : exercise.holds
           ? `Back to a ${weight} next time.`
           : `10% lighter next time: ${weight}.`;
@@ -2469,24 +2471,19 @@ export const goToCard = (state: SessionState, index: number): SessionState => {
 };
 
 /**
- * How a card stands: not done; done as asked; or done, but short of what was
- * asked — every set logged, some under target. Shown the same way wherever a
- * card is shown, so the row tells at a glance what is left.
+ * How a card stands: done or not. A lift is done once every set is in —
+ * short of the reps or not: the reps you did were done, and next time's
+ * weight already takes care of the rest.
  */
-export type CardMark = "todo" | "done" | "short";
+export type CardMark = "todo" | "done";
 
 export const cardMark = (state: SessionState, index: number): CardMark => {
   const item = state.active?.items[index];
   if (!item) return "todo";
   if (isCardio(item)) return scoreOf(item) !== null ? "done" : "todo";
   if (isMobility(item)) return item.moves?.length && item.moves.every(Boolean) ? "done" : "todo";
-  const at = atCard(state, index);
   if (isGoal(item)) return item.logged.every((r) => r !== null) || !!item.got ? "done" : "todo";
-  if (!allSetsLogged(at)) return "todo";
-  const p = currentPrescription(at);
-  // Speed and jump work has no target to fall short of.
-  if (item.derive || p?.exercise.unloaded) return "done";
-  return madeTarget(at) ? "done" : "short";
+  return allSetsLogged(atCard(state, index)) ? "done" : "todo";
 };
 
 /** A card's name: the lift, the machine, the routine. */
@@ -2616,20 +2613,26 @@ export const mobilityPlan = (state: SessionState, workout: Workout): MobilityRou
   return usable(workout.mobility) ?? usable(DEFAULT_MOBILITY) ?? pool[0] ?? null;
 };
 
-/** Movement types that load the shoulders overhead or in front: a day with one presses. */
-const PRESSING: Pattern[] = ["horizontal_push", "vertical_push", "chest_iso"];
-
-/** Whether any lift in a workout presses — the days the shoulder warm-up is for. */
-export const presses = (state: SessionState, workout: Workout): boolean =>
-  liftsToRun(state, workout).some(({ exerciseId }) => {
-    const ex = byId(exerciseId);
-    return !!ex && PRESSING.some((p) => isPattern(ex, p));
-  });
+/**
+ * What kind of day a workout is, for its warm-up: push, pull or legs, by
+ * which its lifts are mostly; on a tie, whichever comes first in it. Null for
+ * a day with no lifts of those kinds.
+ */
+export const warmupDay = (state: SessionState, workout: Workout): WarmupDay | null => {
+  const count: Record<WarmupDay, number> = { push: 0, pull: 0, legs: 0 };
+  const order: WarmupDay[] = [];
+  for (const { exerciseId } of liftsToRun(state, workout)) {
+    const family = familyOf(byId(exerciseId));
+    if (family !== "push" && family !== "pull" && family !== "legs") continue;
+    count[family] += 1;
+    if (!order.includes(family)) order.push(family);
+  }
+  return order.reduce<WarmupDay | null>((best, day) => (best === null || count[day] > count[best] ? day : best), null);
+};
 
 /**
  * The routine a workout opens with, or null. Yours if you chose one and it
- * is still in the catalogue; otherwise the shoulder warm-up on a day that
- * presses, and nothing on one that does not.
+ * is still in the catalogue; otherwise the warm-up for its kind of day.
  */
 export const warmupPlan = (state: SessionState, workout: Workout): MobilityRoutine | null => {
   if (workout.warmup === null) return null;
@@ -2637,16 +2640,14 @@ export const warmupPlan = (state: SessionState, workout: Workout): MobilityRouti
   const usable = (id: string | undefined) => (id ? pool.find((m) => m.id === id) : undefined);
   const own = usable(workout.warmup);
   if (own) return own;
-  return presses(state, workout) ? (usable(SHOULDER_WARMUP) ?? null) : null;
+  const day = warmupDay(state, workout);
+  return day ? (usable(WARMUP[day]) ?? null) : null;
 };
 
-/**
- * The warm-up as it runs here. The shoulder warm-up needs a ball and a band,
- * so away from a gym it becomes the one that needs nothing.
- */
+/** The warm-up as it runs here: away from a gym, its band moves become ones that need nothing. */
 const warmupHere = (state: SessionState, workout: Workout): MobilityRoutine | null => {
   const plan = warmupPlan(state, workout);
-  return plan?.id === SHOULDER_WARMUP && !hasMachines(state) ? AWAY_WARMUP : plan;
+  return plan && !hasMachines(state) ? awayVersion(plan) : plan;
 };
 
 /** The workouts that open or end on a routine, so an edit can say who else it reaches. */

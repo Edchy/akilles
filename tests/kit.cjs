@@ -193,7 +193,7 @@ test("away with nothing: the same workout comes next, with what can be done anyw
   assert.equal(cardio.map((it) => it.exerciseId).join(), "outdoor");
   assert.equal(cardio[0].minutes, 5);
   const warmup = built.active.items.find((it) => it.slot === store.WARMUP_SLOT);
-  assert.equal(warmup.exerciseId, "shoulder_warmup_away");
+  assert.equal(warmup.exerciseId, "warmup_push:away");
   assert.ok(built.active.items.some((it) => it.slot === store.MOBILITY_SLOT));
   // Skipping rope is one swap away; the gym's machines aren't.
   const opening = { ...built, active: { ...built.active, cursor: built.active.items.indexOf(cardio[0]) } };

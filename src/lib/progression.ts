@@ -11,7 +11,8 @@
  *     ...after two steps up    RELOAD instead: same weight, back two rungs
  *                              (10 reps), climbed again before the next step
  *   short of target            repeat the exact same prescription
- *   short twice in a row       deload 10%, back to the bottom rung
+ *   short twice in a row       same weight, one rung down (10 → 8 reps)
+ *     ...on the bottom rung    the weight down a step, about 10%
  *
  * A set left empty is not a miss. Running out of time says nothing about the
  * weight, so an unfinished exercise repeats without counting against it.
@@ -47,6 +48,8 @@ export type ExerciseState = {
   downStreak: number;
   /** Deloads since the last climb. Only used to explain the number on screen. */
   deloads: number;
+  /** The last deload kept the weight and took the reps down a rung instead. */
+  deloadHeld?: boolean;
   lastFeedback?: Feedback;
   /**
    * Skipped the last time it came up. Progression is untouched, but the
@@ -110,6 +113,8 @@ export type Prescription = {
   last?: ExerciseState["lastPerformed"];
   /** Set when the previous session triggered a deload. */
   deloaded?: boolean;
+  /** That deload kept the weight and took the reps down a rung instead. */
+  deloadHeld?: boolean;
   /**
    * On a reload: "start" for its first session, back two rungs — the one
    * that needs explaining — and "climb" for the rest of the way up.
@@ -306,10 +311,11 @@ const cutWeight = (
     return Math.max(eased, -NOMINAL_BODYWEIGHT + step);
   }
 
-  // A loaded lift floors at a single increment — there is no such thing as
-  // negative weight on a bar.
-  const floored = Math.floor((weight * (1 - fraction)) / step) * step;
-  return Math.min(weight, Math.max(step, floored));
+  // The nearest weight there is to the cut, and at least a step down — 60 kg
+  // less 10% is 54, so 55. A loaded lift floors at a single increment: there
+  // is no such thing as negative weight on a bar.
+  const nearest = Math.min(weight - step, Math.round((weight * (1 - fraction)) / step) * step);
+  return Math.min(weight, Math.max(step, nearest));
 };
 
 const roundTo = (value: number, step: number) =>
@@ -414,7 +420,8 @@ export const prescribe = (
     sets,
     scheme,
     last: state.lastPerformed,
-    deloaded: state.deloads > 0 && state.downStreak === 0 && state.rung === 0,
+    deloaded: state.deloads > 0 && state.downStreak === 0,
+    deloadHeld: !!state.deloadHeld,
     reload: state.reloading
       ? state.rung === reloadRung(ladder)
         ? "start"
@@ -549,15 +556,20 @@ export const applyResult = (
     };
   }
 
-  // Short twice in a row: deload 10% and restart the ladder. A step back of
-  // its own, so the count toward the next reload starts again. Eased along
-  // the same axis as a layoff, so an assisted pull-up gets more help rather
-  // than being rounded up to added weight.
+  // Short twice in a row: a step back, so the count toward the next reload
+  // starts again. The reps come down first — one rung, same weight: own the
+  // weight you have rather than lose it. Only on the bottom rung, with no
+  // reps left to drop, does the weight come down: about 10%, to the nearest
+  // weight there is. Eased along the same axis as a layoff, so an assisted
+  // pull-up gets more help rather than being rounded up to added weight.
+  const held = state.rung > 0;
+  const cut = held ? state.weight : cutWeight(state.weight, 0.1, exercise.increment, !!exercise.assistable);
   return {
     ...trained,
-    weight: cutWeight(state.weight, 0.1, exercise.increment, !!exercise.assistable),
+    weight: cut,
+    deloadHeld: held,
     maxed: undefined,
-    rung: 0,
+    rung: held ? state.rung - 1 : 0,
     downStreak: 0,
     deloads: state.deloads + 1,
     climbs: 0,

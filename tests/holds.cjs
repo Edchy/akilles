@@ -72,12 +72,13 @@ test("the lifts nobody can load are holds lifts; the ones with a belt or a plate
   assert.equal(warmup.weightLabel(exercises.byId("hanging_leg_raise"), 2), "2 s hold");
 });
 
-test("two misses take a second off a hold, but never below one once earned", () => {
+test("two misses take the reps down a rung; on the bottom rung, a second off the hold, never below one once earned", () => {
   const twice = (st) => miss(miss(st));
-  assert.equal(twice(record("hanging_leg_raise", 3, { rung: 2 })).weight, 2);
-  assert.equal(twice(record("hanging_leg_raise", 1, { rung: 2 })).weight, 1);
-  assert.equal(twice(record("hanging_leg_raise", 0, { rung: 2 })).weight, 0);
-  assert.equal(twice(record("hanging_leg_raise", 3, { rung: 2 })).rung, 0);
+  assert.equal(twice(record("hanging_leg_raise", 3, { rung: 2 })).weight, 3);
+  assert.equal(twice(record("hanging_leg_raise", 3, { rung: 2 })).rung, 1);
+  assert.equal(twice(record("hanging_leg_raise", 3, { rung: 0 })).weight, 2);
+  assert.equal(twice(record("hanging_leg_raise", 1, { rung: 0 })).weight, 1);
+  assert.equal(twice(record("hanging_leg_raise", 0, { rung: 0 })).weight, 0);
 });
 
 test("a plank holds 30, 40, 50, then 60 seconds, and stays at a minute", () => {
@@ -119,7 +120,8 @@ test("what next time says, in seconds and holds", () => {
   assert.equal(fact(record("hanging_leg_raise", 5, { rung: 2 })), "14 reps with a 5 s hold again next time. That's the top.");
   assert.equal(fact(record("hanging_leg_raise", 2, { rung: 2, climbs: 2 })), "Reload next time: 2 s hold again, from 12 reps.");
   assert.equal(fact(record("hanging_leg_raise", 2, { rung: 1 }), 6), "Same hold and reps next time.");
-  assert.equal(fact(record("hanging_leg_raise", 3, { rung: 1, downStreak: 1 }), 6), "Back to a 2 s hold next time.");
+  assert.equal(fact(record("hanging_leg_raise", 3, { rung: 1, downStreak: 1 }), 6), "Same hold, back to 10 reps next time.");
+  assert.equal(fact(record("hanging_leg_raise", 3, { rung: 0, downStreak: 1 }), 6), "Back to a 2 s hold next time.");
   assert.equal(fact(record("hanging_leg_raise", 0, { rung: 1, downStreak: 1 }), 6), "Back to 10 reps next time.");
   assert.equal(fact(record("plank", 0, { rung: 0 })), "40 s next time.");
   assert.equal(fact(record("plank", 0, { rung: 3 })), "60 s again next time. That's the top.");

@@ -20,13 +20,15 @@ import type { DecayOffer, PreviewRow, SessionState } from "@/store/session";
 import {
   acceptDecay,
   buildWorkout,
+  cardMark,
+  cardName,
   currentWorkout,
   daysSinceTrained,
   declineDecay,
   decayOffers,
   didTrain,
-  exerciseCount,
   finishWorkout,
+  itemFamily,
   pendingDecays,
   placeOf,
   postponeWorkout,
@@ -137,7 +139,8 @@ export default function TodayScreen() {
       );
   // Where you are, or what comes next — said plainly.
   const fact = inProgress
-    ? `In progress: ${exerciseCount(state, "done")} of ${exerciseCount(state, "total")} done.`
+    ? // Counted as the workout card counts: a card is done or it is not.
+      `In progress: ${state.active!.items.filter((_, i) => cardMark(state, i) === "done").length} of ${state.active!.items.length} done.`
     : skipped?.postponed
       ? waitingLine(state, workout.name, skipped.name)
       : null;
@@ -237,7 +240,7 @@ export default function TodayScreen() {
             </View>
           </View>
 
-          <Preview rows={rows} />
+          {inProgress ? <Progress /> : <Preview rows={rows} />}
           {missing.length > 0 ? (
             <Text style={{ marginLeft: INDENT, color: colors.muted, fontSize: 16, lineHeight: 22 }}>
               {missingLine(missing.map((e) => e.slot))}
@@ -429,6 +432,52 @@ function Preview({ rows }: { rows: PreviewRow[] }) {
  * is drawn in the day's colour — the field it opens onto — with that field's
  * own words, white or navy.
  */
+/**
+ * The workout you left part way: its cards as they stand — a filled circle
+ * and "Done" for what is done, an empty one for what is not — the same
+ * marks as the workout card in the session.
+ */
+function Progress() {
+  const { state } = useSession();
+  const active = state.active;
+  if (!active) return null;
+  return (
+    <View accessibilityRole="list">
+      {active.items.map((it, i) => {
+        const done = cardMark(state, i) === "done";
+        const color = FAMILY[itemFamily(it)].mark;
+        return (
+          <View
+            key={i}
+            accessible
+            accessibilityLabel={`${cardName(state, i)}, ${done ? "done" : "not done"}`}
+            style={{ flexDirection: "row", alignItems: "center", gap: GAP, minHeight: 38 }}
+          >
+            <View style={{ width: MARKS, alignItems: "center" }}>
+              <View
+                style={{
+                  width: 18,
+                  height: 18,
+                  borderRadius: 9,
+                  borderWidth: 2,
+                  borderColor: color,
+                  backgroundColor: done ? color : "transparent",
+                }}
+              />
+            </View>
+            <Text numberOfLines={1} style={{ flex: 1, color: colors.text, fontFamily: fonts.regular, fontSize: 20 }}>
+              {cardName(state, i)}
+            </Text>
+            {done ? (
+              <Text style={{ color: colors.muted, fontFamily: fonts.italic, fontSize: 17 }}>Done</Text>
+            ) : null}
+          </View>
+        );
+      })}
+    </View>
+  );
+}
+
 function BigButton({
   label,
   primary,
