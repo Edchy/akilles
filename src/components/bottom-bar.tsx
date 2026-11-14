@@ -2,6 +2,7 @@ import { GlassView, isLiquidGlassAvailable } from "expo-glass-effect";
 import { usePathname } from "expo-router";
 import { createContext, useContext, type PropsWithChildren, type ReactNode } from "react";
 import { Pressable, View, type ViewStyle } from "react-native";
+import { useOnCard } from "@/components/card-context";
 import { Text } from "@/components/text";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -58,7 +59,10 @@ function useBarBottom() {
  * clear of the floating bar. Scrolling content still passes under the glass.
  */
 export function useBarSpace() {
-  return useBarBottom() + BAR.height + 8;
+  const onCard = useOnCard();
+  const bottom = useBarBottom();
+  // A card of the workout's row sits clear of everything by itself.
+  return onCard ? 0 : bottom + BAR.height + 8;
 }
 
 /**
@@ -87,8 +91,8 @@ export function BottomBar({ children }: PropsWithChildren) {
 
   return (
     <View
-      pointerEvents="box-none"
       style={{
+        pointerEvents: "box-none",
         position: "absolute",
         left: BAR.margin,
         right: BAR.margin,

@@ -2420,6 +2420,48 @@ export const finishWorkout = (
 export const isComplete = (state: SessionState): boolean =>
   !!state.active && state.active.cursor >= state.active.items.length;
 
+// ---- the row of cards ----
+
+/**
+ * The session as it is for one card of its row: the same state with that
+ * card on screen. Everything that reads "the exercise on screen" then reads
+ * this card, so each card of the row can be drawn — and logged on — in full.
+ */
+export const atCard = (state: SessionState, index: number): SessionState =>
+  state.active ? { ...state, active: { ...state.active, cursor: index } } : state;
+
+/** Go to a card of the row: any of them, done or not; one past the last is the end. */
+export const goToCard = (state: SessionState, index: number): SessionState => {
+  if (!state.active) return state;
+  const cursor = Math.min(Math.max(index, 0), state.active.items.length);
+  return cursor === state.active.cursor ? state : atCard(state, cursor);
+};
+
+/**
+ * How a card stands: not done; done as asked; or done, but short of what was
+ * asked — every set logged, some under target. Shown the same way wherever a
+ * card is shown, so the row tells at a glance what is left.
+ */
+export type CardMark = "todo" | "done" | "short";
+
+export const cardMark = (state: SessionState, index: number): CardMark => {
+  const item = state.active?.items[index];
+  if (!item) return "todo";
+  if (isCardio(item)) return scoreOf(item) !== null ? "done" : "todo";
+  if (isMobility(item)) return item.moves?.length && item.moves.every(Boolean) ? "done" : "todo";
+  const at = atCard(state, index);
+  if (isGoal(item)) return item.logged.every((r) => r !== null) || !!item.got ? "done" : "todo";
+  if (!allSetsLogged(at)) return "todo";
+  const p = currentPrescription(at);
+  // Speed and jump work has no target to fall short of.
+  if (item.derive || p?.exercise.unloaded) return "done";
+  return madeTarget(at) ? "done" : "short";
+};
+
+/** A card's name: the lift, the machine, the routine. */
+export const cardName = (state: SessionState, index: number): string =>
+  nextItemName(atCard(state, index - 1)) ?? "";
+
 // ---- cardio & mobility ----
 
 /**

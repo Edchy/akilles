@@ -17,6 +17,7 @@ import {
   Animated,
   Easing,
   Keyboard,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -31,14 +32,14 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Svg, { Circle } from "react-native-svg";
 
 import { Column, COLUMN } from "@/components/screen";
-import { useBarActions } from "@/components/bar-actions";
-import { ActionButton, useBarSpace } from "@/components/bottom-bar";
+import { useHideBar } from "@/components/bar-actions";
+import { useBarSpace } from "@/components/bottom-bar";
 import { Field, useColors } from "@/components/field";
 import { Icon, type IconName } from "@/components/icon";
 import { Mark } from "@/components/mark";
 import { NoteLine, NoteSheet } from "@/components/note";
 import { GuideButton, GuideSheet } from "@/components/guide";
-import { DeckCard } from "@/components/deck";
+import { CardContext, useOnCard } from "@/components/card-context";
 import { Illustration } from "@/components/illustration";
 import { GoalSheet, Pips, hasTutorial, openTutorial } from "@/components/goals";
 import { BigButton, Sheet } from "@/components/sheet";
@@ -52,7 +53,6 @@ import {
   GOAL_LINES,
   OUTCOME_LINES,
   pickLine,
-  WARMUP_SKIP_LINES,
   type FinishedMood,
 } from "@/data/voice";
 import {
@@ -89,7 +89,6 @@ import {
   currentWarmup,
   currentWorkout,
   exerciseCount,
-  dismissWarmup,
   editWeight,
   finishWorkout,
   goalStepOf,
@@ -112,15 +111,12 @@ import {
   sessionTally,
   nudgeWeight,
   partnerPrescription,
-  previousExercise,
   removeSuperset,
   resetGoalSet,
   resetSet,
   scoreOf,
   setGot,
   setScore,
-  comesBack,
-  skipExercise,
   supersetOptions,
   swapConditioning,
   swapForSession,
@@ -128,8 +124,15 @@ import {
   tapSet,
   nextItemName,
   completeMove,
+  atCard,
+  cardMark,
+  cardName,
+  goToCard,
+  SessionContext,
   useSession,
+  type CardMark,
   type Item,
+  type SessionState,
   cardioEnd,
   itemLength,
   keepTodayLength,
@@ -173,7 +176,332 @@ const CIRCLES = {
   partner: { full: 52, gap: 12, font: 28 },
 } as const;
 
+/**
+ * The row of cards: the gap at the left of a card — so also between two — the
+ * width kept at the right for the next card's gap and its edge, and how round
+ * a card's corners are.
+ */
+const ROW = { side: 12, peek: 34, corner: 30 };
+
+/**
+ * A workout, as a row of cards: the cardio, the warm-up, each lift, the
+ * stretch — one card each, in order, and after the last of them the end.
+ * Swipe left for the next card and right for the one before; any card, done
+ * or not, so a taken bench is passed and come back to. The edge of the next
+ * card always shows at the right, and a tap on it goes there too. Above the
+ * row, its header: one mark for each card, filled as it is done (see
+ * `CardDot`) — tap it for all the cards at once.
+ *
+ * The bottom bar is put away while the row is up, so a card has the screen.
+ */
 export default function WorkoutScreen() {
+  const { state } = useSession();
+  useHideBar();
+  if (!state.active) return <Finished hasSession={false} />;
+  return <Deck />;
+}
+
+function Deck() {
+  const { state, setState } = useSession();
+  const { width } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
+  const active = state.active!;
+  const cards = active.items.length + 1;
+  const page = Math.min(active.cursor, cards - 1);
+  const [overview, setOverview] = useState(false);
+
+  // A card and the gap after it: all but the sliver of the next card.
+  const stride = Math.min(width, COLUMN + 2 * ROW.side) - ROW.peek;
+  const pager = useRef<ScrollView>(null);
+  // The row's own height: a sideways scroller does not stretch what is in it
+  // to its height, so each card is given it.
+  const [height, setHeight] = useState(0);
+  const foot = Math.max(insets.bottom, 12);
+  // The card the row has scrolled to. When the session moves on some other
+  // way — a button on a card, the overview — the row follows it.
+  const shown = useRef(-1);
+  useEffect(() => {
+    if (shown.current === page) return;
+    const first = shown.current === -1;
+    shown.current = page;
+    pager.current?.scrollTo({ x: page * stride, animated: !first });
+  }, [page, stride]);
+
+  // Come to rest on a card: that one is on screen now.
+  const settle = (x: number) => {
+    const at = Math.min(Math.max(Math.round(x / stride), 0), cards - 1);
+    if (at === shown.current) return;
+    shown.current = at;
+    Haptics.selectionAsync();
+    setState((s) => goToCard(s, at));
+  };
+  // Not every platform says when a swipe has come to rest, so a moment
+  // without movement counts as rest too.
+  const idle = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => void (idle.current && clearTimeout(idle.current)), []);
+
+  return (
+    <View style={{ flex: 1, backgroundColor: colors.bg }}>
+      <StatusBar style="dark" />
+      <DeckHeader onOpen={() => setOverview(true)} />
+
+      <ScrollView
+        ref={pager}
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+        // One card at a time: on a phone the row snaps by a card's width; a
+        // browser snaps to each card's leading edge.
+        snapToInterval={Platform.OS === "web" ? undefined : stride}
+        pagingEnabled={Platform.OS === "web"}
+        disableIntervalMomentum
+        decelerationRate="fast"
+        scrollEventThrottle={16}
+        onLayout={(e) => {
+          setHeight(e.nativeEvent.layout.height);
+          pager.current?.scrollTo({ x: shown.current * stride, animated: false });
+        }}
+        onMomentumScrollEnd={(e) => settle(e.nativeEvent.contentOffset.x)}
+        onScroll={(e) => {
+          const x = e.nativeEvent.contentOffset.x;
+          if (idle.current) clearTimeout(idle.current);
+          idle.current = setTimeout(() => settle(x), 180);
+        }}
+        style={{ flex: 1, marginTop: 12 }}
+        // Room after the last card, so it too comes to rest at the left.
+        contentContainerStyle={{ paddingRight: Math.max(0, width - stride) }}
+      >
+        {Array.from({ length: cards }, (_, i) => (
+          // Each card stands in a stride of the row, a stride from the last,
+          // so the row comes to rest with a card's margin at the left.
+          <View key={i} style={{ width: stride, height, paddingLeft: ROW.side, paddingBottom: foot }}>
+          <View
+            style={{
+              flex: 1,
+              overflow: "hidden",
+              borderRadius: ROW.corner,
+              borderCurve: "continuous",
+              backgroundColor: colors.surface,
+            }}
+          >
+            {i === cards - 1 ? (
+              <CardContext.Provider value>
+                <Finished hasSession onCard={(index) => setState((s) => goToCard(s, index))} />
+              </CardContext.Provider>
+            ) : Math.abs(i - page) <= 1 ? (
+              // The card on screen and its neighbours are drawn in full, so
+              // what slides in under the thumb is the real thing.
+              <CardStep index={i} />
+            ) : (
+              <Face index={i} />
+            )}
+            {i !== page ? (
+              // A card to the side is a way there, not a place to tap sets.
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={
+                  i === cards - 1 ? "Go to the end" : `Go to ${cardName(state, i)}`
+                }
+                onPress={() => setState((s) => goToCard(s, i))}
+                style={StyleSheet.absoluteFill}
+              />
+            ) : null}
+          </View>
+          </View>
+        ))}
+      </ScrollView>
+
+      <Sheet visible={overview} title={currentWorkout(state).name || "Workout"} closeLabel="Close" onClose={() => setOverview(false)}>
+        <Overview
+          onPick={(index) => {
+            setOverview(false);
+            setState((s) => goToCard(s, index));
+          }}
+          onLeave={() => {
+            setOverview(false);
+            router.replace("/");
+          }}
+        />
+      </Sheet>
+    </View>
+  );
+}
+
+/**
+ * One card in full (see `StepBody`), given the session as it is for that
+ * card: everything on it reads and writes "the exercise on screen", and here
+ * that is this card, wherever the row happens to be. What it writes lands in
+ * the real session; only a move along the row — a card's own Done — moves
+ * the row with it.
+ */
+function CardStep({ index }: { index: number }) {
+  const { state, setState } = useSession();
+  const value = useMemo(
+    () => ({
+      state: atCard(state, index),
+      setState: (update: SessionState | ((s: SessionState) => SessionState)) =>
+        setState((real) => {
+          const next = typeof update === "function" ? update(atCard(real, index)) : update;
+          if (!real.active || !next.active) return next;
+          const moved = next.active.cursor - index;
+          const cursor = moved === 0 ? real.active.cursor : index + moved;
+          return { ...next, active: { ...next.active, cursor } };
+        }),
+    }),
+    [state, index, setState],
+  );
+  return (
+    <SessionContext.Provider value={value}>
+      <CardContext.Provider value>
+        <StepBody />
+      </CardContext.Provider>
+    </SessionContext.Provider>
+  );
+}
+
+/** A card further along the row than the next: its colour and its name, until it is near. */
+function Face({ index }: { index: number }) {
+  const { state } = useSession();
+  const item = state.active?.items[index];
+  if (!item) return null;
+  const palette = fieldColors(itemFamily(item));
+  return (
+    <View style={{ flex: 1, alignItems: "center", justifyContent: "center", padding: 24, backgroundColor: palette.bg }}>
+      <Text style={{ textAlign: "center", color: palette.text, fontFamily: fonts.medium, fontSize: 30, lineHeight: 34 }}>
+        {cardName(state, index)}
+      </Text>
+    </View>
+  );
+}
+
+/**
+ * How a card stands, as one small mark in its family's colour: an outline
+ * while it is to do, filled when it is done as asked, half filled when it is
+ * done but came up short. By fill, not by a second colour — a short set is
+ * something to know, not a fault — so it reads on white and on any field.
+ */
+function CardDot({ mark, color, size = 14, current = false }: { mark: CardMark; color: string; size?: number; current?: boolean }) {
+  return (
+    <View style={{ alignItems: "center", gap: 4 }}>
+      <View
+        style={{
+          width: size,
+          height: size,
+          overflow: "hidden",
+          borderRadius: size / 2,
+          borderWidth: 2,
+          borderColor: color,
+          backgroundColor: mark === "done" ? color : "transparent",
+        }}
+      >
+        {mark === "short" ? <View style={{ width: "50%", height: "100%", backgroundColor: color }} /> : null}
+      </View>
+      {/* Where you are: a short line under the mark. Always laid out. */}
+      <View style={{ width: size, height: 3, borderRadius: 1.5, backgroundColor: current ? colors.text : "transparent" }} />
+    </View>
+  );
+}
+
+const MARK_WORD: Record<CardMark, string> = { todo: "", done: "Done", short: "Done, short of the reps" };
+
+/**
+ * The row's header, on white above the cards: the workout's name, the rest
+ * since your last set, and a mark for every card — the whole of it a button
+ * that opens the overview.
+ */
+function DeckHeader({ onOpen }: { onOpen: () => void }) {
+  const { state } = useSession();
+  const insets = useSafeAreaInsets();
+  const active = state.active;
+  if (!active) return null;
+  const done = active.items.filter((_, i) => cardMark(state, i) !== "todo").length;
+
+  return (
+    <View style={{ paddingTop: insets.top + 6, paddingHorizontal: 22 }}>
+      <Column>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={`${currentWorkout(state).name}. ${done} of ${active.items.length} cards done. Show all cards`}
+          onPress={onOpen}
+          style={({ pressed }) => ({ gap: 10, opacity: pressed ? 0.6 : 1 })}
+        >
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 12, height: 32 }}>
+            <Text numberOfLines={1} style={{ flex: 1, color: colors.text, fontFamily: fonts.medium, fontSize: 19 }}>
+              {currentWorkout(state).name}
+              {"  "}
+              <Text style={{ fontFamily: fonts.italic }}>
+                {done} of {active.items.length} done
+              </Text>
+            </Text>
+            <RestTimer startedAt={active.lastSetAt} />
+          </View>
+          <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 8 }}>
+            {active.items.map((it, i) => (
+              <CardDot
+                key={i}
+                mark={cardMark(state, i)}
+                color={FAMILY[itemFamily(it)].mark}
+                current={i === active.cursor}
+              />
+            ))}
+          </View>
+        </Pressable>
+      </Column>
+    </View>
+  );
+}
+
+/** Every card of the row at once: its mark, its name, how it stands. Tap one to go there. */
+function Overview({ onPick, onLeave }: { onPick: (index: number) => void; onLeave: () => void }) {
+  const { state } = useSession();
+  const active = state.active;
+  if (!active) return null;
+  return (
+    <View style={{ gap: 4 }}>
+      {active.items.map((it, i) => {
+        const mark = cardMark(state, i);
+        return (
+          <Pressable
+            key={i}
+            accessibilityRole="button"
+            accessibilityLabel={`${cardName(state, i)}. ${MARK_WORD[mark] || "Not done"}`}
+            onPress={() => onPick(i)}
+            style={({ pressed }) => ({
+              flexDirection: "row",
+              alignItems: "center",
+              gap: 14,
+              minHeight: 52,
+              paddingHorizontal: 14,
+              borderRadius: radii.button,
+              backgroundColor: i === active.cursor ? colors.surface : "transparent",
+              opacity: pressed ? 0.6 : 1,
+            })}
+          >
+            <CardDot mark={mark} color={FAMILY[itemFamily(it)].mark} size={18} />
+            <Text numberOfLines={1} style={{ flex: 1, color: colors.text, fontFamily: fonts.regular, fontSize: 19 }}>
+              {cardName(state, i)}
+            </Text>
+            <Text style={{ color: colors.muted, fontFamily: fonts.italic, fontSize: 17 }}>{MARK_WORD[mark]}</Text>
+          </Pressable>
+        );
+      })}
+      <View style={{ marginTop: 12 }}>
+        <BigButton label="Leave for now" onPress={onLeave} />
+      </View>
+      <Text style={{ marginTop: 6, textAlign: "center", color: colors.muted, fontFamily: fonts.regular, fontSize: 17, lineHeight: 22 }}>
+        Your workout is kept. Today offers to carry on with it, or end it.
+      </Text>
+    </View>
+  );
+}
+
+/**
+ * One card of the row, in full: the lift, the machine or the routine that is
+ * "on screen" in the session it is given (see `Step`), with everything it
+ * needs to be done there. Which card that is, and moving between them, is
+ * the row's business — see `Deck`.
+ */
+function StepBody() {
   const { state, setState } = useSession();
   const barSpace = useBarSpace();
   const [picking, setPicking] = useState(false);
@@ -192,60 +520,6 @@ export default function WorkoutScreen() {
 
   const active = state.active;
   const done = !active || isComplete(state);
-  const inWarmup = !!active && !done && currentWarmup(state).length > 0;
-  // Skip on a warm-up is refused once, with a word from Milo; pressed
-  // again it skips the warm-up only, never the exercise behind it.
-  const [skipWarned, setSkipWarned] = useState(false);
-  useEffect(() => setSkipWarned(false), [active?.cursor, inWarmup]);
-
-  const later = !inWarmup && comesBack(state);
-
-  // The bar itself lives in the root layout; this only swaps its buttons.
-  useBarActions(
-    active && !done ? (
-      <>
-        <ActionButton
-          icon="previous"
-          label="Back"
-          disabled={active.cursor === 0}
-          onPress={() => {
-            setPicking(false);
-            setMenu(null);
-            setState((s) => previousExercise(s));
-          }}
-        />
-        <ActionButton
-          icon="leave"
-          label="Leave"
-          onPress={() => {
-            // Leaving steps out without ending anything: the session stays
-            // where it is, and Today offers to continue it or end it.
-            setPicking(false);
-            setMenu(null);
-            router.replace("/");
-          }}
-        />
-        <ActionButton
-          icon="next"
-          // A lift put off comes back after the others; anything else is skipped.
-          label={later ? "Later" : "Skip"}
-          onPress={() => {
-            setPicking(false);
-            setMenu(null);
-            if (!inWarmup) {
-              setState((s) => skipExercise(s));
-            } else if (!skipWarned) {
-              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-              setSkipWarned(true);
-            } else {
-              setState((s) => dismissWarmup(s));
-            }
-          }}
-        />
-      </>
-    ) : null,
-    [active?.cursor, done, inWarmup, skipWarned, later],
-  );
 
   // A lift done well gets its moment — see `useCheer` — and a send-off on
   // Next. Reduce Motion keeps the buzzes and drops the movement.
@@ -261,8 +535,8 @@ export default function WorkoutScreen() {
   }, [glint]);
   const sendOff = still ? 0 : glint;
 
-  // Hooks must all run before this: the bar publish above is one of them.
-  if (done) return <Finished hasSession={!!active} />;
+  // Past the last card there is nothing to draw here: the row's end card is its own.
+  if (done) return null;
 
 
   const item = active.items[active.cursor];
@@ -335,37 +609,21 @@ export default function WorkoutScreen() {
     />
   );
 
-  if (warmup.length > 0) {
-    return (
-      <OnField family={family} sendOff={sendOff}>
-        <Warmup
-          family={family}
-          name={p.exercise.name}
-          sets={warmup}
-          perHand={p.exercise.perHand}
-          note={myNote}
-          onNote={() => setNoting(p.exercise.id)}
-          refusal={skipWarned ? pickLine(WARMUP_SKIP_LINES, `${active.startedAt}:${item.slot}`) : null}
-          onReady={() => setState((s) => dismissWarmup(s))}
-        />
-        {noteSheet}
-      </OnField>
-    );
-  }
+  // The ramp up to the working weight: said on the card, under the name,
+  // rather than standing in front of the lift as a screen of its own.
+  const ramp =
+    warmup.length > 0
+      ? // "7.5 kg × 10, 12.5 × 6": the unit said once, each dumbbell's own weight.
+        `Warm up first: ${warmup.map((w, i) => `${w.weight}${i === 0 ? " kg" : ""} × ${w.reps}`).join(", ")}`
+      : "";
+  // Gone once the first working set is in: it has done its job.
+  const rampLine = item.logged.some((r) => r !== null) ? "" : ramp;
 
-  // Moving on is always your call: filling the last circle changes nothing
-  // but this button, so a rep or a weight can still be fixed before you go.
+  // Moving on is always your call — a swipe — so filling the last circle
+  // changes nothing but the line at the foot of the card, and a rep or a
+  // weight can still be fixed before you go.
   const logged = allSetsLogged(state);
   const after = nextItemName(state);
-  const next = () => {
-    setPicking(false);
-    setMenu(null);
-    if (well) {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-      setGlint((g) => g + 1);
-    }
-    setState((s) => completeExercise(s));
-  };
   // Said before you move on, so what happens next time is never a surprise:
   // a line with some attitude, and the plain fact under it. It updates as
   // you correct a circle.
@@ -407,28 +665,10 @@ export default function WorkoutScreen() {
   ].filter((t): t is Tool => t !== null);
 
   // Before it is measured, a fair guess at what sits under the name.
-  const under = underName ?? (note ? 28 : 0) + (myNote ? 39 : 0);
-
-  // The lift is the top card of the deck: pulled aside, it goes to the back
-  // and the next lift comes up from under it — see `DeckCard`.
-  const behindItem = later ? active.items[active.cursor + 1] : undefined;
-  const behind = behindItem
-    ? { family: itemFamily(behindItem), name: byId(behindItem.exerciseId)?.name ?? "" }
-    : null;
+  const under = underName ?? (note ? 28 : 0) + (myNote ? 39 : 0) + (rampLine ? 48 : 0);
 
   return (
     <OnField family={family} sendOff={sendOff}>
-    <DeckCard
-      key={item.slot}
-      face={item.exerciseId}
-      enabled={later}
-      behind={behind}
-      onAway={() => {
-        setPicking(false);
-        setMenu(null);
-        setState((s) => skipExercise(s));
-      }}
-    >
     <View
       ref={root}
       onStartShouldSetResponderCapture={() => {
@@ -465,8 +705,23 @@ export default function WorkoutScreen() {
           onMore={openMenu}
           style={{ marginTop: L.name }}
         >
-          {note || myNote ? (
+          {note || myNote || rampLine ? (
             <View onLayout={(e) => setUnderName(e.nativeEvent.layout.height)}>
+              {rampLine ? (
+                <Text
+                  numberOfLines={2}
+                  style={{
+                    marginTop: 4,
+                    textAlign: "center",
+                    color: colors.text,
+                    fontFamily: fonts.regular,
+                    fontSize: 17,
+                    lineHeight: 22,
+                  }}
+                >
+                  {rampLine}
+                </Text>
+              ) : null}
               {note ? (
                 <Text
                   numberOfLines={1}
@@ -498,7 +753,7 @@ export default function WorkoutScreen() {
         <View
           style={{
             height: L.number,
-            marginTop: note || myNote ? Math.max(10, L.weight - under) : L.weight,
+            marginTop: note || myNote || rampLine ? Math.max(10, L.weight - under) : L.weight,
             justifyContent: "center",
           }}
         >
@@ -567,20 +822,16 @@ export default function WorkoutScreen() {
         ) : null}
       </ScrollView>
 
-      {/* Pinned where the warm-up's Ready and cardio's Done sit, so the way on
-          is always under the same thumb and never scrolled away. It wakes up
-          once every circle — the partner's too — is filled; moving on before
-          that is Skip's job. */}
-      <View style={{ paddingHorizontal: 22, paddingBottom: barSpace + 14 }}>
-        <Column>
-          <Action
-            label={after ? `Next: ${after}` : "Finish workout"}
-            arrow
-            fill
-            disabled={!logged}
-            onPress={next}
-          />
-        </Column>
+      {/* The way on is a swipe — the next card's edge shows at the right —
+          and once every circle is filled the card says so. Always laid out,
+          so the line appearing moves nothing. */}
+      <View style={{ height: 52, paddingHorizontal: 22, justifyContent: "center", marginBottom: barSpace + 6 }}>
+        <Text
+          numberOfLines={1}
+          style={{ textAlign: "center", color: colors.text, fontFamily: fonts.italic, fontSize: 19 }}
+        >
+          {logged ? (after ? `Done. Swipe on to ${inSentence(after)}.` : "Done. Swipe on to finish.") : ""}
+        </Text>
       </View>
 
       {menu ? <ToolsMenu anchor={menu} tools={tools} onClose={() => setMenu(null)} /> : null}
@@ -614,7 +865,6 @@ export default function WorkoutScreen() {
       </Sheet>
       {noteSheet}
     </View>
-    </DeckCard>
     </OnField>
   );
 }
@@ -635,9 +885,11 @@ function OnField({
   sendOff = 0,
   children,
 }: PropsWithChildren<{ family: Family; sendOff?: number }>) {
+  // A card sits under the row's white header, so the status bar stays dark.
+  const onCard = useOnCard();
   return (
     <Field family={family}>
-      <StatusBar style={FAMILY[family].dark ? "light" : "dark"} />
+      {onCard ? null : <StatusBar style={FAMILY[family].dark ? "light" : "dark"} />}
       <SendOff.Provider value={sendOff}>{children}</SendOff.Provider>
     </Field>
   );
@@ -655,8 +907,10 @@ function Header({ showRest = false }: { showRest?: boolean }) {
   const colors = useColors();
   const { state } = useSession();
   const insets = useSafeAreaInsets();
+  const onCard = useOnCard();
   const active = state.active;
-  if (!active) return null;
+  // On a card of the row the session's header is the row's own: `DeckHeader`.
+  if (!active || onCard) return null;
 
   return (
     <View style={{ paddingTop: insets.top + 6, paddingHorizontal: 22 }}>
@@ -2140,6 +2394,9 @@ function MobilityDeck({
             ref={pager}
             horizontal
             pagingEnabled
+            // A sideways swipe moves along the workout's row of cards; the
+            // stretches inside this card follow each other by themselves.
+            scrollEnabled={false}
             showsHorizontalScrollIndicator={false}
             scrollEventThrottle={16}
             onScroll={(e) => {
@@ -2171,7 +2428,7 @@ function MobilityDeck({
         <Column style={{ gap: 8 }}>
           {/* Always laid out, so the hint appearing moves nothing. */}
           <Text style={{ height: 22, textAlign: "center", color: colors.text, fontFamily: fonts.regular, fontSize: 17 }}>
-            {waiting ? "Get into position" : done && !last ? "Swipe for the next one" : ""}
+            {waiting ? "Get into position" : ""}
           </Text>
           <Action label={action.label} fill onPress={action.onPress} />
         </Column>
@@ -2378,164 +2635,6 @@ function SwapList({
   );
 }
 
-/**
- * The ramp before the first exercise of a muscle group. Nothing here is
- * logged or progressed — it exists to get you ready to lift the real weight.
- */
-function Warmup({
-  family,
-  name,
-  sets,
-  perHand,
-  note,
-  onNote,
-  refusal,
-  onReady,
-}: {
-  family: Family;
-  name: string;
-  sets: { weight: number; reps: number }[];
-  perHand?: boolean;
-  /** Your note on the lift — the seat height is worth knowing before the first set. */
-  note: string;
-  onNote: () => void;
-  /** Milo's answer to Skip, while it stands. */
-  refusal: string | null;
-  onReady: () => void;
-}) {
-  const colors = useColors();
-  const insets = useSafeAreaInsets();
-  const barSpace = useBarSpace();
-  // Local: a warm-up is never recorded, so this only exists to stop you
-  // tapping past the screen without reading it.
-  const [done, setDone] = useState<boolean[]>(() => sets.map(() => false));
-  const allDone = done.every(Boolean);
-
-  return (
-    <View style={{ flex: 1, backgroundColor: colors.bg }}>
-      <View
-        style={{
-          flex: 1,
-          justifyContent: "center",
-          paddingHorizontal: 22,
-          paddingTop: insets.top,
-        }}
-      >
-        <Column style={{ gap: 26 }}>
-          <View style={{ gap: 8 }}>
-            <Title family={family} name={name} note="warm-up sets">
-              {note ? null : <ToolButton icon="note" label="Add a note" onPress={onNote} />}
-            </Title>
-            {note ? (
-              <View style={{ marginLeft: 36 }}>
-                <NoteLine text={note} onPress={onNote} />
-              </View>
-            ) : null}
-          </View>
-
-          <View>
-            {sets.map((set, i) => (
-              <Pressable
-                key={i}
-                accessibilityRole="checkbox"
-                accessibilityState={{ checked: done[i] }}
-                accessibilityLabel={`${set.weight} kg for ${set.reps} reps`}
-                onPress={() =>
-                  setDone((v) => v.map((d, j) => (j === i ? !d : d)))
-                }
-                style={({ pressed }) => ({
-                  flexDirection: "row",
-                  alignItems: "center",
-                  gap: 14,
-                  borderBottomWidth: i === sets.length - 1 ? 0 : 1,
-                  borderBottomColor: colors.line,
-                  paddingVertical: 14,
-                  opacity: pressed ? 0.6 : 1,
-                })}
-              >
-                <Text
-                  style={{
-                    flex: 1,
-                    color: colors.text,
-                    opacity: done[i] ? 0.6 : 1,
-                    fontFamily: fonts.semibold,
-                    fontSize: 36,
-                    fontVariant: ["lining-nums", "tabular-nums"],
-                    textDecorationLine: done[i] ? "line-through" : "none",
-                  }}
-                >
-                  {set.weight} kg{perHand ? " ×2" : ""}
-                </Text>
-                <Text
-                  style={{
-                    color: colors.text,
-                    fontFamily: fonts.regular,
-                    fontSize: 22,
-                    fontVariant: ["lining-nums", "tabular-nums"],
-                  }}
-                >
-                  × {set.reps}
-                </Text>
-
-                <View
-                  style={{
-                    width: 32,
-                    height: 32,
-                    alignItems: "center",
-                    justifyContent: "center",
-                    borderRadius: 999,
-                    borderWidth: done[i] ? 0 : 2,
-                    borderColor: colors.text,
-                    backgroundColor: done[i] ? colors.cloud : "transparent",
-                  }}
-                >
-                  {done[i] ? <Icon name="check" size={16} color={colors.ink} /> : null}
-                </View>
-              </Pressable>
-            ))}
-          </View>
-
-          <Text style={{ color: colors.text, fontFamily: fonts.regular, fontSize: 19, lineHeight: 25 }}>
-            Tap each set as you finish it. Not counted — move well and stop
-            short of effort.
-          </Text>
-        </Column>
-      </View>
-
-      <View style={{ paddingHorizontal: 22, paddingBottom: barSpace + 14 }}>
-        <Column style={{ gap: 14 }}>
-          {/* Always this tall, empty until Skip is pressed, so the refusal
-              appearing moves nothing under the thumb. */}
-          <View style={{ height: 76, justifyContent: "flex-end", gap: 4 }}>
-            {refusal ? (
-              <>
-                <Text
-                  style={{
-                    textAlign: "center",
-                    color: colors.text,
-                    fontFamily: fonts.italic,
-                    fontSize: 24,
-                  }}
-                >
-                  {refusal}
-                </Text>
-                <Text style={{ textAlign: "center", color: colors.text, fontFamily: fonts.regular, fontSize: 17 }}>
-                  Press Skip again to go straight to the working sets.
-                </Text>
-              </>
-            ) : null}
-          </View>
-          <Action
-            label="Ready"
-            fill
-            disabled={!allDone}
-            onPress={onReady}
-          />
-        </Column>
-      </View>
-    </View>
-  );
-}
 
 /**
  * One circle per set. An empty circle is an outline with the target in it;
@@ -3633,10 +3732,21 @@ function Glint() {
   );
 }
 
-function Finished({ hasSession }: { hasSession: boolean }) {
+function Finished({
+  hasSession,
+  onCard,
+}: {
+  hasSession: boolean;
+  /** As the last card of the row: go to one of the cards not done. */
+  onCard?: (index: number) => void;
+}) {
   const { state, setState } = useSession();
   const insets = useSafeAreaInsets();
   const barSpace = useBarSpace();
+  // What is left, said plainly and never asked about: leaving early counts.
+  const left = onCard
+    ? (state.active?.items ?? []).map((_, i) => i).filter((i) => cardMark(state, i) === "todo")
+    : [];
 
   // How it went, before the session is committed and gone.
   const t = sessionTally(state);
@@ -3670,17 +3780,45 @@ function Finished({ hasSession }: { hasSession: boolean }) {
       style={{
         flex: 1,
         justifyContent: "space-between",
-        backgroundColor: colors.bg,
-        paddingTop: insets.top + 90,
+        // As the row's last card it is a card like the others, in the quiet grey.
+        backgroundColor: onCard ? colors.surface : colors.bg,
+        paddingTop: onCard ? 44 : insets.top + 90,
         paddingHorizontal: 22,
         // The floating bar sits over the foot of the screen; clear it.
-        paddingBottom: barSpace + 14,
+        paddingBottom: barSpace + (onCard ? 22 : 14),
       }}
     >
       <Column style={{ gap: 12 }}>
         <Text style={{ color: colors.text, fontFamily: fonts.medium, fontSize: 60, lineHeight: 66 }}>
-          Done.
+          {left.length > 0 ? "The end." : "Done."}
         </Text>
+        {left.length > 0 ? (
+          <View style={{ gap: 2 }}>
+            <Text style={{ color: colors.text, fontFamily: fonts.regular, fontSize: 19, lineHeight: 26 }}>
+              Not done — tap one to go back to it, or finish as it is:
+            </Text>
+            {left.map((i) => (
+              <Pressable
+                key={i}
+                accessibilityRole="button"
+                accessibilityLabel={`Go back to ${cardName(state, i)}`}
+                onPress={() => onCard?.(i)}
+                style={({ pressed }) => ({
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: 12,
+                  minHeight: 44,
+                  opacity: pressed ? 0.6 : 1,
+                })}
+              >
+                <CardDot mark="todo" color={FAMILY[itemFamily(state.active!.items[i])].mark} size={16} />
+                <Text numberOfLines={1} style={{ flex: 1, color: colors.text, fontFamily: fonts.medium, fontSize: 21 }}>
+                  {cardName(state, i)}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+        ) : null}
         {hasSession ? (
           <>
             <Text
@@ -3700,7 +3838,7 @@ function Finished({ hasSession }: { hasSession: boolean }) {
         ) : null}
       </Column>
       <Column>
-        <Action label="Close" fill onPress={close} />
+        <Action label={onCard ? "Finish workout" : "Close"} fill onPress={close} />
       </Column>
     </View>
   );
