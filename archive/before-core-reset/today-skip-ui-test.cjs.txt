@@ -1,0 +1,64 @@
+test("Today opens both choices, cancels without changes, and Undo restores an existing queue", () => {
+  let state = fresh(ids[2]);
+  const hooks = [];
+  let hookIndex = 0;
+  const fakeReact = {
+    ...require("react"),
+    useEffect: () => {},
+    useState: (initial) => {
+      const index = hookIndex++;
+      if (!(index in hooks)) hooks[index] = initial;
+      return [hooks[index], (value) => { hooks[index] = typeof value === "function" ? value(hooks[index]) : value; }];
+    },
+  };
+  const uiRequire = (name) => {
+    if (name === "react") return fakeReact;
+    if (name === "react-native") return { Pressable: "Pressable", ScrollView: "ScrollView", Text: "Text", View: "View" };
+    if (name === "expo-router") return { router: { push: () => {} } };
+    if (name === "react-native-safe-area-context") return { useSafeAreaInsets: () => ({ top: 0 }) };
+    if (name === "@/store/session") return { ...store, useSession: () => ({ state, setState: (fn) => { state = fn(state); } }) };
+    if (name === "@/components/bottom-bar") return { useBarSpace: () => 80 };
+    if (name === "@/components/screen") return { Column: "Column", COLUMN: 460 };
+    if (name === "@/components/sheet") return { Sheet: "Sheet", OpenRow: "OpenRow" };
+    if (name === "@/components/icon") return { Icon: "Icon" };
+    if (name === "@/components/text") return { Text: "Text" };
+    if (name === "@/components/mark") return { Mark: "Mark" };
+    if (name === "@/components/place") return { PlaceLine: "PlaceLine" };
+    return load(name);
+  };
+  const module = { exports: {} };
+  const { outputText } = ts.transpileModule(fs.readFileSync(path.resolve(__dirname, "../src/app/index.tsx"), "utf8"), {
+    compilerOptions: { jsx: ts.JsxEmit.ReactJSX, module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 },
+  });
+  vm.runInNewContext(outputText, { module, exports: module.exports, require: uiRequire, Date });
+  const render = () => { hookIndex = 0; return module.exports.default(); };
+  function find(node, predicate) {
+    if (!node || typeof node !== "object") return;
+    if (predicate(node)) return node;
+    const children = node.props?.children;
+    for (const child of Array.isArray(children) ? children : [children]) {
+      const found = find(child, predicate);
+      if (found) return found;
+    }
+  }
+  const row = (title) => find(render(), (node) => node.props?.title === title);
+  const sheet = () => find(render(), (node) => node.type === "Sheet");
+  const undo = () => find(render(), (node) => node.props?.accessibilityLabel?.startsWith("Undo skipping"));
+  find(render(), (node) => node.props?.label === "Skip").props.onPress();
+  assert.equal(sheet().props.visible, true);
+  assert.equal(row("Do it next time").props.detail, "Push B today → Legs → Pull B");
+  assert.equal(row("Skip it").props.detail, "Push B today → Pull B → Push A");
+  sheet().props.onClose();
+  assert.equal(next(state), ids[2]);
+  row("Do it next time").props.onPress();
+  assert.equal(sheet().props.visible, false);
+  assert.equal(next(state), ids[3]);
+  const pending = state;
+  row("Skip it").props.onPress();
+  // Legs was put off, so skipping Push B walks on to Pull B rather than back to Legs.
+  assert.equal(next(state), ids[4]);
+  undo().props.onPress();
+  assert.equal(next(state), ids[3]);
+  assert.deepEqual(state.workoutQueue, pending.workoutQueue);
+  assert.deepEqual(state.postponed, pending.postponed);
+});

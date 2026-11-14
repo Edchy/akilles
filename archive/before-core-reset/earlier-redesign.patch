@@ -1,0 +1,1438 @@
+diff --git a/DESIGN.md b/DESIGN.md
+index 7ada9ce..782da55 100644
+--- a/DESIGN.md
++++ b/DESIGN.md
+@@ -341,3 +341,24 @@ Phosphor Icons in Bold, drawn in the current ink at one weight everywhere. Only
+ - **Don't** add shadows to fields, cards, buttons or circles; only the bottom bar floats.
+ - **Don't** build the lift screen as a white card stack, dashboard tiles, or a stats tab over the set log.
+ - **Don't** use old-style figures for a number the user reads as data.
++
++
++## Current redesign branch — November 14, 2026
++
++This section supersedes the earlier navigation, session layout and cardio controls.
++The existing family colours, Garamond typography and illustrations remain the visual foundation.
++
++- Navigation is Today / Plan / Profile. Profile opens Progress & history and Settings.
++- A workout is a horizontal row of coloured cards. Each card is complete before arrival;
++  only the current card animates. Leaving a stretch card pauses its routine.
++- The workout overview is a rounded, bordered button above the cards, with a disclosure icon.
++- Plan owns lasting workout edits. Session swaps, targets and notes are for today only.
++  Logged performance still drives the existing automatic progression.
++- Workout rows stay in place when paused and fade. Swipe left reveals Options:
++  Do this next, Make a copy, Pause / Resume. VoiceOver has a matching Options action.
++- Workout editing follows the session order: Before lifting / Exercises / After lifting.
++  Add exercise precedes the exercise list. An empty warm-up routine opens a chooser.
++- Cardio shows its purpose, machine, editable target, today's typed result and Last time.
++  The single options button holds swapping and notes. There are no score steppers,
++  coaching paragraphs, repeated records or choices to permanently save a session target.
++- Weights held in each hand say “kg / hand”. Shared exercise settings explain their scope.
+diff --git a/PRODUCT.md b/PRODUCT.md
+index d8ea27f..a0df8e2 100644
+--- a/PRODUCT.md
++++ b/PRODUCT.md
+@@ -45,8 +45,8 @@ Milo is being cut back to its core and rebuilt from it. What was put away is lis
+ 
+ ## Operating Context
+ 
+-- Three tabs: **Today** (the next workout, Start or Skip), **Progress** (this week, then Results — the good news — Sessions — each workout set by set — and Lifts — each exercise's weight and past), **Plan** (Workouts and Exercises segments, both accordions).
+-- The workout screen takes over the whole display: the exercise name and the weight are the surface. You log each set by tapping its circle, and at the end you give a thumbs up or down on how it felt.
++- Three tabs: **Today** (the next workout), **Plan** (Workouts and Exercises), and **Profile** (Progress & history and Settings).
++- The workout is a swipeable row of coloured cards: the exercise name and the weight lead each card. You log each set by tapping its circle, and at the end you give a thumbs up or down on how it felt.
+ - Cardio blocks open and close each session, and mobility ends it. Each workout sets its own machine, length and routine in Plan, and can drop any of them. A block is either timed minutes scored by distance, or a set distance (the treadmill, 1 km by default, in 0.5 km steps) scored by time. Mobility defaults to one everyday stretch routine, every stretch with a photo and a guide; routines are edited in Plan and, once started, run themselves from the first stretch to the last.
+ - A persistent bottom bar, mounted once, carries the tabs or the workout actions (Back / Leave / Skip — which reads Later on a lift that will come back).
+ - It ships to the phone through Expo Go and EAS Update. There is no standalone build and no paid Apple developer account.
+@@ -81,3 +81,5 @@ No users other than the author, and no testimonials, metrics or press. None shou
+ ## Accessibility & Inclusion
+ 
+ The app is used in bright gyms and at arm's length: text must be highly legible with strong contrast, and touch targets should be well above 44pt (the bottom bar uses about twice that).
++
++Session edits to swaps, cardio targets and notes apply to today only. Lasting workout edits belong in Plan. Logged results continue to drive automatic progression. See `REDESIGN.md` for the current simplification and review gaps.
+diff --git a/src/app/plan.tsx b/src/app/plan.tsx
+index 2117fcf..fb18d4f 100644
+--- a/src/app/plan.tsx
++++ b/src/app/plan.tsx
+@@ -1,6 +1,5 @@
+-import { useRouter } from "expo-router";
+ import { useState } from "react";
+-import { Pressable, ScrollView, View } from "react-native";
++import { ScrollView, View } from "react-native";
+ import { Text } from "@/components/text";
+ import { useSafeAreaInsets } from "react-native-safe-area-context";
+ 
+@@ -8,7 +7,6 @@ import { useBarSpace } from "@/components/bottom-bar";
+ import { Catalogue } from "@/components/catalogue";
+ import { Goals } from "@/components/goals";
+ import { GOALS_ON } from "@/data/goals";
+-import { Icon } from "@/components/icon";
+ import { Modules } from "@/components/modules";
+ import { COLUMN } from "@/components/screen";
+ import { Segments } from "@/components/segments";
+@@ -29,7 +27,6 @@ export default function PlanScreen() {
+   const insets = useSafeAreaInsets();
+   const barSpace = useBarSpace();
+   const [segment, setSegment] = useState<Segment>("modules");
+-  const router = useRouter();
+   // Frozen while a row is being dragged, or the drag would scroll the page too.
+   const [dragging, setDragging] = useState(false);
+ 
+@@ -58,25 +55,7 @@ export default function PlanScreen() {
+         >
+           Plan
+         </Text>
+-        {/* Settings: where you train, how Milo works, backup. Here because
+-            Plan is where you set things up. */}
+-        <Pressable
+-          accessibilityRole="button"
+-          accessibilityLabel="Settings"
+-          onPress={() => router.push("/settings")}
+-          hitSlop={6}
+-          style={({ pressed }) => ({
+-            width: 44,
+-            height: 44,
+-            borderRadius: 22,
+-            backgroundColor: colors.surface,
+-            alignItems: "center",
+-            justifyContent: "center",
+-            opacity: pressed ? 0.6 : 1,
+-          })}
+-        >
+-          <Icon name="settings" size={22} color={colors.text} />
+-        </Pressable>
++
+       </View>
+ 
+       <Segments
+diff --git a/src/app/workout.tsx b/src/app/workout.tsx
+index 4687c29..b022d51 100644
+--- a/src/app/workout.tsx
++++ b/src/app/workout.tsx
+@@ -39,7 +39,7 @@ import { Icon, type IconName } from "@/components/icon";
+ import { Mark } from "@/components/mark";
+ import { NoteLine, NoteSheet } from "@/components/note";
+ import { GuideButton, GuideSheet } from "@/components/guide";
+-import { CardContext, useOnCard } from "@/components/card-context";
++import { CardActiveContext, useCardActive, CardContext, useOnCard } from "@/components/card-context";
+ import { Illustration } from "@/components/illustration";
+ import { GoalSheet, Pips, hasTutorial, openTutorial } from "@/components/goals";
+ import { BigButton, Sheet } from "@/components/sheet";
+@@ -59,13 +59,11 @@ import {
+   AWAY_CARDIO,
+   courseLabel,
+   distanceLabel,
+-  EFFORT,
+   parseTime,
+   pictureOf,
+   timeLabel,
+   type CardioEnd,
+   type CardioExercise,
+-  type CardioLength,
+   type MobilityMove,
+   type MobilityRoutine,
+ } from "@/data/conditioning";
+@@ -104,10 +102,9 @@ import {
+   isTimed,
+   lastScore,
+   logGoalSet,
+-  nudgeScore,
+   nextAfterSession,
+   nextTime,
+-  noteFor,
++  sessionNoteFor as noteFor,
+   sessionTally,
+   nudgeWeight,
+   partnerPrescription,
+@@ -135,10 +132,7 @@ import {
+   type SessionState,
+   cardioEnd,
+   itemLength,
+-  keepTodayLength,
+-  nudgeTodayLength,
+-  plannedLength,
+-  workoutById,
++  setTodayLength,
+ } from "@/store/session";
+ 
+ 
+@@ -159,12 +153,6 @@ const LAYOUT = {
+   paired: { name: 18, weight: 22, number: 64, sets: 22, under: 58, underGap: 10 },
+ } as const;
+ 
+-/**
+- * Cardio's name sits where a lift's does, but its round buttons still sit
+- * in a row under it, so its gap down to the number is its own.
+- */
+-const CARDIO_WEIGHT = 42;
+-
+ /**
+  * Set circles: a lift on its own; the main lift once a partner is folded in,
+  * a little smaller so both fit above the bar on a phone; and the partner,
+@@ -288,12 +276,10 @@ function Deck() {
+               <CardContext.Provider value>
+                 <Finished hasSession onCard={(index) => setState((s) => goToCard(s, index))} />
+               </CardContext.Provider>
+-            ) : Math.abs(i - page) <= 1 ? (
+-              // The card on screen and its neighbours are drawn in full, so
+-              // what slides in under the thumb is the real thing.
+-              <CardStep index={i} />
+             ) : (
+-              <Face index={i} />
++              // Every card has its real content from the start. Only the
++              // current card plays its illustrations.
++              <CardActiveContext.Provider value={i === page}><CardStep index={i} /></CardActiveContext.Provider>
+             )}
+             {i !== page ? (
+               // A card to the side is a way there, not a place to tap sets.
+@@ -359,21 +345,6 @@ function CardStep({ index }: { index: number }) {
+   );
+ }
+ 
+-/** A card further along the row than the next: its colour and its name, until it is near. */
+-function Face({ index }: { index: number }) {
+-  const { state } = useSession();
+-  const item = state.active?.items[index];
+-  if (!item) return null;
+-  const palette = fieldColors(itemFamily(item));
+-  return (
+-    <View style={{ flex: 1, alignItems: "center", justifyContent: "center", padding: 24, backgroundColor: palette.bg }}>
+-      <Text style={{ textAlign: "center", color: palette.text, fontFamily: fonts.medium, fontSize: 30, lineHeight: 34 }}>
+-        {cardName(state, index)}
+-      </Text>
+-    </View>
+-  );
+-}
+-
+ /**
+  * How a card stands, as one small mark in its family's colour: an outline
+  * while it is to do, filled when it is done as asked, half filled when it is
+@@ -423,7 +394,7 @@ function DeckHeader({ onOpen }: { onOpen: () => void }) {
+           accessibilityRole="button"
+           accessibilityLabel={`${currentWorkout(state).name}. ${done} of ${active.items.length} cards done. Show all cards`}
+           onPress={onOpen}
+-          style={({ pressed }) => ({ gap: 10, opacity: pressed ? 0.6 : 1 })}
++          style={({ pressed }) => ({ gap: 10, padding: 16, borderRadius: ROW.corner, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.line, opacity: pressed ? 0.6 : 1 })}
+         >
+           <View style={{ flexDirection: "row", alignItems: "center", gap: 12, height: 32 }}>
+             <Text numberOfLines={1} style={{ flex: 1, color: colors.text, fontFamily: fonts.medium, fontSize: 19 }}>
+@@ -434,8 +405,9 @@ function DeckHeader({ onOpen }: { onOpen: () => void }) {
+               </Text>
+             </Text>
+             <RestTimer startedAt={active.lastSetAt} />
++            <Icon name="expand" size={18} color={colors.text} />
+           </View>
+-          <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 8 }}>
++          <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 8, flexWrap: "wrap" }}>
+             {active.items.map((it, i) => (
+               <CardDot
+                 key={i}
+@@ -1227,7 +1199,7 @@ function unitFor(
+   if (holds) return "s hold";
+   return [
+     "kg",
+-    perHand ? "×2" : null,
++    perHand ? "/ hand" : null,
+     weight < 0 ? "assist" : bodyweight && weight > 0 ? "added" : null,
+   ]
+     .filter(Boolean)
+@@ -1368,8 +1340,8 @@ function Conditioning({ item }: { item: Item }) {
+   const [swapping, setSwapping] = useState(false);
+   const [noting, setNoting] = useState(false);
+   const [lengthening, setLengthening] = useState(false);
++  const [options, setOptions] = useState(false);
+   // One line of note until it is measured, so the weight does not jump.
+-  const [noteHeight, setNoteHeight] = useState(31);
+ 
+   const cardio = currentCardio(state);
+   const pool = conditioningPool(state, item);
+@@ -1380,9 +1352,8 @@ function Conditioning({ item }: { item: Item }) {
+     setSwapping(false);
+     setState((s) => completeCardio(s));
+   };
+-  // With a record to go on, an untouched box means "same as last time".
+-  const last = lastScore(state, item);
+-  const needsScore = isCardio(item) && scoreOf(item) === null && last === null;
++  // A completed cardio card requires today’s result; history is only a comparison.
++  const needsScore = isCardio(item) && scoreOf(item) === null;
+ 
+   return (
+     <View style={{ flex: 1, backgroundColor: colors.bg }}>
+@@ -1397,27 +1368,29 @@ function Conditioning({ item }: { item: Item }) {
+           alignSelf: "center",
+         }}
+       >
+-        <Title
+-          style={{ marginTop: LAYOUT.solo.name }}
+-          family="cardio"
+-          name={cardio?.name ?? ""}
+-          note={isTimed(item) && cardio ? courseLabel(cardio, item.course!) : `${item.minutes} minutes`}
+-          onNote={cardio ? () => setLengthening(true) : undefined}
+-          noteLabel={isTimed(item) ? "Change how far, today or for good" : "Change how long, today or for good"}
+-        >
+-          {cardio ? <GuideButton id={cardio.id} name={cardio.name} cue={cardio.cue} size={40} /> : null}
+-          {pool.length > 1 ? (
+-            <ToolButton icon="swap" label="Choose a different machine" onPress={() => setSwapping(true)} />
+-          ) : null}
+-          {cardio && !note ? (
+-            <ToolButton icon="note" label="Add a note" onPress={() => setNoting(true)} />
+-          ) : null}
+-        </Title>
++        <View style={{ marginTop: 28, gap: 18, alignItems: "center" }}>
++          <Text style={{ color: colors.text, fontFamily: fonts.italic, fontSize: 19 }}>{cardioEnd(item) === "open" ? "Warm-up" : "Cardio"}</Text>
++          <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
++            <Text accessibilityRole="header" style={{ flexShrink: 1, color: colors.text, fontFamily: fonts.medium, fontSize: 34, lineHeight: 40 }}>{cardio?.name}</Text>
++            <ToolButton icon="more" label="Cardio options" onPress={() => setOptions(true)} />
++          </View>
++          <Pressable accessibilityRole="button" accessibilityLabel="Change target for today" onPress={() => setLengthening(true)}
++            style={({ pressed }) => ({ minHeight: 48, paddingHorizontal: 20, borderRadius: 24, flexDirection: "row", alignItems: "center", gap: 12, backgroundColor: colors.surface, opacity: pressed ? 0.7 : 1 })}>
++            <Text style={{ color: colors.text, fontSize: 23 }}>{isTimed(item) && cardio ? courseLabel(cardio, item.course!) : `${item.minutes} minutes`}</Text>
++            <Icon name="note" size={18} color={colors.text} />
++          </Pressable>
++        </View>
++        <Sheet visible={options} title="Cardio options" onClose={() => setOptions(false)}>
++          <View style={{ gap: 12, paddingTop: 12 }}>
++            {pool.length > 1 ? <BigButton label="Swap machine for today" quiet onPress={() => { setOptions(false); setSwapping(true); }} /> : null}
++            <BigButton label="Change target for today" quiet onPress={() => { setOptions(false); setLengthening(true); }} />
++            <BigButton label={note ? "Edit today's note" : "Add a note for today"} quiet onPress={() => { setOptions(false); setNoting(true); }} />
++          </View>
++        </Sheet>
+ 
+         {note ? (
+           <View
+-            style={{ marginLeft: 36, paddingTop: 8 }}
+-            onLayout={(e) => setNoteHeight(e.nativeEvent.layout.height)}
++            style={{ paddingTop: 16 }}
+           >
+             <NoteLine text={note} onPress={() => setNoting(true)} />
+           </View>
+@@ -1459,16 +1432,14 @@ function Conditioning({ item }: { item: Item }) {
+         {cardio ? (
+           <View
+             style={{
+-              marginTop: note ? Math.max(10, CARDIO_WEIGHT - noteHeight) : CARDIO_WEIGHT,
++              marginTop: 40,
+             }}
+           >
+           <CardioBody
+             cardio={cardio}
+             item={item}
+             end={cardioEnd(item)}
+-            last={last}
+             record={cardioRecord(state, item)}
+-            onNudge={(d) => setState((s) => nudgeScore(s, d))}
+             onSet={(v) => setState((s) => setScore(s, v))}
+           />
+           </View>
+@@ -1491,81 +1462,35 @@ function Conditioning({ item }: { item: Item }) {
+   );
+ }
+ 
+-/**
+- * How far or how long, changed in the middle of the session: you feel like
+- * 2 km today, not 1. − and + change today's block as you press; then Just
+- * today leaves the workout as it was, and Every time keeps it there too.
+- */
+-function LengthSheet({
+-  visible,
+-  cardio,
+-  item,
+-  onClose,
+-}: {
+-  visible: boolean;
+-  cardio: CardioExercise;
+-  item: Item;
+-  onClose: () => void;
++/** A target edited in a session belongs to today only. */
++function LengthSheet({ visible, cardio, item, onClose }: {
++  visible: boolean; cardio: CardioExercise; item: Item; onClose: () => void;
+ }) {
+-  const colors = useColors();
+-  const { state, setState } = useSession();
+-  const today = itemLength(item);
+-  const planned = plannedLength(state, item);
+-  const workout = state.active ? workoutById(state, state.active.workoutId) : undefined;
+-  const say = (l: CardioLength) =>
+-    l.course !== undefined ? courseLabel(cardio, l.course) : `${l.minutes} minutes`;
+-  const changed = !!planned && say(planned) !== say(today);
+-  const timed = today.course !== undefined;
+-
++  const { setState } = useSession();
++  const distance = item.course !== undefined;
++  const [draft, setDraft] = useState("");
++  useEffect(() => {
++    if (visible) setDraft(String(item.course ?? item.minutes ?? 5));
++  }, [visible]);
++  const value = Number(draft.trim().replace(",", "."));
++  const valid = draft.trim() !== "" && Number.isFinite(value) && value > 0;
+   return (
+-    <Sheet visible={visible} title={timed ? "How far" : "How long"} closeLabel="Done" onClose={onClose}>
+-      <View style={{ gap: 28, paddingTop: 12 }}>
+-        <View style={{ height: 84, flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+-          <Step label="−" onPress={() => setState((s) => nudgeTodayLength(s, -1))} />
+-          <Text
+-            accessibilityLiveRegion="polite"
+-            style={{
+-              color: colors.text,
+-              fontFamily: fonts.semibold,
+-              fontSize: 48,
+-              fontVariant: ["lining-nums", "tabular-nums"],
+-            }}
+-          >
+-            {say(today)}
+-          </Text>
+-          <Step label="+" onPress={() => setState((s) => nudgeTodayLength(s, 1))} />
+-        </View>
+-
+-        <Text style={{ color: colors.muted, fontFamily: fonts.regular, fontSize: 17, lineHeight: 24 }}>
+-          {changed && planned
+-            ? `${workout?.name ?? "This workout"} usually has ${say(planned)}. Your ${
+-                timed ? "times" : "distances"
+-              } for ${say(today)} are kept apart from ${say(planned)}, so you only ever compare like with like.`
+-            : `${timed ? "Further or shorter" : "Longer or shorter"} than usual — for today, or for every time.`}
+-        </Text>
+-
+-        {/* Only once it differs from the workout: then it is a choice. */}
+-        {changed && workout ? (
+-          <View style={{ gap: 12 }}>
+-            <BigButton label="Just today" onPress={onClose} />
+-            <BigButton
+-              label={`Every time in ${workout.name}`}
+-              quiet
+-              onPress={() => {
+-                setState((s) => keepTodayLength(s));
+-                onClose();
+-              }}
+-            />
+-          </View>
+-        ) : null}
++    <Sheet visible={visible} title={distance ? "Distance for today" : "Duration for today"} onClose={onClose}>
++      <View style={{ gap: 20, paddingTop: 12 }}>
++        <Text style={{ color: colors.muted, fontSize: 17 }}>This session only. Change your usual target in Plan.</Text>
++        <TextInput value={draft} onChangeText={setDraft} keyboardType="decimal-pad" selectTextOnFocus
++          accessibilityLabel={distance ? `Distance in ${cardio.metric.unit}` : "Duration in minutes"}
++          style={{ minHeight: 64, borderRadius: 16, paddingHorizontal: 16, backgroundColor: colors.surface, color: colors.text, fontSize: 32 }} />
++        <Text style={{ color: colors.muted, fontSize: 19 }}>{distance ? cardio.metric.unit : "minutes"}</Text>
++        {!valid ? <Text style={{ color: colors.text, fontSize: 17 }}>Enter a number greater than zero.</Text> : null}
++        <BigButton label="Save for today" disabled={!valid} onPress={() => { setState((s) => setTodayLength(s, value)); onClose(); }} />
+       </View>
+     </Sheet>
+   );
+ }
+ 
+ /**
+- * Your score, and the mark to beat — laid out like a lift: the number between
+- * − and +, a line on last time under it, and the machine's cue.
++ * Today’s result, typed directly, with the previous result for comparison.
+  *
+  * One side of the block is fixed — the minutes, or the distance — so the only
+  * number that moves is the other: how far you got, or how long it took. That
+@@ -1575,9 +1500,7 @@ function CardioBody({
+   cardio,
+   item,
+   end,
+-  last,
+   record,
+-  onNudge,
+   onSet,
+ }: {
+   cardio: CardioExercise;
+@@ -1585,9 +1508,7 @@ function CardioBody({
+   /** A warm-up is never a race: no cheer for going faster, and an easy pace. */
+   end: CardioEnd;
+   /** Last session's score: what the box shows until you change it. */
+-  last: number | null;
+   record: ReturnType<typeof cardioRecord>;
+-  onNudge: (direction: 1 | -1) => void;
+   onSet: (score: number | null) => void;
+ }) {
+   const colors = useColors();
+@@ -1599,8 +1520,8 @@ function CardioBody({
+   // no machine, and its number is optional.
+   const counted = unit === "skips";
+   const away = AWAY_CARDIO.some((c) => c.id === cardio.id);
+-  // Untouched, the box holds last time's score: that is what Done records.
+-  const shown = score ?? last;
++  // Previous results are shown separately, never prefilled as today’s result.
++  const shown = score;
+ 
+   // The box shows a bare number; the line under it says what it means.
+   const show = (v: number) => (timed ? timeLabel(v) : v.toFixed(decimals));
+@@ -1628,9 +1549,9 @@ function CardioBody({
+ 
+   return (
+     <View>
+-      {/* The score, entered the way a weight is: step it, or tap to type. */}
+-      <View style={{ height: 84, flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+-        <Step label="−" onPress={() => onNudge(-1)} />
++      <Text style={[line, { marginBottom: 12 }]}>{timed ? "Your time · min:sec" : counted ? "Skips completed" : `Distance covered · ${unit}`}</Text>
++      <View style={{ height: 84, flexDirection: "row", alignItems: "center", justifyContent: "center" }}>
++
+ 
+         {draft !== null ? (
+           <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+@@ -1641,7 +1562,7 @@ function CardioBody({
+               onBlur={commit}
+               onSubmitEditing={commit}
+               // A number pad on both: a time types as 4.52 or 452 and reads back as 4:52.
+-              keyboardType="decimal-pad"
++              keyboardType={timed ? "numbers-and-punctuation" : "decimal-pad"}
+               selectTextOnFocus
+               accessibilityLabel={timed ? "Your time" : counted ? "Skips" : `Distance in ${unit}`}
+               style={[number, { width: timed ? 190 : 150, padding: 0, color: colors.text, textAlign: timed ? "center" : "right" }]}
+@@ -1669,51 +1590,13 @@ function CardioBody({
+           </Pressable>
+         )}
+ 
+-        <Step label="+" onPress={() => onNudge(1)} />
+-      </View>
+ 
+-      {/* What to beat, or what this first go is for. Fixed height, so the
+-          "yet" line arriving moves nothing. */}
+-      <View style={{ height: 96, marginTop: 40, alignItems: "center", gap: 4 }}>
+-        {record ? (
+-          <>
+-            <View
+-              accessible
+-              accessibilityLabel={`To beat: ${label(record.last)}`}
+-              style={{ flexDirection: "row", alignItems: "center", gap: 10, height: 30 }}
+-            >
+-              <Text style={{ color: colors.text, fontFamily: fonts.italic, fontSize: 19 }}>To beat</Text>
+-              <Text style={{ color: colors.text, fontFamily: fonts.medium, fontSize: 19 }}>{label(record.last)}</Text>
+-            </View>
+-            <Text numberOfLines={1} style={line}>
+-              {timed ? "Fastest" : counted ? "Most" : "Furthest"} {label(record.best)} · {record.sessions}{" "}
+-              {record.sessions === 1 ? "time" : "times"}
+-            </Text>
+-          </>
+-        ) : (
+-          <Text numberOfLines={3} style={line}>
+-            {timed
+-              ? `First ${courseLabel(cardio, item.course!)} on the ${cardio.name.toLowerCase()}. Enter your time when you finish — it becomes the mark to beat.`
+-              : away
+-                ? `${item.minutes} minutes. ${counted ? "Count the skips" : "Enter the distance"} if you like — it becomes the mark to beat.`
+-                : `First ${item.minutes} minutes on the ${cardio.name.toLowerCase()}. Enter the distance when the clock runs out — it becomes the mark to beat.`}
+-          </Text>
+-        )}
+-        {/* Said only when it is true — a line that always shows says nothing. */}
+-        {isBest || beat ? (
+-          <Text style={{ color: colors.text, fontFamily: fonts.italic, fontSize: 22 }}>
+-            {isBest
+-              ? timed ? "Fastest yet." : counted ? "Most yet." : "Furthest yet."
+-              : timed ? "Faster than last time." : counted ? "More than last time." : "Past last time."}
+-          </Text>
+-        ) : null}
+       </View>
+ 
+-      {/* How hard, by where the block sits; then how, if the machine says. */}
+-      <Text style={[line, { marginTop: 12, fontSize: 17, lineHeight: 23 }]}>
+-        {EFFORT[end]}
+-        {cardio.cue ? `\n${cardio.cue}` : ""}
+-      </Text>
++      <Text style={[line, { marginTop: 12, fontSize: 17 }]}>Tap the number to enter your result.</Text>
++      {record ? <Text style={[line, { marginTop: 28 }]}>Last time: {label(record.last)}</Text> : null}
++      {isBest || beat ? <Text style={[line, { marginTop: 12 }]}>{isBest ? "Personal best." : "Better than last time."}</Text> : null}
++
+     </View>
+   );
+ }
+@@ -2268,6 +2151,7 @@ function MobilityDeck({
+   onFinish: () => void;
+ }) {
+   const colors = useColors();
++  const cardActive = useCardActive();
+   const cards = routine.moves.flatMap((move, index): Card[] =>
+     move.perSide
+       ? [
+@@ -2293,6 +2177,13 @@ function MobilityDeck({
+   // the last without a tap.
+   const [flowing, setFlowing] = useState(false);
+ 
++  // Leaving this card pauses the routine, including its automatic next hold.
++  useEffect(() => {
++    if (cardActive) return;
++    setFlowing(false);
++    setRunning(null);
++  }, [cardActive]);
++
+   // A phone that locks would stop the clock, and the routine with it.
+   useEffect(() => {
+     if (!flowing) return;
+@@ -3130,6 +3021,7 @@ function useCheer(state: ReturnType<typeof useSession>["state"]): {
+   cheer: Cheer | null;
+   well: boolean;
+ } {
++  const cardActive = useCardActive();
+   const active = state.active;
+   const item = active && !isComplete(state) ? active.items[active.cursor] : undefined;
+   const lift = !!item && isLift(item) && currentWarmup(state).length === 0;
+@@ -3160,7 +3052,7 @@ function useCheer(state: ReturnType<typeof useSession>["state"]): {
+     setTrack({ ...track, cheer: null });
+   }
+ 
+-  const waiting = good && track.key === key && !track.done.includes(key);
++  const waiting = cardActive && good && track.key === key && !track.done.includes(key);
+   useEffect(() => {
+     if (!waiting) return;
+     const settled = setTimeout(
+diff --git a/src/components/card-context.ts b/src/components/card-context.ts
+index 37f0089..ac60f8d 100644
+--- a/src/components/card-context.ts
++++ b/src/components/card-context.ts
+@@ -9,3 +9,7 @@ import { createContext, useContext } from "react";
+ export const CardContext = createContext(false);
+ 
+ export const useOnCard = (): boolean => useContext(CardContext);
++
++/** Full card content stays mounted; only the current card animates. */
++export const CardActiveContext = createContext(true);
++export const useCardActive = () => useContext(CardActiveContext);
+diff --git a/src/components/catalogue.tsx b/src/components/catalogue.tsx
+index 382455c..8ef2fa2 100644
+--- a/src/components/catalogue.tsx
++++ b/src/components/catalogue.tsx
+@@ -183,6 +183,7 @@ function CategorySheet({
+       onClose={close}
+     >
+       <View style={{ gap: 12, paddingTop: 12 }}>
++        <AddLink label="Add exercise" onPress={() => setAdding(true)} />
+         {list.map((exercise) => (
+           <OpenRow
+             key={exercise.id}
+@@ -196,7 +197,6 @@ function CategorySheet({
+             Nothing here yet.
+           </Text>
+         ) : null}
+-        <AddLink label="Add exercise" onPress={() => setAdding(true)} />
+       </View>
+ 
+       <ExerciseSheet
+@@ -278,9 +278,26 @@ function AddPanel({
+         marginBottom: 8,
+       }}
+     >
++      {creating ? (
++        create
++      ) : (
++        <Pressable
++          accessibilityRole="button"
++          onPress={() => setCreating(true)}
++          style={({ pressed }) => ({
++            justifyContent: "center",
++            minHeight: 48,
++            opacity: pressed ? 0.5 : 1,
++          })}
++        >
++          <Text style={{ color: colors.muted, fontSize: 14, fontWeight: "700" }}>
++            + Create your own
++          </Text>
++        </Pressable>
++      )}
+       {library.length > 0 ? (
+         <>
+-          <Label>From the library</Label>
++          <Label>Available exercises</Label>
+           {library.map((row) => (
+             <Pressable
+               key={row.id}
+@@ -304,23 +321,7 @@ function AddPanel({
+         </>
+       ) : null}
+ 
+-      {creating ? (
+-        create
+-      ) : (
+-        <Pressable
+-          accessibilityRole="button"
+-          onPress={() => setCreating(true)}
+-          style={({ pressed }) => ({
+-            justifyContent: "center",
+-            minHeight: 48,
+-            opacity: pressed ? 0.5 : 1,
+-          })}
+-        >
+-          <Text style={{ color: colors.muted, fontSize: 14, fontWeight: "700" }}>
+-            + Create your own
+-          </Text>
+-        </Pressable>
+-      )}
++
+     </View>
+   );
+ }
+@@ -416,7 +417,7 @@ function ExerciseEditor({ exercise, onRemoved }: { exercise: Exercise; onRemoved
+           </View>
+           <Text style={{ color: validStep ? colors.muted : colors.bend, fontSize: 13, lineHeight: 19 }}>
+             {validStep
+-              ? `How much one press of − or + moves the weight${exercise.perHand ? ", per dumbbell" : ""}. Changes save automatically.`
++              ? `Used by the − and + buttons and automatic weight increases${exercise.perHand ? ", per dumbbell" : ""}. Changes save automatically.`
+               : "Enter a number greater than 0. Your previous step is kept until then."}
+           </Text>
+         </View>
+@@ -424,7 +425,7 @@ function ExerciseEditor({ exercise, onRemoved }: { exercise: Exercise; onRemoved
+ 
+       <View style={{ gap: 12 }}>
+         <SectionLabel>Note</SectionLabel>
+-        <NoteField id={exercise.id} hint="Shows under the name when you lift it, until you change it." />
++        <NoteField id={exercise.id} hint="Shared by every workout that uses this exercise. Notes edited during training are for that session only." />
+       </View>
+ 
+       <View style={{ gap: 8 }}>
+@@ -456,7 +457,7 @@ function ExerciseEditor({ exercise, onRemoved }: { exercise: Exercise; onRemoved
+             ? "The last of its kind stays, or a slot would have nothing to use."
+             : mine
+               ? "Deleting keeps its history, in case you make it again."
+-              : "Removing puts it back in the library, history and all."}
++              : "Hides this exercise from your list. You can add it again later; your history is kept."}
+         </Text>
+       </View>
+     </View>
+@@ -900,7 +901,7 @@ function RemoveConditioning({
+           ? "The last one stays, or the block would have nothing to offer."
+           : mine
+             ? "Deleting it keeps its records."
+-            : "Removing puts it back in the library, records and all."}
++            : "Hides it from your list. You can add it again later; your records are kept."}
+       </Text>
+     </View>
+   );
+diff --git a/src/components/icon.tsx b/src/components/icon.tsx
+index 72b8819..7f36e58 100644
+--- a/src/components/icon.tsx
++++ b/src/components/icon.tsx
+@@ -14,6 +14,10 @@ import Svg, { Path } from "react-native-svg";
+  * Skip.
+  */
+ const ICONS = {
++  profile: {
++    phosphor: "user",
++    d: "M128 20a60 60 0 1 0 0 120 60 60 0 0 0 0-120Zm0 24a36 36 0 1 1 0 72 36 36 0 0 1 0-72ZM28 236a12 12 0 0 1-12-12 112 112 0 0 1 224 0 12 12 0 0 1-24 0 88 88 0 0 0-176 0 12 12 0 0 1-12 12Z",
++  },
+   today: {
+     phosphor: "barbell",
+     d: "M244 116V88a20 20 0 0 0-20-20h-16v-4a20 20 0 0 0-20-20h-24a20 20 0 0 0-20 20v52h-32V64a20 20 0 0 0-20-20H68a20 20 0 0 0-20 20v4H32a20 20 0 0 0-20 20v28a12 12 0 0 0 0 24v28a20 20 0 0 0 20 20h16v4a20 20 0 0 0 20 20h24a20 20 0 0 0 20-20v-52h32v52a20 20 0 0 0 20 20h24a20 20 0 0 0 20-20v-4h16a20 20 0 0 0 20-20v-28a12 12 0 0 0 0-24M36 164V92h12v72Zm52 24H72V68h16Zm96 0h-16V68h16Zm36-24h-12V92h12Z",
+diff --git a/src/components/illustration.tsx b/src/components/illustration.tsx
+index c0e3d06..07e74f3 100644
+--- a/src/components/illustration.tsx
++++ b/src/components/illustration.tsx
+@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
+ import { Image, View, type ViewStyle } from "react-native";
+ import { Text } from "@/components/text";
+ 
++import { useCardActive } from "@/components/card-context";
+ import { Drawing } from "@/components/drawing";
+ import { Film } from "@/components/film";
+ import { Icon } from "@/components/icon";
+@@ -58,6 +59,7 @@ export function Illustration({
+   /** How many times a film loops before it rests on its still; by default, as long as it shows. */
+   plays?: number;
+ }) {
++  const active = useCardActive();
+   const frames = PHOTOS[id];
+   const count = frames?.length ?? 0;
+   const [frame, setFrame] = useState(0);
+@@ -70,10 +72,10 @@ export function Illustration({
+ 
+   useEffect(() => {
+     setFrame(0);
+-    if (drawn || film || count < 2) return;
++    if (!active || drawn || film || count < 2) return;
+     const flip = setInterval(() => setFrame((f) => (f + 1) % count), FRAME_MS);
+     return () => clearInterval(flip);
+-  }, [id, count, film, drawn]);
++  }, [id, count, film, drawn, active]);
+ 
+   if (drawn) {
+     const family = familyOfPicture(id);
+@@ -85,14 +87,14 @@ export function Illustration({
+         id={id}
+         colors={{ ...filmColors(family), accent }}
+         style={style}
+-        plays={compact ? 0 : plays}
++        plays={compact || !active ? 0 : plays}
+       />
+     );
+   }
+ 
+   if (film) {
+     const colors = filmColors(familyOfPicture(id));
+-    return <Film key={id} id={id} colors={colors} style={style} plays={compact ? 0 : plays} />;
++    return <Film key={id} id={id} colors={colors} style={style} plays={compact || !active ? 0 : plays} />;
+   }
+ 
+   if (frames) {
+diff --git a/src/components/modules.tsx b/src/components/modules.tsx
+index 0219c20..4c2bc74 100644
+--- a/src/components/modules.tsx
++++ b/src/components/modules.tsx
+@@ -26,7 +26,6 @@ import {
+   COURSE_STEP,
+   MINUTES_MAX,
+   MINUTES_STEP,
+-  SHOULDER_WARMUP,
+   cardioPool,
+   courseLabel,
+   mobilityPool,
+@@ -56,10 +55,10 @@ import {
+   copyRoutineFor,
+   copyWorkout,
+   chosen,
+-  deleteWorkout,
+   mobilityPlan,
+   moveEntry,
+-  moveWorkout,
++  movePlanWorkout,
++  planWorkouts,
+   nudgeCardio,
+   pauseWorkout,
+   poolFor,
+@@ -106,6 +105,10 @@ const moveActions = (drag: Drag) => ({
+ export function Modules({ onDragChange }: { onDragChange: (dragging: boolean) => void }) {
+   const { state, setState } = useSession();
+   const next = upNext(state).id;
++  const rows = planWorkouts(state);
++  const [options, setOptions] = useState<string | null>(null);
++  const optionWorkout = rows.find((w) => w.id === options);
++  const paused = !!options && state.removedWorkouts.some((r) => r.workout.id === options);
+   // The workout whose sheet is open.
+   const [editing, setEditing] = useState<string | null>(null);
+   // A workout just created opens with its name ready to type.
+@@ -140,18 +143,20 @@ export function Modules({ onDragChange }: { onDragChange: (dragging: boolean) =>
+     <View style={{ gap: 24 }}>
+       <Text style={{ color: colors.muted, fontSize: 15, lineHeight: 22 }}>
+         Your workouts take turns, top to bottom, then back to the top. Tap one
+-        to change it. Hold and drag to move it. Swipe left to pause it.
++        to change it. Hold and drag to move it. Swipe left for workout options.
+       </Text>
+ 
+       <DragList
+-        data={state.workouts}
++        data={rows}
+         keyOf={(w) => w.id}
+         gap={10}
+         onDragChange={onDragChange}
+-        onMove={(from, to) => setState((s) => moveWorkout(s, from, to))}
++        onMove={(from, to) => setState((s) => movePlanWorkout(s, from, to))}
+         renderItem={(w, drag) => (
+           <WorkoutRow
+             workout={w}
++            paused={state.removedWorkouts.some((r) => r.workout.id === w.id)}
++            onOptions={() => setOptions(w.id)}
+             isNext={w.id === next}
+             drag={drag}
+             onOpen={() => {
+@@ -164,15 +169,19 @@ export function Modules({ onDragChange }: { onDragChange: (dragging: boolean) =>
+ 
+       <NewWorkout onBlank={create} onCopy={copy} />
+ 
+-      <PausedWorkouts />
++      <Sheet visible={!!optionWorkout} title={optionWorkout?.name || "Workout options"} onClose={() => setOptions(null)}>
++        {optionWorkout ? <View style={{ gap: 12, paddingTop: 12 }}>
++          {!paused && optionWorkout.id !== next ? <BigButton label="Do this next" onPress={() => { setState((s) => setNextWorkout(s, optionWorkout.id)); setOptions(null); }} /> : null}
++          <BigButton label="Make a copy" quiet onPress={() => { setOptions(null); copyFromSheet(optionWorkout.id); }} />
++          <BigButton label={paused ? "Resume workout" : "Pause workout"} quiet disabled={!paused && !canPauseWorkout(state)} onPress={() => { setState((s) => paused ? resumeWorkout(s, optionWorkout.id) : pauseWorkout(s, optionWorkout.id)); setOptions(null); }} />
++          {paused ? <Text style={{ color: colors.muted, fontSize: 17 }}>Paused workouts stay here and are skipped in your rotation.</Text> : null}
++        </View> : null}
++      </Sheet>
+ 
+-      {/* Rendered once, for whichever workout is open. A workout paused
+-          from inside its own sheet closes it by disappearing. */}
++      {/* One editor for the selected workout. */}
+       <WorkoutSheet
+         workout={workout}
+-        isNext={workout?.id === next}
+         naming={!!workout && fresh === workout.id}
+-        onCopy={() => workout && copyFromSheet(workout.id)}
+         onClose={() => {
+           setEditing(null);
+           setFresh(null);
+@@ -295,135 +304,44 @@ function Pill({
+   );
+ }
+ 
+-/**
+- * Paused workouts: out of the loop, kept exactly as they are, one tap from
+- * coming back to where they sat. Outlined rather than washed — they are not
+- * part of the run of colours you train through. Swipe one left to delete it
+- * for good.
+- */
+-function PausedWorkouts() {
+-  const { state, setState } = useSession();
+-  const rows = state.removedWorkouts.map((r) => r.workout);
+-  if (rows.length === 0) return null;
+-
+-  return (
+-    <View style={{ gap: 10 }}>
+-      <View style={{ gap: 4, paddingBottom: 2 }}>
+-        <SectionLabel>Paused</SectionLabel>
+-        <Text style={{ color: colors.muted, fontSize: 15, lineHeight: 22 }}>
+-          Out of the loop and kept as they are. Swipe left to delete one for good.
+-        </Text>
+-      </View>
+-      {rows.map((w) => {
+-        const name = w.name || "Untitled";
+-        return (
+-          <Swipe
+-            key={w.id}
+-            label="Delete"
+-            radius={radii.card}
+-            onAction={() => setState((s) => deleteWorkout(s, w.id))}
+-          >
+-            <View
+-              style={{
+-                flexDirection: "row",
+-                alignItems: "center",
+-                gap: 14,
+-                minHeight: 76,
+-                paddingLeft: 18,
+-                paddingRight: 12,
+-                paddingVertical: 12,
+-                borderRadius: radii.card,
+-                borderCurve: "continuous",
+-                borderWidth: 1,
+-                borderColor: colors.line,
+-              }}
+-            >
+-              <View style={{ width: 26, alignItems: "center", opacity: 0.4 }}>
+-                <Mark family={workoutFamily(state, w)} size={20} />
+-              </View>
+-              <View style={{ flex: 1, gap: 1 }}>
+-                <Text
+-                  numberOfLines={1}
+-                  style={{
+-                    color: colors.muted,
+-                    fontFamily: fonts.display,
+-                    fontSize: 23,
+-                    lineHeight: 29,
+-                  }}
+-                >
+-                  {name}
+-                </Text>
+-                {w.subtitle ? (
+-                  <Text
+-                    numberOfLines={1}
+-                    style={{ color: colors.faint, fontSize: 15, fontStyle: "italic" }}
+-                  >
+-                    {w.subtitle}
+-                  </Text>
+-                ) : null}
+-              </View>
+-              <Pressable
+-                accessibilityRole="button"
+-                accessibilityLabel={`Resume ${name}`}
+-                accessibilityActions={[{ name: "delete", label: `Delete ${name} for good` }]}
+-                onAccessibilityAction={(e) => {
+-                  if (e.nativeEvent.actionName === "delete") {
+-                    setState((s) => deleteWorkout(s, w.id));
+-                  }
+-                }}
+-                onPress={() => setState((s) => resumeWorkout(s, w.id))}
+-                hitSlop={6}
+-                style={({ pressed }) => ({
+-                  justifyContent: "center",
+-                  minHeight: 44,
+-                  paddingHorizontal: 18,
+-                  borderRadius: radii.action,
+-                  backgroundColor: colors.surface,
+-                  opacity: pressed ? 0.6 : 1,
+-                })}
+-              >
+-                <Text style={{ color: colors.text, fontSize: 16, fontWeight: "600" }}>Resume</Text>
+-              </Pressable>
+-            </View>
+-          </Swipe>
+-        );
+-      })}
+-    </View>
+-  );
+-}
+-
+ /**
+  * One workout in the list, the way Today shows it: its shape, its name, what
+  * it trains, on a wash of its colour — so the plan reads as the run of
+- * colours you will train through. Swipe left to pause it.
++ * colours you will train through. Swipe left for workout options.
+  */
+ function WorkoutRow({
+   workout,
++  paused,
++  onOptions,
+   isNext,
+   drag,
+   onOpen,
+ }: {
+   workout: Workout;
++  paused: boolean;
++  onOptions: () => void;
+   isNext: boolean;
+   drag: Drag;
+   onOpen: () => void;
+ }) {
+-  const { state, setState } = useSession();
++  const { state } = useSession();
+   const family = workoutFamily(state, workout);
+   const count = workout.exercises.length;
+   return (
+     <Swipe
+-      label="Pause"
++      label="Options"
+       // The last workout cannot go: the loop needs something in it.
+-      disabled={!canPauseWorkout(state) || drag.active}
++      disabled={drag.active}
+       radius={radii.card}
+-      onAction={() => setState((s) => pauseWorkout(s, workout.id))}
++      onAction={onOptions}
+     >
+       <Pressable
+         accessibilityRole="button"
+         accessibilityHint="Opens the workout. Hold and drag to reorder."
+         {...moveActions(drag)}
+-        onPress={onOpen}
++        accessibilityActions={[...moveActions(drag).accessibilityActions, { name: "options", label: "Workout options" }]}
++        onAccessibilityAction={(e) => e.nativeEvent.actionName === "options" ? onOptions() : moveActions(drag).onAccessibilityAction(e)}
++        onPress={paused ? onOptions : onOpen}
+         onLongPress={drag.start}
+         onPressOut={drag.cancel}
+         delayLongPress={250}
+@@ -440,7 +358,7 @@ function WorkoutRow({
+           backgroundColor: `${FAMILY[family].field}${drag.active ? "33" : "1A"}`,
+           borderWidth: 1.5,
+           borderColor: drag.active ? FAMILY[family].mark : "transparent",
+-          opacity: pressed && !drag.active ? 0.7 : 1,
++          opacity: paused ? 0.45 : pressed && !drag.active ? 0.7 : 1,
+         })}
+       >
+         <View style={{ width: 26, alignItems: "center" }}>
+@@ -462,7 +380,7 @@ function WorkoutRow({
+               .join(" · ")}
+           </Text>
+         </View>
+-        {isNext ? (
++        {paused ? <Text style={{ color: colors.text, fontSize: 16 }}>Paused</Text> : isNext ? (
+           <Text
+             style={{ color: colors.text, fontSize: 16, fontStyle: "italic", fontWeight: "500" }}
+           >
+@@ -486,16 +404,11 @@ type Block = CardioEnd | RoutineEnd;
+  */
+ function WorkoutSheet({
+   workout,
+-  isNext,
+   naming,
+-  onCopy,
+   onClose,
+ }: {
+   workout: Workout | undefined;
+-  isNext: boolean;
+   naming: boolean;
+-  /** A new workout like this one, at the bottom of the loop, opened to rename. */
+-  onCopy: () => void;
+   onClose: () => void;
+ }) {
+   const { state, setState } = useSession();
+@@ -513,18 +426,18 @@ function WorkoutSheet({
+ 
+   if (!workout) return <Sheet visible={false} title="" onClose={close} />;
+ 
+-  const pausable = canPauseWorkout(state);
+   const entry = workout.exercises.find((e) => e.id === slot);
+ 
+   return (
+     <Sheet
+       visible
+-      title="Workout"
++      title="Edit workout"
+       closeLabel="Done"
+       scrollEnabled={!dragging}
+       onClose={close}
+     >
+       <View style={{ gap: 36, paddingTop: 12 }}>
++        <Text style={{ color: colors.muted, fontSize: 17 }}>Changes here apply next time you start this workout.</Text>
+         <View style={{ gap: 10 }}>
+           <Field
+             value={workout.name}
+@@ -541,7 +454,7 @@ function WorkoutSheet({
+         </View>
+ 
+         <View style={{ gap: 12 }}>
+-          <SectionLabel>Warm-up</SectionLabel>
++          <SectionLabel>Before lifting</SectionLabel>
+           <CardioRow workout={workout} where="open" onOpen={() => setBlock("open")} />
+           <MobilityRow workout={workout} where="warmup" onOpen={() => setBlock("warmup")} />
+         </View>
+@@ -550,6 +463,7 @@ function WorkoutSheet({
+ 
+         <View style={{ gap: 12 }}>
+           <SectionLabel>Exercises</SectionLabel>
++          <AddRow label="Add exercise" onPress={() => setAdding(true)} />
+           <DragList
+             data={workout.exercises}
+             keyOf={(e) => e.id}
+@@ -571,45 +485,15 @@ function WorkoutSheet({
+             </Text>
+           ) : null}
+ 
+-          <AddRow label="Add exercise" onPress={() => setAdding(true)} />
+         </View>
+ 
+         <View style={{ gap: 12 }}>
+-          <SectionLabel>Finish</SectionLabel>
++          <SectionLabel>After lifting</SectionLabel>
+           <CardioRow workout={workout} where="close" onOpen={() => setBlock("close")} />
+           <MobilityRow workout={workout} where="end" onOpen={() => setBlock("end")} />
+         </View>
+ 
+-        <View style={{ gap: 12 }}>
+-          {isNext ? (
+-            <Text style={{ color: colors.faint, fontSize: 15, textAlign: "center" }}>
+-              This is the next workout.
+-            </Text>
+-          ) : (
+-            <BigButton
+-              label="Do this one next"
+-              onPress={() => setState((s) => setNextWorkout(s, workout.id))}
+-            />
+-          )}
+-
+-          <BigButton label="Make a copy" quiet onPress={onCopy} />
+ 
+-          <BigButton
+-            label="Pause workout"
+-            quiet
+-            // The last workout cannot go: the loop needs something in it.
+-            disabled={!pausable}
+-            onPress={() => {
+-              setState((s) => pauseWorkout(s, workout.id));
+-              close();
+-            }}
+-          />
+-          <Text style={{ color: colors.faint, fontSize: 13, textAlign: "center" }}>
+-            {pausable
+-              ? "It waits under the loop, exactly as it is, until you resume it."
+-              : "The last workout stays — the loop needs something in it."}
+-          </Text>
+-        </View>
+       </View>
+ 
+       {/* Sheets over the sheet: one exercise slot, or one block, opened from
+@@ -697,8 +581,8 @@ function MobilityRow({
+   if (!routine) {
+     return where === "warmup" ? (
+       <AddRow
+-        label="Add shoulder warm-up"
+-        onPress={() => setState((s) => setWarmup(s, workout.id, SHOULDER_WARMUP))}
++        label="Add warm-up routine"
++        onPress={onOpen}
+       />
+     ) : (
+       <AddRow
+@@ -856,7 +740,8 @@ function MobilitySheet({
+   const { state, setState } = useSession();
+   const [dragging, setDragging] = useState(false);
+   const routine = workout ? routineAt(state, workout, where) : null;
+-  if (!workout || !routine) return <Sheet visible={false} title="" onClose={onClose} />;
++  if (!workout) return <Sheet visible={false} title="" onClose={onClose} />;
++  if (!routine) return <Sheet visible title="Choose a routine" onClose={onClose}>{mobilityPool(state.hiddenConditioning).map((r) => <OpenRow key={r.id} title={r.name} onPress={() => setState((s) => chooseRoutine(s, workout.id, where, r.id))} />)}</Sheet>;
+ 
+   const routines = mobilityPool(state.hiddenConditioning);
+   const others = workoutsUsing(state, routine.id).filter((w) => w.id !== workout.id);
+diff --git a/src/components/note.tsx b/src/components/note.tsx
+index a4967b4..08df1ef 100644
+--- a/src/components/note.tsx
++++ b/src/components/note.tsx
+@@ -6,7 +6,7 @@ import { Icon } from "@/components/icon";
+ import { Sheet, TextButton } from "@/components/sheet";
+ import { Text, TextInput } from "@/components/text";
+ import { colors, fonts } from "@/constants/theme";
+-import { NOTE_MAX, noteFor, setNote, useSession } from "@/store/session";
++import { NOTE_MAX, noteFor, setNote, sessionNoteFor, setSessionNote, useSession } from "@/store/session";
+ 
+ /**
+  * Notes to yourself: one per exercise or machine — "speed 10.5, incline 1",
+@@ -73,18 +73,20 @@ export function NoteField({
+   id,
+   kind = "lift",
+   autoFocus,
++  sessionOnly = false,
+   hint,
+   onDone,
+ }: {
+   id: string;
+   kind?: Kind;
+   autoFocus?: boolean;
++  sessionOnly?: boolean;
+   hint: string;
+   onDone?: () => void;
+ }) {
+   const { state, setState } = useSession();
+   // Kept here as typed: the store trims what it shows, not what you type.
+-  const [draft, setDraft] = useState(() => noteFor(state, id, kind));
++  const [draft, setDraft] = useState(() => sessionOnly ? sessionNoteFor(state, id, kind) : noteFor(state, id, kind));
+ 
+   return (
+     <View style={{ gap: 10 }}>
+@@ -93,7 +95,7 @@ export function NoteField({
+         onChangeText={(text) => {
+           const line = text.replace(/\s*\n\s*/g, " ");
+           setDraft(line);
+-          setState((s) => setNote(s, id, line, kind));
++          setState((s) => sessionOnly ? setSessionNote(s, id, line, kind) : setNote(s, id, line, kind));
+         }}
+         autoFocus={autoFocus}
+         multiline
+@@ -141,7 +143,7 @@ export function NoteSheet({
+   onClose: () => void;
+ }) {
+   const { state, setState } = useSession();
+-  const has = !!noteFor(state, id, kind);
++  const has = !!sessionNoteFor(state, id, kind);
+ 
+   return (
+     <Sheet visible={visible} title={name} closeLabel="Done" onClose={onClose}>
+@@ -152,14 +154,15 @@ export function NoteSheet({
+             id={id}
+             kind={kind}
+             autoFocus
+-            hint="Shows under the name every time, until you change it."
++            sessionOnly
++            hint="For this session only. Edit the exercise in Plan to save a usual note."
+             onDone={onClose}
+           />
+           {has ? (
+             <TextButton
+               label="Delete note"
+               onPress={() => {
+-                setState((s) => setNote(s, id, "", kind));
++                setState((s) => setSessionNote(s, id, "", kind));
+                 onClose();
+               }}
+             />
+diff --git a/src/components/tab-bar.tsx b/src/components/tab-bar.tsx
+index ce12bd3..e5a9ab6 100644
+--- a/src/components/tab-bar.tsx
++++ b/src/components/tab-bar.tsx
+@@ -7,8 +7,8 @@ type Tab = { href: string; label: string; icon: IconName };
+ 
+ const TABS: Tab[] = [
+   { href: "/", label: "Today", icon: "today" },
+-  { href: "/history", label: "Progress", icon: "progress" },
+   { href: "/plan", label: "Plan", icon: "plan" },
++  { href: "/profile", label: "Profile", icon: "profile" },
+ ];
+ 
+ /** Default bar contents: the three tabs, whenever a screen has nothing else. */
+@@ -24,11 +24,11 @@ export function TabButtons() {
+           icon={tab.icon}
+           label={tab.label}
+           // The workout's own screens — its Done among them — belong to Today;
+-          // Settings, opened from Plan, to Plan.
++          // Progress and Settings belong to Profile.
+           active={
+             pathname === tab.href ||
+             (tab.href === "/" && pathname === "/workout") ||
+-            (tab.href === "/plan" && pathname === "/settings")
++            (tab.href === "/profile" && ["/settings", "/history"].includes(pathname))
+           }
+           onPress={() => router.replace(tab.href as never)}
+         />
+diff --git a/src/components/weight-field.tsx b/src/components/weight-field.tsx
+index b7ebbad..cd2e109 100644
+--- a/src/components/weight-field.tsx
++++ b/src/components/weight-field.tsx
+@@ -74,12 +74,12 @@ export function WeightField({ exerciseId }: { exerciseId: string }) {
+           }}
+         />
+         <Text style={{ color: colors.muted, fontSize: 17 }}>
+-          {holds ? "s" : exercise.perHand ? "kg ×2" : "kg"}
++          {holds ? "s" : exercise.perHand ? "kg / hand" : "kg"}
+         </Text>
+       </View>
+       <Text style={{ color: valid ? colors.muted : colors.bend, fontSize: 13, lineHeight: 19 }}>
+         {valid
+-          ? `${hint} Changes save automatically.`
++          ? `${hint} Shared by every workout using this exercise. Changes save automatically.`
+           : holds
+             ? "Enter a number of seconds, 0 or more. The previous one is kept until then."
+             : `Enter a weight in kg${assisted ? "" : ", 0 or more"}. The previous one is kept until then.`}
+diff --git a/src/store/session.ts b/src/store/session.ts
+index 674830b..fb9dca3 100644
+--- a/src/store/session.ts
++++ b/src/store/session.ts
+@@ -303,6 +303,8 @@ export type SessionState = {
+    * workouts you made, which used to be deleted outright.)
+    */
+   removedWorkouts: { workout: Workout; at: number }[];
++  /** Display order in Plan, including paused workouts. */
++  planOrder?: string[];
+   /**
+    * Your chosen exercise per slot, keyed by `workoutId/entryId`. Absent means
+    * the slot's first option. Set from the Plan screen or by swapping
+@@ -417,6 +419,8 @@ export type SessionState = {
+     startedAt: number;
+     /** When a lift set was last logged; persists so rest includes time away. */
+     lastSetAt?: number;
++    /** Notes edited during this session only. */
++    notes?: Record<string, string>;
+   } | null;
+ };
+ 
+@@ -512,6 +516,12 @@ export const noteFor = (
+   kind: "lift" | "cardio" = "lift",
+ ): string => state.notes[noteKey(id, kind)]?.trim() ?? "";
+ 
++export const sessionNoteFor = (state: SessionState, id: string, kind: "lift" | "cardio" = "lift"): string =>
++  (state.active?.notes?.[noteKey(id, kind)] ?? noteFor(state, id, kind)).trim();
++
++export const setSessionNote = (state: SessionState, id: string, text: string, kind: "lift" | "cardio" = "lift"): SessionState =>
++  state.active ? { ...state, active: { ...state.active, notes: { ...state.active.notes, [noteKey(id, kind)]: text.slice(0, NOTE_MAX) } } } : state;
++
+ /**
+  * Write a note, as typed — it saves as you go, so spaces are kept until you
+  * are done. Cleared to nothing, it is gone.
+@@ -1116,6 +1126,23 @@ export const renameWorkout = (
+   patch: { name?: string; subtitle?: string },
+ ): SessionState => patchWorkout(state, id, (w) => ({ ...w, ...patch }));
+ 
++/** All workouts in their Plan positions, including paused ones. Older saves are reconstructed. */
++export const planWorkouts = (state: SessionState): Workout[] => {
++  const rows = [...state.workouts];
++  for (const r of [...state.removedWorkouts].reverse()) rows.splice(Math.min(r.at, rows.length), 0, r.workout);
++  const order = state.planOrder ?? rows.map((w) => w.id);
++  return [...rows].sort((a, b) => {
++    const rank = (id: string) => order.includes(id) ? order.indexOf(id) : order.length + rows.findIndex((w) => w.id === id);
++    return rank(a.id) - rank(b.id);
++  });
++};
++
++export const movePlanWorkout = (state: SessionState, from: number, to: number): SessionState => {
++  const rows = move(planWorkouts(state), from, to);
++  const running = new Set(state.workouts.map((w) => w.id));
++  return { ...state, planOrder: rows.map((w) => w.id), workouts: rows.filter((w) => running.has(w.id)) };
++};
++
+ /** Whether a workout can be paused. The last one stays: the loop needs something in it. */
+ export const canPauseWorkout = (state: SessionState): boolean => state.workouts.length > 1;
+ 
+@@ -1135,6 +1162,7 @@ export const pauseWorkout = (state: SessionState, id: string): SessionState => {
+   if (at === -1) return state;
+   return {
+     ...state,
++    planOrder: planWorkouts(state).map((w) => w.id),
+     workouts: state.workouts.filter((w) => w.id !== id),
+     nextWorkout: state.nextWorkout === id ? following(state, id) : state.nextWorkout,
+     workoutQueue: state.workoutQueue?.filter((queued) => queued !== id),
+@@ -1170,10 +1198,13 @@ export const resumeWorkout = (state: SessionState, id: string): SessionState =>
+   const entry = state.removedWorkouts.find((r) => r.workout.id === id);
+   if (!entry || workoutById(state, id)) return state;
+   const workouts = [...state.workouts];
+-  workouts.splice(Math.min(entry.at, workouts.length), 0, entry.workout);
++  const order = planWorkouts(state);
++  const position = order.filter((w) => state.workouts.some((active) => active.id === w.id) || w.id === id).findIndex((w) => w.id === id);
++  workouts.splice(position, 0, entry.workout);
+   return {
+     ...state,
+     workouts,
++    planOrder: order.map((w) => w.id),
+     removedWorkouts: state.removedWorkouts.filter((r) => r.workout.id !== id),
+   };
+ };
+@@ -2778,6 +2809,13 @@ export const itemLength = (item: Item): CardioLength =>
+  * to make it stick. The score goes back to unentered, since a time over 1 km
+  * says nothing about 2; each length keeps its own records.
+  */
++export const setTodayLength = (state: SessionState, value: number): SessionState => {
++  if (!Number.isFinite(value) || value <= 0) return state;
++  return patchItem(state, (it) => isCardio(it)
++    ? { ...it, ...lengthFields(it.course !== undefined ? { course: value } : { minutes: value }) }
++    : it);
++};
++
+ export const nudgeTodayLength = (state: SessionState, direction: 1 | -1): SessionState =>
+   patchItem(state, (it) => {
+     const machine = isCardio(it) ? cardioById(it.exerciseId) : undefined;
+diff --git a/tests/notes.cjs b/tests/notes.cjs
+index 791320a..4c3db94 100644
+--- a/tests/notes.cjs
++++ b/tests/notes.cjs
+@@ -68,3 +68,18 @@ test("a note survives the workout it was written in", () => {
+   state = store.finishWorkout(state);
+   assert.equal(store.noteFor(state, "db_bench"), "Bench on the third notch");
+ });
++
++
++test("today's note overrides the usual note without changing Plan and survives a restart", () => {
++  let s = store.setNote(store.resetToDefault(), "db_bench", "Usual bench");
++  s = store.buildWorkout(s);
++  s = store.setSessionNote(s, "db_bench", "Different bench today");
++  assert.equal(store.noteFor(s, "db_bench"), "Usual bench");
++  assert.equal(store.sessionNoteFor(s, "db_bench"), "Different bench today");
++  s = storage.fromSaved(storage.toSaved(s));
++  assert.equal(store.sessionNoteFor(s, "db_bench"), "Different bench today");
++  s = store.setSessionNote(s, "db_bench", "");
++  assert.equal(store.sessionNoteFor(s, "db_bench"), "");
++  s = store.finishWorkout(s);
++  assert.equal(store.sessionNoteFor(s, "db_bench"), "Usual bench");
++});
+diff --git a/tests/pause-and-copy.cjs b/tests/pause-and-copy.cjs
+index 56d28f6..99d43b8 100644
+--- a/tests/pause-and-copy.cjs
++++ b/tests/pause-and-copy.cjs
+@@ -94,3 +94,27 @@ test("a paused workout can be copied into the loop", () => {
+   assert.equal(store.workoutById(copied, "w_copy").name, "Legs 2");
+   assert.deepEqual([...paused(copied)], ["legs"]);
+ });
++
++
++test("Plan preserves positions across multiple pauses, reordering and resuming", () => {
++  let s = store.resetToDefault();
++  const original = [...ids(s)];
++  s = store.pauseWorkout(s, original[0]);
++  s = store.pauseWorkout(s, original[1]);
++  assert.deepEqual([...store.planWorkouts(s).map((w) => w.id)], original);
++  s = store.movePlanWorkout(s, 2, 0);
++  const expected = [original[2], original[0], original[1]];
++  assert.deepEqual([...store.planWorkouts(s).map((w) => w.id)], expected);
++  s = store.resumeWorkout(s, original[1]);
++  s = store.resumeWorkout(s, original[0]);
++  assert.deepEqual([...ids(s)], expected);
++});
++
++test("a save from before Plan ordering reconstructs paused workouts in place", () => {
++  let s = store.resetToDefault();
++  const original = [...ids(s)];
++  s = store.pauseWorkout(s, original[0]);
++  s = store.pauseWorkout(s, original[1]);
++  delete s.planOrder;
++  assert.deepEqual([...store.planWorkouts(s).map((w) => w.id)], original);
++});
+diff --git a/tests/workout-conditioning.cjs b/tests/workout-conditioning.cjs
+index 6a78d5c..5ed2c31 100644
+--- a/tests/workout-conditioning.cjs
++++ b/tests/workout-conditioning.cjs
+@@ -352,3 +352,29 @@ test("the finishing block is told apart from the warm-up, and each says how hard
+   // A machine's own tip is about how to use it, never how hard.
+   assert.doesNotMatch(conditioning.cardioById("treadmill").cue, /tank|fast|hard/i);
+ });
++
++
++test("custom cardio targets accept exact values, clear scores and leave Plan untouched", () => {
++  let s = store.buildWorkout(fresh());
++  const before = JSON.stringify(s.workouts);
++  s = store.setScore(s, 347);
++  s = store.setTodayLength(s, 1.37);
++  assert.equal(s.active.items[s.active.cursor].course, 1.37);
++  assert.equal(store.scoreOf(s.active.items[s.active.cursor]), null);
++  assert.equal(JSON.stringify(s.workouts), before);
++  assert.equal(store.setTodayLength(s, 0), s);
++  assert.equal(store.setTodayLength(s, NaN), s);
++  s = store.swapConditioning(s, "row");
++  s = store.setTodayLength(s, 7.5);
++  assert.equal(s.active.items[s.active.cursor].minutes, 7.5);
++  assert.equal(JSON.stringify(s.workouts), before);
++});
++
++test("Plan display order survives save and reload alongside paused workouts", () => {
++  let s = fresh();
++  const order = s.workouts.map((w) => w.id);
++  s = store.pauseWorkout(s, order[0]);
++  s = store.movePlanWorkout(s, 0, 2);
++  const back = storage.fromSaved(storage.toSaved(s));
++  assert.deepEqual(plain(store.planWorkouts(back).map((w) => w.id)), [order[1], order[2], order[0]]);
++});

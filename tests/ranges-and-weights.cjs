@@ -110,7 +110,7 @@ test("changing a weight mid-session moves only exercises not yet started", () =>
   assert.ok(records.length > 0 && records.every((r) => r.weight === 20));
 });
 
-test("Today continues a workout you stepped out of, and End commits it", () => {
+test("Today resumes the existing workout without replacing or committing it", () => {
   let state = store.buildWorkout(store.resetToDefault());
   const at = state.active.items.findIndex((item) => !store.isConditioning(item));
   state.active.cursor = at;
@@ -137,7 +137,8 @@ test("Today continues a workout you stepped out of, and End commits it", () => {
     if (name === "@/store/session") return { ...store, useSession: () => ({ state, setState: (fn) => { state = fn(state); } }) };
     if (name === "@/components/bottom-bar") return { useBarSpace: () => 80 };
     if (name === "@/components/screen") return { Column: "Column", COLUMN: 460 };
-    if (name === "@/components/sheet") return { Sheet: "Sheet", OpenRow: "OpenRow" };
+    if (name === "@/components/sheet") return { Sheet: "Sheet", BigButton: "BigButton" };
+    if (name === "@/components/backup") return { Backup: "Backup" };
     if (name === "@/components/icon") return { Icon: "Icon" };
     if (name === "@/components/text") return { Text: "Text" };
     if (name === "@/components/mark") return { Mark: "Mark" };
@@ -163,15 +164,12 @@ test("Today continues a workout you stepped out of, and End commits it", () => {
 
   assert.equal(button("Start"), undefined);
   assert.equal(button("Skip"), undefined);
-  button("Continue").props.onPress();
+  button("Continue workout").props.onPress();
   assert.equal(pushed, 1);
   assert.equal(state.active.cursor, at);
   assert.equal(state.active.items[at].logged[0], 6);
 
-  button("End").props.onPress();
-  find(render(), (node) => node.props?.title === "End workout").props.onPress();
-  assert.equal(state.active, null);
-  assert.equal(state.log.length, 1);
-  assert.notEqual(store.upNext(state).id, workoutId);
-  assert.ok(button("Start"));
+  assert.equal(state.active.workoutId, workoutId);
+  assert.equal(state.log.length, 0);
+  assert.equal(button("Start workout"), undefined);
 });

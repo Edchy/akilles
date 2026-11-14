@@ -19,10 +19,6 @@ import {
   useSafeAreaInsets,
 } from "react-native-safe-area-context";
 
-import { BarActionsProvider, useBarHidden, useBarSlot } from "@/components/bar-actions";
-import { BottomBar } from "@/components/bottom-bar";
-import { IntroProvider } from "@/components/intro";
-import { TabButtons } from "@/components/tab-bar";
 import { TestStrip } from "@/components/test-mode";
 import { colors } from "@/constants/theme";
 import { SessionContext } from "@/store/session";
@@ -30,11 +26,6 @@ import { TestModeContext, useTestMode, type TestModeValue } from "@/store/test-m
 import { useSaved } from "@/store/use-saved";
 
 function Shell() {
-  // A screen can replace the bar's buttons with its own; the bar itself is
-  // mounted once here, floating over the screens, and never animates — so
-  // screens slide underneath it.
-  const slot = useBarSlot();
-  const hidden = useBarHidden();
   // In test mode the strip takes the top of the screen, status bar and all,
   // so the screens below are told there is nothing left to keep clear up
   // there. Always wrapped, so turning it on never remounts the screens.
@@ -54,11 +45,9 @@ function Shell() {
               animation: "slide_from_right",
             }}
           >
-            {/* A swipe in a workout moves between its cards; from the edge of
-                the screen it must not also mean "go back". */}
+            {/* Leaving is explicit, so a system gesture cannot hide the session. */}
             <Stack.Screen name="workout" options={{ gestureEnabled: false }} />
           </Stack>
-          {hidden ? null : <BottomBar>{slot ?? <TabButtons />}</BottomBar>}
         </View>
       </SafeAreaInsetsContext.Provider>
     </View>
@@ -101,12 +90,7 @@ export default function RootLayout() {
       <TestModeContext.Provider value={testMode}>
         <SessionContext.Provider value={{ state, setState }}>
           <StatusBar style="dark" />
-          {/* The intro, when it is wanted, covers everything — the bar too. */}
-          <IntroProvider>
-            <BarActionsProvider>
-              <Shell />
-            </BarActionsProvider>
-          </IntroProvider>
+          <Shell />
         </SessionContext.Provider>
       </TestModeContext.Provider>
     </SafeAreaProvider>
