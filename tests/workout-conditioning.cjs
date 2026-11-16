@@ -64,7 +64,7 @@ test("out of the box, every workout ends on the everyday stretch", () => {
 });
 
 /** The day warm-ups' stances: free-exercise-db shows them only with a weight in hand. */
-const NO_PHOTO = ["wide_stance", "side_stance"];
+const NO_PHOTO = ["wide_stance", "side_stance", "downward_dog", "low_lunge", "pigeon", "cobra", "knee_circles", "hamstring_bounce", "front_kick_swing", "scapular_pushup", "thread_needle"];
 
 test("every stretch has a photo and a guide, and so does every hold in the everyday stretch", () => {
   const photos = fs.readFileSync(path.resolve(__dirname, "../src/data/photos.ts"), "utf8");
@@ -314,7 +314,7 @@ test("the button that moves on names what comes next, and nothing after the last
   let state = store.buildWorkout(fresh());
   const at = (cursor) => ({ ...state, active: { ...state.active, cursor } });
   const items = state.active.items;
-  assert.equal(store.nextItemName(at(0)), "Push warm-up");
+  assert.equal(store.nextItemName(at(0)), "Push mobility");
   assert.equal(store.nextItemName(at(1)), "DB bench press");
   assert.equal(store.nextItemName(at(items.length - 3)), "Ski-erg");
   assert.equal(store.nextItemName(at(items.length - 2)), "Everyday stretch");
@@ -381,4 +381,173 @@ test("Plan display order survives save and reload alongside paused workouts", ()
   s = store.movePlanWorkout(s, 0, 2);
   const back = storage.fromSaved(storage.toSaved(s));
   assert.deepEqual(plain(store.planWorkouts(back).map((w) => w.id)), [order[1], order[2], order[0]]);
+});
+
+test("shared targets apply across future workouts and survive saving without changing the active session", () => {
+  let s = store.buildWorkout(fresh());
+  s = store.setScore(s, 300);
+  const active = s.active;
+  s = store.setCardioTarget(s, "treadmill", { course: 1.5 });
+  assert.equal(s.active, active);
+  for (const w of s.workouts) assert.equal(store.cardioPlan(s, w, "open").course, 1.5);
+  s = storage.fromSaved(storage.toSaved(s));
+  assert.equal(s.active.items[0].course, 1);
+  assert.equal(store.scoreOf(s.active.items[0]), 300);
+  assert.deepEqual(plain(store.cardioTarget(s, "treadmill")), { course: 1.5 });
+  s = store.setCardioTarget(s, "treadmill", { minutes: 10 });
+  for (const w of s.workouts) {
+    assert.equal(store.cardioPlan(s, w, "open").minutes, 10);
+    assert.equal(store.cardioPlan(s, w, "open").course, undefined);
+  }
+});
+
+test("session target switches clear results and never change future settings", () => {
+  let s = store.setCardioTarget(fresh(), "treadmill", { course: 1.5 });
+  s = store.buildWorkout(s);
+  const saved = JSON.stringify({ workouts: s.workouts, targets: s.cardioTargets });
+  s = store.setScore(s, 420);
+  s = store.setTodayCardioTarget(s, { minutes: 10 });
+  assert.equal(s.active.items[0].minutes, 10);
+  assert.equal(store.scoreOf(s.active.items[0]), null);
+  s = store.setScore(s, 1.8);
+  s = store.setTodayCardioTarget(s, { course: 2 });
+  assert.equal(store.scoreOf(s.active.items[0]), null);
+  assert.equal(JSON.stringify({ workouts: s.workouts, targets: s.cardioTargets }), saved);
+  s = store.swapConditioning(s, "outdoor");
+  assert.equal(s.active.items[0].exerciseId, "outdoor");
+  assert.equal(JSON.stringify({ workouts: s.workouts, targets: s.cardioTargets }), saved);
+});
+
+test("distance and time targets keep independent records, even when both units used to be m", () => {
+  let s = fresh();
+  const complete = (exerciseId, length, result) => {
+    s = store.buildWorkout(store.setNextWorkout(s, "push"));
+    s = store.swapConditioning(s, exerciseId);
+    s = store.setTodayCardioTarget(s, length);
+    s = store.setScore(s, result);
+    s = store.finishWorkout(s);
+  };
+  complete("treadmill", { course: 1 }, 300);
+  complete("treadmill", { course: 1.5 }, 500);
+  complete("treadmill", { minutes: 10 }, 1.8);
+  complete("row", { course: 10 }, 20);
+  complete("row", { minutes: 10 }, 2000);
+  assert.equal(Object.keys(s.conditioning).length, 5);
+  assert.equal(s.conditioning[store.courseKey("treadmill", 1)].best, 300);
+  assert.equal(s.conditioning[store.courseKey("treadmill", 1.5)].best, 500);
+  assert.equal(s.conditioning[store.cardioKey("treadmill", 10)].best, 1.8);
+  assert.notEqual(store.cardioKey("row", 10), store.courseKey("row", 10));
+  complete("treadmill", { course: 1 }, 280);
+  assert.equal(s.conditioning[store.courseKey("treadmill", 1)].best, 280);
+  assert.equal(s.conditioning[store.courseKey("treadmill", 1.5)].best, 500);
+  assert.equal(store.cardioKey("treadmill", 0.1 + 0.2), store.cardioKey("treadmill", 0.3));
+});
+
+test("Done cannot copy an old result or log an invalid result", () => {
+  let s = store.buildWorkout(fresh());
+  s = store.setScore(s, 300);
+  s = store.finishWorkout(s);
+  s = store.buildWorkout(store.setNextWorkout(s, "push"));
+  assert.equal(store.scoreOf(s.active.items[0]), null);
+  assert.equal(store.completeCardio(s), s);
+  for (const value of [0, -1, NaN, Infinity]) {
+    s = store.setScore(s, value);
+    assert.equal(store.scoreOf(s.active.items[0]), null);
+  }
+  s = store.setScore(s, 310);
+  assert.ok(store.completeCardio(s).active.cursor > s.active.cursor);
+});
+
+test("saved exercise swaps update the plan while leaving the current session alone", () => {
+  let s = store.buildWorkout(fresh());
+  const active = s.active;
+  s = store.replacePlannedCardio(s, "push", "open", "outdoor");
+  assert.equal(s.active, active);
+  assert.equal(s.active.items[0].exerciseId, "treadmill");
+  for (const w of s.workouts) assert.equal(store.cardioPlan(s, w, "open").machine.id, "outdoor");
+  assert.equal(store.cardioPlan(s, workout(s, "push"), "close").machine.id, "ski_erg");
+});
+
+test("version 15 cardio records and session notes migrate without losing their values", () => {
+  const old = store.buildWorkout(fresh());
+  old.notes = { "cardio/treadmill": "Old note" };
+  old.active.notes = { "cardio/treadmill": "Incline 2", db_bench: "Only this bench" };
+  old.conditioning = {
+    "treadmill:1km": { cardioId: "treadmill", course: 1, last: 300, best: 280, sessions: 8 },
+    "row:10m": { cardioId: "row", minutes: 10, last: 2000, best: 2200, sessions: 3 },
+  };
+  const restored = storage.fromSaved(JSON.stringify({ version: 15, state: old }));
+  assert.equal(store.noteFor(restored, "treadmill", "cardio"), "Incline 2");
+  assert.equal(restored.active.notes.db_bench, "Only this bench");
+  assert.equal(restored.active.notes["cardio/treadmill"], undefined);
+  assert.equal(store.cardioRecord(restored, restored.active.items[0]).sessions, 8);
+  assert.equal(restored.conditioning[store.cardioKey("row", 10)].best, 2200);
+  assert.deepEqual(plain(storage.fromSaved(storage.toSaved(restored)).conditioning), plain(restored.conditioning));
+});
+
+test("the treadmill correction replaces saved time targets and the current card with 1 km", () => {
+  let old = store.setCardioTarget(fresh(), "treadmill", { minutes: 5 });
+  old = store.buildWorkout(old);
+  old = store.setScore(old, 0.8);
+  const records = { [store.cardioKey("treadmill", 5)]: { cardioId: "treadmill", minutes: 5, last: 0.9, best: 1, sessions: 4 } };
+  old = { ...old, conditioning: records, treadmillTargetRevision: undefined };
+  const corrected = store.correctTreadmillTarget(old);
+  assert.deepEqual(plain(corrected.cardioTargets.treadmill), { course: 1 });
+  assert.equal(corrected.active.items[0].course, 1);
+  assert.equal(corrected.active.items[0].minutes, undefined);
+  assert.equal(store.scoreOf(corrected.active.items[0]), null);
+  assert.equal(corrected.conditioning, records);
+  assert.equal(store.correctTreadmillTarget(corrected), corrected);
+  const restored = storage.fromSaved(JSON.stringify({ version: 16, state: old }));
+  assert.equal(restored.active.items[0].course, 1);
+  assert.equal(store.cardioPlan(restored, workout(restored, "push"), "open").course, 1);
+  assert.deepEqual(plain(restored.conditioning), plain(records));
+});
+
+test("legacy per-workout treadmill time settings are corrected, while distance targets and later choices survive", () => {
+  let old = store.setCardio(fresh(), "push", "open", { machine: "treadmill", minutes: 10 });
+  old = store.setCardio(old, "legs", "open", { machine: "treadmill", course: 1.5 });
+  const corrected = storage.fromSaved(JSON.stringify({ version: 16, state: old }));
+  assert.equal(store.cardioPlan(corrected, workout(corrected, "push"), "open").course, 1);
+  assert.equal(store.cardioPlan(corrected, workout(corrected, "legs"), "open").course, 1.5);
+  // The Library's target is the default; a workout's own length stays its own.
+  let later = store.setCardio(corrected, "pull", "open", { machine: "treadmill" });
+  later = storage.fromSaved(storage.toSaved(store.setCardioTarget(later, "treadmill", { minutes: 10 })));
+  assert.equal(store.cardioPlan(later, workout(later, "pull"), "open").minutes, 10);
+  assert.equal(store.cardioPlan(later, workout(later, "legs"), "open").course, 1.5);
+});
+
+test("an older pending session keeps its actual five-minute result before the target is corrected", () => {
+  let old = store.buildWorkout(store.setCardioTarget(fresh(), "treadmill", { minutes: 5 }));
+  old = store.setScore(old, 0.8);
+  old.active.startedAt = Date.now() - 2 * 864e5;
+  const restored = storage.fromSaved(JSON.stringify({ version: 16, state: old }));
+  assert.equal(restored.active, null);
+  assert.equal(restored.conditioning[store.cardioKey("treadmill", 5)].last, 0.8);
+  assert.equal(restored.conditioning[store.courseKey("treadmill", 1)], undefined);
+  assert.equal(store.cardioPlan(restored, workout(restored, "push"), "open").course, 1);
+});
+
+test("warm-up movements and sides can be skipped or completed independently and survive saving", () => {
+  let state = store.buildWorkout(store.setNextWorkout(fresh(), "legs"));
+  const index = state.active.items.findIndex((it) => it.slot === "Warm-up");
+  state = store.goToCard(state, index);
+  const routine = store.currentRoutine(state);
+  assert.ok(routine);
+  const poses = routine.moves.flatMap((move, i) => move.perSide ? [i, i] : [i]);
+  const side = poses.findIndex((pose, i) => poses[i + 1] === pose);
+  assert.ok(side >= 0);
+  state = store.resolveRoutineStep(state, side, "skipped");
+  state = store.resolveRoutineStep(state, side + 1, "done");
+  assert.equal(state.active.items[index].moves[poses[side]], false, "a skipped side is not a completed pose");
+  state = storage.fromSaved(storage.toSaved(state));
+  assert.equal(state.active.items[index].routineSteps[side], "skipped");
+  assert.equal(state.active.items[index].routineSteps[side + 1], "done");
+  state = store.resolveRoutineStep(state, side, "done");
+  assert.equal(state.active.items[index].moves[poses[side]], true, "returning to a skipped side can complete it");
+  assert.equal(state.active.items[index].moves.filter(Boolean).length, 1, "other movements stay untouched");
+  assert.equal(store.cardMark(state, index), "todo");
+  for (let i = 0; i < poses.length; i++) state = store.resolveRoutineStep(state, i, "done");
+  assert.equal(store.cardMark(state, index), "done");
+  assert.equal(store.resolveRoutineStep(state, -1, "done").active.items[index], state.active.items[index]);
 });

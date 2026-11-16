@@ -83,3 +83,26 @@ test("today's note overrides the usual note without changing Plan and survives a
   s = store.finishWorkout(s);
   assert.equal(store.sessionNoteFor(s, "db_bench"), "Usual bench");
 });
+
+test("cardio notes edited in a session are shared by every future use of the exercise", () => {
+  let s = store.buildWorkout(store.resetToDefault());
+  s = store.setSessionNote(s, "treadmill", "Incline 2", "cardio");
+  assert.equal(store.noteFor(s, "treadmill", "cardio"), "Incline 2");
+  assert.equal(store.sessionNoteFor(s, "treadmill", "cardio"), "Incline 2");
+  s = storage.fromSaved(storage.toSaved(s));
+  s = store.finishWorkout(s);
+  s = store.buildWorkout(store.setNextWorkout(s, "legs"));
+  assert.equal(store.sessionNoteFor(s, "treadmill", "cardio"), "Incline 2");
+  s = store.setSessionNote(s, "treadmill", "", "cardio");
+  assert.equal(store.noteFor(s, "treadmill", "cardio"), "");
+});
+
+test("a cardio note left in memory by an older app version is retained on finish", () => {
+  let s = store.buildWorkout(store.resetToDefault());
+  s.active.notes = { "cardio/treadmill": "Incline 3" };
+  assert.equal(store.sessionNoteFor(s, "treadmill", "cardio"), "Incline 3");
+  assert.equal(store.noteFor(store.finishWorkout(s), "treadmill", "cardio"), "Incline 3");
+  s = store.setNote(s, "treadmill", "", "cardio");
+  assert.equal(store.sessionNoteFor(s, "treadmill", "cardio"), "");
+  assert.equal(store.noteFor(store.finishWorkout(s), "treadmill", "cardio"), "");
+});

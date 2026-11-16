@@ -2,7 +2,7 @@ import type { Pattern } from "@/data/exercises";
 import { DEFAULT_SCHEME, DEFAULT_WORKOUTS, type Workout } from "@/data/split";
 
 /**
- * The plans Milo can start someone on, chosen by how long they have.
+ * The plans Humbell can start someone on, chosen by how long they have.
  *
  * Short visits have to cover the whole body every time; longer visits have
  * room to give each part a day of its own. The loop never cares how many

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { LinkButton } from "@/components/buttons";
 import { Linking, Pressable, Switch, View } from "react-native";
 import Svg, { Polygon } from "react-native-svg";
 
@@ -478,22 +479,7 @@ function Centred({ children }: { children: React.ReactNode }) {
 
 /** A quiet + link at the foot of a list. */
 function AddRow({ label, onPress }: { label: string; onPress: () => void }) {
-  return (
-    <Pressable
-      accessibilityRole="button"
-      onPress={onPress}
-      style={({ pressed }) => ({
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 8,
-        minHeight: 52,
-        opacity: pressed ? 0.6 : 1,
-      })}
-    >
-      <Icon name="plus" size={16} color={colors.rise} />
-      <Text style={{ color: colors.rise, fontSize: 16, fontWeight: "700" }}>{label}</Text>
-    </Pressable>
-  );
+  return <LinkButton kind="add" label={label} onPress={onPress} />;
 }
 
 /**
@@ -537,7 +523,7 @@ export function GoalSheet({
   } as const;
 
   return (
-    <Sheet visible title="Goal" closeLabel="Done" scrollEnabled={!dragging} onClose={close}>
+    <Sheet visible full title="Goal" closeLabel="Done" scrollEnabled={!dragging} onClose={close}>
       <View style={{ gap: 36, paddingTop: 12 }}>
         <View style={{ gap: 10 }}>
           <TextInput

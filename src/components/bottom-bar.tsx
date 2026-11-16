@@ -8,7 +8,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { Icon, type IconName } from "@/components/icon";
 import { COLUMN } from "@/components/screen";
-import { BAR, colors, FAMILY, fieldColors, fonts, radii } from "@/constants/theme";
+import { BAR, colors, FAMILY, fieldColors, fieldIsDark, fonts, radii } from "@/constants/theme";
 import type { Family } from "@/data/families";
 import { isComplete, itemFamily, useSession } from "@/store/session";
 
@@ -36,7 +36,7 @@ function useGround(): Family | null {
 type Ink = { ink: string; quiet: string; pressed: string };
 const WHITE_INK: Ink = { ink: colors.text, quiet: colors.muted, pressed: colors.surface };
 const inkFor = (ground: Family | null): Ink => {
-  if (!ground) return WHITE_INK;
+  if (!ground || !fieldIsDark(ground)) return WHITE_INK;
   const on = FAMILY[ground].dark ? colors.white : colors.text;
   return {
     ink: on,
@@ -78,7 +78,7 @@ export function BottomBar({ children }: PropsWithChildren) {
   const bottom = useBarBottom();
   const ground = useGround();
   const ink = inkFor(ground);
-  const dark = !!ground && FAMILY[ground].dark;
+  const dark = !!ground && fieldIsDark(ground);
 
   const capsule: ViewStyle = {
     width: "100%",
@@ -135,9 +135,9 @@ export function BottomBar({ children }: PropsWithChildren) {
   );
 }
 
-/** The bar's labels: plain Garamond, in sentence case like everything else. */
+/** The bar's labels: the interface face, in sentence case like everything else. */
 export const barLabel = {
-  fontFamily: fonts.regular,
+  fontFamily: fonts.ui,
   fontSize: BAR.label,
   lineHeight: BAR.label + 3,
 } as const;

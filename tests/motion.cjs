@@ -33,14 +33,21 @@ const DEPTHS = Array.from({ length: 41 }, (_, i) => i / 40);
 const close = (a, b, tolerance, what) =>
   assert.ok(Math.abs(a - b) <= tolerance, `${what}: ${a.toFixed(4)} is not within ${tolerance} of ${b.toFixed(4)}`);
 
-test("every exercise, cardio machine and stretch has a film", () => {
+test("every exercise has a film or a source-checked reference demonstration", () => {
   const { EXERCISES } = load("@/data/exercises");
   const { CARDIO, STRETCHES } = load("@/data/conditioning");
   // The day warm-ups' opening and leg moves came after the films: a stretch
   // card shows its photo, or its words alone.
-  const unfilmed = ["wide_stance", "side_stance", "leg_swing", "bodyweight_squat"];
+  // So did yoga's and kung fu's.
+  const unfilmed = ["wide_stance", "side_stance", "leg_swing", "bodyweight_squat", "downward_dog", "low_lunge", "pigeon", "cobra", "knee_circles", "hamstring_bounce", "front_kick_swing", "scapular_pushup", "thread_needle"];
   const ids = [...EXERCISES, ...CARDIO, ...STRETCHES].map((e) => e.id).filter((id) => !unfilmed.includes(id));
-  assert.deepEqual(ids.filter((id) => !(id in MOVES)), []);
+  const { guideFor } = load("@/data/guides");
+  for (const id of ids.filter((id) => !(id in MOVES))) {
+    const guide = guideFor(id);
+    assert.ok(guide?.reviewedOn, `${id}: no source check`);
+    assert.ok(guide?.demonstration, `${id}: no reference demonstration`);
+    assert.ok(guide.sources.some((source) => source.url === guide.demonstration.url), `${id}: demonstration must link to a cited source`);
+  }
 });
 
 test("a film waiting to be reshot has a photo to show instead", () => {

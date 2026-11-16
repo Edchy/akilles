@@ -1,4 +1,5 @@
 import { useState, type ReactNode } from "react";
+import { Chip } from "@/components/buttons";
 import { Pressable, View } from "react-native";
 import Svg, { Circle, Path, Rect } from "react-native-svg";
 
@@ -6,7 +7,7 @@ import { Icon } from "@/components/icon";
 import { BigButton, SectionLabel, Sheet } from "@/components/sheet";
 import { Text, TextInput } from "@/components/text";
 import { parseWeight } from "@/components/weight-field";
-import { colors, radii } from "@/constants/theme";
+import { colors } from "@/constants/theme";
 import type { Gear, Kit, Load } from "@/data/kit";
 import { DECORATIVE } from "@/lib/decorative";
 import { kitAt, placeOf, setPlace, useSession, type Place } from "@/store/session";
@@ -16,7 +17,7 @@ import { kitAt, placeOf, setPlace, useSession, type Place } from "@/store/sessio
  * it. Most days it just says "At the gym". Away for a week, you set it once:
  * somewhere else, and what is there — and it stays until you change it.
  *
- * Nothing else moves. The plan and the loop are the same; Milo fills each
+ * Nothing else moves. The plan and the loop are the same; Humbell fills each
  * slot with what the place has.
  */
 
@@ -320,41 +321,9 @@ export function Option({
   );
 }
 
-/** A weight to tick. */
-function Chip({ label, on, onPress }: { label: string; on: boolean; onPress: () => void }) {
-  return (
-    <Pressable
-      accessibilityRole="checkbox"
-      accessibilityState={{ checked: on }}
-      onPress={onPress}
-      style={({ pressed }) => ({
-        minHeight: 44,
-        minWidth: 64,
-        paddingHorizontal: 14,
-        alignItems: "center",
-        justifyContent: "center",
-        borderRadius: radii.button,
-        borderCurve: "continuous",
-        backgroundColor: on ? colors.cloud : colors.surface,
-        opacity: pressed ? 0.7 : 1,
-      })}
-    >
-      <Text
-        style={{
-          color: on ? colors.ink : colors.text,
-          fontSize: 16,
-          fontWeight: on ? "600" : "400",
-          fontVariant: ["tabular-nums"],
-        }}
-      >
-        {label}
-      </Text>
-    </Pressable>
-  );
-}
 
 /**
- * The gear, drawn the way Milo's marks draw it in the films: flat ink shapes
+ * The gear, drawn the way Humbell's marks draw it in the films: flat ink shapes
  * with rounded ends. A dumbbell's two heads, a kettlebell's bell and handle, a
  * bar between two brackets, a bench's pad on its legs — and for nothing, the
  * figure itself.

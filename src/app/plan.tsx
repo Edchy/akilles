@@ -1,6 +1,5 @@
-import { useState } from "react";
-import { ScrollView, View } from "react-native";
-import { Text } from "@/components/text";
+import { useEffect, useState } from "react";
+import { Platform, ScrollView } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useBarSpace } from "@/components/bottom-bar";
@@ -10,7 +9,7 @@ import { GOALS_ON } from "@/data/goals";
 import { Modules } from "@/components/modules";
 import { COLUMN } from "@/components/screen";
 import { Segments } from "@/components/segments";
-import { colors, fonts } from "@/constants/theme";
+import { colors } from "@/constants/theme";
 
 
 type Segment = "modules" | "exercises" | "goals";
@@ -29,6 +28,13 @@ export default function PlanScreen() {
   const [segment, setSegment] = useState<Segment>("modules");
   // Frozen while a row is being dragged, or the drag would scroll the page too.
   const [dragging, setDragging] = useState(false);
+  useEffect(() => {
+    if (Platform.OS !== "web") return;
+    const elements = [document.documentElement, document.body];
+    const previous = elements.map((element) => element.style.overscrollBehaviorX);
+    elements.forEach((element) => { element.style.overscrollBehaviorX = "none"; });
+    return () => elements.forEach((element, index) => { element.style.overscrollBehaviorX = previous[index]; });
+  }, []);
 
   return (
     <ScrollView
@@ -45,23 +51,10 @@ export default function PlanScreen() {
         gap: 22,
       }}
     >
-      <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
-        <Text
-          style={{
-            color: colors.text,
-            fontFamily: fonts.display,
-            fontSize: 48,
-          }}
-        >
-          Plan
-        </Text>
-
-      </View>
-
       <Segments
         options={[
           { value: "modules", label: "Workouts" },
-          { value: "exercises", label: "Exercises" },
+          { value: "exercises", label: "Library" },
           ...(GOALS_ON ? [{ value: "goals" as const, label: "Goals" }] : []),
         ]}
         value={segment}

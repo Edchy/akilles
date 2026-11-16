@@ -48,7 +48,7 @@ test("new sets restart rest; corrections, resets of logged sets and clearing do 
     advance();
     state = store.tapSet(state, 0);
     assert.equal(state.active.lastSetAt, first);
-    state = store.resetSet(state, 0);
+    state = store.skipSet(state, 0);
     assert.equal(state.active.lastSetAt, first);
     while (state.active.items[state.active.cursor].logged[0] !== null) {
       state = store.tapSet(state, 0);
@@ -63,11 +63,12 @@ test("new sets restart rest; corrections, resets of logged sets and clearing do 
   });
 });
 
-test("logging an empty circle with a long press also starts rest", () => {
+test("a set marked not done with a long press starts no rest", () => {
   withClock((advance) => {
-    const now = advance();
-    const state = store.resetSet(lifting(), 0);
-    assert.equal(state.active.lastSetAt, now);
+    advance();
+    const state = store.skipSet(lifting(), 0);
+    assert.equal(state.active.items[state.active.cursor].logged[0], 0);
+    assert.equal(state.active.lastSetAt, undefined);
   });
 });
 

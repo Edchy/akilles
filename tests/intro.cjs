@@ -5,7 +5,7 @@ const vm = require("node:vm");
 const { test } = require("node:test");
 const ts = require("typescript");
 
-// The intro: six pages on how Milo works, opened by itself only on a phone
+// The intro: six pages on how Humbell works, opened by itself only on a phone
 // that has trained nothing, and from Plan's ? after that.
 const modules = new Map();
 function load(name) {

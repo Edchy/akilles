@@ -1,10 +1,17 @@
-import type { PropsWithChildren } from "react";
+import type { PropsWithChildren, ReactNode } from "react";
 import { Modal, Pressable, ScrollView, View } from "react-native";
+import {
+  SafeAreaProvider,
+  initialWindowMetrics,
+  useSafeAreaInsets,
+} from "react-native-safe-area-context";
 import { Text } from "@/components/text";
 
 import { Plain } from "@/components/field";
 import { Column } from "@/components/screen";
 import { Icon } from "@/components/icon";
+import { Button, LinkButton } from "@/components/buttons";
+import { useReduceMotion } from "@/lib/use-reduce-motion";
 import { colors, radii } from "@/constants/theme";
 
 /**
@@ -16,48 +23,78 @@ import { colors, radii } from "@/constants/theme";
  */
 export function Sheet({
   visible,
+  embedded = false,
+  page,
+  onBack,
   title,
   onClose,
   closeLabel = "Cancel",
   scrollEnabled = true,
-  swipeToDismiss = false,
+  scrollKey,
+  swipeToDismiss = true,
+  full = false,
   children,
 }: PropsWithChildren<{
   visible: boolean;
+  /** A page inside an existing modal, with no modal of its own. */
+  embedded?: boolean;
+  /** A child page replaces the header and body while this modal stays mounted. */
+  page?: ReactNode;
+  onBack?: () => void;
   title: string;
   onClose: () => void;
   /** "Done" where edits apply as you make them; "Cancel" where you are picking. */
   closeLabel?: string;
   /** Frozen while a row inside is being dragged, or the drag scrolls the sheet. */
   scrollEnabled?: boolean;
+  /** Reset scrolling when the sheet changes between a list, guide and settings. */
+  scrollKey?: string;
   /** Let iOS dismiss this sheet with a downward swipe. */
   swipeToDismiss?: boolean;
+  /**
+   * Cover the whole screen. For a sheet with rows you drag: iOS's page sheet
+   * has a swipe-down of its own that takes a vertical drag over once the
+   * scroll is frozen, and the row is dropped. A full screen has none.
+   */
+  full?: boolean;
 }>) {
-  return (
-    <Modal
-      visible={visible}
-      animationType="slide"
-      presentationStyle="pageSheet"
-      allowSwipeDismissal={swipeToDismiss}
-      onRequestClose={onClose}
-    >
-      {/* White, whatever colour the screen behind it is. */}
-      <Plain>
-      <View style={{ flex: 1, backgroundColor: colors.bg }}>
+  const reduce = useReduceMotion();
+  const scroll = (
+        <ScrollView
+          key={scrollKey}
+          scrollEnabled={scrollEnabled}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="interactive"
+          // Keeps a field low in the sheet — a note under the weight — above the keyboard.
+          automaticallyAdjustKeyboardInsets
+          contentContainerStyle={{ paddingHorizontal: 22, paddingBottom: 40 }}
+        >
+          <Column>{children}</Column>
+        </ScrollView>
+  );
+  const content = page ?? (
+    <View style={{ flex: 1 }}>
         <Column
           style={{
-            flexDirection: "row",
-            alignItems: "center",
-            gap: 10,
+            flexDirection: onBack ? "column" : "row",
+            alignItems: onBack ? "stretch" : "center",
+            gap: onBack ? 8 : 10,
             paddingHorizontal: 22,
-            paddingTop: 18,
+            paddingTop: full ? 8 : 18,
             paddingBottom: 8,
           }}
         >
-          <Text style={{ flex: 1, color: colors.text, fontSize: 20, fontWeight: "700" }}>
+          {onBack ? (
+            <Pressable accessibilityRole="button" accessibilityLabel="Back" onPress={onBack}
+              style={({ pressed }) => ({ alignSelf: "flex-start", minWidth: 80, minHeight: 44, flexDirection: "row", gap: 6, alignItems: "center", opacity: pressed ? 0.5 : 1 })}>
+              <Icon name="back" size={16} color={colors.text} />
+              <Text ui style={{ color: colors.text, fontSize: 16, fontWeight: "700" }}>Back</Text>
+            </Pressable>
+          ) : null}
+          <Text style={{ flex: onBack ? undefined : 1, color: colors.text, fontSize: onBack ? 24 : 20, fontWeight: "700" }}>
             {title}
           </Text>
-          <Pressable
+          {onBack ? null : <Pressable
             accessibilityRole="button"
             onPress={onClose}
             hitSlop={8}
@@ -68,7 +105,7 @@ export function Sheet({
               opacity: pressed ? 0.5 : 1,
             })}
           >
-            <Text
+            <Text ui
               style={{
                 color: closeLabel === "Done" ? colors.text : colors.muted,
                 fontSize: 16,
@@ -77,31 +114,50 @@ export function Sheet({
             >
               {closeLabel}
             </Text>
-          </Pressable>
+          </Pressable>}
         </Column>
-        <ScrollView
-          scrollEnabled={scrollEnabled}
-          keyboardShouldPersistTaps="handled"
-          // Keeps a field low in the sheet — a note under the weight — above the keyboard.
-          automaticallyAdjustKeyboardInsets
-          contentContainerStyle={{ paddingHorizontal: 22, paddingBottom: 40 }}
-        >
-          <Column>{children}</Column>
-        </ScrollView>
-      </View>
+        {scroll}
+    </View>
+  );
+  if (embedded) return content;
+  return (
+    <Modal
+      visible={visible}
+      animationType={reduce ? "fade" : "slide"}
+      presentationStyle={full ? "fullScreen" : "pageSheet"}
+      allowSwipeDismissal={swipeToDismiss && !full}
+      onRequestClose={onBack ?? onClose}
+    >
+      <Plain>
+        <SafeAreaProvider initialMetrics={initialWindowMetrics}>
+          <Clear full={full}>{content}</Clear>
+        </SafeAreaProvider>
       </Plain>
     </Modal>
   );
+}
+
+/**
+ * The sheet's body, kept clear of the clock and the notch when it covers the
+ * whole screen. Inside a full-screen modal on a phone the measured top can
+ * come back as 0, so it never goes below the top the app measured when it
+ * started — the same phone, the same notch.
+ */
+function Clear({ full, children }: PropsWithChildren<{ full: boolean }>) {
+  const insets = useSafeAreaInsets();
+  const top = full ? Math.max(insets.top, initialWindowMetrics?.insets.top ?? 0) : 0;
+  return <View style={{ flex: 1, paddingTop: top, backgroundColor: colors.bg }}>{children}</View>;
 }
 
 /** A small heading over a group in a sheet. */
 export function SectionLabel({ children }: { children: string }) {
   return (
     <Text
+      ui
       style={{
-        color: colors.faint,
-        fontSize: 15,
-        fontStyle: "italic",
+        color: colors.muted,
+        fontSize: 14,
+        fontWeight: "600",
       }}
     >
       {children}
@@ -126,59 +182,19 @@ export function BigButton({
   label: string;
   /** The second tap of a removal. */
   danger?: boolean;
-  /** Present but not inviting: the first tap of a removal. */
+  /** The first tap of a removal. */
   quiet?: boolean;
   disabled?: boolean;
   onPress: () => void;
 }) {
   return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityState={{ disabled }}
-      disabled={disabled}
-      onPress={onPress}
-      style={({ pressed }) => ({
-        alignItems: "center",
-        justifyContent: "center",
-        minHeight: 56,
-        borderRadius: radii.button,
-        borderCurve: "continuous",
-        backgroundColor: danger ? colors.bend : quiet ? "transparent" : colors.raised,
-        borderWidth: quiet ? 1 : 0,
-        borderColor: colors.line,
-        opacity: disabled ? 0.3 : pressed ? 0.7 : 1,
-      })}
-    >
-      <Text
-        style={{
-          color: danger ? colors.ink : quiet ? colors.bend : colors.text,
-          fontSize: 16,
-          fontWeight: "800",
-        }}
-      >
-        {label}
-      </Text>
-    </Pressable>
+    <Button label={label} kind={danger ? "danger" : quiet ? "remove" : "primary"} disabled={disabled} onPress={onPress} />
   );
 }
 
 /** A quiet way out: "Cancel", "Keep it". Centred under the action it undoes. */
-export function TextButton({ label, onPress }: { label: string; onPress: () => void }) {
-  return (
-    <Pressable
-      accessibilityRole="button"
-      onPress={onPress}
-      style={({ pressed }) => ({
-        alignSelf: "center",
-        justifyContent: "center",
-        minHeight: 48,
-        paddingHorizontal: 20,
-        opacity: pressed ? 0.5 : 1,
-      })}
-    >
-      <Text style={{ color: colors.muted, fontSize: 15, fontWeight: "700" }}>{label}</Text>
-    </Pressable>
-  );
+export function TextButton({ label, onPress, disabled = false }: { label: string; onPress: () => void; disabled?: boolean }) {
+  return <LinkButton kind="quiet" label={label} disabled={disabled} onPress={onPress} />;
 }
 
 /**
@@ -230,7 +246,7 @@ export function OpenRow({
           {title}
         </Text>
         {detail ? (
-          <Text style={{ color: colors.faint, fontSize: large ? 14 : 13 }}>{detail}</Text>
+          <Text ui style={{ color: colors.faint, fontSize: large ? 14 : 13 }}>{detail}</Text>
         ) : null}
       </View>
       {tag ? (

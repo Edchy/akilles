@@ -139,6 +139,7 @@ test("Today continues a workout you stepped out of, and End commits it", () => {
     if (name === "@/components/screen") return { Column: "Column", COLUMN: 460 };
     if (name === "@/components/sheet") return { Sheet: "Sheet", OpenRow: "OpenRow" };
     if (name === "@/components/icon") return { Icon: "Icon" };
+    if (name === "@/components/buttons") return { Button: "Button", LinkButton: "LinkButton", Chip: "Chip" };
     if (name === "@/components/text") return { Text: "Text" };
     if (name === "@/components/mark") return { Mark: "Mark" };
     if (name === "@/components/place") return { PlaceLine: "PlaceLine" };

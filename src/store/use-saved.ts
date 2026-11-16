@@ -20,7 +20,7 @@ import {
 } from "react";
 import { AppState } from "react-native";
 
-import { initialState, resetToDefault, type SessionState } from "@/store/session";
+import { correctTreadmillTarget, initialState, resetToDefault, type SessionState } from "@/store/session";
 import {
   copyForTest,
   load,
@@ -61,6 +61,16 @@ export const useSaved = () => {
       setHeld((h) => ({ ...h, state: typeof next === "function" ? next(h.state) : next })),
     [],
   );
+
+  // Fast refresh preserves the old in-memory state, so disk migration alone
+  // would leave the current treadmill card showing its previous time target.
+  useEffect(() => {
+    if (!ready) return;
+    setHeld((current) => {
+      const state = correctTreadmillTarget(current.state);
+      return state === current.state ? current : { ...current, state };
+    });
+  }, [ready]);
 
   // Hold the latest in a ref so the unmount write below sees it without
   // making the cleanup re-run on every change.

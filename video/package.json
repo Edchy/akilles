@@ -1,0 +1,21 @@
+{
+  "name": "humbell-video",
+  "private": true,
+  "description": "Humbell's onboarding video, made in code with Remotion.",
+  "scripts": {
+    "studio": "remotion studio src/index.ts",
+    "render": "remotion render src/index.ts Onboarding out/humbell-onboarding.mp4",
+    "voice": "node scripts/voice.mjs",
+    "voice:scratch": "node scripts/voice.mjs --scratch"
+  },
+  "dependencies": {
+    "@remotion/cli": "^4.0.543",
+    "@remotion/google-fonts": "^4.0.543",
+    "@types/react": "^19.2.7",
+    "react": "^19.2.3",
+    "react-dom": "^19.2.3",
+    "remotion": "^4.0.543",
+    "typescript": "^5.9.3"
+  },
+  "type": "module"
+}

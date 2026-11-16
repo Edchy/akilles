@@ -1,6 +1,8 @@
 import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { Animated, PanResponder, View, type LayoutChangeEvent } from "react-native";
 
+import { haptic } from "@/lib/haptics";
+
 /** What each row gets to wire its own press-and-hold to. */
 export type Drag = {
   /** Call from a long press: the row lifts and follows the finger from here. */
@@ -57,6 +59,12 @@ export function DragList<T>({
     return v;
   };
 
+  // How far the held row has come off the page: it grows a little, the way
+  // something picked up does, and settles back when let go.
+  const lift = useRef(new Animated.Value(0)).current;
+  const raise = (to: 0 | 1) =>
+    Animated.spring(lift, { toValue: to, useNativeDriver: false, speed: 28, bounciness: to ? 6 : 0 }).start();
+
   // The live drag. A ref, because the responder callbacks are created once.
   const drag = useRef<{ from: number; to: number; granted: boolean } | null>(null);
   const [activeKey, setActiveKey] = useState<string | null>(null);
@@ -79,6 +87,8 @@ export function DragList<T>({
     drag.current = { from: index, to: index, granted: false };
     setActiveKey(keyOf(data[index]));
     onDragChange?.(true);
+    haptic.lift();
+    raise(1);
   };
 
   const end = () => {
@@ -86,6 +96,8 @@ export function DragList<T>({
     if (!d) return;
     drag.current = null;
     setActiveKey(null);
+    raise(0);
+    if (d.granted) haptic.drop();
     latest.current.onDragChange?.(false);
     if (d.to !== d.from) {
       latest.current.onMove(d.from, d.to);
@@ -118,6 +130,7 @@ export function DragList<T>({
 
     if (to === d.to) return;
     d.to = to;
+    haptic.tick();
     // Everything between the old place and the new one steps aside by the
     // dragged row's height.
     const step = me.height + gap;
@@ -161,7 +174,10 @@ export function DragList<T>({
               layouts.current.set(k, { y, height });
             }}
             style={{
-              transform: [{ translateY: offset(k) }],
+              transform: [
+                { translateY: offset(k) },
+                { scale: active ? lift.interpolate({ inputRange: [0, 1], outputRange: [1, 1.03] }) : 1 },
+              ],
               zIndex: active ? 1 : 0,
               opacity: activeKey && !active ? 0.85 : 1,
             }}

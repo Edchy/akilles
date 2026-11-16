@@ -133,11 +133,12 @@ test("tapping a plank's circle counts down five seconds at a time", () => {
   const at = state.active.cursor;
   state = { ...state, active: { ...state.active, items: state.active.items.map((it, i) => (i === at ? { ...it, logged: it.logged.map(() => null) } : it)) } };
   const taps = [];
-  for (let i = 0; i < 10; i++) {
+  for (let i = 0; i < 11; i++) {
     state = store.tapSet(state, 0);
     taps.push(state.active.items[at].logged[0]);
   }
-  assert.deepEqual(taps, [40, 35, 30, 25, 20, 15, 10, 5, null, 40]);
+  // Past five seconds, 0: a hold not done; then empty again.
+  assert.deepEqual(taps, [40, 35, 30, 25, 20, 15, 10, 5, 0, null, 40]);
 });
 
 test("a hold can be set by hand, but only in whole seconds up to five", () => {

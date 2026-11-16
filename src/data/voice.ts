@@ -1,7 +1,7 @@
 import { inSentence } from "@/data/exercises";
 
 /**
- * Milo talks back.
+ * Humbell talks back.
  *
  * The voice is cheeky and blunt about the lifting — never about the person.
  * It teases momentum, swinging, bouncing and ego; it never teases a small
@@ -76,7 +76,7 @@ export const OUTCOME_LINES: Record<Say, string[]> = {
 /**
  * The Today screen, under the workout. Which list depends on where you are:
  * `{days}` and `{name}` are filled in where a line uses them. An ordinary day
- * has no list: Today says something only when there is news (`newsLine`).
+ * has no list: exercise changes are shown alongside their weights.
  */
 export const TODAY_LINES = {
   /** Nothing trained yet, ever — so the one thing worth saying is how to pick. */
@@ -95,14 +95,6 @@ export const TODAY_LINES = {
     "Your gym membership sends its regards.",
     "The weights waited. Start light and own them again.",
   ],
-  /** Already trained today — usually just finished. This one is for later. */
-  again: [
-    "Done for today. Go home.",
-    "That's today sorted. Unless you're greedy.",
-    "Trained already. Go eat something.",
-    "Enough. Recovery is where it grows.",
-    "Done. The muscle grows at home, not here.",
-  ],
   /** Just skipped a workout — teased, never scolded. */
   skipped: [
     "Skipped {name}. Bold.",
@@ -120,7 +112,7 @@ export const fillLine = (line: string, vars: { days?: number; name?: string }): 
   line.replace("{days}", String(vars.days ?? "")).replace("{name}", vars.name ?? "");
 
 /**
- * What changed since you last did a workout's lifts, in Milo's words. One
+ * What changed since you last did a workout's lifts, in Humbell's words. One
  * kind of news gets a voiced line; two or three are said plainly, one after
  * the other. `{name}` is the lift at the start of a sentence, `{lname}` the
  * same mid-sentence, `{count}` a number word.
@@ -196,32 +188,35 @@ export const newsLine = (news: News, seed: string): string | null => {
 
 /** The finished screen: how the whole session went. */
 export const FINISHED_LINES = {
+  // Turned the way "own the weight" turns it: falling short with good form
+  // is the ego left at the door, so it gets the pride; a perfect sheet gets a
+  // raised eyebrow — warm, but are you sure they were all slow?
   /** Every lift on target. */
   perfect: [
-    "Every rep owned. Nobody needed to see the number.",
-    "All of it, all controlled. Go home.",
-    "Clean sweep. The ego's furious. The muscles aren't.",
-    "Flawless and slow. The best kind.",
-    "Calf today. Bull someday.",
-    "Nothing swung, nothing missed. Go eat.",
+    "All on target. Slow on the way down, too? Then it goes up next time.",
+    "Perfect, on paper. Your form knows the truth.",
+    "Clean sweep. If any of them swung, take one back.",
+    "Every rep counted. Every one controlled? Good.",
+    "Flawless. Suspiciously flawless. Were they slow?",
+    "Nothing missed. Next time, make it look this easy at a crawl.",
   ],
   /** Some hits, some misses. */
   mixed: [
-    "Mostly good. Mostly.",
-    "Some owned, some honest. Both count.",
-    "Clean where it mattered. Come back.",
-    "Every rep you counted was a real one. Good.",
-    "Good enough to come back. Honest enough to grow.",
-    "A draw. Rematch next time.",
+    "Some short, all honest. That's the job.",
+    "You counted the real ones. Most people don't.",
+    "An honest six beats a sloppy eight. You just proved it.",
+    "Fewer reps, all yours.",
+    "Where it got hard, you stayed slow. That's the skill.",
+    "Some owned, some not yet. Not yet is how it grows.",
   ],
   /** More misses than hits, or something dropped 10%. */
   rough: [
-    "Rough one. You still showed up.",
-    "Hard day, honest count. That's how this works.",
-    "You stopped when the form did. That's a win.",
-    "The weights won today. Your form didn't lose.",
-    "Lighter next time. That's the plan working.",
-    "Humbling. Come back anyway.",
+    "You stopped when the form did. That's the whole skill.",
+    "The ego wanted more. You didn't give it any. Good.",
+    "The weight won a few. Your form won the day.",
+    "Lighter next time, and every rep yours. That's the plan working.",
+    "Humble day. That's the name on the app.",
+    "Hard and honest. Nothing better to bring home.",
   ],
   /** Left with lifts skipped or unfinished. */
   partial: [
@@ -237,9 +232,9 @@ export const FINISHED_LINES = {
 
 export type FinishedMood = keyof typeof FINISHED_LINES;
 
-/** Skip pressed on a warm-up: Milo refuses, once. */
+/** Skip pressed on a warm-up: Humbell refuses, once. */
 export const WARMUP_SKIP_LINES = [
-  "Even Milo started with a calf. Warm up first.",
+  "Even the strongest started with a warm-up. Your turn.",
   "Cold muscles, hot take.",
   "Skip the warm-up? Your tendons have filed a complaint.",
   "The bar can wait a minute. Can your shoulders?",

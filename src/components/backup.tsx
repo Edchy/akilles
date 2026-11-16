@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Button } from "@/components/buttons";
 import { Pressable, View } from "react-native";
 import { Text } from "@/components/text";
 
@@ -39,7 +40,7 @@ export function Backup() {
     run(async () => {
       const read = await pickBackup();
       if (read === null) return;
-      if (read === "invalid") return setNote("That file isn't a Milo backup.");
+      if (read === "invalid") return setNote("That file isn't a Humbell backup.");
       if (read === "newer") {
         return setNote("That backup is from a newer version of the app. Update first.");
       }
@@ -147,32 +148,6 @@ function Action({
   disabled?: boolean;
   onPress: () => void;
 }) {
-  const fill = tone === "primary" ? colors.rise : tone === "danger" ? colors.bend : colors.raised;
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityState={{ disabled }}
-      disabled={disabled}
-      onPress={onPress}
-      style={({ pressed }) => ({
-        flex: 1,
-        alignItems: "center",
-        justifyContent: "center",
-        minHeight: 48,
-        borderRadius: 999,
-        backgroundColor: fill,
-        opacity: disabled ? 0.4 : pressed ? 0.7 : 1,
-      })}
-    >
-      <Text
-        style={{
-          color: tone === "plain" ? colors.text : colors.ink,
-          fontSize: 14,
-          fontWeight: "800",
-        }}
-      >
-        {label}
-      </Text>
-    </Pressable>
-  );
+  const kind = tone === "primary" ? "primary" : tone === "danger" ? "danger" : "secondary";
+  return <Button label={label} kind={kind} disabled={disabled} flex={1} onPress={onPress} />;
 }

@@ -2,6 +2,7 @@ import * as Haptics from "expo-haptics";
 import { activateKeepAwakeAsync, deactivateKeepAwake } from "expo-keep-awake";
 import { router } from "expo-router";
 import { StatusBar } from "expo-status-bar";
+import { SetCircle } from "@/components/set-circle";
 import {
   Children,
   createContext,
@@ -29,16 +30,24 @@ import {
 } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Reanimated, {
+  cancelAnimation,
+  scrollTo,
+  useAnimatedReaction,
+  useAnimatedRef,
   useAnimatedStyle,
   useSharedValue,
+  withDecay,
   withSpring,
   type SharedValue,
 } from "react-native-reanimated";
 import { Text, TextInput } from "@/components/text";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { scheduleOnRN } from "react-native-worklets";
-import Svg, { Circle } from "react-native-svg";
+import Svg, { Circle, Defs, LinearGradient, Rect, Stop } from "react-native-svg";
 
+import { CardioKeyboardArea } from "@/components/cardio-keyboard";
+import { CardioResult } from "@/components/cardio-result";
+import { CardioChoices } from "@/components/cardio-target";
 import { Column, COLUMN } from "@/components/screen";
 import { useHideBar } from "@/components/bar-actions";
 import { useBarSpace } from "@/components/bottom-bar";
@@ -50,10 +59,10 @@ import { GuideButton, GuideSheet } from "@/components/guide";
 import { CardActiveContext, useCardActive, CardContext, useOnCard } from "@/components/card-context";
 import { Illustration } from "@/components/illustration";
 import { GoalSheet, Pips, hasTutorial, openTutorial } from "@/components/goals";
-import { BigButton, Sheet } from "@/components/sheet";
+import { BigButton, Sheet, TextButton } from "@/components/sheet";
 import { PHOTOS } from "@/data/photos";
-import { colors, FAMILY, fieldColors, fonts, radii } from "@/constants/theme";
-import { byId, inSentence } from "@/data/exercises";
+import { colors, colors as paper, FAMILY, fieldColors, fieldIsDark, fonts, PAPER, radii } from "@/constants/theme";
+import { byId, inSentence, type Exercise } from "@/data/exercises";
 import { ownCue } from "@/data/guides";
 import type { Family } from "@/data/families";
 import {
@@ -64,23 +73,16 @@ import {
   type FinishedMood,
 } from "@/data/voice";
 import {
-  AWAY_CARDIO,
-  courseLabel,
-  distanceLabel,
-  parseTime,
   pictureOf,
   timeLabel,
-  type CardioEnd,
-  type CardioExercise,
   type MobilityMove,
   type MobilityRoutine,
 } from "@/data/conditioning";
 import { nextStepLine, ruleLine, type Goal, type GoalStep } from "@/data/goals";
-import { decayLabel } from "@/lib/progression";
 import { useReduceMotion } from "@/lib/use-reduce-motion";
-import { weightLabel } from "@/lib/warmup";
+import { weightLabel, type WarmupSet } from "@/lib/warmup";
+import type { Feel } from "@/lib/start-weight";
 import {
-  addSuperset,
   allSetsLogged,
   cardioRecord,
   completeCardio,
@@ -100,35 +102,33 @@ import {
   goalStepOf,
   goalVerdict,
   isCardio,
-  isBetter,
   isComplete,
   isConditioning,
   isGoal,
   isLift,
   itemFamily,
   isMobility,
-  isTimed,
-  lastScore,
   logGoalSet,
   nextAfterSession,
   nextTime,
+  asksFeel,
+  setFeel,
   sessionNoteFor as noteFor,
   sessionTally,
   nudgeWeight,
   partnerPrescription,
   removeSuperset,
-  resetGoalSet,
-  resetSet,
+  skipGoalSet,
+  skipSet,
   scoreOf,
   setGot,
   setScore,
-  supersetOptions,
   swapConditioning,
   swapForSession,
   tapGoalSet,
   tapSet,
   nextItemName,
-  completeMove,
+  resolveRoutineStep,
   atCard,
   cardMark,
   cardName,
@@ -139,8 +139,6 @@ import {
   type Item,
   type SessionState,
   cardioEnd,
-  itemLength,
-  setTodayLength,
 } from "@/store/session";
 
 
@@ -166,6 +164,17 @@ const LAYOUT = {
  * a little smaller so both fit above the bar on a phone; and the partner,
  * smaller again so the main lift stays primary.
  */
+/**
+ * The workout card's list: each row's height plus the gap under it. As many
+ * rows as there are close up from the most to the least to fit; the least is
+ * still a full thumb's width (44 points and over).
+ */
+const ROW = { most: 60, least: 52, gap: 4 } as const;
+/** Room under the last row, so it never sits on the fade or the button. */
+const LIST_FOOT = 12;
+/** The way out under the list: a 16-point gap, the 60-point button, 30 under it. */
+const LEAVE_AREA = 106;
+
 const CIRCLES = {
   solo: { full: 92, gap: 22, font: 50 },
   main: { full: 80, gap: 16, font: 44 },
@@ -179,7 +188,7 @@ const CIRCLES = {
  * deck's width; let go past `away` of the way, or flicked faster than
  * `flick` points a second, and it goes — sooner, and it comes back.
  */
-const DECK = { side: 14, peek: 13, shrink: 0.045, corner: 30, travel: 0.8, away: 0.28, flick: 600 };
+const DECK = { side: 14, peek: 13, shrink: 0.045, corner: 14, travel: 0.8, away: 0.28, flick: 600 };
 /** How the deck comes to rest on a card: quick, and without a wobble. */
 const SETTLE = { damping: 26, stiffness: 260, mass: 1 };
 
@@ -209,6 +218,15 @@ function Deck() {
   const { state, setState } = useSession();
   const insets = useSafeAreaInsets();
   const still = useReduceMotion();
+  const [keyboardOpen, setKeyboardOpen] = useState(false);
+  useEffect(() => {
+    const subscriptions = [
+      Keyboard.addListener("keyboardWillShow", () => setKeyboardOpen(true)),
+      Keyboard.addListener("keyboardDidShow", () => setKeyboardOpen(true)),
+      Keyboard.addListener("keyboardDidHide", () => setKeyboardOpen(false)),
+    ];
+    return () => subscriptions.forEach((subscription) => subscription.remove());
+  }, []);
   const active = state.active!;
   const cards = active.items.length + 1;
   const top = Math.min(active.cursor, cards - 1);
@@ -263,20 +281,59 @@ function Deck() {
     setOpenState(on);
     opened.value = still ? (on ? 1 : 0) : withSpring(on ? 1 : 0, SETTLE);
   };
+  // The list of every card, when it is too long to fit even with its rows
+  // drawn tighter, scrolls — by this same pull, the way an iOS sheet does it:
+  // a swipe moves the list until the list reaches its end, and the rest of
+  // the same swipe closes the card. The header, the grab bar and the strip
+  // close it from anywhere, since there is no list under them.
+  const listRef = useAnimatedRef<Reanimated.ScrollView>();
+  const scrollY = useSharedValue(0);
+  const scrollMax = useSharedValue(0);
+  const scrollFrom = useSharedValue(0);
+  /** The pull began on the list itself, not its header or the strip. */
+  const onList = useSharedValue(false);
+  const listTop = useSharedValue(0);
+  useAnimatedReaction(
+    () => scrollY.value,
+    (y) => scrollTo(listRef, 0, y, false),
+  );
+  useEffect(() => {
+    listTop.value = insets.top + 4 + shut;
+  }, [insets.top, shut, listTop]);
   const pull = Gesture.Pan()
+    .enabled(!keyboardOpen)
     .activeOffsetY([-14, 14])
     .failOffsetX([-12, 12])
+    .onBegin((e) => {
+      onList.value = opened.value > 0.99 && e.absoluteY > listTop.value && e.absoluteY < listTop.value + shift - LEAVE_AREA;
+    })
     .onStart(() => {
       openedFrom.value = opened.value;
+      cancelAnimation(scrollY);
+      scrollFrom.value = scrollY.value;
     })
     .onChange((e) => {
       if (shift <= 0) return;
-      const want = openedFrom.value + e.translationY / shift;
+      let by = e.translationY;
+      if (onList.value && scrollMax.value > 0) {
+        // The list takes the swipe first; what is left over moves the card.
+        const want = scrollFrom.value - by;
+        const y = Math.min(Math.max(want, 0), scrollMax.value);
+        scrollY.value = y;
+        by = y - want;
+      }
+      const want = openedFrom.value + by / shift;
       // Past either end it gives a little, stiffly.
       opened.value = want < 0 ? want * 0.15 : want > 1 ? 1 + (want - 1) * 0.15 : want;
     })
     .onEnd((e) => {
       if (shift <= 0) return;
+      // Still fully open, and the list was moving: let the list carry on.
+      if (onList.value && scrollMax.value > 0 && opened.value > 0.98) {
+        opened.value = still ? 1 : withSpring(1, SETTLE);
+        if (!still) scrollY.value = withDecay({ velocity: -e.velocityY, clamp: [0, scrollMax.value] });
+        return;
+      }
       const speed = e.velocityY / shift;
       // Where it would come to rest, carried on by a flick.
       const to = opened.value + speed * 0.2 > 0.5 ? 1 : 0;
@@ -287,7 +344,7 @@ function Deck() {
   const { width } = room;
   const pan = Gesture.Pan()
     // Sideways turns the deck, while it is the big card; up and down swap the cards.
-    .enabled(!open)
+    .enabled(!open && !keyboardOpen)
     .activeOffsetX([-12, 12])
     .failOffsetY([-14, 14])
     .onStart(() => {
@@ -319,7 +376,8 @@ function Deck() {
   const lowered = useAnimatedStyle(() => ({ transform: [{ translateY: opened.value * shift }] }));
 
   return (
-    <View style={{ flex: 1, overflow: "hidden", backgroundColor: colors.bg, paddingTop: insets.top + 4 }}>
+    // On paper the deck lies on a slightly darker ground, so paper cards stand off it.
+    <View style={{ flex: 1, overflow: "hidden", backgroundColor: PAPER ? colors.surface : colors.bg, paddingTop: insets.top + 4 }}>
       <StatusBar style="dark" />
       <GestureDetector gesture={Gesture.Race(pan, pull)}>
         <View
@@ -363,6 +421,7 @@ function Deck() {
             shut={shut}
             onShut={setShut}
             room={shift}
+            list={{ ref: listRef, y: scrollY, max: scrollMax, top: listTop }}
             onToggle={() => setOpen(!open)}
             onPick={(index) => {
               setState((s) => goToCard(s, index));
@@ -460,11 +519,13 @@ function DeckCard({
           overflow: "hidden",
           borderRadius: DECK.corner,
           borderCurve: "continuous",
-          backgroundColor: colors.surface,
+          backgroundColor: PAPER ? colors.bg : colors.surface,
           pointerEvents: onTop ? "auto" : "none",
-          // A line of the ground between one card and the next, so the deck reads as cards.
-          borderWidth: 1.5,
-          borderColor: colors.bg,
+          // Each card's edge, so the deck reads as cards and the feet of the
+          // ones underneath show: an ink line on paper, or a line of the
+          // ground between coloured cards.
+          borderWidth: PAPER ? 2 : 1.5,
+          borderColor: PAPER ? colors.text : colors.bg,
         },
         style,
       ]}
@@ -534,57 +595,97 @@ const MARK_WORD: Record<CardMark, string> = { todo: "", done: "Done" };
 
 /**
  * Every card of the workout as a mark along the full width of the workout
- * card, threaded on a thin line like stops on a route: filled in its colour
- * when done, an outline while to do, and the one you are on larger. Spread
- * evenly, however many there are.
+ * card, threaded on a line like stops on a route: filled in its colour when
+ * done, an outline while to do. The one you are on is unmistakable: larger,
+ * inside a navy ring, and the line is drawn in navy up to it — the way you
+ * have come. Spread evenly, however many there are.
  */
+const TRACK = { mark: 18, here: 24, ring: 36 } as const;
+
 function DeckTrack() {
   const { state } = useSession();
   const active = state.active;
   if (!active) return null;
   const n = active.items.length;
-  // Big enough to read at arm's length; smaller only for a long workout.
-  const size = n <= 10 ? 18 : n <= 14 ? 15 : 12;
-  const big = size + 6;
+  if (!n) return null;
+  const start = Math.max(0, Math.min(active.cursor - 5, n - 10));
+  const visible = active.items.slice(start, start + 10);
+  const count = visible.length;
+  const here = active.cursor - start;
+  const { mark, ring } = TRACK;
   return (
     <View
       accessibilityElementsHidden
       importantForAccessibility="no-hide-descendants"
-      style={{ height: big, marginTop: 6, marginHorizontal: -4 }}
+      style={{ height: ring, marginTop: 4, marginHorizontal: -4 }}
     >
       {/* The thread, from the first mark's centre to the last's. */}
       <View
         style={{
           position: "absolute",
-          top: big / 2 - 1,
-          left: `${50 / n}%`,
-          right: `${50 / n}%`,
-          height: 2,
-          borderRadius: 1,
+          top: ring / 2 - 1.5,
+          left: `${50 / count}%`,
+          right: `${50 / count}%`,
+          height: 3,
+          borderRadius: 1.5,
           backgroundColor: colors.line,
         }}
       />
+      {/* The way you have come: navy from the first mark to this one. */}
+      {here > 0 ? (
+        <View
+          style={{
+            position: "absolute",
+            top: ring / 2 - 1.5,
+            left: `${50 / count}%`,
+            width: `${(100 * here) / count}%`,
+            height: 3,
+            borderRadius: 1.5,
+            backgroundColor: colors.text,
+          }}
+        />
+      ) : null}
       <View style={{ flexDirection: "row" }}>
-        {active.items.map((it, i) => {
+        {visible.map((it, offset) => {
+          const i = start + offset;
           const done = cardMark(state, i) === "done";
           const current = i === active.cursor;
           const color = FAMILY[itemFamily(it)].mark;
-          const d = current ? big : size;
+          const d = current ? TRACK.here : mark;
+          const dot = (
+            <View
+              style={{
+                width: d,
+                height: d,
+                borderRadius: d / 2,
+                borderWidth: 2.5,
+                borderColor: color,
+                // Not done, it still hides the thread behind it.
+                backgroundColor: done ? color : colors.panel,
+              }}
+            />
+          );
           return (
-            <View key={i} style={{ flex: 1, alignItems: "center" }}>
-              <View style={{ height: big, justifyContent: "center" }}>
+            <View key={i} style={{ flex: 1, alignItems: "center", height: ring, justifyContent: "center" }}>
+              {current ? (
+                // You are here: a navy ring around the mark, a gap between.
                 <View
                   style={{
-                    width: d,
-                    height: d,
-                    borderRadius: d / 2,
-                    borderWidth: 2.5,
-                    borderColor: color,
-                    // Not done, it still hides the thread behind it.
-                    backgroundColor: done ? color : colors.surface,
+                    width: ring,
+                    height: ring,
+                    borderRadius: ring / 2,
+                    borderWidth: 3,
+                    borderColor: colors.text,
+                    backgroundColor: colors.panel,
+                    alignItems: "center",
+                    justifyContent: "center",
                   }}
-                />
-              </View>
+                >
+                  {dot}
+                </View>
+              ) : (
+                dot
+              )}
             </View>
           );
         })}
@@ -612,6 +713,7 @@ function WorkoutCard({
   shut,
   onShut,
   room,
+  list,
   onToggle,
   onPick,
   onLeave,
@@ -624,6 +726,13 @@ function WorkoutCard({
   onShut: (height: number) => void;
   /** How much it grows by. */
   room: number;
+  /** The list, scrolled by the deck's pull (see `Deck`): where it is, how far it goes, where it starts on screen. */
+  list: {
+    ref: ReturnType<typeof useAnimatedRef<Reanimated.ScrollView>>;
+    y: SharedValue<number>;
+    max: SharedValue<number>;
+    top: SharedValue<number>;
+  };
   onToggle: () => void;
   onPick: (index: number) => void;
   onLeave: () => void;
@@ -637,11 +746,27 @@ function WorkoutCard({
   );
   const turnChevron = useAnimatedStyle(() => ({ transform: [{ rotateZ: `${180 * Math.min(1, Math.max(0, opened.value))}deg` }] }));
   const showList = useAnimatedStyle(() => ({ opacity: Math.min(1, Math.max(0, (opened.value - 0.25) / 0.5)) }));
+  // The room the list has, measured. Rows close up to fit it — the words
+  // stay their size, only the space between goes — and only past the
+  // tightest still easy to hit does the list scroll.
+  // Worked out, not measured: the card's height animates, and measuring the
+  // list as it grew would redraw it on every frame of the opening.
+  const view = Math.max(0, room - LEAVE_AREA - 3);
+  const [content, setContent] = useState(0);
+  // Every card, and the end of the workout as the last row.
+  const count = (active?.items.length ?? 0) + 1;
+  const pitch = count > 0 && view > 0 ? Math.min(ROW.most, Math.max(ROW.least, Math.floor((view - LIST_FOOT) / count))) : ROW.most;
+  const row = pitch - ROW.gap;
+  useEffect(() => {
+    list.max.value = Math.max(0, content - view);
+    if (list.y.value > list.max.value) list.y.value = list.max.value;
+  }, [content, view, list]);
+  // A soft fade at the foot while there is more below.
+  const more = useAnimatedStyle(() => ({
+    opacity: list.max.value <= 0 ? 0 : Math.min(1, Math.max(0, (list.max.value - list.y.value) / 24)),
+  }));
   if (!active) return null;
   const done = active.items.filter((_, i) => cardMark(state, i) === "done").length;
-  // Every card on one screen, no scrolling: rows as tall as fit, up to a comfortable 52.
-  const leave = 104;
-  const row = Math.max(36, Math.min(52, Math.floor((room - leave - 12) / Math.max(1, active.items.length))));
 
   return (
     <Reanimated.View
@@ -654,9 +779,10 @@ function WorkoutCard({
           overflow: "hidden",
           borderRadius: DECK.corner,
           borderCurve: "continuous",
-          backgroundColor: colors.surface,
-          borderWidth: 1,
-          borderColor: colors.line,
+          // Off the white, plainly: its own card, not part of the page.
+          backgroundColor: colors.panel,
+          borderWidth: 1.5,
+          borderColor: colors.panelEdge,
         },
         grown,
       ]}
@@ -689,43 +815,110 @@ function WorkoutCard({
         importantForAccessibility={open ? "auto" : "no-hide-descendants"}
         style={[{ flex: 1, paddingHorizontal: 10, pointerEvents: open ? "auto" : "none" }, showList]}
       >
+        <View style={{ flex: 1 }}>
+        <Reanimated.ScrollView
+          ref={list.ref}
+          style={{ flex: 1 }}
+          contentContainerStyle={{ paddingBottom: LIST_FOOT }}
+          // Moved by the deck's pull, never on its own: one swipe, one owner.
+          scrollEnabled={false}
+          onContentSizeChange={(_, height) => setContent(height)}
+          showsVerticalScrollIndicator
+        >
         {active.items.map((it, i) => {
           const mark = cardMark(state, i);
+          const color = FAMILY[itemFamily(it)].mark;
+          const done = mark === "done";
+          const current = i === active.cursor;
+          // Read at a glance: done is a band in its colour with a tick, the
+          // one you are on is white with a navy outline and says so, the
+          // rest are plain.
           return (
             <Pressable
               key={i}
               accessibilityRole="button"
-              accessibilityLabel={`${cardName(state, i)}. ${MARK_WORD[mark] || "Not done"}`}
+              accessibilityLabel={`${cardName(state, i)}. ${current ? "You are here. " : ""}${done ? "Done" : "Not done"}`}
               onPress={() => onPick(i)}
               style={({ pressed }) => ({
                 flexDirection: "row",
                 alignItems: "center",
                 gap: 14,
                 height: row,
-                paddingHorizontal: 10,
+                marginBottom: ROW.gap,
+                paddingHorizontal: 12,
                 borderRadius: radii.button,
-                backgroundColor: pressed ? colors.line : i === active.cursor ? colors.bg : "transparent",
+                borderWidth: 2,
+                borderColor: current ? colors.text : "transparent",
+                backgroundColor: pressed ? colors.line : current ? colors.bg : done ? `${color}2E` : "transparent",
               })}
             >
-              <CardDot mark={mark} color={FAMILY[itemFamily(it)].mark} size={18} />
-              <Text numberOfLines={1} style={{ flex: 1, color: colors.text, fontFamily: fonts.regular, fontSize: 19 }}>
+              <CardDot mark={mark} color={color} size={18} />
+              <Text
+                numberOfLines={1}
+                style={{ flex: 1, color: colors.text, fontFamily: current ? fonts.semibold : fonts.regular, fontSize: 19 }}
+              >
                 {cardName(state, i)}
               </Text>
-              <Text style={{ color: colors.muted, fontFamily: fonts.italic, fontSize: 17 }}>{MARK_WORD[mark]}</Text>
+              {current ? (
+                <Text style={{ color: colors.text, fontFamily: fonts.uiSemibold, fontSize: 15 }}>Now</Text>
+              ) : done ? (
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+                  <Icon name="check" size={18} color={colors.text} />
+                  <Text style={{ color: colors.text, fontFamily: fonts.ui, fontSize: 15 }}>Done</Text>
+                </View>
+              ) : null}
             </Pressable>
           );
         })}
-        <View style={{ flex: 1 }} />
-        <View style={{ paddingHorizontal: 8, paddingBottom: 30 }}>
+        {/* The end card: where you finish, reachable from here like any other. */}
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={`Finish. ${active.cursor >= active.items.length ? "You are here." : ""}`}
+          onPress={() => onPick(active.items.length)}
+          style={({ pressed }) => ({
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 14,
+            height: row,
+            marginBottom: ROW.gap,
+            paddingHorizontal: 12,
+            borderRadius: radii.button,
+            borderWidth: 2,
+            borderColor: active.cursor >= active.items.length ? colors.text : "transparent",
+            backgroundColor: pressed ? colors.line : active.cursor >= active.items.length ? colors.bg : "transparent",
+          })}
+        >
+          <View style={{ width: 18, alignItems: "center" }}>
+            <Icon name="check" size={18} color={colors.text} />
+          </View>
+          <Text numberOfLines={1} style={{ flex: 1, color: colors.text, fontFamily: fonts.italic, fontSize: 19 }}>
+            Finish
+          </Text>
+        </Pressable>
+        </Reanimated.ScrollView>
+        <Reanimated.View pointerEvents="none" style={[{ position: "absolute", left: 0, right: 0, bottom: 0, height: 36 }, more]}>
+          <Svg width="100%" height="100%">
+            <Defs>
+              <LinearGradient id="listFoot" x1="0" y1="0" x2="0" y2="1">
+                <Stop offset="0" stopColor={colors.panel} stopOpacity={0} />
+                <Stop offset="1" stopColor={colors.panel} stopOpacity={1} />
+              </LinearGradient>
+            </Defs>
+            <Rect width="100%" height="100%" fill="url(#listFoot)" />
+          </Svg>
+        </Reanimated.View>
+        </View>
+        {/* Always clear of the list: a fixed gap above the way out. */}
+        <View style={{ paddingHorizontal: 8, paddingTop: 16, paddingBottom: 30, height: LEAVE_AREA }}>
           <Pressable
             accessibilityRole="button"
-            accessibilityHint="Your workout is kept: carry on with it from Today."
+            accessibilityHint="Your workout is kept: carry on with it from Next up."
             onPress={onLeave}
             style={({ pressed }) => ({
               minHeight: 60,
               alignItems: "center",
               justifyContent: "center",
-              borderRadius: 999,
+              borderRadius: radii.button,
               backgroundColor: colors.text,
               opacity: pressed ? 0.8 : 1,
             })}
@@ -762,9 +955,10 @@ function WorkoutCard({
 function StepBody() {
   const { state, setState } = useSession();
   const barSpace = useBarSpace();
-  const [picking, setPicking] = useState(false);
   const [swapping, setSwapping] = useState(false);
   const [guiding, setGuiding] = useState(false);
+  // How to warm up, opened from the line under the name.
+  const [warming, setWarming] = useState(false);
   // The ⋯ menu, open under the button it came from.
   const [menu, setMenu] = useState<Anchor | null>(null);
   const root = useRef<View>(null);
@@ -848,13 +1042,14 @@ function StepBody() {
   const partner = item.supersetWith ? byId(item.supersetWith) : undefined;
   // The partner keeps its own scheme, set count and set log when folded in.
   const partnerP = partnerPrescription(state);
-  const options = supersetOptions(state);
   const L = partner ? LAYOUT.paired : LAYOUT.solo;
 
   const warmup = currentWarmup(state);
-  // Swapping after the first set is logged would throw that work away.
+  // Always offered — the library is in reach, so there is something to swap
+  // to. After sets are logged the sheet says first that they won't be kept.
   const pool = currentPool(state);
-  const canSwap = pool.length > 1 && !item.logged.some((r) => r !== null);
+  const canSwap = pool.length > 1;
+  const setsIn = item.logged.filter((r) => r !== null).length;
 
   // Your note on this lift: shown under the name until you change it.
   const myNote = noteFor(state, p.exercise.id);
@@ -867,15 +1062,10 @@ function StepBody() {
     />
   );
 
-  // The ramp up to the working weight: said on the card, under the name,
-  // rather than standing in front of the lift as a screen of its own.
-  const ramp =
-    warmup.length > 0
-      ? // "7.5 kg × 10, 12.5 × 6": the unit said once, each dumbbell's own weight.
-        `Warm up first: ${warmup.map((w, i) => `${w.weight}${i === 0 ? " kg" : ""} × ${w.reps}`).join(", ")}`
-      : "";
-  // Gone once the first working set is in: it has done its job.
-  const rampLine = item.logged.some((r) => r !== null) ? "" : ramp;
+  // The ramp up to the working weight: a reminder under the name, its
+  // numbers a tap away (see `WarmupSheet`), so the card stays clear. Gone
+  // once the first working set is in: it has done its job.
+  const rampLine = warmup.length > 0 && !item.logged.some((r) => r !== null) ? "Warm up first" : "";
 
   // Moving on is always your call — a swipe — so filling the last circle
   // changes nothing but the line at the foot of the card, and a rep or a
@@ -886,6 +1076,8 @@ function StepBody() {
   // a line with some attitude, and the plain fact under it. It updates as
   // you correct a circle.
   const verdict = nextTime(state);
+  // A lift Humbell is still learning: once every set is in, it asks how it felt.
+  const asking = !partner && asksFeel(state);
   const result = verdict
     ? {
         ...verdict,
@@ -912,18 +1104,15 @@ function StepBody() {
   const tools: Tool[] = [
     { icon: "info", label: "How to do it", onPress: () => setGuiding(true) },
     canSwap ? { icon: "swap", label: "Swap for today", onPress: () => setSwapping(true) } : null,
-    {
+    !myNote ? {
       icon: "note",
-      label: myNote ? "Change your note" : "Add a note",
+      label: "Add a note",
       onPress: () => setNoting(p.exercise.id),
-    },
-    !partner && options.length > 0
-      ? { icon: "plus", label: "Add superset", onPress: () => setPicking(true) }
-      : null,
+    } : null,
   ].filter((t): t is Tool => t !== null);
 
   // Before it is measured, a fair guess at what sits under the name.
-  const under = underName ?? (note ? 28 : 0) + (myNote ? 39 : 0) + (rampLine ? 48 : 0);
+  const under = underName ?? (note ? 28 : 0) + (myNote ? 39 : 0) + (rampLine ? 26 : 0);
 
   return (
     <OnField family={family} sendOff={sendOff}>
@@ -970,19 +1159,19 @@ function StepBody() {
           {note || myNote || rampLine ? (
             <View onLayout={(e) => setUnderName(e.nativeEvent.layout.height)}>
               {rampLine ? (
-                <Text
-                  numberOfLines={2}
-                  style={{
-                    marginTop: 4,
-                    textAlign: "center",
-                    color: colors.text,
-                    fontFamily: fonts.regular,
-                    fontSize: 17,
-                    lineHeight: 22,
-                  }}
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Warm up first. How?"
+                  hitSlop={10}
+                  onPress={() => setWarming(true)}
+                  style={({ pressed }) => ({ marginTop: 4, alignSelf: "center", opacity: pressed ? 0.6 : 1 })}
                 >
-                  {rampLine}
-                </Text>
+                  <Text style={{ textAlign: "center", color: colors.text, fontFamily: fonts.ui, fontSize: 16, lineHeight: 22 }}>
+                    {rampLine}
+                    {" · "}
+                    <Text style={{ textDecorationLine: "underline" }}>How?</Text>
+                  </Text>
+                </Pressable>
               ) : null}
               {note ? (
                 <Text
@@ -1054,14 +1243,18 @@ function StepBody() {
             cheer={motion?.id ?? null}
             burst={motion?.big ? family : null}
             onTap={(i) => setState((s) => tapSet(s, i))}
-            onReset={(i) => setState((s) => resetSet(s, i))}
+            onReset={(i) => setState((s) => skipSet(s, i))}
           />
         </View>
 
-        <View style={{ height: L.under, marginTop: L.underGap }}>
+        {/* At least this tall, so a line arriving moves nothing — but never
+            capped: a two-line remark and the next-time line under it must
+            both show in full, never clipped. */}
+        <View style={{ minHeight: L.under, marginTop: L.underGap }}>
           <Why
             prescription={p}
             result={logged ? result : null}
+            feel={asking ? { said: item.feel, onSay: (f) => setState((s) => setFeel(s, f)) } : null}
             started={item.logged.some((r) => r !== null)}
             compact={!!partner}
             glow={motion?.big ? motion.id : null}
@@ -1081,7 +1274,7 @@ function StepBody() {
             onNote={() => setNoting(partner.id)}
             logged={item.supersetLogged}
             onTap={(i) => setState((s) => tapSet(s, i, "partner"))}
-            onReset={(i) => setState((s) => resetSet(s, i, "partner"))}
+            onReset={(i) => setState((s) => skipSet(s, i, "partner"))}
             onRemove={() => setState((s) => removeSuperset(s))}
           />
         ) : null}
@@ -1110,6 +1303,12 @@ function StepBody() {
         onClose={() => setGuiding(false)}
       />
       <Sheet visible={swapping} title="Swap for today" onClose={() => setSwapping(false)}>
+        {setsIn > 0 ? (
+          // On the sheet's white, so the app's own navy, not this field's.
+          <Text style={{ color: paper.text, fontSize: 17, lineHeight: 24, paddingBottom: 14 }}>
+            {`You've done ${setsIn} ${setsIn === 1 ? "set" : "sets"} of ${p.exercise.name}. The new one starts from set 1, and ${setsIn === 1 ? "that set won't" : "those sets won't"} be saved.`}
+          </Text>
+        ) : null}
         <SwapList
           options={pool}
           taken={currentTaken(state)}
@@ -1120,18 +1319,58 @@ function StepBody() {
           }}
         />
       </Sheet>
-      <Sheet visible={picking} title="Superset with" onClose={() => setPicking(false)}>
-        <SupersetPicker
-          options={options}
-          onPick={(id) => {
-            setPicking(false);
-            setState((s) => addSuperset(s, id));
-          }}
-        />
-      </Sheet>
       {noteSheet}
+      <WarmupSheet
+        visible={warming}
+        exercise={p.exercise}
+        sets={warmup}
+        onClose={() => setWarming(false)}
+      />
     </View>
     </OnField>
+  );
+}
+
+/**
+ * How to warm up for this lift, in plain words: a couple of lighter rounds
+ * before the first real one, with this lift's own numbers. They are never
+ * logged and change nothing.
+ */
+function WarmupSheet({
+  visible,
+  exercise,
+  sets,
+  onClose,
+}: {
+  visible: boolean;
+  exercise: Exercise;
+  sets: WarmupSet[];
+  onClose: () => void;
+}) {
+  const what = (weight: number) => (exercise.perHand ? `${weight} kg in each hand` : `${weight} kg`);
+  return (
+    <Sheet visible={visible} title="Warm up first" closeLabel="Done" onClose={onClose} swipeToDismiss>
+      <View style={{ gap: 22, paddingTop: 8 }}>
+        <Text style={{ color: colors.text, fontFamily: fonts.regular, fontSize: 19, lineHeight: 27 }}>
+          Before your first real round, do {sets.length === 2 ? "two" : sets.length === 3 ? "three" : "a few"} lighter
+          ones. They wake up the muscles and let you feel the movement. They don&apos;t count, so don&apos;t tap a circle.
+        </Text>
+        <View style={{ gap: 12 }}>
+          {sets.map((w, i) => (
+            <View
+              key={i}
+              style={{ flexDirection: "row", alignItems: "baseline", gap: 14, paddingVertical: 12, paddingHorizontal: 16, borderRadius: 16, backgroundColor: colors.surface }}
+            >
+              <Text style={{ color: colors.text, fontFamily: fonts.semibold, fontSize: 21 }}>{what(w.weight)}</Text>
+              <Text style={{ flex: 1, color: colors.text, fontFamily: fonts.regular, fontSize: 19 }}>{w.reps} times</Text>
+            </View>
+          ))}
+        </View>
+        <Text style={{ color: colors.muted, fontFamily: fonts.italic, fontSize: 18, lineHeight: 25 }}>
+          Rest a moment between them. Then start your real rounds.
+        </Text>
+      </View>
+    </Sheet>
   );
 }
 
@@ -1155,7 +1394,7 @@ function OnField({
   const onCard = useOnCard();
   return (
     <Field family={family}>
-      {onCard ? null : <StatusBar style={FAMILY[family].dark ? "light" : "dark"} />}
+      {onCard ? null : <StatusBar style={fieldIsDark(family) ? "light" : "dark"} />}
       <SendOff.Provider value={sendOff}>{children}</SendOff.Provider>
     </Field>
   );
@@ -1273,7 +1512,7 @@ function Title({
                 gap: 8,
                 paddingLeft: 16,
                 paddingRight: 12,
-                borderRadius: 999,
+                borderRadius: radii.button,
                 backgroundColor: colors.surface,
                 opacity: pressed ? 0.7 : 1,
               })}
@@ -1324,13 +1563,11 @@ function LiftTitle({
     // truly centred, and ⋯ out of its way in the card's corner.
     return (
       <View style={style}>
-        <View style={{ height: 44, justifyContent: "center", paddingHorizontal: 44 }}>
+        <View style={{ minHeight: 48, justifyContent: "center", paddingHorizontal: 44 }}>
           <Text
             accessibilityRole="header"
-            numberOfLines={1}
-            adjustsFontSizeToFit
-            minimumFontScale={0.8}
-            style={{ textAlign: "center", color: colors.text, fontFamily: fonts.medium, fontSize: 30, lineHeight: 36 }}
+            numberOfLines={2}
+            style={{ textAlign: "center", color: colors.text, fontFamily: fonts.medium, fontSize: 34, lineHeight: 40 }}
           >
             {name}
           </Text>
@@ -1485,7 +1722,7 @@ function ToolsMenu({
               })}
             >
               <Icon name={tool.icon} size={20} color={colors.text} />
-              <Text style={{ color: colors.text, fontFamily: fonts.regular, fontSize: 19 }}>
+              <Text style={{ color: colors.text, fontFamily: fonts.ui, fontSize: 18 }}>
                 {tool.label}
               </Text>
             </Pressable>
@@ -1666,274 +1903,70 @@ function Caret({ size, at }: { size: number; at: "start" | "end" }) {
   );
 }
 
-/** A cardio block: the machine, how long, the score, one action. */
+/** The saved target and one result field, using the shared card title and menu. */
 function Conditioning({ item }: { item: Item }) {
   const colors = useColors();
   const barSpace = useBarSpace();
   const { state, setState } = useSession();
   const [swapping, setSwapping] = useState(false);
   const [noting, setNoting] = useState(false);
-  const [lengthening, setLengthening] = useState(false);
-  const [options, setOptions] = useState(false);
-  // One line of note until it is measured, so the weight does not jump.
-
+  const [guiding, setGuiding] = useState(false);
+  const [menu, setMenu] = useState<Anchor | null>(null);
+  const root = useRef<View>(null);
   const cardio = currentCardio(state);
   const pool = conditioningPool(state, item);
-  // "Speed 10.5, incline 1": kept per machine, whatever the distance.
   const note = cardio ? noteFor(state, cardio.id, "cardio") : "";
-
-  const advance = () => {
-    setSwapping(false);
-    setState((s) => completeCardio(s));
+  if (!cardio) return null;
+  const target = item.course !== undefined ? `${item.course} ${cardio.metric.unit}` : `${item.minutes} min`;
+  const openMenu = (button: View) => {
+    Keyboard.dismiss();
+    button.measureInWindow((x, y, width, height) => root.current?.measureInWindow((rx, ry) => setMenu({ x: x - rx, y: y - ry, width, height })));
   };
-  // A completed cardio card requires today’s result; history is only a comparison.
-  const needsScore = isCardio(item) && scoreOf(item) === null;
+  const tools: Tool[] = [
+    { icon: "info", label: "How to do it", onPress: () => setGuiding(true) },
+    ...(pool.length > 1 ? [{ icon: "swap" as const, label: "Swap for today", onPress: () => setSwapping(true) }] : []),
+    ...(!note ? [{ icon: "note" as const, label: "Add a note", onPress: () => setNoting(true) }] : []),
+  ];
 
   return (
-    <View style={{ flex: 1, backgroundColor: colors.bg }}>
+    <View ref={root} style={{ flex: 1, backgroundColor: colors.bg }}>
       <Header />
+      <View style={{ flex: 1, paddingHorizontal: 22, width: "100%", maxWidth: COLUMN, alignSelf: "center" }}>
+        <CardioKeyboardArea>
+          <LiftTitle family="cardio" name={cardio.name} onMore={openMenu}>
+            {note ? <View style={{ paddingTop: 8 }}><NoteLine text={note} lines={1} center onPress={() => setNoting(true)} /></View> : null}
+          </LiftTitle>
 
-      <ScrollView
-        scrollEnabled={false}
-        bounces={false}
-        overScrollMode="never"
-        contentContainerStyle={{
-          paddingHorizontal: 22,
-          paddingBottom: 20,
-          width: "100%",
-          maxWidth: COLUMN,
-          alignSelf: "center",
-        }}
-      >
-        <View style={{ marginTop: 28, gap: 18, alignItems: "center" }}>
-          <Text style={{ color: colors.text, fontFamily: fonts.italic, fontSize: 19 }}>{cardioEnd(item) === "open" ? "Warm-up" : "Cardio"}</Text>
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
-            <Text accessibilityRole="header" style={{ flexShrink: 1, color: colors.text, fontFamily: fonts.medium, fontSize: 34, lineHeight: 40 }}>{cardio?.name}</Text>
-            <ToolButton icon="more" label="Cardio options" onPress={() => setOptions(true)} />
-          </View>
-          <Pressable accessibilityRole="button" accessibilityLabel="Change target for today" onPress={() => setLengthening(true)}
-            style={({ pressed }) => ({ minHeight: 48, paddingHorizontal: 20, borderRadius: 24, flexDirection: "row", alignItems: "center", gap: 12, backgroundColor: colors.surface, opacity: pressed ? 0.7 : 1 })}>
-            <Text style={{ color: colors.text, fontSize: 23 }}>{isTimed(item) && cardio ? courseLabel(cardio, item.course!) : `${item.minutes} minutes`}</Text>
-            <Icon name="note" size={18} color={colors.text} />
-          </Pressable>
-        </View>
-        <Sheet visible={options} title="Cardio options" onClose={() => setOptions(false)}>
-          <View style={{ gap: 12, paddingTop: 12 }}>
-            {pool.length > 1 ? <BigButton label="Swap machine for today" quiet onPress={() => { setOptions(false); setSwapping(true); }} /> : null}
-            <BigButton label="Change target for today" quiet onPress={() => { setOptions(false); setLengthening(true); }} />
-            <BigButton label={note ? "Edit today's note" : "Add a note for today"} quiet onPress={() => { setOptions(false); setNoting(true); }} />
-          </View>
-        </Sheet>
+          <Text accessibilityLabel={`Target: ${target}`} style={{ color: colors.text, fontFamily: fonts.regular, fontSize: 24, textAlign: "center" }}>Target: {target}</Text>
 
-        {note ? (
-          <View
-            style={{ paddingTop: 16 }}
-          >
-            <NoteLine text={note} onPress={() => setNoting(true)} />
-          </View>
-        ) : null}
-        {cardio ? (
-          <NoteSheet
-            visible={noting}
-            id={cardio.id}
-            kind="cardio"
-            name={cardio.name}
-            onClose={() => setNoting(false)}
-          />
-        ) : null}
-
-        <Sheet
-          visible={swapping}
-          title="Swap for today"
-          onClose={() => setSwapping(false)}
-        >
-          <ConditioningSwap
-            options={pool}
-            current={item.exerciseId}
-            onPick={(id) => {
-              setSwapping(false);
-              setState((s) => swapConditioning(s, id));
-            }}
-          />
-        </Sheet>
-
-        {cardio ? (
-          <LengthSheet
-            visible={lengthening}
-            cardio={cardio}
-            item={item}
-            onClose={() => setLengthening(false)}
-          />
-        ) : null}
-
-        {cardio ? (
-          <View
-            style={{
-              marginTop: 40,
-            }}
-          >
-          <CardioBody
-            cardio={cardio}
-            item={item}
-            end={cardioEnd(item)}
-            record={cardioRecord(state, item)}
-            onSet={(v) => setState((s) => setScore(s, v))}
-          />
-          </View>
-        ) : null}
-
-      </ScrollView>
+          <CardioResult key={`${cardio.id}:${item.course !== undefined ? "distance" : "time"}:${item.course ?? item.minutes}`}
+            cardio={cardio} item={item} record={cardioRecord(state, item)} onSet={(v) => setState((s) => setScore(s, v))} />
+        </CardioKeyboardArea>
+      </View>
 
       <View style={{ paddingHorizontal: 22, paddingBottom: barSpace + 14 }}>
-        {/* Waits for a first score; the line under the number says so. */}
-        <Column>
-          <Action
-            label="Done"
-            fill
-            disabled={needsScore}
-            onPress={advance}
-          />
+        {/* No Done: what you entered decides that it's done, and a swipe
+            moves on. Once it's in, a quiet line says so — and works as a tap,
+            for anyone who doesn't swipe. */}
+        <Column style={{ minHeight: 60, justifyContent: "center" }}>
+          {scoreOf(item) !== null ? (
+            <TextButton
+              label={nextItemName(state) ? `Swipe on to ${inSentence(nextItemName(state)!)}` : "Swipe on to finish"}
+              onPress={() => { Keyboard.dismiss(); setState((s) => completeCardio(s)); }}
+            />
+          ) : null}
         </Column>
       </View>
-    </View>
-  );
-}
 
-/** A target edited in a session belongs to today only. */
-function LengthSheet({ visible, cardio, item, onClose }: {
-  visible: boolean; cardio: CardioExercise; item: Item; onClose: () => void;
-}) {
-  const { setState } = useSession();
-  const distance = item.course !== undefined;
-  const [draft, setDraft] = useState("");
-  useEffect(() => {
-    if (visible) setDraft(String(item.course ?? item.minutes ?? 5));
-  }, [visible]);
-  const value = Number(draft.trim().replace(",", "."));
-  const valid = draft.trim() !== "" && Number.isFinite(value) && value > 0;
-  return (
-    <Sheet visible={visible} title={distance ? "Distance for today" : "Duration for today"} onClose={onClose}>
-      <View style={{ gap: 20, paddingTop: 12 }}>
-        <Text style={{ color: colors.muted, fontSize: 17 }}>This session only. Change your usual target in Plan.</Text>
-        <TextInput value={draft} onChangeText={setDraft} keyboardType="decimal-pad" selectTextOnFocus
-          accessibilityLabel={distance ? `Distance in ${cardio.metric.unit}` : "Duration in minutes"}
-          style={{ minHeight: 64, borderRadius: 16, paddingHorizontal: 16, backgroundColor: colors.surface, color: colors.text, fontSize: 32 }} />
-        <Text style={{ color: colors.muted, fontSize: 19 }}>{distance ? cardio.metric.unit : "minutes"}</Text>
-        {!valid ? <Text style={{ color: colors.text, fontSize: 17 }}>Enter a number greater than zero.</Text> : null}
-        <BigButton label="Save for today" disabled={!valid} onPress={() => { setState((s) => setTodayLength(s, value)); onClose(); }} />
-      </View>
-    </Sheet>
-  );
-}
-
-/**
- * Today’s result, typed directly, with the previous result for comparison.
- *
- * One side of the block is fixed — the minutes, or the distance — so the only
- * number that moves is the other: how far you got, or how long it took. That
- * makes the comparison with last time honest without anything else to track.
- */
-function CardioBody({
-  cardio,
-  item,
-  end,
-  record,
-  onSet,
-}: {
-  cardio: CardioExercise;
-  item: Item;
-  /** A warm-up is never a race: no cheer for going faster, and an easy pace. */
-  end: CardioEnd;
-  /** Last session's score: what the box shows until you change it. */
-  record: ReturnType<typeof cardioRecord>;
-  onSet: (score: number | null) => void;
-}) {
-  const colors = useColors();
-  const [draft, setDraft] = useState<string | null>(null);
-  const timed = isTimed(item);
-  const score = scoreOf(item);
-  const { decimals, unit } = cardio.metric;
-  // Skipping is counted, not measured; anything away from the gym is
-  // no machine, and its number is optional.
-  const counted = unit === "skips";
-  const away = AWAY_CARDIO.some((c) => c.id === cardio.id);
-  // Previous results are shown separately, never prefilled as today’s result.
-  const shown = score;
-
-  // The box shows a bare number; the line under it says what it means.
-  const show = (v: number) => (timed ? timeLabel(v) : v.toFixed(decimals));
-  const label = (v: number) => (timed ? timeLabel(v) : distanceLabel(cardio, v));
-
-  const commit = () => {
-    if (draft !== null) {
-      const parsed = timed ? parseTime(draft) : parseFloat(draft.replace(",", "."));
-      onSet(parsed === null || Number.isNaN(parsed) ? null : parsed);
-    }
-    setDraft(null);
-  };
-
-  // Only the finish cheers a faster time; in the warm-up it would read as a dare.
-  const cheers = end === "close" && record && score !== null;
-  const beat = cheers && isBetter(item, score, record.last);
-  const isBest = cheers && isBetter(item, score, record.best);
-  const line = { textAlign: "center", color: colors.text, fontFamily: fonts.regular, fontSize: 19, lineHeight: 24 } as const;
-  const number: TextStyle = {
-    fontFamily: fonts.semibold,
-    fontSize: 76,
-    letterSpacing: -1.5,
-    fontVariant: ["lining-nums", "tabular-nums"],
-  };
-
-  return (
-    <View>
-      <Text style={[line, { marginBottom: 12 }]}>{timed ? "Your time · min:sec" : counted ? "Skips completed" : `Distance covered · ${unit}`}</Text>
-      <View style={{ height: 84, flexDirection: "row", alignItems: "center", justifyContent: "center" }}>
-
-
-        {draft !== null ? (
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-            <TextInput
-              autoFocus
-              value={draft}
-              onChangeText={setDraft}
-              onBlur={commit}
-              onSubmitEditing={commit}
-              // A number pad on both: a time types as 4.52 or 452 and reads back as 4:52.
-              keyboardType={timed ? "numbers-and-punctuation" : "decimal-pad"}
-              selectTextOnFocus
-              accessibilityLabel={timed ? "Your time" : counted ? "Skips" : `Distance in ${unit}`}
-              style={[number, { width: timed ? 190 : 150, padding: 0, color: colors.text, textAlign: timed ? "center" : "right" }]}
-            />
-            {timed ? null : <Text style={{ color: colors.text, fontFamily: fonts.regular, fontSize: 22 }}>{unit}</Text>}
-          </View>
-        ) : (
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={`${shown === null ? "Nothing entered" : label(shown)}. Tap to type ${timed ? "your time" : "the distance"}`}
-            onPress={() => setDraft(shown === null ? "" : show(shown))}
-            hitSlop={8}
-            style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}
-          >
-            <View style={{ flexDirection: "row", alignItems: "baseline", gap: 8 }}>
-              {/* Last time's score until you change it, a shade back so it
-                  reads as a starting point rather than something entered.
-                  With nothing to start from, a dash: a 0 would read as a
-                  score of nothing. */}
-              <Text style={[number, { color: score === null ? colors.dim : colors.text }]}>
-                {shown === null ? "—" : show(shown)}
-              </Text>
-              {timed ? null : <Text style={{ color: colors.text, fontFamily: fonts.regular, fontSize: 22 }}>{unit}</Text>}
-            </View>
-          </Pressable>
-        )}
-
-
-      </View>
-
-      <Text style={[line, { marginTop: 12, fontSize: 17 }]}>Tap the number to enter your result.</Text>
-      {record ? <Text style={[line, { marginTop: 28 }]}>Last time: {label(record.last)}</Text> : null}
-      {isBest || beat ? <Text style={[line, { marginTop: 12 }]}>{isBest ? "Personal best." : "Better than last time."}</Text> : null}
-
+      <Sheet visible={swapping} title="Swap for today" onClose={() => setSwapping(false)}>
+        <CardioChoices options={pool} current={item.exerciseId} onPick={(id) => {
+          setSwapping(false);
+          if (id !== item.exerciseId) setState((s) => swapConditioning(s, id));
+        }} />
+      </Sheet>
+      <GuideSheet visible={guiding} id={cardio.id} name={cardio.name} cue={cardio.cue} onClose={() => setGuiding(false)} />
+      {menu ? <ToolsMenu anchor={menu} tools={tools} onClose={() => setMenu(null)} /> : null}
+      <NoteSheet visible={noting} id={cardio.id} kind="cardio" name={cardio.name} onClose={() => setNoting(false)} />
     </View>
   );
 }
@@ -1991,7 +2024,9 @@ function Mobility({ item }: { item: Item }) {
         key={`${routine.id}:${routine.moves.map((m) => `${m.id}/${m.seconds}/${m.perSide ? 2 : 1}`).join(",")}`}
         routine={routine}
         barSpace={barSpace}
-        onMoveDone={(i) => setState((s) => completeMove(s, i))}
+        completed={item.moves}
+        steps={item.routineSteps}
+        onStep={(i, status) => setState((s) => resolveRoutineStep(s, i, status))}
         onFinish={() => setState((s) => completeExercise(s))}
       />
     </View>
@@ -2167,7 +2202,7 @@ function GoalBlock({
               burst={motion?.big ? "goal" : null}
               onLog={(i, held) => setState((s) => logGoalSet(s, i, held))}
               onTap={(i) => setState((s) => tapGoalSet(s, i))}
-              onReset={(i) => setState((s) => resetGoalSet(s, i))}
+              onReset={(i) => setState((s) => skipGoalSet(s, i))}
             />
           ) : (
             <Sets
@@ -2176,7 +2211,7 @@ function GoalBlock({
               cheer={motion?.id ?? null}
               burst={motion?.big ? "goal" : null}
               onTap={(i) => setState((s) => tapGoalSet(s, i))}
-              onReset={(i) => setState((s) => resetGoalSet(s, i))}
+              onReset={(i) => setState((s) => skipGoalSet(s, i))}
             />
           )}
         </View>
@@ -2377,7 +2412,7 @@ function PracticeClock({
 
 /**
  * The words under a step, like a lift's: before it is done, a line from
- * Milo and what owning the step takes; once every circle is in, what
+ * Humbell and what owning the step takes; once every circle is in, what
  * that means for next time — the next step, lit up, when this one is owned.
  * Practice says it is your call, and carries the button that makes it.
  */
@@ -2482,12 +2517,16 @@ const AWAKE = "mobility";
 function MobilityDeck({
   routine,
   barSpace,
-  onMoveDone,
+  completed,
+  steps,
+  onStep,
   onFinish,
 }: {
   routine: MobilityRoutine;
   barSpace: number;
-  onMoveDone: (index: number) => void;
+  completed?: boolean[];
+  steps?: ("done" | "skipped" | null)[];
+  onStep: (index: number, status: "done" | "skipped") => void;
   onFinish: () => void;
 }) {
   const colors = useColors();
@@ -2508,7 +2547,7 @@ function MobilityDeck({
   const { width } = size;
   const [page, setPage] = useState(0);
   // Seconds left on each card. A card at zero is done.
-  const [left, setLeft] = useState<number[]>(() => cards.map((c) => c.move.seconds));
+  const [left, setLeft] = useState<number[]>(() => cards.map((c, i) => steps?.[i] === "done" || completed?.[c.index] ? 0 : c.move.seconds));
   // The card whose clock is running, and when it runs out. Kept as an end
   // time rather than counted down tick by tick, so a slow frame or a locked
   // phone cannot stretch the hold.
@@ -2558,22 +2597,20 @@ function MobilityDeck({
       setRunning(null);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       finish(running.page);
-      // On to the next by itself; the last one waits for Finish.
-      if (running.page < cards.length - 1) goTo(running.page + 1);
+      // On to the next one not done by itself; when none is left it waits
+      // for a tap to finish.
+      const n = nextOpen(running.page);
+      if (n !== null) goTo(n, true);
     }, 200);
     return () => clearInterval(tick);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [running]);
 
-  /** A card done: its clock run out, or its reps said done. */
-  const finish = (p: number) =>
-    setLeft((l) => {
-      const next = l.map((v, i) => (i === p ? 0 : v));
-      const { index } = cards[p];
-      // The pose is done once every side of it is.
-      if (cards.every((c, i) => c.index !== index || next[i] <= 0)) onMoveDone(index);
-      return next;
-    });
+  /** Record each side on the session, so leaving and returning keeps progress. */
+  const finish = (p: number) => {
+    setLeft((l) => l.map((v, i) => i === p ? 0 : v));
+    onStep(p, "done");
+  };
 
   const pause = () => {
     setFlowing(false);
@@ -2583,39 +2620,80 @@ function MobilityDeck({
     setRunning(null);
   };
 
-  const goTo = (p: number) => pager.current?.scrollTo({ x: p * width, animated: true });
+  /**
+   * The next movement not done yet, after `from` — and then round again from
+   * the top, so one you skipped comes back once the rest are done. `from`
+   * itself never counts: it is the one just finished or being skipped.
+   */
+  const nextOpen = (from: number): number | null => {
+    for (let k = 1; k < cards.length; k++) {
+      const i = (from + k) % cards.length;
+      if (left[i] > 0) return i;
+    }
+    return null;
+  };
 
+  const goTo = (p: number, automatic = false) => {
+    if (!automatic) pause();
+    setPage(p);
+    pager.current?.scrollTo({ x: p * width, animated: true });
+  };
+
+  if (!cards.length) return <View style={{ flex: 1, justifyContent: "center", padding: 22 }}><Text style={{ color: colors.text, fontSize: 22 }}>No movements in this routine.</Text><Action label="Continue" fill onPress={onFinish} /></View>;
   const card = cards[page];
   const done = left[page] <= 0;
-  const last = page === cards.length - 1;
   const started = left[page] < card.move.seconds;
-  const action = running || waiting
-    ? { label: "Pause", onPress: pause }
+  const next = nextOpen(page);
+  const nextCard = next === null ? null : cards[next];
+  const mark = FAMILY.mobility.mark;
+  // Hands-free: the whole card is the one button, so a phone on the floor
+  // can be worked with a knuckle. What a tap does now, said under it.
+  const tap = running || waiting
+    ? { hint: "Tap anywhere to pause", onPress: pause }
     : done
-      ? last
-        ? { label: "Finish", onPress: onFinish }
-        : { label: "Next", onPress: () => goTo(page + 1) }
+      ? next === null
+        ? { hint: "All done. Tap to finish", onPress: onFinish }
+        : { hint: "Tap for the next one", onPress: () => goTo(next) }
       : card.move.reps
-        ? // Reps have no clock: you say when they're done, and move on.
+        ? // Reps have no clock: a tap says they're done, and moves on.
           {
-            label: "Done",
+            hint: "Tap when you've done them",
             onPress: () => {
+              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
               finish(page);
               setFlowing(true);
-              if (!last) goTo(page + 1);
+              if (next !== null) goTo(next, true);
             },
           }
         : {
-            label: started ? "Resume" : `Start · ${timeLabel(card.move.seconds)}`,
+            hint: started ? "Tap anywhere to carry on" : "Tap anywhere to start",
             onPress: () => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
               setFlowing(true);
               setRunning({ page, endAt: Date.now() + left[page] * 1000 });
             },
           };
+  // "Up next" is also the way past a movement you'd rather not do: tap it
+  // and this one is left undone, to come back round at the end.
+  const skip = () => {
+    if (!done) {
+      pause();
+      onStep(page, "skipped");
+    }
+    if (next !== null) goTo(next);
+    else onFinish();
+  };
+  const progress = card.move.reps ? (done ? 1 : 0) : Math.min(1, Math.max(0, 1 - left[page] / card.move.seconds));
 
   return (
     <>
-      <View style={{ flex: 1, marginTop: 14 }} onLayout={(e) => {
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={`${card.move.name}${card.side ? `, ${card.side}` : ""}`}
+        accessibilityHint={tap.hint}
+        onPress={tap.onPress}
+        style={{ flex: 1, marginTop: 8 }}
+        onLayout={(e) => {
           const { width, height } = e.nativeEvent.layout;
           setSize({ width, height });
         }}
@@ -2629,16 +2707,8 @@ function MobilityDeck({
             // stretches inside this card follow each other by themselves.
             scrollEnabled={false}
             showsHorizontalScrollIndicator={false}
-            scrollEventThrottle={16}
-            onScroll={(e) => {
-              const p = Math.round(e.nativeEvent.contentOffset.x / width);
-              if (p !== page && p >= 0 && p < cards.length) {
-                // Swiping away mid-hold pauses it; the time left is kept.
-                // Between holds a swipe only chooses which one starts next.
-                if (running) pause();
-                setPage(p);
-              }
-            }}
+            // Navigation sets page before scrolling; intermediate animation
+            // offsets must not restart or pause the next movement's timer.
           >
             {cards.map((c, i) => (
               <View key={i} style={{ width, height: size.height, paddingHorizontal: 22 }}>
@@ -2646,22 +2716,59 @@ function MobilityDeck({
                   <MobilityCard
                     card={c}
                     left={left[i]}
-                    position={`${i + 1} / ${cards.length}`}
+                    position={`${i + 1} of ${cards.length}`}
                   />
                 </Column>
               </View>
             ))}
           </ScrollView>
         ) : null}
-      </View>
+      </Pressable>
 
       <View style={{ paddingHorizontal: 22, paddingTop: 12, paddingBottom: barSpace + 14 }}>
-        <Column style={{ gap: 8 }}>
-          {/* Always laid out, so the hint appearing moves nothing. */}
-          <Text style={{ height: 22, textAlign: "center", color: colors.text, fontFamily: fonts.regular, fontSize: 17 }}>
-            {waiting ? "Get into position" : ""}
+        <Column style={{ gap: 10 }}>
+          {/* How far through this one: fills in the routine's colour. */}
+          <View style={{ height: 6, borderRadius: 3, backgroundColor: colors.line, overflow: "hidden" }}>
+            <View style={{ width: `${progress * 100}%`, height: "100%", borderRadius: 3, backgroundColor: mark }} />
+          </View>
+          {/* Always laid out, so the words changing move nothing. */}
+          <Text style={{ height: 22, textAlign: "center", color: colors.muted, fontFamily: fonts.regular, fontSize: 17 }}>
+            {waiting ? "Get into position" : tap.hint}
           </Text>
-          <Action label={action.label} fill onPress={action.onPress} />
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={nextCard ? `Up next: ${nextCard.move.name}${nextCard.side ? `, ${nextCard.side}` : ""}` : done ? "Finish" : "Leave it and finish"}
+            accessibilityHint={nextCard ? (done ? "Goes to it now." : "Leaves this one for later and goes to it now.") : undefined}
+            onPress={skip}
+            style={({ pressed }) => ({
+              minHeight: 56,
+              flexDirection: "row",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: 12,
+              borderTopWidth: 1,
+              borderTopColor: colors.line,
+              paddingTop: 10,
+              opacity: pressed ? 0.6 : 1,
+            })}
+          >
+            <View style={{ flex: 1 }}>
+              <Text ui style={{ color: colors.muted, fontSize: 12, fontWeight: "600", letterSpacing: 0.6 }}>
+                {nextCard ? "UP NEXT" : "THAT'S THE LAST ONE"}
+              </Text>
+              <Text numberOfLines={1} style={{ color: colors.text, fontFamily: fonts.regular, fontSize: 19 }}>
+                {nextCard
+                  ? `${nextCard.move.name}${nextCard.side ? ` · ${nextCard.side.replace(" side", "")}` : ""}`
+                  : done ? "Finish" : "Leave it and finish"}
+              </Text>
+            </View>
+            {nextCard ? (
+              <Text style={{ color: colors.muted, fontFamily: fonts.regular, fontSize: 17, fontVariant: ["tabular-nums"] }}>
+                {nextCard.move.reps ? `${nextCard.move.reps} reps` : timeLabel(nextCard.move.seconds)}
+              </Text>
+            ) : null}
+            <Icon name="next" size={16} color={colors.muted} />
+          </Pressable>
         </Column>
       </View>
     </>
@@ -2682,7 +2789,7 @@ function MobilityCard({ card, left, position }: { card: Card; left: number; posi
       style={{
         flex: 1,
         overflow: "hidden",
-        borderRadius: 24,
+        borderRadius: radii.card,
         borderCurve: "continuous",
         backgroundColor: colors.surface,
       }}
@@ -2975,6 +3082,7 @@ function Sets({
         const running = clock?.index === i;
         const filled = reps !== null && !running;
         const short = filled && reps < target;
+        const zero = filled && reps === 0;
         const shown = running ? Math.ceil(clock.left) : filled ? reps : target;
         const at = i * stagger;
         const swell = wave.interpolate({
@@ -2994,9 +3102,16 @@ function Sets({
         });
         return (
           <Animated.View key={i} style={{ transform: [{ scale: swell }] }}>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={
+            <SetCircle
+              size={size}
+              seed={i}
+              filled={filled}
+              zero={zero}
+              short={short}
+              wash={colors.wash}
+              ink={colors.text}
+              ringWidth={role === "partner" ? 2 : 3}
+              label={
                 seconds
                   ? `Hold ${i + 1}${
                       running
@@ -3005,39 +3120,17 @@ function Sets({
                           ? `, ${reps} seconds`
                           : `, target ${target} seconds, not started`
                     }`
-                  : `Set ${i + 1}${filled ? `, ${reps} reps` : `, target ${target}, not logged`}`
+                  : `Set ${i + 1}${zero ? ", not done" : filled ? `, ${reps} reps` : `, target ${target}, not logged`}`
               }
-              accessibilityHint={
+              hint={
                 seconds
                   ? running
                     ? "Tap to stop and log what you held."
-                    : "Tap to start its clock, or to take five seconds off. Hold to reset to the target."
-                  : "Tap to log or count down. Hold to reset to the target."
+                    : "Tap to start its clock, or to take five seconds off. Hold if you didn't do it."
+                  : "Tap to log or count down. Hold if you didn't do it."
               }
-              onPress={() => onTap(i)}
-              onLongPress={() => {
-                // The circle is under the thumb, so say it happened by touch.
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                onReset(i);
-              }}
-              delayLongPress={400}
-              style={({ pressed }) => ({
-                width: size,
-                height: size,
-                alignItems: "center",
-                justifyContent: "center",
-                borderRadius: 999,
-                borderWidth: filled || running ? 0 : role === "partner" ? 2 : 3,
-                borderColor: colors.text,
-                backgroundColor: filled
-                  ? short
-                    ? colors.raised
-                    : colors.cloud
-                  : running
-                    ? colors.surface
-                    : "transparent",
-                opacity: pressed ? 0.7 : 1,
-              })}
+              onTap={() => onTap(i)}
+              onReset={() => onReset(i)}
             >
               {running ? <Countdown size={size} left={clock.left / target} /> : null}
               <Text
@@ -3045,7 +3138,7 @@ function Sets({
                   // Garamond's figures sit a touch low in a circle: lift them
                   // to its optical centre.
                   marginTop: -Math.round(fontSize * 0.08),
-                  color: filled && !short ? colors.ink : colors.text,
+                  color: colors.text,
                   fontFamily: fonts.semibold,
                   fontSize: seconds ? Math.round(fontSize * 0.92) : fontSize,
                   fontVariant: ["lining-nums", "tabular-nums"],
@@ -3058,7 +3151,7 @@ function Sets({
                   </Text>
                 ) : null}
               </Text>
-            </Pressable>
+            </SetCircle>
             <Animated.View
               style={{
                 position: "absolute",
@@ -3125,7 +3218,7 @@ function cleanNumber(typed: string) {
 }
 
 /**
- * The weight. Milo sets it and you rarely change it, so it stands alone,
+ * The weight. Humbell sets it and you rarely change it, so it stands alone,
  * its figures underlined in dashes to say they can be changed.
  *
  * Tap it and it is being changed, all at once: the number pad comes up, the
@@ -3580,7 +3673,7 @@ function Glow() {
         bottom: -3,
         left: -14,
         right: -14,
-        borderRadius: 999,
+        borderRadius: radii.button,
         backgroundColor: colors.white,
         opacity: t.interpolate({ inputRange: [0, 0.3, 1], outputRange: [0, 0.26, 0] }),
         transform: [
@@ -3597,12 +3690,15 @@ function Glow() {
  * first set, where today's number came from — last time's weight and reps,
  * the reps in small circles like the ones above, or why it changed. Between
  * sets, how to own the next one: the position to hold. Once every set is in,
- * what that means for next time: a line from Milo, and the plain fact
+ * what that means for next time: a line from Humbell, and the plain fact
  * under it.
  */
+const FEEL_LABEL: Record<Feel, string> = { light: "Too light", right: "About right", heavy: "Too heavy" };
+
 function Why({
   prescription,
   result,
+  feel = null,
   started,
   compact,
   glow = null,
@@ -3610,6 +3706,11 @@ function Why({
   prescription: ReturnType<typeof currentPrescription>;
   /** Every set is in: what it means for next time, shown in the hint's place. */
   result: { fact: string; quip: string } | null;
+  /**
+   * The first time on a lift: how it felt, asked in the remark's place, and
+   * next time's weight under the answer once it is given.
+   */
+  feel?: { said: Feel | undefined; onSay: (feel: Feel) => void } | null;
   /** A set is logged, so where the number came from has been read. */
   started: boolean;
   /** Sharing the screen with a superset: one line for the remark. */
@@ -3620,6 +3721,51 @@ function Why({
   const colors = useColors();
   if (!prescription) return null;
   const line = { textAlign: "center", color: colors.text, fontFamily: fonts.regular, fontSize: 19, lineHeight: 24 } as const;
+
+  if (result && feel) {
+    return (
+      <View accessibilityLiveRegion="polite" style={{ alignItems: "center", gap: 10 }}>
+        <Text style={{ textAlign: "center", color: colors.text, fontFamily: fonts.italic, fontSize: 22, lineHeight: 26 }}>
+          How did that feel?
+        </Text>
+        <View style={{ flexDirection: "row", gap: 8 }}>
+          {(Object.keys(FEEL_LABEL) as Feel[]).map((f) => {
+            const on = feel.said === f;
+            return (
+              <Pressable
+                key={f}
+                accessibilityRole="radio"
+                accessibilityState={{ selected: on }}
+                onPress={() => {
+                  Haptics.selectionAsync();
+                  feel.onSay(f);
+                }}
+                style={({ pressed }) => ({
+                  minHeight: 44,
+                  paddingHorizontal: 14,
+                  justifyContent: "center",
+                  borderRadius: radii.button,
+                  borderWidth: 2,
+                  borderColor: colors.text,
+                  backgroundColor: on ? colors.text : "transparent",
+                  opacity: pressed ? 0.7 : 1,
+                })}
+              >
+                <Text style={{ color: on ? colors.bg : colors.text, fontFamily: fonts.uiMedium, fontSize: 16 }}>
+                  {FEEL_LABEL[f]}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+        {feel.said ? (
+          <Text numberOfLines={1} style={line}>
+            {result.fact}
+          </Text>
+        ) : null}
+      </View>
+    );
+  }
 
   if (result) {
     return (
@@ -3663,7 +3809,7 @@ function Why({
   }
 
   const text = prescription.decay
-    ? decayLabel(prescription.decay)
+    ? `Lighter this time: ${weightLabel(exercise, prescription.weight)}. Build it up again.`
     : skippedLast
       ? "Skipped last time. Same weight and reps as before."
       : deloaded
@@ -3671,11 +3817,13 @@ function Why({
           ? "Easier after two sessions short of target. Build it up again."
           : prescription.deloadHeld
             ? `Same weight, back to ${prescription.reps} reps after two sessions short of target. Build it up again.`
-            : "10% lighter after two sessions short of target. Build it up again."
+            : `Easier after two sessions short of target: ${weightLabel(exercise, prescription.weight)}. Build it up again.`
         : prescription.reload === "start"
           ? `Reload: same ${exercise.holds ? "hold" : "weight"}, back to ${prescription.reps} reps. Own it before the next step.`
           : last
             ? null
+            : exercise.id === "kb_swing"
+              ? "First time on this one. Practise the hip hinge before adding swings. Use a light bell."
             : exercise.bodyweight && !exercise.assistable
               ? "First time on this one. Slow, controlled reps, with two to spare."
               : "First time on this one. Pick a weight you control, with two reps to spare.";
@@ -3828,48 +3976,6 @@ function Partner({
   );
 }
 
-function SupersetPicker({
-  options,
-  onPick,
-}: {
-  options: { id: string; name: string }[];
-  onPick: (id: string) => void;
-}) {
-  return (
-    <View
-      style={{
-        borderRadius: radii.card,
-        borderCurve: "continuous",
-        backgroundColor: colors.surface,
-        padding: 10,
-      }}
-    >
-      {options.map((o) => (
-        <View key={o.id} style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={`Superset with ${o.name}`}
-            onPress={() => onPick(o.id)}
-            style={({ pressed }) => ({
-              flex: 1,
-              justifyContent: "center",
-              minHeight: 52,
-              borderRadius: 14,
-              paddingHorizontal: 14,
-              opacity: pressed ? 0.55 : 1,
-            })}
-          >
-            <Text style={{ color: colors.text, fontSize: 16, fontWeight: "600" }}>
-              {o.name}
-            </Text>
-          </Pressable>
-          <GuideButton id={o.id} name={o.name} cue={byId(o.id)?.cue} size={36} />
-        </View>
-      ))}
-    </View>
-  );
-}
-
 /**
  * The way on: a full-width slab under the thumb. Waiting, it is a soft tint
  * with its label held back; ready, it turns solid — white or navy on a
@@ -3919,8 +4025,8 @@ function Action({
           flexShrink: 1,
           color: on ? colors.ink : colors.text,
           opacity: disabled ? 0.6 : 1,
-          fontFamily: on ? fonts.medium : fonts.regular,
-          fontSize: 21,
+          fontFamily: on ? fonts.uiSemibold : fonts.ui,
+          fontSize: 19,
         }}
       >
         {label}
@@ -4020,7 +4126,8 @@ function Finished({
     scored > 0 ? `${t.hit} of ${scored} ${scored === 1 ? "lift" : "lifts"} on target.` : null,
     t.drop > 0 ? `${t.drop} going back a step next time.` : null,
     t.reload > 0 ? `${t.reload} ${t.reload === 1 ? "lift reloads" : "lifts reload"} next time.` : null,
-    nextUp ? `Next up: ${nextUp.name || "Untitled"}.` : null,
+    // Tomorrow's workout is tomorrow's business; only the full screen says it.
+    !onCard && nextUp ? `Next up: ${nextUp.name || "Untitled"}.` : null,
   ].filter(Boolean);
 
   const close = () => {
@@ -4029,28 +4136,67 @@ function Finished({
   };
 
   if (onCard) {
-    // The deck's last card: a few lines in the middle, and the one button.
-    // What is not done is a count, not a list: the marks above the deck
-    // show which, and a swipe back reaches them.
+    // The deck's last card. What is not done is the headline, said plainly
+    // and never scolded: the cards are named, a tap goes back to one, and
+    // finishing as it is is always fine. Nothing about tomorrow here.
+    const items = state.active?.items ?? [];
+    const nothing = items.length > 0 && left.length === items.length;
     return (
       <View style={{ flex: 1, backgroundColor: colors.surface, paddingHorizontal: 28, paddingBottom: 24 }}>
         <View style={{ flex: 1, justifyContent: "center", alignItems: "center", gap: 14 }}>
           <Text style={{ textAlign: "center", color: colors.text, fontFamily: fonts.medium, fontSize: 52, lineHeight: 58 }}>
-            {left.length > 0 ? "Nearly done." : "Done."}
+            {nothing ? "Nothing done yet." : left.length > 0 ? `${left.length} not done.` : "Done."}
           </Text>
-          <Text style={{ textAlign: "center", color: colors.text, fontFamily: fonts.italic, fontSize: 24, lineHeight: 30 }}>
-            {quip}
-          </Text>
-          {facts.length > 0 ? (
-            <Text style={{ textAlign: "center", color: colors.muted, fontFamily: fonts.regular, fontSize: 19, lineHeight: 26 }}>
-              {facts.join(" ")}
+          {nothing ? (
+            <Text style={{ textAlign: "center", color: colors.text, fontFamily: fonts.regular, fontSize: 19, lineHeight: 26 }}>
+              Swipe back to start, or end it here. It won't count, and {currentWorkout(state).name || "this workout"} stays next.
             </Text>
-          ) : null}
-          {left.length > 0 ? (
-            <Text style={{ marginTop: 8, textAlign: "center", color: colors.text, fontFamily: fonts.regular, fontSize: 19, lineHeight: 26 }}>
-              {left.length === 1 ? "One card is" : `${left.length} cards are`} not done. Swipe back to{" "}
-              {left.length === 1 ? "it" : "them"}, or finish as it is.
-            </Text>
+          ) : (
+            <>
+              <Text style={{ textAlign: "center", color: colors.text, fontFamily: fonts.italic, fontSize: 24, lineHeight: 30 }}>
+                {quip}
+              </Text>
+              {facts.length > 0 ? (
+                <Text style={{ textAlign: "center", color: colors.muted, fontFamily: fonts.regular, fontSize: 19, lineHeight: 26 }}>
+                  {facts.join(" ")}
+                </Text>
+              ) : null}
+            </>
+          )}
+          {left.length > 0 && !nothing ? (
+            <View style={{ alignSelf: "stretch", gap: 4, marginTop: 8 }}>
+              <Text style={{ textAlign: "center", color: colors.text, fontFamily: fonts.regular, fontSize: 19, lineHeight: 26, marginBottom: 4 }}>
+                Swipe back to {left.length === 1 ? "it" : "them"}, or finish as it is.
+              </Text>
+              {left.slice(0, 4).map((i) => (
+                <Pressable
+                  key={i}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Back to ${cardName(state, i)}`}
+                  onPress={() => setState((s) => goToCard(s, i))}
+                  style={({ pressed }) => ({
+                    flexDirection: "row",
+                    alignItems: "center",
+                    gap: 12,
+                    minHeight: 44,
+                    paddingHorizontal: 14,
+                    borderRadius: radii.button,
+                    backgroundColor: pressed ? colors.raised : "transparent",
+                  })}
+                >
+                  <CardDot mark="todo" color={FAMILY[itemFamily(items[i])].mark} size={16} />
+                  <Text numberOfLines={1} style={{ flex: 1, color: colors.text, fontFamily: fonts.regular, fontSize: 19 }}>
+                    {cardName(state, i)}
+                  </Text>
+                  <Icon name="previous" size={15} color={colors.muted} />
+                </Pressable>
+              ))}
+              {left.length > 4 ? (
+                <Text style={{ textAlign: "center", color: colors.muted, fontFamily: fonts.italic, fontSize: 17 }}>
+                  and {left.length - 4} more
+                </Text>
+              ) : null}
+            </View>
           ) : null}
         </View>
         <Pressable
@@ -4060,12 +4206,14 @@ function Finished({
             minHeight: 60,
             alignItems: "center",
             justifyContent: "center",
-            borderRadius: 999,
+            borderRadius: radii.button,
             backgroundColor: colors.text,
             opacity: pressed ? 0.8 : 1,
           })}
         >
-          <Text style={{ color: colors.bg, fontFamily: fonts.semibold, fontSize: 21 }}>Finish workout</Text>
+          <Text style={{ color: colors.bg, fontFamily: fonts.semibold, fontSize: 21 }}>
+            {nothing ? "End without training" : left.length > 0 ? "Finish as it is" : "Finish workout"}
+          </Text>
         </Pressable>
       </View>
     );

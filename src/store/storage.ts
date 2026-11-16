@@ -24,6 +24,7 @@ import {
 } from "@/data/conditioning";
 import {
   LEAN,
+  MOVEMENT_EXPANSION_IDS,
   byId,
   leanHiddenExercises,
   setCustomExercises,
@@ -41,6 +42,9 @@ import {
 import { HOLD_MAX, schemeOf, type ExerciseState } from "@/lib/progression";
 import {
   CARDIO_SLOTS,
+  correctTreadmillTarget,
+  cardioKey,
+  courseKey,
   CONDITIONING_ID,
   MOBILITY_SLOT,
   finishWorkout,
@@ -125,11 +129,15 @@ const KEPT = "achilles/kept";
  * 15 — the pike push-up and the kettlebell and floor lifts for training at
  *     home start in the library too — see `ADDED_IN_15`.
  */
-const VERSION = 15;
+// 16: explicit cardio record modes, shared targets and shared cardio notes.
+// 17: correct treadmill time-trial targets to 1 km, including resumed sessions.
+// 18: add hollow hold to the optional exercise library.
+// 19: restore warm-up and cool-down defaults omitted by the first Bodyweight template.
+const VERSION = 20;
 
 /**
  * Version 14: lifts for training away from a gym. They start in the library
- * on every phone, as on a fresh install; Milo reaches for them away from the
+ * on every phone, as on a fresh install; Humbell reaches for them away from the
  * gym whether or not they are in your catalogue.
  */
 const ADDED_IN_14: string[] = ["bw_squat", "bw_split_squat"];
@@ -506,6 +514,14 @@ export const fromSaved = (raw: string): SessionState | Unreadable => {
       );
       restored.hidden = [...restored.hidden, ...library];
     }
+    // New optional library entries do not silently join an existing catalogue.
+    if (saved.version < 18 && !restored.hidden.includes("hollow_hold")) {
+      restored.hidden = [...restored.hidden, "hollow_hold"];
+    }
+    if (saved.version < 20) {
+      const added = MOVEMENT_EXPANSION_IDS.filter((id) => !LEAN.includes(id) && !restored.hidden.includes(id));
+      restored.hidden = [...restored.hidden, ...added];
+    }
     // Before the custom list is registered below, so its holds lifts resolve as such.
     const held = saved.version < 12 ? toHolds(restored) : restored;
     // `byId`, `cardioById` and `mobilityById` resolve custom entries through
@@ -518,7 +534,7 @@ export const fromSaved = (raw: string): SessionState | Unreadable => {
 
     const ranged = saved.version < 9 ? toEvenRanges(held) : held;
     const conditioned = saved.version < 10 ? toWorkoutConditioning(ranged) : ranged;
-    const migrated = saved.version < 13 ? toHighReps(conditioned) : conditioned;
+    let migrated = saved.version < 13 ? toHighReps(conditioned) : conditioned;
     if (saved.version < 14) {
       migrated.hidden = [
         ...migrated.hidden,
@@ -531,6 +547,40 @@ export const fromSaved = (raw: string): SessionState | Unreadable => {
         ...ADDED_IN_15.filter((id) => !migrated.hidden.includes(id)),
       ];
     }
+    if (saved.version < 16) {
+      // Keep every existing record, with an explicit mode so metres cannot
+      // collide with minutes. Custom exercise units have been registered above.
+      migrated.conditioning = Object.fromEntries(Object.entries(migrated.conditioning).map(([key, record]) => [
+        typeof record.cardioId === "string"
+          ? record.course !== undefined ? courseKey(record.cardioId, record.course) : cardioKey(record.cardioId, record.minutes ?? 5)
+          : key,
+        record,
+      ]));
+      // The latest session note becomes the shared exercise note. An empty
+      // session note was a deliberate deletion and should remain one.
+      const sessionNotes = { ...migrated.active?.notes };
+      migrated.notes = { ...migrated.notes };
+      for (const [key, note] of Object.entries(sessionNotes)) {
+        if (!key.startsWith("cardio/")) continue;
+        if (note.trim()) migrated.notes[key] = note;
+        else delete migrated.notes[key];
+        delete sessionNotes[key];
+      }
+      if (migrated.active) migrated.active = { ...migrated.active, notes: sessionNotes };
+    }
+
+    if (saved.version < 19) {
+      const restoreBodyweightRoutines = (workout: Workout): Workout => {
+        if (workout.kind !== "bodyweight" || workout.warmup !== null || workout.mobility !== null) return workout;
+        const { warmup, mobility, ...rest } = workout;
+        return rest;
+      };
+      migrated = {
+        ...migrated,
+        workouts: migrated.workouts.map(restoreBodyweightRoutines),
+        removedWorkouts: migrated.removedWorkouts.map((entry) => ({ ...entry, workout: restoreBodyweightRoutines(entry.workout) })),
+      };
+    }
 
     // Yesterday's abandoned workout is not resumed. It is closed out exactly
     // as if you had pressed Leave: whatever you trained counts, the rest is
@@ -539,9 +589,11 @@ export const fromSaved = (raw: string): SessionState | Unreadable => {
     // it and the same workout comes up again.
     if (migrated.active && !isToday(migrated.active.startedAt)) {
       const startedAt = migrated.active.startedAt;
-      return finishWorkout(migrated, typeof startedAt === "number" ? startedAt : Date.now());
+      migrated = finishWorkout(migrated, typeof startedAt === "number" ? startedAt : Date.now());
     }
-    return migrated;
+    // Close older sessions at the target actually trained, then correct the
+    // saved plan and any current card that will genuinely be resumed.
+    return correctTreadmillTarget(saved.version < 17 ? { ...migrated, treadmillTargetRevision: undefined } : migrated);
   } catch {
     return "invalid";
   }

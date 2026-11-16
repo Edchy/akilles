@@ -86,7 +86,7 @@ export function NoteField({
 }) {
   const { state, setState } = useSession();
   // Kept here as typed: the store trims what it shows, not what you type.
-  const [draft, setDraft] = useState(() => sessionOnly ? sessionNoteFor(state, id, kind) : noteFor(state, id, kind));
+  const [draft, setDraft] = useState(() => sessionOnly || kind === "cardio" ? sessionNoteFor(state, id, kind) : noteFor(state, id, kind));
 
   return (
     <View style={{ gap: 10 }}>
@@ -143,6 +143,7 @@ export function NoteSheet({
   onClose: () => void;
 }) {
   const { state, setState } = useSession();
+  const shared = kind === "cardio";
   const has = !!sessionNoteFor(state, id, kind);
 
   return (
@@ -154,15 +155,15 @@ export function NoteSheet({
             id={id}
             kind={kind}
             autoFocus
-            sessionOnly
-            hint="For this session only. Edit the exercise in Plan to save a usual note."
+            sessionOnly={!shared}
+            hint={shared ? `Saved for ${name} in every workout.` : "For this session only. Edit the exercise in Plan to save a usual note."}
             onDone={onClose}
           />
           {has ? (
             <TextButton
               label="Delete note"
               onPress={() => {
-                setState((s) => setSessionNote(s, id, "", kind));
+                setState((s) => shared ? setNote(s, id, "", kind) : setSessionNote(s, id, "", kind));
                 onClose();
               }}
             />

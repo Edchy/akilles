@@ -1,5 +1,7 @@
 import type { PropsWithChildren } from "react";
 import { View, type ViewStyle } from "react-native";
+import { SafeAreaProvider, SafeAreaView, initialWindowMetrics } from "react-native-safe-area-context";
+import { colors } from "@/constants/theme";
 
 /**
  * Content column. Full-bleed on a phone; on a wider screen it stops growing
@@ -16,5 +18,16 @@ export function Column({
     <View style={[{ width: "100%", maxWidth: COLUMN, alignSelf: "center" }, style]}>
       {children}
     </View>
+  );
+}
+
+/** Full-screen editor routes measure safe areas in their own native presentation. */
+export function SafeScreen({ children }: PropsWithChildren) {
+  return (
+    <SafeAreaProvider initialMetrics={initialWindowMetrics}>
+      <SafeAreaView edges={["top", "bottom"]} style={{ flex: 1, backgroundColor: colors.bg }}>
+        {children}
+      </SafeAreaView>
+    </SafeAreaProvider>
   );
 }

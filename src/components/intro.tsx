@@ -14,7 +14,7 @@ import { Onboarding } from "@/components/onboarding";
 import { seeIntro, useSession, wantsIntro, wantsOnboarding, workoutFamily } from "@/store/session";
 
 /**
- * How Milo works, in three pages: Milo tells you what to do, light and slow,
+ * How Humbell works, in three pages: Humbell tells you what to do, light and slow,
  * and your workouts take turns — the last drawn with your own workouts.
  *
  * Written so that someone who has never trained, and never used an app like
@@ -279,14 +279,14 @@ const turnsHeight = (n: number) => {
   return rows * TURN_ROW + (rows - 1) * TURN_GAP;
 };
 
-/** How Milo works: shared by the onboarding and by Settings. */
+/** How Humbell works: shared by the onboarding and by Settings. */
 export const HOW: HowPage[] = [
   {
     // "what to do" kept together, or it breaks as "…what / to do."
-    title: "Milo tells you what\u00a0to\u00a0do.",
+    title: "Humbell tells you what\u00a0to\u00a0do.",
     body:
       "Each exercise shows the weight to use. Each circle is one round: lift it that many times, " +
-      "rest, then tap the circle. Milo plans next time for you.",
+      "rest, then tap the circle. Humbell plans next time for you.",
     art: () => <Lift />,
     height: () => 312,
   },
@@ -294,17 +294,18 @@ export const HOW: HowPage[] = [
     title: "Light and slow.",
     body:
       "Pick a weight you can lower slowly and lift without swinging. When you can lift it 12 " +
-      "times, Milo adds a little. Now and then you stay at a weight a while longer, to be sure.",
+      "times, Humbell adds a little. Now and then you stay at a weight a while longer, to be sure.",
     art: () => <Climb />,
     height: () => 246,
   },
   {
-    title: "Your workouts take turns.",
+    title: "Come every day.",
     body:
-      "There are no set days. Whenever you come, the next one is ready. Miss a day, or a week, " +
-      "and Milo carries on where you left off.",
+      "Each workout is short, and trains different muscles from the last, so the rest get a rest. " +
+      "They take turns: miss a day, or a week, and Humbell carries on where you left off. " +
+      "Away from the gym? Keep a second loop, like Bodyweight, and switch to it in Plan.",
     art: (w, turns) => <Turns width={w} turns={turns} />,
-    height: (n) => turnsHeight(n),
+    height: (n) => turnsHeight(n) + AWAY_LOOP,
   },
 ];
 
@@ -456,8 +457,44 @@ export function Climb() {
   );
 }
 
-/** The workouts in order, with the way back to the top; the first is next. */
+/** Room under the loop for the second one, set apart. */
+const AWAY_LOOP = 64;
+
+/**
+ * Your loop, and under it a second one, dashed and quieter: the Bodyweight
+ * loop for away, there to switch to — the idea seen before it is read.
+ */
 function Turns({ width, turns }: { width: number; turns: Turn[] }) {
+  return (
+    <View style={{ width, gap: 16 }}>
+      <TurnsList width={width} turns={turns} />
+      <View
+        style={{
+          height: AWAY_LOOP - 16,
+          marginRight: 56,
+          paddingHorizontal: 20,
+          borderRadius: (AWAY_LOOP - 16) / 2,
+          borderCurve: "continuous",
+          borderWidth: 2,
+          borderStyle: "dashed",
+          borderColor: colors.line,
+          flexDirection: "row",
+          alignItems: "center",
+          gap: 12,
+        }}
+      >
+        <Mark family="full" size={16} color={colors.muted} />
+        <Text numberOfLines={1} style={{ flex: 1, color: colors.muted, fontFamily: fonts.medium, fontSize: 19 }}>
+          Bodyweight
+        </Text>
+        <Text style={{ color: colors.muted, fontFamily: fonts.italic, fontSize: 16 }}>another loop</Text>
+      </View>
+    </View>
+  );
+}
+
+/** The workouts in order, with the way back to the top; the first is next. */
+function TurnsList({ width, turns }: { width: number; turns: Turn[] }) {
   const shown = turns.slice(0, MOST_TURNS);
   const height = turnsHeight(shown.length);
   const first = TURN_ROW / 2;

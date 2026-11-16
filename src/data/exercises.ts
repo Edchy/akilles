@@ -1,3 +1,6 @@
+import type { Gear } from "@/data/kit";
+import type { Movement, Muscle } from "@/data/exercise-tags";
+
 /**
  * The exercise pool.
  *
@@ -59,6 +62,13 @@ export type Exercise = {
    * work — and appear under both headings in the library and in both slots.
    */
   patterns: Pattern[];
+  /** Equipment chosen for a custom exercise; built-ins use the kit table. */
+  equipment?: Gear[];
+  /** Discovery tags, independent of the patterns used by workout slots. */
+  movements?: Movement[];
+  muscles?: Muscle[];
+  /** False keeps a new library option out of automatic substitutions until chosen. */
+  autoSelect?: boolean;
   /** Defaults to the group implied by `pattern` — see `groupOf`. */
   group?: Group;
   /** Smallest practical weight jump, in kg. */
@@ -66,9 +76,9 @@ export type Exercise = {
   /** Bodyweight movements track reps only until you add load. */
   bodyweight?: boolean;
   /**
-   * A bodyweight movement you cannot practically load — nobody straps a plate
-   * to a hanging leg raise or puts one on their own back for a push-up. It
-   * progresses by holding instead: the `weight` number is the seconds held at
+   * A bodyweight movement using pause progression in this app. Some can also
+   * be externally loaded; this mode deliberately progresses by holding instead.
+   * The `weight` number is the seconds held at
    * the hardest point of every rep, stepping up a second at a time to
    * `HOLD_MAX`. Its `increment` is that second.
    */
@@ -190,7 +200,7 @@ export const EXERCISES: Exercise[] = [
     aliases: ["close grip pulldown", "v-bar pulldown", "v bar pulldown", "neutral grip pulldown"] },
   { id: "machine_pulldown", name: "Machine pulldown", patterns: ["vertical_pull"], increment: 5,
     aliases: ["pulldown machine", "iso-lateral pulldown", "plate loaded pulldown"] },
-  { id: "straight_arm_pulldown", name: "Straight-arm pulldown", patterns: ["vertical_pull"], increment: 2.5, startWeight: 15,
+  { id: "straight_arm_pulldown", name: "Straight-arm pulldown", patterns: ["vertical_pull"], increment: 2.5,
     cue: "Arms stay straight. Lats, not triceps.",
     aliases: ["straight arm pulldown", "lat pushdown", "cable pullover", "straight arm lat pulldown"] },
   { id: "db_pullover", name: "DB pullover", patterns: ["vertical_pull"], increment: 2.5,
@@ -213,7 +223,7 @@ export const EXERCISES: Exercise[] = [
   { id: "tbar_row", name: "T-bar row", patterns: ["horizontal_pull"], increment: 2.5,
     aliases: ["t bar row", "t-bar", "t bar", "landmine row"] },
   { id: "inverted_row", name: "Inverted row", patterns: ["horizontal_pull"], increment: 1, bodyweight: true, holds: true,
-    aliases: ["bodyweight row", "australian pull-up", "australian pull up", "ring row", "suspension row"] },
+    aliases: ["bodyweight row", "australian pull-up", "australian pull up"] },
 
   // ---------- squat ----------
   { id: "back_squat", name: "Back squat", patterns: ["squat"], increment: 2.5, cue: "Knees track over toes.",
@@ -249,10 +259,10 @@ export const EXERCISES: Exercise[] = [
   { id: "db_rdl", name: "DB Romanian deadlift", patterns: ["hamstrings", "hinge"], increment: 2.5, perHand: true, cue: "Hips back, dumbbells close to the legs.",
     aliases: ["dumbbell romanian deadlift", "db rdl", "dumbbell rdl", "dumbbell stiff leg deadlift"] },
   { id: "kb_rdl", name: "KB Romanian deadlift", patterns: ["hamstrings", "hinge"], increment: 4, cue: "Hips back, the bell close to your legs.",
-    aliases: ["kettlebell romanian deadlift", "kb rdl", "kettlebell deadlift", "kb deadlift", "kettlebell rdl"] },
+    aliases: ["kettlebell romanian deadlift", "kb rdl", "kettlebell rdl"] },
   { id: "nordic_curl", name: "Nordic curl", patterns: ["hamstrings"], increment: 1, bodyweight: true, holds: true,
     aliases: ["nordic hamstring curl", "nordics", "nordic"] },
-  { id: "kb_swing", name: "KB swing", patterns: ["hinge"], increment: 4, cue: "Snap the hips, arms just guide the bell.",
+  { id: "kb_swing", name: "KB swing", patterns: ["hinge"], autoSelect: false, increment: 4, cue: "Snap the hips, arms just guide the bell.",
     aliases: ["kettlebell swing", "russian swing", "kettlebell swings"] },
   { id: "sumo_deadlift", name: "Sumo deadlift", patterns: ["hinge"], increment: 2.5,
     aliases: ["sumo", "sumo dl", "sumo deadlifts"] },
@@ -260,9 +270,9 @@ export const EXERCISES: Exercise[] = [
     aliases: ["hex bar deadlift", "trap bar", "hex bar", "trap bar dl"] },
   { id: "glute_bridge", name: "Glute bridge", patterns: ["hinge", "hamstrings"], increment: 2.5, bodyweight: true,
     aliases: ["hip bridge", "barbell glute bridge", "glute bridges", "bridge"] },
-  { id: "cable_pull_through", name: "Cable pull-through", patterns: ["hinge"], increment: 5, startWeight: 20,
+  { id: "cable_pull_through", name: "Cable pull-through", patterns: ["hinge"], increment: 5,
     aliases: ["cable pull through", "pull through", "pull-through", "rope pull-through"] },
-  { id: "single_leg_rdl", name: "Single-leg Romanian deadlift", patterns: ["hinge", "hamstrings"], increment: 2.5, perHand: true, startWeight: 10,
+  { id: "single_leg_rdl", name: "Single-leg Romanian deadlift", patterns: ["hinge", "hamstrings"], increment: 2.5, perHand: true,
     cue: "Hips square, free leg reaches back.",
     aliases: ["single leg rdl", "single-leg rdl", "single leg deadlift", "one leg rdl", "sl rdl"] },
 
@@ -295,7 +305,7 @@ export const EXERCISES: Exercise[] = [
     aliases: ["abductor machine", "abduction machine", "hip abductor", "outer thigh machine", "abductors"] },
   { id: "hip_adduction", name: "Hip adduction", patterns: ["hamstrings"], increment: 5,
     aliases: ["adductor machine", "adduction machine", "hip adductor", "inner thigh machine", "adductors"] },
-  { id: "cable_kickback", name: "Cable glute kickback", patterns: ["hamstrings"], increment: 2.5, startWeight: 10,
+  { id: "cable_kickback", name: "Cable glute kickback", patterns: ["hamstrings"], increment: 2.5,
     cue: "Ankle strap, low pulley. One leg at a time.",
     aliases: ["glute kickback", "cable kickback", "glute kickback machine"] },
 
@@ -312,7 +322,7 @@ export const EXERCISES: Exercise[] = [
     aliases: ["lateral raise machine", "side raise machine", "lateral delt machine"] },
   { id: "front_raise", name: "Front raise", patterns: ["shoulders"], increment: 2.5, perHand: true,
     aliases: ["dumbbell front raise", "front raises", "front delt raise", "plate front raise"] },
-  { id: "upright_row", name: "Upright row", patterns: ["shoulders"], increment: 2.5, startWeight: 20, cue: "Stop at chest height.",
+  { id: "upright_row", name: "Upright row", patterns: ["shoulders"], increment: 2.5, cue: "Stop at chest height.",
     aliases: ["upright rows", "barbell upright row", "ez bar upright row"] },
   { id: "reverse_fly_machine", name: "Reverse fly machine", patterns: ["shoulders"], increment: 5,
     aliases: ["reverse pec deck", "rear delt machine", "rear delt fly machine", "reverse machine fly"] },
@@ -320,9 +330,9 @@ export const EXERCISES: Exercise[] = [
     aliases: ["cable reverse fly", "cable rear delt", "reverse cable crossover"] },
   // Shrugs work the traps: shoulder-girdle work with no row in it, so they sit
   // with the raises rather than turning up as a swap for the day's row.
-  { id: "db_shrug", name: "DB shrug", patterns: ["shoulders"], increment: 2.5, perHand: true, startWeight: 20,
+  { id: "db_shrug", name: "DB shrug", patterns: ["shoulders"], increment: 2.5, perHand: true,
     aliases: ["dumbbell shrug", "shrug", "shrugs", "dumbbell shrugs", "trap shrug"] },
-  { id: "bb_shrug", name: "BB shrug", patterns: ["shoulders"], increment: 2.5, startWeight: 60,
+  { id: "bb_shrug", name: "BB shrug", patterns: ["shoulders"], increment: 2.5,
     aliases: ["barbell shrug", "shrug", "shrugs", "barbell shrugs"] },
 
   // ---------- biceps ----------
@@ -367,7 +377,7 @@ export const EXERCISES: Exercise[] = [
     aliases: ["rope pressdown", "tricep rope pushdown", "triceps rope pushdown", "rope triceps extension"] },
   { id: "cable_overhead_ext", name: "Cable overhead extension", patterns: ["triceps"], increment: 2.5,
     aliases: ["overhead cable extension", "cable overhead triceps extension", "overhead rope extension"] },
-  { id: "seated_dip", name: "Seated dip machine", patterns: ["triceps"], increment: 5, startWeight: 30,
+  { id: "seated_dip", name: "Seated dip machine", patterns: ["triceps"], increment: 5,
     aliases: ["dip machine", "seated dip", "tricep dip machine", "triceps press machine"] },
   { id: "bench_dip", name: "Bench dip", patterns: ["triceps"], increment: 1, bodyweight: true, holds: true,
     aliases: ["bench dips", "tricep dips", "triceps dips", "chair dip"] },
@@ -414,6 +424,8 @@ export const EXERCISES: Exercise[] = [
   // its place next to the crunches rather than duplicating one.
   { id: "ab_machine", name: "Rotary torso machine", patterns: ["abs"], increment: 5, cue: "Turn from the ribs, hips still. Both directions.",
     aliases: ["torso rotation machine", "rotation machine", "oblique machine", "torso twist"] },
+  { id: "hollow_hold", name: "Hollow hold", patterns: ["abs"], increment: 0, bodyweight: true, timed: true, cue: "Lower back stays against the floor.",
+    aliases: ["hollow body hold", "hollow body", "hollow holds"] },
   { id: "plank", name: "Plank", patterns: ["abs"], increment: 0, bodyweight: true, timed: true,
     aliases: ["front plank", "forearm plank", "planks"] },
   { id: "crunch", name: "Crunch", patterns: ["abs"], increment: 2.5, bodyweight: true,
@@ -433,10 +445,49 @@ export const EXERCISES: Exercise[] = [
   { id: "side_plank", name: "Side plank", patterns: ["abs"], increment: 0, bodyweight: true, timed: true, cue: "Hold each side.",
     aliases: ["side planks", "lateral plank"] },
   // Cable core work that resists or makes a turn, like the rotary machine.
-  { id: "pallof_press", name: "Pallof press", patterns: ["abs"], increment: 2.5, startWeight: 10, cue: "Don't let it turn you. Both sides.",
+  { id: "pallof_press", name: "Pallof press", patterns: ["abs"], increment: 2.5, cue: "Don't let it turn you. Both sides.",
     aliases: ["pallof", "anti-rotation press", "cable pallof press"] },
-  { id: "woodchop", name: "Cable woodchop", patterns: ["abs"], increment: 2.5, startWeight: 10, cue: "Turn from the ribs, arms long. Both sides.",
+  { id: "woodchop", name: "Cable woodchop", patterns: ["abs"], increment: 2.5, cue: "Turn from the ribs, arms long. Both sides.",
     aliases: ["wood chop", "woodchopper", "wood chopper", "cable chop"] },
+
+  // Movement-first expansion: every entry has a source-checked guide in reviewed-guides.ts.
+  { id: "wall_push_up", name: "Wall push-up", patterns: ["horizontal_push"], autoSelect: false, increment: 1, bodyweight: true, holds: true,
+    aliases: ["wall press up", "wall pushup"] },
+  { id: "incline_push_up", name: "Incline push-up", patterns: ["horizontal_push"], autoSelect: false, increment: 1, bodyweight: true, holds: true,
+    aliases: ["elevated push up", "hands elevated push up", "bench push up"] },
+  { id: "knee_push_up", name: "Knee push-up", patterns: ["horizontal_push"], autoSelect: false, increment: 1, bodyweight: true, holds: true,
+    aliases: ["bent knee push up", "modified push up", "kneeling push up"] },
+  { id: "decline_push_up", name: "Decline push-up", patterns: ["horizontal_push"], autoSelect: false, increment: 1, bodyweight: true, holds: true,
+    aliases: ["feet elevated push up", "decline pushup"] },
+  { id: "sit_to_stand", name: "Sit-to-stand", patterns: ["squat"], autoSelect: false, increment: 1, bodyweight: true, holds: true,
+    aliases: ["chair stand", "chair squat", "stand from chair"] },
+  { id: "supported_squat", name: "Supported mini-squat", patterns: ["squat"], autoSelect: false, increment: 1, bodyweight: true, holds: true,
+    aliases: ["chair supported squat", "mini squat"] },
+  { id: "dead_bug", name: "Dead bug", patterns: ["abs"], movements: ["anti_extension"], muscles: ["abs", "obliques"],
+    autoSelect: false, increment: 1, bodyweight: true, holds: true, aliases: ["deadbug", "alternating dead bug"] },
+  { id: "bird_dog", name: "Bird dog", patterns: ["abs"], movements: ["anti_rotation"], muscles: ["abs", "obliques", "glutes", "lower_back"],
+    autoSelect: false, increment: 1, bodyweight: true, holds: true, aliases: ["birddog", "quadruped opposite arm leg raise"] },
+  { id: "db_front_squat", name: "DB front squat", patterns: ["squat"], autoSelect: false, increment: 2.5, perHand: true, startWeight: 2.5,
+    aliases: ["dumbbell front squat", "double dumbbell squat"] },
+  { id: "kb_deadlift", name: "KB deadlift", patterns: ["hinge"], autoSelect: false, increment: 4, startWeight: 4,
+    aliases: ["kettlebell deadlift", "kettlebell floor deadlift"] },
+  { id: "ball_hamstring_curl", name: "Stability ball hamstring curl", patterns: ["hamstrings"], movements: ["knee_flexion"],
+    muscles: ["hamstrings", "glutes"], autoSelect: false, increment: 1, bodyweight: true, holds: true,
+    aliases: ["swiss ball leg curl", "exercise ball leg curl", "stability ball leg curl"] },
+  { id: "suspension_row", name: "Suspension row", patterns: ["horizontal_pull"], autoSelect: false, increment: 1, bodyweight: true, holds: true,
+    aliases: ["trx row", "suspension trainer row", "trx back row"] },
+  // Carries use the existing timed-set ladder (seconds) and track kg separately.
+  { id: "farmer_carry", name: "DB farmer’s carry", patterns: ["abs"], movements: ["carry"], muscles: ["forearms", "abs", "upper_back"],
+    autoSelect: false, increment: 2.5, perHand: true, timed: true, startWeight: 7.5,
+    aliases: ["farmers walk", "farmer carry", "dumbbell loaded carry", "farmer's carry"] },
+  { id: "suitcase_carry", name: "DB suitcase carry", patterns: ["abs"], movements: ["carry", "lateral_stability"], muscles: ["forearms", "obliques"],
+    autoSelect: false, increment: 2.5, timed: true, startWeight: 7.5, aliases: ["suitcase walk", "single arm loaded carry", "dumbbell suitcase carry"] },
+];
+
+/** Frozen batch for save migration: new library entries must not clutter old catalogues. */
+export const MOVEMENT_EXPANSION_IDS = [
+  "wall_push_up", "incline_push_up", "knee_push_up", "decline_push_up", "sit_to_stand", "supported_squat",
+  "dead_bug", "bird_dog", "db_front_squat", "kb_deadlift", "ball_hamstring_curl", "suspension_row", "farmer_carry", "suitcase_carry",
 ];
 
 /**
@@ -470,6 +521,7 @@ export const LEAN: string[] = [
   "pushdown",
   "overhead_ext",
   "push_up",
+  "incline_push_up",
   "pec_deck",
   "cable_lateral_raise",
   "reverse_fly_machine",
@@ -496,6 +548,7 @@ export const LEAN: string[] = [
   "db_rdl",
   "bulgarian",
   "walking_lunge",
+  "split_squat",
   "leg_ext",
   "leg_curl",
   "calf_raise",
@@ -509,6 +562,7 @@ export const LEAN: string[] = [
   "machine_crunch",
   "cable_crunch",
   "plank",
+  "dead_bug",
   "crunch",
   "ab_wheel",
 ];

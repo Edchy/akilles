@@ -1,132 +1,137 @@
-import { useRef, useState, type ReactNode } from "react";
-import { Animated, PanResponder, Pressable, View } from "react-native";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { Pressable, View } from "react-native";
+import ReanimatedSwipeable, { type SwipeableMethods } from "react-native-gesture-handler/ReanimatedSwipeable";
+import Animated, {
+  interpolate,
+  Extrapolation,
+  runOnJS,
+  useAnimatedReaction,
+  useAnimatedStyle,
+  type SharedValue,
+} from "react-native-reanimated";
 
 import { Text } from "@/components/text";
+import { spring } from "@/constants/motion";
 import { colors } from "@/constants/theme";
+import { haptic } from "@/lib/haptics";
+import { useReduceMotion } from "@/lib/use-reduce-motion";
 
-/** How far the row slides to show its button. */
-const OPEN = 108;
+export type SwipeAction = { label: string; onPress: () => void; disabled?: boolean; destructive?: boolean };
 
-/**
- * A row you can swipe left to show one action behind it — Remove, Delete.
- * The swipe only shows the button; a tap on it does the deed, so a stray
- * swipe never loses anything. Swipe back, or tap the row, to put it away.
- *
- * Only a sideways drag is taken, so it sits happily inside a scrolling
- * sheet and a DragList: an upward or downward move scrolls, and a held row
- * belongs to the list, which claims the gesture before this ever sees it.
- * The same action is always in the row's own sheet too, for anyone who
- * cannot swipe.
- */
-export function Swipe({
-  label,
-  disabled = false,
-  radius,
-  onAction,
-  children,
-}: {
-  label: string;
+// Opening another row puts the previous row away, including across lists.
+let closeOpenRow: (() => void) | undefined;
+
+/** Native/UI-thread tracking: dragging never waits for a React render. Swipes
+ * only reveal actions; removal always needs a deliberate tap. */
+export function Swipe({ label, disabled = false, radius, onAction, actions, children }: {
+  label?: string;
   disabled?: boolean;
-  /** The row's corner radius, so the button behind matches it. */
   radius: number;
-  onAction: () => void;
+  onAction?: () => void;
+  actions?: SwipeAction[];
   children: ReactNode;
 }) {
-  const x = useRef(new Animated.Value(0)).current;
+  const buttons = actions ?? (label && onAction ? [{ label, onPress: onAction, destructive: true }] : []);
+  const width = buttons.length > 1 ? buttons.length * 96 : 108;
+  const row = useRef<SwipeableMethods>(null);
   const [open, setOpen] = useState(false);
-  // The responder outlives renders; read the latest here.
-  const latest = useRef({ open, disabled });
-  latest.current = { open, disabled };
-
-  const settle = (to: 0 | -1) => {
-    setOpen(to !== 0);
-    Animated.spring(x, {
-      toValue: to * OPEN,
-      useNativeDriver: false,
-      bounciness: 0,
-      speed: 18,
-    }).start();
+  const reduce = useReduceMotion();
+  const close = useCallback(() => { row.current?.close(); setOpen(false); }, []);
+  const claim = () => {
+    if (closeOpenRow !== close) closeOpenRow?.();
+    closeOpenRow = close;
   };
-
-  const responder = useRef(
-    PanResponder.create({
-      onStartShouldSetPanResponder: () => false,
-      // Sideways and on purpose: well past a tap's wobble, and clearly more
-      // across than down.
-      onMoveShouldSetPanResponderCapture: (_, g) =>
-        !latest.current.disabled && Math.abs(g.dx) > 12 && Math.abs(g.dx) > Math.abs(g.dy) * 1.5,
-      onPanResponderMove: (_, g) => {
-        const from = latest.current.open ? -OPEN : 0;
-        // Free to the open point, then heavier past it.
-        const raw = Math.min(0, from + g.dx);
-        x.setValue(raw < -OPEN ? -OPEN + (raw + OPEN) / 3 : raw);
-      },
-      onPanResponderRelease: (_, g) => {
-        const from = latest.current.open ? -OPEN : 0;
-        const at = from + g.dx;
-        settle(g.vx < -0.4 || (g.vx <= 0.4 && at < -OPEN / 2) ? -1 : 0);
-      },
-      onPanResponderTerminate: () => settle(latest.current.open ? -1 : 0),
-      onPanResponderTerminationRequest: () => false,
-    }),
-  ).current;
+  useEffect(() => {
+    if (disabled) close();
+  }, [disabled, close]);
+  useEffect(() => () => {
+    if (closeOpenRow === close) closeOpenRow = undefined;
+  }, [close]);
 
   return (
-    <View {...responder.panHandlers}>
-      <Animated.View
-        style={{
-          position: "absolute",
-          top: 0,
-          bottom: 0,
-          right: 0,
-          width: OPEN - 10,
-          opacity: x.interpolate({
-            inputRange: [-40, 0],
-            outputRange: [1, 0],
-            extrapolate: "clamp",
-          }),
-        }}
-      >
-        <Pressable
-          accessibilityRole="button"
-          accessibilityElementsHidden={!open}
-          importantForAccessibility={open ? "auto" : "no-hide-descendants"}
-          onPress={() => {
-            settle(0);
-            onAction();
-          }}
-          style={({ pressed }) => ({
-            flex: 1,
-            alignItems: "center",
-            justifyContent: "center",
-            borderRadius: radius,
-            borderCurve: "continuous",
-            backgroundColor: colors.bend,
-            opacity: pressed ? 0.8 : 1,
-          })}
-        >
-          <Text style={{ color: colors.ink, fontSize: 17, fontWeight: "600" }}>{label}</Text>
-        </Pressable>
-      </Animated.View>
-
-      <Animated.View
-        style={{
-          transform: [{ translateX: x }],
-          borderRadius: radius,
-          borderCurve: "continuous",
-          backgroundColor: colors.bg,
-        }}
-      >
+    <ReanimatedSwipeable
+      ref={row}
+      enabled={!disabled && buttons.length > 0}
+      friction={1}
+      rightThreshold={width * 0.35}
+      dragOffsetFromLeftEdge={open ? 10 : 10000}
+      dragOffsetFromRightEdge={10}
+      overshootLeft={false}
+      overshootRight
+      overshootFriction={8}
+      enableTrackpadTwoFingerGesture
+      animationOptions={{ ...spring.snappy, overshootClamping: true }}
+      containerStyle={{ overflow: "visible" }}
+      onSwipeableOpenStartDrag={claim}
+      onSwipeableWillOpen={() => { claim(); setOpen(true); }}
+      onSwipeableWillClose={() => setOpen(false)}
+      onSwipeableClose={() => { if (closeOpenRow === close) closeOpenRow = undefined; }}
+      renderRightActions={(progress, translation) => (
+        <ActionTray progress={progress} translation={translation} width={width} reduce={reduce}>
+          {buttons.map((action) => (
+            <Pressable
+              key={action.label}
+              accessibilityRole="button"
+              accessibilityLabel={action.label}
+              accessibilityState={{ disabled: !!action.disabled }}
+              accessibilityElementsHidden={!open}
+              importantForAccessibility={open ? "auto" : "no-hide-descendants"}
+              disabled={!open || disabled || action.disabled}
+              onPress={() => { if (action.destructive) haptic.warn(); close(); action.onPress(); }}
+              style={({ pressed }) => ({
+                flex: 1, minHeight: 44, alignItems: "center", justifyContent: "center",
+                borderRadius: buttons.length > 1 ? Math.min(radius, 18) : radius,
+                borderCurve: "continuous",
+                backgroundColor: action.destructive ? colors.danger : colors.raised,
+                opacity: action.disabled ? 0.35 : pressed ? 0.8 : 1,
+              })}
+            >
+              <Text ui style={{ color: action.destructive ? colors.white : colors.text, fontSize: 16, fontWeight: "600" }}>{action.label}</Text>
+            </Pressable>
+          ))}
+        </ActionTray>
+      )}
+    >
+      <View style={{ borderRadius: radius, borderCurve: "continuous", backgroundColor: colors.bg }}>
         {children}
-        {open ? (
-          // While the button shows, a tap on the row puts it away rather than
-          // opening what is underneath.
-          <Pressable
-            accessibilityLabel="Close"
-            onPress={() => settle(0)}
-            style={{ position: "absolute", top: 0, right: 0, bottom: 0, left: 0 }}
-          />
-        ) : null}
+        {open ? <Pressable accessibilityRole="button" accessibilityLabel="Close actions" onPress={close}
+          style={{ position: "absolute", top: 0, right: 0, bottom: 0, left: 0 }} /> : null}
+      </View>
+    </ReanimatedSwipeable>
+  );
+}
+
+/**
+ * The actions behind a row. They grow out of the right edge exactly as far
+ * as the row has moved — no fade, no slide of their own — and stretch with
+ * it past the end, so the row and its buttons read as one thing under the
+ * finger. A tick when letting go would leave it open.
+ */
+function ActionTray({ progress, translation, width, reduce, children }: {
+  progress: SharedValue<number>;
+  translation: SharedValue<number>;
+  width: number;
+  reduce: boolean;
+  children: ReactNode;
+}) {
+  useAnimatedReaction(
+    () => progress.value > 0.5,
+    (open, was) => {
+      if (was !== null && open !== was && open) runOnJS(haptic.tick)();
+    },
+  );
+  const grow = useAnimatedStyle(() => ({
+    width: Math.max(0, -translation.value),
+  }));
+  const labels = useAnimatedStyle(() => ({
+    opacity: interpolate(progress.value, [0, 0.35], [0, 1], Extrapolation.CLAMP),
+    transform: [{ scale: reduce ? 1 : interpolate(progress.value, [0, 1], [0.85, 1], Extrapolation.CLAMP) }],
+  }));
+  // The tray's own width stays fixed: the row measures it to know where open is.
+  return (
+    <View style={{ width }}>
+      <Animated.View style={[{ position: "absolute", top: 0, bottom: 0, right: 0, paddingLeft: 10, flexDirection: "row", gap: 8 }, grow]}>
+        <Animated.View style={[{ flex: 1, flexDirection: "row", gap: 8 }, labels]}>{children}</Animated.View>
       </Animated.View>
     </View>
   );

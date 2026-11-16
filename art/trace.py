@@ -134,7 +134,7 @@ def main():
     pv = sys.argv[sys.argv.index("--preview") + 1] if "--preview" in sys.argv else None
     entries, rows = [], []
     for id, movement in frames.items():
-        # The character sheet is a reference for drawing, not a movement.
+        # The figure sheet is a reference for drawing, not a movement.
         if movement.get("sheet"):
             continue
         specs = movement["frames"]
@@ -157,7 +157,7 @@ def main():
 
     lines = [
         "/**",
-        " * Milo's own pictures of each movement, traced from the drawings in art/drawn",
+        " * Humbell's own pictures of each movement, traced from the drawings in art/drawn",
         " * by art/trace.py. Don't edit by hand: redraw and retrace. Each frame is two",
         " * paths on a 768 x 512 view box: `tint` (the far limbs and the equipment, and",
         " * under everything) and `ink` (the near side of the body, drawn on top) —",

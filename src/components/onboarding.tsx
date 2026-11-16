@@ -10,31 +10,21 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import Svg, { Circle as SvgCircle, Path as SvgPath } from "react-native-svg";
 
 import { Icon } from "@/components/icon";
 import { Illustration } from "@/components/illustration";
 import { HOW, type Turn } from "@/components/intro";
 import { Mark } from "@/components/mark";
-import { GearIcon, KitPicker, Option } from "@/components/place";
+import { Option } from "@/components/place";
 import { COLUMN } from "@/components/screen";
 import { SectionLabel, TextButton } from "@/components/sheet";
-import { Text } from "@/components/text";
-import { colors, FAMILY, fonts, radii } from "@/constants/theme";
+import { Text, TextInput } from "@/components/text";
+import { colors, fonts, radii } from "@/constants/theme";
 import { byId } from "@/data/exercises";
 import { familyOf, type Family } from "@/data/families";
-import type { Kit } from "@/data/kit";
+import { familyOfLifts, kindOf } from "@/data/kinds";
 import type { Workout } from "@/data/split";
-import {
-  EASY_LABEL,
-  SHAPE_FOR,
-  SHAPE_LABEL,
-  TIME_LABEL,
-  type Easy,
-  type Shape,
-  type Time,
-} from "@/data/templates";
-import { DECORATIVE } from "@/lib/decorative";
+import { BODYWEIGHT_RANGE, type Experience, type Lifter, type Sex } from "@/lib/start-weight";
 import { useReduceMotion } from "@/lib/use-reduce-motion";
 import {
   applyPlan,
@@ -48,16 +38,19 @@ import {
 /**
  * The first launch, as one flow from hello to the first workout:
  *
- *   Welcome to Milo.               a film of Milo's marks, and a hello
- *   Where do you train?            a gym, or home — and what home has
- *   How long do you usually have?  which shape of plan, and how many lifts
- *   Here's your plan.              Start with this, or Make it mine
- *   How Milo works                 three short pages, the last with your
- *                                  own workouts in the order they come
+ *   Welcome to Humbell.               a film of Humbell's marks, and a hello
+ *   Have you lifted weights?       new, a bit, or for a while
+ *   Your first weights             weight and sex, said or skipped
+ *   How Humbell works                 three short pages, the last with your
+ *                                  workouts in the order they come
  *
- * Milo's pick needs those two facts whatever happens: a gym plan is useless
- * in a living room and an hour-long one is useless in thirty minutes. No
- * question about days a week: the loop doesn't care.
+ * Humbell is opinionated so nobody has to set anything up: everyone starts on
+ * Push, Pull, Legs at a gym, small — three lifts a day, every day — and the
+ * plan grows as you keep coming (see `data/growth.ts`). Changing it is Plan's
+ * job: a workout of another kind, or a loop of its own for away. The only
+ * questions are for the first weights: how much you have lifted, and — said
+ * to be used for nothing else, kept on the phone, and skippable — weight
+ * and sex. No question about days a week: the loop doesn't care.
  *
  * One look all the way through — a line of progress at the top, each page
  * sliding in from the side it comes from — so it reads as one thing, not a
@@ -69,12 +62,27 @@ export function Onboarding() {
   return <Steps onDone={(answers) => setState((s) => seeIntro(applyPlan(s, answers)))} />;
 }
 
-type Step = "welcome" | "where" | "home" | "time" | "plan" | "mine" | 0 | 1 | 2;
+type Step = "welcome" | "lifted" | "body" | 0 | 1 | 2;
 
-/** The steps the progress line counts; a detour counts as the step it leaves from. */
-const ALONG: Step[] = ["where", "time", "plan", 0, 1, 2];
-const placeOnLine = (step: Step): number =>
-  ALONG.indexOf(step === "home" ? "where" : step === "mine" ? "plan" : step);
+/** The steps the progress line counts. */
+const ALONG: Step[] = ["lifted", "body", 0, 1, 2];
+
+const EXPERIENCE_LABEL: Record<Experience, string> = {
+  new: "No, I'm new to this",
+  some: "A bit",
+  lots: "Yes, for a while",
+};
+
+const SEX_LABEL: Record<Sex, string> = { woman: "Woman", man: "Man" };
+
+/** A typed body weight, or undefined when it isn't one Humbell will take. */
+const readWeight = (text: string): number | undefined => {
+  const kg = Number(text.replace(",", "."));
+  return Number.isFinite(kg) && kg >= BODYWEIGHT_RANGE.min && kg <= BODYWEIGHT_RANGE.max
+    ? Math.round(kg)
+    : undefined;
+};
+const placeOnLine = (step: Step): number => ALONG.indexOf(step);
 
 const tap = () => Haptics.selectionAsync().catch(() => {});
 
@@ -83,12 +91,11 @@ function Steps({ onDone }: { onDone: (answers: Answers) => void }) {
   const insets = useSafeAreaInsets();
   const [trail, setTrail] = useState<Step[]>(["welcome"]);
   const [forward, setForward] = useState(true);
-  const [where, setWhere] = useState<"gym" | "home" | null>(null);
-  const [home, setHome] = useState<Kit | null>(null);
-  const [kit, setKit] = useState<Kit>({ gear: ["dumbbells"] });
-  const [time, setTime] = useState<Time>("long");
-  const [easy, setEasy] = useState<Easy[]>([]);
-  const [shape, setShape] = useState<Shape | undefined>(undefined);
+  const [experience, setExperience] = useState<Experience | null>(null);
+  const [weightText, setWeightText] = useState("");
+  const [sex, setSex] = useState<Sex | undefined>(undefined);
+  // Said, or skipped: skipping leaves weight and sex out, whatever was typed.
+  const [skippedBody, setSkippedBody] = useState(false);
 
   const step = trail[trail.length - 1];
   const go = (next: Step) => {
@@ -99,7 +106,12 @@ function Steps({ onDone }: { onDone: (answers: Answers) => void }) {
     setForward(false);
     setTrail((t) => (t.length > 1 ? t.slice(0, -1) : t));
   };
-  const answers: Answers = { home, time, easy, shape };
+  const lifter: Lifter = {
+    experience: experience ?? "some",
+    ...(skippedBody ? {} : { bodyweight: readWeight(weightText), sex }),
+  };
+  // The plan itself is not a question: Push, Pull, Legs at a gym.
+  const answers: Answers = { home: null, time: "long", easy: [], lifter };
   const plan = makePlan(state, answers);
   const finish = () => onDone(answers);
 
@@ -109,140 +121,100 @@ function Steps({ onDone }: { onDone: (answers: Answers) => void }) {
         return (
           <Page
             art={<Welcome />}
-            title="Welcome to Milo."
-            body="Get stronger a little at a time, with a plan made for you. Two quick questions and you're ready to lift."
-            action={{ label: "Let's go", onPress: () => go("where") }}
+            title="Welcome to Humbell."
+            body="Come every day. Each workout is short, and the next one is always ready. Two quick questions and you're ready to lift."
+            action={{ label: "Let's go", onPress: () => go("lifted") }}
           />
         );
-      case "where":
-        return (
-          <Page title="Where do you train?" body="Milo picks exercises you can do there.">
-            <Option
-              label="At a gym"
-              icon={<GearIcon gear="gym" />}
-              on={where === "gym"}
-              onPress={() => {
-                tap();
-                setWhere("gym");
-                setHome(null);
-                go("time");
-              }}
-            />
-            <Option
-              label="At home"
-              icon={<GearIcon gear="home" />}
-              on={where === "home"}
-              onPress={() => {
-                tap();
-                setWhere("home");
-                go("home");
-              }}
-            />
-          </Page>
-        );
-      case "home":
+      case "lifted":
         return (
           <Page
-            title="What do you have at home?"
-            body="Tick everything you have. Nothing at all is fine too: your body is enough."
+            title="Have you lifted weights before?"
+            body="So your first weights suit you. New to it? Humbell starts you light."
+          >
+            {(Object.keys(EXPERIENCE_LABEL) as Experience[]).map((e) => (
+              <Option
+                key={e}
+                label={EXPERIENCE_LABEL[e]}
+                on={experience === e}
+                onPress={() => {
+                  tap();
+                  setExperience(e);
+                  go("body");
+                }}
+              />
+            ))}
+          </Page>
+        );
+      case "body": {
+        const typed = weightText.trim().length > 0;
+        const unreadable = typed && readWeight(weightText) === undefined;
+        return (
+          <Page
+            title="Help Humbell pick your weights."
+            body="Your weight and sex help pick a good starting weight for every new exercise: today, and whenever you add one later. Used for nothing else, and kept on your phone."
             action={{
               label: "Next",
               onPress: () => {
-                setHome(kit);
-                go("time");
+                setSkippedBody(false);
+                go(0);
               },
             }}
-          >
-            <KitPicker
-              kit={kit}
-              onChange={(next) => {
-                tap();
-                setKit(next);
-              }}
-            />
-          </Page>
-        );
-      case "time":
-        return (
-          <Page
-            title="How long do you usually have?"
-            body="For the whole visit, warm-up and stretching included."
-          >
-            {(Object.keys(TIME_LABEL) as Time[]).map((t) => (
-              <Option
-                key={t}
-                label={TIME_LABEL[t]}
-                icon={<Clock minutes={MINUTES[t]} />}
-                on={false}
+            after={
+              <TextButton
+                label="Skip"
                 onPress={() => {
-                  tap();
-                  setTime(t);
-                  setShape(undefined);
-                  go("plan");
+                  setSkippedBody(true);
+                  go(0);
                 }}
               />
-            ))}
-          </Page>
-        );
-      case "plan":
-        return (
-          <Page
-            title="Here's your plan."
-            body={
-              plan.length === 1
-                ? "One workout. Do it whenever you come."
-                : `${plan.length} workouts that take turns. Do whichever is next, whenever you come.`
             }
-            action={{ label: "Start with this", onPress: () => go(0) }}
-            after={<TextButton label="Make it mine" onPress={() => go("mine")} />}
           >
-            {plan.map((w, i) => (
-              <Rise key={w.id} delay={120 + i * 90}>
-                <PlanCard workout={w} />
-              </Rise>
+            <SectionLabel>Your weight</SectionLabel>
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                gap: 12,
+                minHeight: 60,
+                paddingHorizontal: 18,
+                borderRadius: 18,
+                borderCurve: "continuous",
+                backgroundColor: colors.surface,
+              }}
+            >
+              <TextInput
+                accessibilityLabel="Your weight in kilograms"
+                value={weightText}
+                onChangeText={setWeightText}
+                keyboardType="decimal-pad"
+                returnKeyType="done"
+                maxLength={5}
+                style={{ flex: 1, color: colors.text, fontFamily: fonts.regular, fontSize: 24, paddingVertical: 12 }}
+              />
+              <Text style={{ color: colors.text, fontFamily: fonts.regular, fontSize: 20 }}>kg</Text>
+            </View>
+            {unreadable ? (
+              <Text style={{ color: colors.text, fontFamily: fonts.italic, fontSize: 17 }}>
+                A weight between {BODYWEIGHT_RANGE.min} and {BODYWEIGHT_RANGE.max} kg.
+              </Text>
+            ) : null}
+            <View style={{ height: 8 }} />
+            <SectionLabel>Sex</SectionLabel>
+            {(Object.keys(SEX_LABEL) as Sex[]).map((x) => (
+              <Option
+                key={x}
+                label={SEX_LABEL[x]}
+                on={sex === x}
+                onPress={() => {
+                  tap();
+                  setSex((now) => (now === x ? undefined : x));
+                }}
+              />
             ))}
-          </Page>
-        );
-      case "mine": {
-        const pick = SHAPE_FOR[time];
-        return (
-          <Page
-            title="Make it yours."
-            body="Change anything here, then look at your plan again."
-            action={{ label: "Show my plan", onPress: back }}
-          >
-            <SectionLabel>Go easy on</SectionLabel>
-            <Text style={{ color: colors.muted, fontSize: 17, lineHeight: 24 }}>
-              Milo leaves out the exercises that load these the most. Milo isn't a doctor: if
-              something hurts, stop and ask one.
+            <Text style={{ marginTop: 12, color: colors.muted, fontFamily: fonts.regular, fontSize: 17, lineHeight: 24 }}>
+              Rather not say? Skip. Humbell starts you light and finds your weights as you go.
             </Text>
-            {(Object.keys(EASY_LABEL) as Easy[]).map((e) => (
-              <Option
-                key={e}
-                check
-                label={EASY_LABEL[e]}
-                on={easy.includes(e)}
-                onPress={() => {
-                  tap();
-                  setEasy((list) =>
-                    list.includes(e) ? list.filter((x) => x !== e) : [...list, e],
-                  );
-                }}
-              />
-            ))}
-            <View style={{ height: 20 }} />
-            <SectionLabel>Shape of plan</SectionLabel>
-            {(Object.keys(SHAPE_LABEL) as Shape[]).map((sh) => (
-              <Option
-                key={sh}
-                label={sh === pick ? `${SHAPE_LABEL[sh]} (Milo's pick)` : SHAPE_LABEL[sh]}
-                on={(shape ?? pick) === sh}
-                onPress={() => {
-                  tap();
-                  setShape(sh === pick ? undefined : sh);
-                }}
-              />
-            ))}
           </Page>
         );
       }
@@ -357,33 +329,6 @@ function Enter({ forward, children }: { forward: boolean; children: ReactNode })
   );
 }
 
-/** Something that rises into place a moment after its page: the plan's cards, one by one. */
-function Rise({ delay, children }: { delay: number; children: ReactNode }) {
-  const still = useReduceMotion();
-  const t = useRef(new Animated.Value(0)).current;
-  useEffect(() => {
-    Animated.timing(t, {
-      toValue: 1,
-      duration: 360,
-      delay: still ? 0 : delay,
-      easing: Easing.out(Easing.cubic),
-      useNativeDriver: true,
-    }).start();
-  }, [t, delay, still]);
-  return (
-    <Animated.View
-      style={{
-        opacity: t,
-        transform: [
-          { translateY: t.interpolate({ inputRange: [0, 1], outputRange: [still ? 0 : 16, 0] }) },
-        ],
-      }}
-    >
-      {children}
-    </Animated.View>
-  );
-}
-
 /** How far along: a line that fills, step by step. */
 function Progress({ at, of }: { at: number; of: number }) {
   const fill = useRef(new Animated.Value(at / of)).current;
@@ -427,7 +372,7 @@ const WELCOME_FILMS = ["goblet_squat", "push_up", "db_row"];
 const FILM_MS = 3200;
 
 /**
- * Milo's marks at work: a film that changes every few seconds, one kind of
+ * Humbell's marks at work: a film that changes every few seconds, one kind of
  * lift after another, cross-fading — what the app is about, before a word
  * about it.
  */
@@ -492,79 +437,10 @@ function HowArt({ page, turns }: { page: number; turns: Turn[] }) {
   );
 }
 
-const MINUTES: Record<Time, number> = { short: 30, medium: 45, long: 60 };
-
-/** A clock face with the time it takes filled in. */
-function Clock({ minutes }: { minutes: number }) {
-  const ink = colors.text;
-  const r = 12;
-  const turn = Math.min(minutes, 59.99) / 60;
-  const a = turn * 2 * Math.PI;
-  const x = 16 + r * Math.sin(a);
-  const y = 16 - r * Math.cos(a);
-  const wedge =
-    minutes >= 60
-      ? null
-      : `M16 16 L16 ${16 - r} A${r} ${r} 0 ${turn > 0.5 ? 1 : 0} 1 ${x.toFixed(2)} ${y.toFixed(2)} Z`;
-  return (
-    <Svg32>
-      <SvgCircle cx={16} cy={16} r={14} stroke={ink} strokeWidth={2.5} fill="none" />
-      {wedge ? <SvgPath d={wedge} fill={ink} /> : <SvgCircle cx={16} cy={16} r={r} fill={ink} />}
-    </Svg32>
-  );
-}
-
-// ---- the plan ----
-
-/** A workout as the plan shows it: its name, what it trains, and what you will do. */
-function PlanCard({ workout }: { workout: Workout }) {
-  const exercises = workout.exercises.map((e) => byId(e.options[0])!).filter(Boolean);
-  const family = familyOfWorkout(workout);
-  return (
-    <View
-      style={{
-        backgroundColor: `${FAMILY[family].field}1A`,
-        borderRadius: radii.card,
-        borderCurve: "continuous",
-        paddingHorizontal: 18,
-        paddingVertical: 18,
-        gap: 12,
-      }}
-    >
-      <View>
-        <Text style={{ color: colors.text, fontFamily: fonts.display, fontSize: 28, lineHeight: 34 }}>
-          {workout.name}
-        </Text>
-        <Text style={{ color: colors.muted, fontSize: 17, fontStyle: "italic" }}>
-          {workout.subtitle}
-        </Text>
-      </View>
-      <View style={{ gap: 6 }}>
-        {exercises.map((ex) => (
-          <View key={ex.id} style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
-            <View style={{ width: 24, alignItems: "center" }}>
-              <Mark family={familyOf(ex)} size={18} />
-            </View>
-            <Text style={{ flex: 1, color: colors.text, fontSize: 18 }}>{ex.name}</Text>
-          </View>
-        ))}
-      </View>
-    </View>
-  );
-}
-
-/** The family most of a workout's lifts belong to. */
+/** A workout's family, by the same rule as Plan and Today: see `familyOfLifts`. */
 const familyOfWorkout = (workout: Workout): Family => {
   const exercises = workout.exercises.map((e) => byId(e.options[0])).filter((e) => e !== undefined);
-  return mostCommon(exercises.map((ex) => familyOf(ex))) ?? "push";
-};
-
-const mostCommon = <T,>(list: T[]): T | undefined => {
-  const count = new Map<T, number>();
-  for (const x of list) count.set(x, (count.get(x) ?? 0) + 1);
-  let best: T | undefined;
-  for (const [x, n] of count) if (best === undefined || n > (count.get(best) ?? 0)) best = x;
-  return best;
+  return familyOfLifts(kindOf(workout), exercises.map((ex) => familyOf(ex))) ?? "push";
 };
 
 // ---- the page ----
@@ -660,9 +536,3 @@ function Page({
     </>
   );
 }
-
-const Svg32 = ({ children }: { children: ReactNode }) => (
-  <Svg width={32} height={32} viewBox="0 0 32 32" {...DECORATIVE}>
-    {children}
-  </Svg>
-);

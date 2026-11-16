@@ -6,7 +6,7 @@ import type { IconName } from "@/components/icon";
 type Tab = { href: string; label: string; icon: IconName };
 
 const TABS: Tab[] = [
-  { href: "/", label: "Today", icon: "today" },
+  { href: "/", label: "Next up", icon: "today" },
   { href: "/plan", label: "Plan", icon: "plan" },
   { href: "/profile", label: "Profile", icon: "profile" },
 ];
@@ -30,7 +30,9 @@ export function TabButtons() {
             (tab.href === "/" && pathname === "/workout") ||
             (tab.href === "/profile" && ["/settings", "/history"].includes(pathname))
           }
-          onPress={() => router.replace(tab.href as never)}
+          onPress={() => {
+            if (pathname !== tab.href) router.replace(tab.href as never);
+          }}
         />
       ))}
     </>

@@ -144,7 +144,7 @@ test("skip and postpone cannot change a workout in progress or a single-workout 
   assert.equal(store.postponeWorkout(single), single);
 });
 
-test("Today opens both choices, cancels without changes, and Undo restores an existing queue", () => {
+test("Today skips immediately without a sheet, and Undo restores an existing queue", () => {
   let state = fresh(ids[2]);
   const hooks = [];
   let hookIndex = 0;
@@ -166,7 +166,7 @@ test("Today opens both choices, cancels without changes, and Undo restores an ex
     if (name === "@/components/bottom-bar") return { useBarSpace: () => 80 };
     if (name === "@/components/screen") return { Column: "Column", COLUMN: 460 };
     if (name === "@/components/sheet") return { Sheet: "Sheet", OpenRow: "OpenRow" };
-    if (name === "@/components/icon") return { Icon: "Icon" };
+    if (name === "@/components/icon") return { Icon: "Icon" }; if (name === "@/components/buttons") return { Button: "Button", LinkButton: "LinkButton", Chip: "Chip" };
     if (name === "@/components/text") return { Text: "Text" };
     if (name === "@/components/mark") return { Mark: "Mark" };
     if (name === "@/components/place") return { PlaceLine: "PlaceLine" };
@@ -187,24 +187,34 @@ test("Today opens both choices, cancels without changes, and Undo restores an ex
       if (found) return found;
     }
   }
-  const row = (title) => find(render(), (node) => node.props?.title === title);
-  const sheet = () => find(render(), (node) => node.type === "Sheet");
   const undo = () => find(render(), (node) => node.props?.accessibilityLabel?.startsWith("Undo skipping"));
-  find(render(), (node) => node.props?.label === "Skip").props.onPress();
-  assert.equal(sheet().props.visible, true);
-  assert.equal(row("Do it next time").props.detail, "Push B today → Legs → Pull B");
-  assert.equal(row("Skip it").props.detail, "Push B today → Pull B → Push A");
-  sheet().props.onClose();
-  assert.equal(next(state), ids[2]);
-  row("Do it next time").props.onPress();
-  assert.equal(sheet().props.visible, false);
+  const skip = () => find(render(), (node) => node.props?.label === "Skip").props.onPress();
+  const originalHistory = state.history;
+  const originalLog = state.log;
+  skip();
   assert.equal(next(state), ids[3]);
+  assert.ok(!find(render(), (node) => node.type === "Sheet" && node.props.visible));
+  assert.equal(state.history, originalHistory);
+  assert.equal(state.log, originalLog);
+  undo().props.onPress();
+  assert.equal(next(state), ids[2]);
+  assert.equal(state.workoutQueue, undefined);
+
+  // A saved queue is respected and restored exactly by Undo.
+  state = store.postponeWorkout(state);
   const pending = state;
-  row("Skip it").props.onPress();
-  // Legs was put off, so skipping Push B walks on to Pull B rather than back to Legs.
+  skip();
   assert.equal(next(state), ids[4]);
   undo().props.onPress();
   assert.equal(next(state), ids[3]);
   assert.deepEqual(state.workoutQueue, pending.workoutQueue);
   assert.deepEqual(state.postponed, pending.postponed);
+
+  // Repeated taps walk forward; Undo reverses the most recent skip.
+  state = fresh();
+  skip();
+  skip();
+  assert.equal(next(state), ids[2]);
+  undo().props.onPress();
+  assert.equal(next(state), ids[1]);
 });

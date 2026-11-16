@@ -1,4 +1,4 @@
-import type { Exercise } from "@/data/exercises";
+import { byId, type Exercise } from "@/data/exercises";
 
 /**
  * What you have to train with, and what each exercise needs.
@@ -19,6 +19,15 @@ export type Gear =
   | "machine"
   | "pullup_bar"
   | "bench"
+  | "resistance_band"
+  | "band_anchor"
+  | "stability_ball"
+  | "medicine_ball"
+  | "slam_ball"
+  | "rings"
+  | "suspension_trainer"
+  | "parallel_bars"
+  | "ab_wheel"
   /** A station only a gym has: a dip station, a preacher bench, a T-bar. */
   | "gym";
 
@@ -43,6 +52,15 @@ export const ALL_GEAR: Gear[] = [
   "machine",
   "pullup_bar",
   "bench",
+  "resistance_band",
+  "band_anchor",
+  "stability_ball",
+  "medicine_ball",
+  "slam_ball",
+  "rings",
+  "suspension_trainer",
+  "parallel_bars",
+  "ab_wheel",
   "gym",
 ];
 
@@ -191,7 +209,7 @@ const NEEDS: Record<string, Gear[]> = {
   broad_jump: [],
   depth_jump: ["gym"],
   jump_squat: [],
-  med_ball_slam: ["gym"],
+  med_ball_slam: ["slam_ball"],
   // speed work
   speed_squat: ["barbell"],
   speed_deadlift: ["barbell"],
@@ -200,17 +218,32 @@ const NEEDS: Record<string, Gear[]> = {
   rotation_machine: ["machine"],
   cable_crunch: ["cable"],
   ab_machine: ["machine"],
+  hollow_hold: [],
   plank: [],
   crunch: [],
   machine_crunch: ["machine"],
   decline_situp: ["gym"],
-  ab_wheel: ["gym"],
+  ab_wheel: ["ab_wheel"],
   lying_leg_raise: [],
   captains_chair: ["gym"],
   russian_twist: [],
   side_plank: [],
   pallof_press: ["cable"],
   woodchop: ["cable"],
+  wall_push_up: [],
+  incline_push_up: ["bench"],
+  knee_push_up: [],
+  decline_push_up: ["bench"],
+  sit_to_stand: [],
+  supported_squat: [],
+  dead_bug: [],
+  bird_dog: [],
+  db_front_squat: ["dumbbells"],
+  kb_deadlift: ["kettlebell"],
+  ball_hamstring_curl: ["stability_ball"],
+  suspension_row: ["suspension_trainer"],
+  farmer_carry: ["dumbbells"],
+  suitcase_carry: ["dumbbells"],
 };
 
 /**
@@ -230,7 +263,11 @@ export const TWIN: Record<string, string> = {
 export const isListed = (id: string): boolean => id in NEEDS;
 
 /** What an exercise needs. One of yours, unlisted, needs a gym. */
-export const needsOf = (ex: Pick<Exercise, "id">): Gear[] => NEEDS[ex.id] ?? ["gym"];
+export const needsOf = (ex: Pick<Exercise, "id"> & Partial<Pick<Exercise, "equipment" | "bodyweight">>): Gear[] => {
+  const saved = byId(ex.id);
+  return NEEDS[ex.id] ?? ex.equipment ?? saved?.equipment ??
+    ((ex.bodyweight ?? saved?.bodyweight) ? [] : ["gym"]);
+};
 
 /** Whether everything an exercise needs is in the kit. */
 export const fits = (ex: Pick<Exercise, "id">, kit: Kit): boolean =>
@@ -275,4 +312,15 @@ export const nextWeightUp = (
 ): number | null => {
   if (!weights) return weight + increment;
   return weights.find((w) => w > weight) ?? null;
+};
+
+/** A lighter weight that is actually here, closest to the intended reduction. */
+export const nextWeightDown = (
+  weights: number[] | null,
+  weight: number,
+  intended: number,
+): number | null => {
+  if (!weights) return intended;
+  const lighter = weights.filter((w) => w < weight).sort((a, b) => a - b);
+  return lighter.length ? nearestWeight(lighter, intended) : null;
 };

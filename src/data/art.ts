@@ -1,5 +1,5 @@
 /**
- * Milo's own pictures of each movement, traced from the drawings in art/drawn
+ * Humbell's own pictures of each movement, traced from the drawings in art/drawn
  * by art/trace.py. Don't edit by hand: redraw and retrace. Each frame is two
  * paths on a 768 x 512 view box: `tint` (the far limbs and the equipment, and
  * under everything) and `ink` (the near side of the body, drawn on top) —

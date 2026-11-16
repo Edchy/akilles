@@ -1,10 +1,10 @@
 import { useState } from "react";
-import { Pressable, View } from "react-native";
+import { Linking, Pressable, View } from "react-native";
 import { Text } from "@/components/text";
 
 import { useColors } from "@/components/field";
 import { Icon } from "@/components/icon";
-import { Illustration } from "@/components/illustration";
+import { hasIllustration, Illustration } from "@/components/illustration";
 import { Sheet } from "@/components/sheet";
 import { colors, fonts, radii } from "@/constants/theme";
 import { guideFor } from "@/data/guides";
@@ -83,75 +83,90 @@ export function GuideSheet({
   );
 }
 
-function Guide({ id, cue }: { id: string; cue?: string }) {
+export function Guide({ id, cue }: { id: string; cue?: string }) {
   const guide = guideFor(id);
 
   return (
-    <View style={{ gap: 22, paddingTop: 8 }}>
-      <Illustration
+    <View style={{ gap: 22, paddingTop: 8, width: "100%", maxWidth: 640, alignSelf: "center" }}>
+      {hasIllustration(id) ? <Illustration
         id={id}
         style={{ height: 240, borderRadius: radii.card, borderCurve: "continuous" }}
-      />
+      /> : guide?.demonstration ? <ReferenceDemonstration key={id} source={guide.demonstration} /> : null}
 
-      {guide ? (
-        <>
-          <View style={{ gap: 14 }}>
-            {guide.steps.map((step, i) => (
-              <View key={i} style={{ flexDirection: "row", gap: 14, alignItems: "flex-start" }}>
-                <View
-                  style={{
-                    width: 30,
-                    height: 30,
-                    borderRadius: 15,
-                    alignItems: "center",
-                    justifyContent: "center",
-                    backgroundColor: colors.rise,
-                  }}
-                >
-                  <Text style={{ color: colors.ink, fontFamily: fonts.displayBold, fontSize: 17 }}>
-                    {i + 1}
-                  </Text>
-                </View>
-                <Text style={{ flex: 1, color: colors.text, fontSize: 16, lineHeight: 23, paddingTop: 3 }}>
-                  {step}
-                </Text>
-              </View>
-            ))}
-          </View>
-
-          {guide.own ? (
-            <View style={{ gap: 4, paddingHorizontal: 16 }}>
-              <Text style={{ color: colors.rise, fontSize: 15, fontStyle: "italic" }}>Own it</Text>
-              <Text style={{ color: colors.text, fontSize: 16, lineHeight: 23 }}>{guide.own}</Text>
-            </View>
-          ) : null}
-
-          <View
-            style={{
-              gap: 4,
-              borderRadius: radii.card - 8,
-              borderCurve: "continuous",
-              backgroundColor: colors.surface,
-              padding: 16,
-            }}
-          >
-            <Text
-              style={{
-                color: colors.bend,
-                fontSize: 15,
-                fontStyle: "italic",
-              }}
-            >
-              Watch out
-            </Text>
-            <Text style={{ color: colors.bend, fontSize: 15, lineHeight: 22 }}>{guide.avoid}</Text>
-          </View>
-        </>
-      ) : (
+      {guide ? <GuideInstructions key={id} id={id} /> : (
         <Text style={{ color: colors.muted, fontSize: 16, lineHeight: 23 }}>
           {cue ?? "No guide for this one yet."}
         </Text>
       )}
+    </View>
+  );
+}
+
+function ReferenceDemonstration({ source }: { source: { title: string; url: string } }) {
+  const [failed, setFailed] = useState(false);
+  return <View style={{ gap: 8 }}>
+    <Pressable accessibilityRole="link" accessibilityLabel={`See the movement: ${source.title}. Opens in your browser.`}
+      onPress={() => { setFailed(false); void Linking.openURL(source.url).catch(() => setFailed(true)); }}
+      style={({ pressed }) => ({ minHeight: 64, padding: 20, borderRadius: 20, backgroundColor: colors.surface,
+        flexDirection: "row", alignItems: "center", gap: 16, opacity: pressed ? 0.7 : 1 })}>
+      <View style={{ flex: 1, gap: 4 }}>
+        <Text ui style={{ color: colors.text, fontSize: 17, fontWeight: "700" }}>See the movement</Text>
+        <Text ui style={{ color: colors.muted, fontSize: 14, lineHeight: 20 }}>{source.title} · Opens in browser</Text>
+      </View>
+      <Icon name="forward" size={20} color={colors.text} />
+    </Pressable>
+    {failed ? <Text ui accessibilityRole="alert" style={{ color: colors.danger, fontSize: 14 }}>Couldn’t open the demonstration. Please try again.</Text> : null}
+  </View>;
+}
+
+/** Shared by the guide sheet and the mobility library, so advice reads consistently. */
+export function GuideInstructions({ id }: { id: string }) {
+  const guide = guideFor(id);
+  const [sourcesOpen, setSourcesOpen] = useState(false);
+  const [sourceError, setSourceError] = useState(false);
+  if (!guide) return null;
+  return (
+    <View style={{ gap: 24 }}>
+      <View>
+        {guide.steps.map((step, i) => (
+          <View key={i} style={{ flexDirection: "row", gap: 16, alignItems: "flex-start", paddingVertical: 18,
+            borderBottomWidth: i < guide.steps.length - 1 ? 1 : 0, borderBottomColor: colors.line }}>
+            <Text accessibilityElementsHidden importantForAccessibility="no" style={{ width: 30, color: colors.text, fontFamily: fonts.bold, fontSize: 32, lineHeight: 34 }}>{i + 1}</Text>
+            <View style={{ flex: 1, gap: 5 }}>
+              {guide.stepTitles?.[i] ? <Text ui style={{ color: colors.text, fontSize: 17, lineHeight: 23, fontWeight: "700" }}>{guide.stepTitles[i]}</Text> : null}
+              <Text style={{ color: colors.text, fontSize: 17, lineHeight: 24, fontWeight: guide.stepTitles?.[i] ? "400" : "700" }}>{step}</Text>
+            </View>
+          </View>
+        ))}
+      </View>
+      {guide.own ? (
+        <View style={{ gap: 8, padding: 20, borderRadius: 20, backgroundColor: colors.surface }}>
+          <Text ui accessibilityRole="header" style={{ color: colors.text, fontSize: 17, fontWeight: "700" }}>Own it</Text>
+          <Text style={{ color: colors.text, fontSize: 18, lineHeight: 25 }}>{guide.own}</Text>
+        </View>
+      ) : null}
+      <View style={{ gap: 10, borderRadius: 20, borderCurve: "continuous", backgroundColor: colors.text, padding: 20 }}>
+        <Text ui accessibilityRole="header" style={{ color: colors.white, fontSize: 18, fontWeight: "700" }}>Watch out</Text>
+        <Text style={{ color: colors.white, fontSize: 18, lineHeight: 25 }}>{guide.avoid}</Text>
+      </View>
+      {guide.sources?.length ? (
+        <View style={{ gap: 4 }}>
+          <Pressable accessibilityRole="button" accessibilityState={{ expanded: sourcesOpen }}
+            onPress={() => setSourcesOpen((open) => !open)} style={{ minHeight: 44, flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+            <Text ui style={{ color: colors.muted, fontSize: 15, fontWeight: "600" }}>Technique sources</Text>
+            <Icon name={sourcesOpen ? "minus" : "plus"} color={colors.muted} size={18} />
+          </Pressable>
+          {sourcesOpen ? <>
+            {guide.own ? <Text ui style={{ color: colors.muted, fontSize: 14, lineHeight: 20 }}>The pause and control cues are Humbell’s coaching approach.</Text> : null}
+            {guide.sources.map((source) => <Pressable key={source.url} accessibilityRole="link" accessibilityLabel={`Open ${source.title}`}
+              onPress={() => { setSourceError(false); void Linking.openURL(source.url).catch(() => setSourceError(true)); }}
+              style={{ minHeight: 44, justifyContent: "center", paddingVertical: 8 }}>
+              <Text ui style={{ color: colors.rise, fontSize: 15, lineHeight: 21, textDecorationLine: "underline" }}>{source.title}</Text>
+            </Pressable>)}
+            {sourceError ? <Text ui accessibilityRole="alert" style={{ color: colors.danger, fontSize: 14 }}>Couldn’t open the source. Please try again.</Text> : null}
+          </> : null}
+        </View>
+      ) : null}
     </View>
   );
 }

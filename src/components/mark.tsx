@@ -1,5 +1,5 @@
 import { View, type ViewStyle } from "react-native";
-import Svg, { Polygon } from "react-native-svg";
+import Svg, { Polygon, Rect } from "react-native-svg";
 
 import { FAMILY } from "@/constants/theme";
 import type { Family } from "@/data/families";
@@ -27,6 +27,23 @@ export function Mark({
 }) {
   const c = color ?? FAMILY[family].mark;
   const u = size / 48;
+
+  // Full body: push, pull and legs together, small — a bit of everything.
+  if (family === "full") {
+    return (
+      <View
+        accessibilityElementsHidden
+        importantForAccessibility="no-hide-descendants"
+        style={{ width: size, height: size }}
+      >
+        <Svg width={size} height={size} viewBox="0 0 48 48">
+          <Polygon points="2,22 12,4 22,22" fill={c} />
+          <Polygon points="26,4 46,4 36,22" fill={c} />
+          <Rect x={15} y={27} width={18} height={18} fill={c} />
+        </Svg>
+      </View>
+    );
+  }
 
   // Five points don't fall out of a border and a turn, so the star is drawn.
   if (family === "goal") {

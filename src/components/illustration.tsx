@@ -16,11 +16,15 @@ import { mix } from "@/motion/marks";
 import { MOVES, RESHOOT } from "@/motion/moves";
 
 /**
- * The movements shown in Milo's own drawings (see `components/drawing.tsx`):
- * each drawn against Milo's character sheet and looked over, frame by frame.
+ * The movements shown in Humbell's own drawings (see `components/drawing.tsx`):
+ * each drawn against Humbell's figure sheet and looked over, frame by frame.
  * The rest of `ART` is drawn but not yet passed.
  */
 const DRAWN: ReadonlySet<string> = new Set(["goblet_squat"]);
+
+/** Whether there is an in-app drawing, film, or fallback photograph. */
+export const hasIllustration = (id: string): boolean =>
+  DRAWN.has(id) || (id in MOVES && !RESHOOT.has(id)) || !!PHOTOS[id]?.length;
 
 /** How long each frame of a lift shows before flipping to the other. */
 const FRAME_MS = 1100;
@@ -28,10 +32,10 @@ const FRAME_MS = 1100;
 /**
  * The picture of a movement — a lift, a machine or a stretch — by its id.
  *
- * Milo's own drawing where one has passed (`DRAWN`): Milo moving at the pace
+ * Humbell's own drawing where one has passed (`DRAWN`): the figure moving at the pace
  * of a rep, the part that works in the accent. Otherwise,
- * a film where Milo has one (see `motion/`): the movement drawn flat in
- * Milo's marks, a rep from the side and a rep from the front — except as a
+ * a film where there is one (see `motion/`): the movement drawn flat in
+ * Humbell's marks, a rep from the side and a rep from the front — except as a
  * thumbnail, where the photo stays if there is one, and a film that doesn't
  * read yet (`RESHOOT`), which shows its photo. Given `plays`, a film loops that many
  * times and then holds its still, so a picture on screen through a whole

@@ -7,7 +7,11 @@ import type { Exercise, Pattern } from "@/data/exercises";
  * so the shapes never run out. A seventh, the goal, is not an exercise but
  * something you are learning — see `data/goals.ts` — with a star of its own.
  */
-export type Family = "push" | "pull" | "legs" | "core" | "cardio" | "mobility" | "goal";
+/**
+ * `full` is a workout's family only, never an exercise's: a full body day,
+ * a bit of everything.
+ */
+export type Family = "push" | "pull" | "legs" | "core" | "cardio" | "mobility" | "goal" | "full";
 
 const BY_PATTERN: Record<Pattern, Family> = {
   horizontal_push: "push",
@@ -28,6 +32,9 @@ const BY_PATTERN: Record<Pattern, Family> = {
   abs: "core",
 };
 
+/** The family a movement type belongs to. */
+export const familyOfPattern = (pattern: Pattern): Family => BY_PATTERN[pattern] ?? "push";
+
 /** A lift's family, from the first movement type it counts as. */
 export const familyOf = (exercise: Exercise | undefined): Family =>
   (exercise && BY_PATTERN[exercise.patterns[0]]) || "push";
@@ -41,4 +48,5 @@ export const FAMILY_LABEL: Record<Family, string> = {
   cardio: "Cardio",
   mobility: "Stretch",
   goal: "Goal",
+  full: "Full body",
 };

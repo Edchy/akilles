@@ -59,7 +59,7 @@ test("with nothing but you, push day is push-ups, pike push-ups and bench dips",
   const got = filled(fresh(), "push", kit.BODYWEIGHT);
   assert.equal(got["Horizontal press"], "push_up");
   assert.equal(got["Vertical press"], "pike_push_up");
-  assert.equal(got["Chest fly"], null);
+  assert.ok(got["Bodyweight press"], "the second press has an equipment-free alternative");
   assert.equal(got["Triceps"], "bench_dip");
   for (const id of Object.values(got)) if (id) assert.ok(kit.fits({ id }, kit.BODYWEIGHT), id);
 });
@@ -197,11 +197,11 @@ test("away with nothing: the same workout comes next, with what can be done anyw
   assert.ok(built.active.items.some((it) => it.slot === store.MOBILITY_SLOT));
   // Skipping rope is one swap away; the gym's machines aren't.
   const opening = { ...built, active: { ...built.active, cursor: built.active.items.indexOf(cardio[0]) } };
-  assert.equal(store.conditioningPool(opening, cardio[0]).map((o) => o.id).join(), "outdoor,skipping");
+  assert.equal(store.conditioningPool(opening, cardio[0]).map((o) => o.id).join(), "outdoor,skipping,jumping_jacks");
   // What sits out is said, not hidden.
   assert.deepEqual(
     store.sittingOut(state, workout(state, "push")).map((e) => e.slot).join(),
-    "Chest fly",
+    "",
   );
 });
 
@@ -245,4 +245,62 @@ test("a swap away offers only what the place has", () => {
   const pool = store.currentPool(state);
   assert.ok(pool.length > 0);
   for (const id of pool) assert.ok(kit.fits({ id }, { gear: ["dumbbells"] }), id);
+});
+
+// The promise shown after a set must match the result saved at Finish.
+const finishedPress = (weights, extra = {}, reps = 12) => {
+  let state = withRecord(fresh(), "kb_press", 12, { rung: 3, ...extra });
+  state = store.setPlace(state, "away", KB(...weights));
+  state = store.buildWorkout(state);
+  const at = state.active.items.findIndex((it) => it.exerciseId === "kb_press");
+  assert.ok(at >= 0);
+  return { ...state, active: { ...state.active, cursor: at, items: state.active.items.map((it, i) =>
+    i === at ? { ...it, logged: it.logged.map(() => reps) } : it,
+  ) } };
+};
+
+test("the verdict and saved progression use the same sparse rack", () => {
+  const state = finishedPress([12, 20]);
+  assert.equal(store.nextTime(state).fact, "Up to 20 kg next time.");
+  assert.equal(store.finishWorkout(state).history[store.key("kb_press", SCHEME)].weight, 20);
+});
+
+test("the verdict never promises a heavier bell when already at the heaviest", () => {
+  const state = finishedPress([12]);
+  assert.match(store.nextTime(state).fact, /again next time.*top/);
+  assert.equal(store.finishWorkout(state).history[store.key("kb_press", SCHEME)].weight, 12);
+});
+
+test("a bottom-rung miss chooses an available lighter bell, even off the usual increments", () => {
+  const state = finishedPress([10, 12], { rung: 0, downStreak: 1 }, 4);
+  assert.equal(store.nextTime(state).fact, "Lighter next time: 10 kg.");
+  const finished = store.finishWorkout(state);
+  assert.equal(finished.history[store.key("kb_press", SCHEME)].weight, 10);
+  const next = store.buildWorkout({ ...finished, nextWorkout: "push" });
+  assert.equal(lifts(next).find((it) => it.exerciseId === "kb_press").weight, 10);
+});
+
+test("with no lighter bell, the failed weight cannot be prescribed again, even as an explicit choice", () => {
+  const state = finishedPress([12], { rung: 0, downStreak: 1 }, 4);
+  assert.match(store.nextTime(state).fact, /None here/);
+  let finished = store.finishWorkout(state);
+  const rec = finished.history[store.key("kb_press", SCHEME)];
+  assert.equal(rec.lighterThan, 12);
+  finished = { ...finished, nextWorkout: "push", choices: { ...finished.choices, "push/Vertical press": "kb_press" } };
+  const storage = load("@/store/storage");
+  finished = storage.fromSaved(storage.toSaved(finished));
+  const next = store.buildWorkout(finished);
+  assert.ok(!lifts(next).some((it) => it.exerciseId === "kb_press"));
+  // Taking a lighter bell next time makes this exercise usable again.
+  const lighterKit = store.setPlace(finished, "away", KB(8, 12));
+  const available = store.buildWorkout(lighterKit);
+  assert.equal(lifts(available).find((it) => it.exerciseId === "kb_press").weight, 8);
+});
+
+test("changing kit before the lighter session cannot round back to the failed weight", () => {
+  const failed = finishedPress([10, 12], { rung: 0, downStreak: 1 }, 4);
+  const finished = store.finishWorkout(failed);
+  const nextPlace = store.setPlace({ ...finished, nextWorkout: "push" }, "away", KB(12));
+  const next = store.buildWorkout(nextPlace);
+  assert.ok(!lifts(next).some((it) => it.exerciseId === "kb_press"));
 });

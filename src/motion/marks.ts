@@ -4,7 +4,7 @@ import type { Move } from "@/motion/moves";
 import { Vec3 } from "@/motion/vector";
 
 /**
- * Milo's marks: how a movement's figure is drawn, after the Munich '72
+ * Humbell's marks: how a movement's figure is drawn, after the Munich '72
  * pictograms. The pose is true in 3D (see `figure.ts`); the drawing is a flat
  * view of it with every part a plain shape in one ink on the family's field —
  * a circle for the head, the ▽ of the trunk, even bars for the limbs, a

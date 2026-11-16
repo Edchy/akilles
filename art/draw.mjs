@@ -12,7 +12,7 @@
 // them into paths the app colours with the family's field and ink. A frame with
 // `feel` in frames.json has the parts that work in red: the app's accent.
 //
-// Every figure is Milo: draw a movement's first frame with --ref art/drawn/milo-0.png,
+// Every figure is the same one: draw a movement's first frame with --ref art/drawn/figure-0.png,
 // the character sheet, and its second with --base, from the first.
 
 import { spawnSync } from "node:child_process";

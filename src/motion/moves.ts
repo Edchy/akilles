@@ -768,7 +768,7 @@ function lazily(makers: Record<string, () => Move>) {
 }
 
 /**
- * Every movement Milo can film, by its id — built only when first shown, so
+ * Every movement Humbell can film, by its id — built only when first shown, so
  * the app pays for none at start. Ask `id in MOVES` to know if one exists.
  */
 export const MOVES: Record<string, Move> = lazily({

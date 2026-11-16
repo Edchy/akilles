@@ -198,3 +198,63 @@ test("Today says a lift reloads", () => {
   const line = voice.newsLine({ up: [], fresh: [], reload: [{ name: bench.name, weight: bench.weight }], down: [] }, "x");
   assert.match(line, /DB bench press reloads/);
 });
+
+test("an unfinished attempt never advances or counts as a second miss", () => {
+  let st = miss(record("db_bench", 20, { rung: 2 }));
+  st = prog.applyResult(st, SCHEME, [10, null, 8], NOW);
+  assert.equal(st.weight, 20);
+  assert.equal(st.rung, 2);
+  assert.equal(st.downStreak, 1);
+  st = miss(st);
+  assert.equal(st.weight, 20);
+  assert.equal(st.rung, 1);
+});
+
+test("the verdict states the real reduced weight without claiming an exact percentage", () => {
+  const state = benchDone(record("db_bench", 10, { rung: 0, downStreak: 1 }));
+  const at = state.active.cursor;
+  const missed = { ...state, active: { ...state.active, items: state.active.items.map((it, i) =>
+    i === at ? { ...it, logged: it.logged.map(() => 4) } : it,
+  ) } };
+  assert.equal(store.nextTime(missed).fact, "Lighter next time: 7.5 kg ×2.");
+  assert.equal(store.finishWorkout(missed).history["db_bench:6-12"].weight, 7.5);
+});
+
+test("a trained manual weight carries to the same exercise in another workout and rep range", () => {
+  let state = store.addWorkout(store.resetToDefault(), "other", "Other");
+  state = store.addExerciseToWorkout(state, "other", "db_bench");
+  const other = store.workoutById(state, "other");
+  state = { ...state, workouts: state.workouts.map((w) => w.id === "other" ? { ...w, exercises: w.exercises.map((e) => ({ ...e, scheme: "8-12" })) } : w), history: {
+    "db_bench:6-12": record("db_bench", 50, { lastTrainedAt: NOW - DAY }),
+    "db_bench:8-12": record("db_bench", 40, { rung: 2, lastTrainedAt: NOW - 2 * DAY }),
+  } };
+  let active = store.buildWorkout(store.setNextWorkout(state, "push"));
+  active = store.goToCard(active, active.active.items.findIndex((it) => it.exerciseId === "db_bench"));
+  active = store.editWeight(active, 60);
+  active = store.tapSet(active, 0); // Partial session: carries the actual load without advancing the ladder.
+  state = store.finishWorkout(active, NOW);
+  const next = store.buildWorkout(store.setNextWorkout(state, "other"));
+  assert.equal(next.active.items[0].weight, 60);
+  assert.equal(store.currentPrescription(next).reps, 8, "stale top-rung progress resets at the shared new load");
+  assert.equal(state.log.at(-1).entries.find((e) => e.exerciseId === "db_bench").weight, 60);
+  assert.equal(state.history["db_bench:8-12"].weight, 40, "old records remain historical; prescriptions resolve the latest shared load");
+});
+
+test("editing a weight without training does not change another workout's prescription", () => {
+  let state = benchDone(record("db_bench", 50, { lastTrainedAt: NOW - DAY }));
+  state = { ...state, active: { ...state.active, items: state.active.items.map((it) => ({ ...it, logged: it.logged.map(() => null) })) } };
+  state = store.editWeight(state, 60);
+  state = store.finishWorkout(state, NOW);
+  state = store.buildWorkout(state);
+  assert.equal(state.active.items.find((it) => it.exerciseId === "db_bench").weight, 50);
+});
+
+test("legacy records without timestamps resolve to one consistent weight across ranges", () => {
+  let state = store.addWorkout(store.resetToDefault(), "legacy", "Legacy");
+  state = store.addExerciseToWorkout(state, "legacy", "db_bench");
+  const entry = store.workoutById(state, "legacy").exercises[0];
+  state = { ...state, history: { "db_bench:6-12": record("db_bench", 50), "db_bench:8-12": record("db_bench", 40) } };
+  state = store.updateEntry(state, "legacy", entry.id, { scheme: "8-12" });
+  const built = store.buildWorkout(store.setNextWorkout(state, "legacy"));
+  assert.equal(built.active.items[0].weight, store.nextWeight(state, "db_bench"));
+});

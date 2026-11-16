@@ -81,3 +81,114 @@ test("one kind of news is voiced; several are said plainly; none says nothing", 
   );
   assert.equal(mixed, "Back squat goes up to 60 kg. First go at the dips.");
 });
+
+test("Today explains actual heavier and lighter weights beside their exercises", () => {
+  const rows = legs({
+    "goblet_squat:6-12": done("goblet_squat", 20, 18),
+    "db_rdl:6-12": done("db_rdl", 16, 18),
+  });
+  assert.equal(row(rows, "Goblet squat").adjustment, "Heavier this time — up from 18 kg.");
+  assert.equal(row(rows, "DB Romanian deadlift").adjustment, "Lighter this time — down from 18 kg ×2.");
+});
+
+test("Today distinguishes fewer reps, more reps and consolidating the same weight", () => {
+  const preview = (extra) => row(legs({ "goblet_squat:6-12": { ...done("goblet_squat", 20, 20), ...extra } }), "Goblet squat");
+  assert.equal(preview({ rung: 0, deloads: 1 }).adjustment, "Same weight, fewer reps this time: 6. Build back up.");
+  assert.equal(preview({ rung: 2 }).adjustment, "Same weight, up to 10 reps this time.");
+  assert.match(preview({ rung: 2, reloading: true, lastPerformed: { weight: 20, target: 12, reps: [12, 12, 12] } }).adjustment, /back to 10 reps to practise control/);
+  assert.equal(preview({ rung: 1 }).adjustment, undefined);
+});
+
+test("an older accepted adjustment is explained as today's number, without claiming time away", () => {
+  const r = row(legs({ "goblet_squat:6-12": {
+    ...done("goblet_squat", 18, 20), pendingDecay: { kind: "layoff", fraction: 0.05, days: 21 },
+  } }), "Goblet squat");
+  assert.equal(r.change, "down");
+  assert.equal(r.adjustment, "Lighter this time — down from 20 kg.");
+});
+
+test("Today renders per-exercise changes, includes them in accessibility labels, and never applies calendar cuts", () => {
+  let state = { ...store.resetToDefault(), nextWorkout: "legs", history: {
+    "goblet_squat:6-12": { ...done("goblet_squat", 20, 18), lastTrainedAt: Date.now() - 30 * 864e5 },
+    "db_rdl:6-12": { ...done("db_rdl", 16, 18), pendingDecay: { kind: "layoff", fraction: 0.05, days: 21 } },
+  } };
+  const fakeReact = { ...require("react"), useState: (initial) => [initial, () => {}] };
+  const uiRequire = (name) => {
+    if (name === "react") return fakeReact;
+    if (name === "react-native") return { Pressable: "Pressable", ScrollView: "ScrollView", View: "View" };
+    if (name === "expo-router") return { router: { push: () => {} } };
+    if (name === "react-native-safe-area-context") return { useSafeAreaInsets: () => ({ top: 0 }) };
+    if (name === "react-native-svg") return { __esModule: true, default: "Svg", Defs: "Defs", LinearGradient: "LinearGradient", Rect: "Rect", Stop: "Stop" };
+    if (name === "@/store/session") return { ...store, useSession: () => ({ state, setState: (fn) => { state = fn(state); } }) };
+    if (name === "@/components/bottom-bar") return { useBarSpace: () => 80 };
+    if (name === "@/components/screen") return { Column: "Column", COLUMN: 460 };
+    if (name === "@/components/sheet") return { Sheet: "Sheet", OpenRow: "OpenRow" };
+    if (name === "@/components/text") return { Text: "Text" };
+    if (name === "@/components/buttons") return { Button: "Button", LinkButton: "LinkButton", Chip: "Chip" };
+    if (name === "@/components/mark") return { Mark: "Mark" };
+    if (name === "@/components/place") return { PlaceLine: "PlaceLine" };
+    if (name === "@/components/growth-offer") return { GrowthOffer: "GrowthOffer" };
+    return load(name);
+  };
+  const module = { exports: {} };
+  const { outputText } = ts.transpileModule(fs.readFileSync(path.resolve(__dirname, "../src/app/index.tsx"), "utf8"), {
+    compilerOptions: { jsx: ts.JsxEmit.ReactJSX, module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 },
+  });
+  vm.runInNewContext(outputText, { module, exports: module.exports, require: uiRequire, Date });
+  const nodes = [];
+  const walk = (node) => {
+    if (Array.isArray(node)) return node.forEach(walk);
+    if (!node || typeof node !== "object") return;
+    if (typeof node.type === "function") return walk(node.type(node.props));
+    nodes.push(node);
+    walk(node.props?.children);
+  };
+  walk(module.exports.default());
+  const text = nodes.filter((n) => n.type === "Text").map((n) => n.props.children).join(" ");
+  assert.match(text, /Heavier/);
+  assert.doesNotMatch(text, /Heavier this time|Build back up|previously/);
+  assert.match(text, /Lighter/);
+  assert.doesNotMatch(text, /Weights adjusted|weeks away|since your last workout/);
+  assert.ok(nodes.some((n) => n.props?.accessibilityLabel?.includes("Goblet squat. 20 kg. Heavier this time")));
+  const before = JSON.stringify(state.history);
+  const start = nodes.find((n) => n.type === "Button" && n.props.label === "Start");
+  assert.ok(start);
+  start.props.onPress();
+  assert.equal(JSON.stringify(state.history), before);
+  assert.equal(state.active.items.find((i) => i.exerciseId === "goblet_squat").weight, 20);
+
+  // Completing a workout changes the next card, never closes Today for the day.
+  state = { ...state, active: { ...state.active, items: state.active.items.map((it) =>
+    it.exerciseId === "goblet_squat" ? { ...it, logged: it.logged.map(() => 6) } : it,
+  ) } };
+  state = store.finishWorkout(state);
+  assert.equal(store.trainedToday(state), true);
+  assert.equal(store.upNext(state).id, "push");
+  nodes.length = 0;
+  walk(module.exports.default());
+  const afterText = nodes.filter((n) => n.type === "Text").map((n) => n.props.children).join(" ");
+  assert.match(afterText, /Push/);
+  assert.doesNotMatch(afterText, /Done for today|Go home|Trained already|Recovery is where/);
+  const button = (label) => nodes.find((n) => n.type === "Button" && n.props.label === label);
+  assert.ok(button("Start"));
+  assert.ok(button("Skip"));
+  button("Start").props.onPress();
+  assert.equal(state.active.workoutId, "push");
+  nodes.length = 0;
+  walk(module.exports.default());
+  assert.ok(button("Continue"));
+  assert.ok(!button("Skip"));
+});
+
+test("assisted lifts and timed holds explain the actual kind of change", () => {
+  const base = store.resetToDefault();
+  const pull = store.workoutById(base, "pull");
+  const choices = { ...base.choices, "pull/Vertical pull": "pullup" };
+  const state = { ...base, choices, history: {
+    "pullup:6-12": done("pullup", -25, -20),
+    "plank:6-12": { ...done("plank", 0, 0), rung: 1, lastPerformed: { weight: 0, target: 50, reps: [50, 50] } },
+  } };
+  const rows = store.workoutPreview(state, pull);
+  assert.match(rows.find((r) => r.name === "Pull-up").adjustment, /^More assistance this time/);
+  assert.equal(rows.find((r) => r.name === "Plank").adjustment, "Shorter hold this time: 40 seconds. Build back up.");
+});

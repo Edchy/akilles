@@ -12,7 +12,8 @@ import { fonts } from "@/constants/theme";
 import { noOrphan } from "@/lib/typography";
 
 /**
- * Every word in the app is EB Garamond. These stand in for React Native's
+ * Every word in the app is EB Garamond, but for the interface — see `ui`
+ * below, and `fonts.ui`. These stand in for React Native's
  * `Text` and `TextInput` so that an ordinary `fontWeight` or `fontStyle`
  * picks the matching Garamond file — custom faces ignore `fontWeight` on
  * iOS, and on the web a weight on top of a named file is a faked bold.
@@ -25,13 +26,21 @@ import { noOrphan } from "@/lib/typography";
  */
 const SCALE = 1.12;
 
-type Face = { weight: TextStyle["fontWeight"]; italic: boolean };
+type Face = { weight: TextStyle["fontWeight"]; italic: boolean; ui: boolean };
 
 /** What a nested `Text` inherits when it says nothing about weight or slant. */
 const Parent = createContext<Face | null>(null);
 
-function familyFor({ weight, italic }: Face): string {
+function familyFor({ weight, italic, ui }: Face): string {
   const w = Number(weight === "bold" ? 700 : weight === "normal" || weight === undefined ? 400 : weight);
+  // The interface face, weight for weight; its italic only comes regular.
+  if (ui) {
+    if (italic) return fonts.uiItalic;
+    if (w >= 700) return fonts.uiBold;
+    if (w >= 600) return fonts.uiSemibold;
+    if (w >= 500) return fonts.uiMedium;
+    return fonts.ui;
+  }
   // A step lighter than asked: the app's labels were set heavy for the
   // system face, and Garamond's bold weights are heavy for small text.
   if (w >= 900) return italic ? fonts.semiboldItalic : fonts.bold;
@@ -40,7 +49,11 @@ function familyFor({ weight, italic }: Face): string {
   return italic ? fonts.italic : fonts.regular;
 }
 
-function serif(style: TextProps["style"], parent: Face | null): { style: TextProps["style"]; face: Face | null } {
+function serif(
+  style: TextProps["style"],
+  parent: Face | null,
+  ui?: boolean,
+): { style: TextProps["style"]; face: Face | null } {
   const flat = (StyleSheet.flatten(style) ?? {}) as TextStyle;
   // Garamond's own figures are old-style, rising and falling like lowercase:
   // lovely in a sentence, unsteady in a weight or a rep count. Every number
@@ -55,16 +68,19 @@ function serif(style: TextProps["style"], parent: Face | null): { style: TextPro
   const face: Face = {
     weight: flat.fontWeight ?? parent?.weight,
     italic: flat.fontStyle !== undefined ? flat.fontStyle === "italic" : (parent?.italic ?? false),
+    ui: ui ?? parent?.ui ?? false,
   };
   const extra: TextStyle = { ...lining };
   // Nested text that names nothing inherits its parent's face and size.
-  if (said || !parent) {
+  if (said || !parent || face.ui !== parent.ui) {
     extra.fontFamily = familyFor(face);
     extra.fontWeight = "normal";
     extra.fontStyle = "normal";
   }
-  if (typeof flat.fontSize === "number") extra.fontSize = Math.round(flat.fontSize * SCALE * 2) / 2;
-  if (typeof flat.lineHeight === "number") extra.lineHeight = Math.round(flat.lineHeight * SCALE);
+  // Atkinson reads full size as written; only Garamond needs the lift.
+  const scale = face.ui ? 1 : SCALE;
+  if (typeof flat.fontSize === "number") extra.fontSize = Math.round(flat.fontSize * scale * 2) / 2;
+  if (typeof flat.lineHeight === "number") extra.lineHeight = Math.round(flat.lineHeight * scale);
   return { style: [style, extra], face };
 }
 
@@ -86,9 +102,16 @@ function settle(children: ReactNode): ReactNode {
   return children;
 }
 
-export const Text = forwardRef<NativeText, TextProps>(function Text({ style, children, ...rest }, ref) {
+/**
+ * `ui` draws it in the interface face — a button, a tab, a chip, a small
+ * label — instead of Garamond. Nested text inherits it.
+ */
+export const Text = forwardRef<NativeText, TextProps & { ui?: boolean }>(function Text(
+  { style, children, ui, ...rest },
+  ref,
+) {
   const parent = useContext(Parent);
-  const { style: next, face } = serif(style, parent);
+  const { style: next, face } = serif(style, parent, ui);
   const text = settle(children);
   return (
     <NativeText ref={ref} style={next} {...rest}>
@@ -97,9 +120,9 @@ export const Text = forwardRef<NativeText, TextProps>(function Text({ style, chi
   );
 });
 
-export const TextInput = forwardRef<NativeTextInput, TextInputProps>(function TextInput(
-  { style, ...rest },
+export const TextInput = forwardRef<NativeTextInput, TextInputProps & { ui?: boolean }>(function TextInput(
+  { style, ui, ...rest },
   ref,
 ) {
-  return <NativeTextInput ref={ref} style={serif(style, null).style} {...rest} />;
+  return <NativeTextInput ref={ref} style={serif(style, null, ui).style} {...rest} />;
 });

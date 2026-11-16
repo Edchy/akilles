@@ -9,14 +9,14 @@ import Svg, { Path } from "react-native-svg";
  * the web preview all draw the same thing. `phosphor` names each drawing, to
  * find it again or swap it for another. The tabs say what is behind them:
  * Today the weights waiting for you, Progress the stairs you climb a rung at
- * a time, Plan the grid of your workouts and exercises. The workout bar is
+ * a time, Plan the rows of your workouts and exercises. The workout bar is
  * Back, a door out (the workout waits on Today for you to come back), and
  * Skip.
  */
 const ICONS = {
   profile: {
-    phosphor: "user",
-    d: "M128 20a60 60 0 1 0 0 120 60 60 0 0 0 0-120Zm0 24a36 36 0 1 1 0 72 36 36 0 0 1 0-72ZM28 236a12 12 0 0 1-12-12 112 112 0 0 1 224 0 12 12 0 0 1-24 0 88 88 0 0 0-176 0 12 12 0 0 1-12 12Z",
+    phosphor: "user-circle",
+    d: "M128,20A108,108,0,1,0,236,128,108.12,108.12,0,0,0,128,20ZM79.57,196.57a60,60,0,0,1,96.86,0,83.72,83.72,0,0,1-96.86,0ZM100,120a28,28,0,1,1,28,28A28,28,0,0,1,100,120ZM194,179.94a83.48,83.48,0,0,0-29-23.42,52,52,0,1,0-74,0,83.48,83.48,0,0,0-29,23.42,84,84,0,1,1,131.9,0Z",
   },
   today: {
     phosphor: "barbell",
@@ -27,8 +27,8 @@ const ICONS = {
     d: "M200 20H56a20 20 0 0 0-20 20v176a20 20 0 0 0 20 20h144a20 20 0 0 0 20-20V40a20 20 0 0 0-20-20m-48 128h44v16h-80v-16Zm12-24v-16h32v16Zm32-80v40h-44a12 12 0 0 0-12 12v28h-36a12 12 0 0 0-12 12v28H60V44ZM60 212v-24h136v24Z",
   },
   plan: {
-    phosphor: "squares-four",
-    d: "M100 36H56a20 20 0 0 0-20 20v44a20 20 0 0 0 20 20h44a20 20 0 0 0 20-20V56a20 20 0 0 0-20-20m-4 60H60V60h36Zm104-60h-44a20 20 0 0 0-20 20v44a20 20 0 0 0 20 20h44a20 20 0 0 0 20-20V56a20 20 0 0 0-20-20m-4 60h-36V60h36Zm-96 40H56a20 20 0 0 0-20 20v44a20 20 0 0 0 20 20h44a20 20 0 0 0 20-20v-44a20 20 0 0 0-20-20m-4 60H60v-36h36Zm104-60h-44a20 20 0 0 0-20 20v44a20 20 0 0 0 20 20h44a20 20 0 0 0 20-20v-44a20 20 0 0 0-20-20m-4 60h-36v-36h36Z",
+    phosphor: "rows",
+    d: "M208,136H48a20,20,0,0,0-20,20v36a20,20,0,0,0,20,20H208a20,20,0,0,0,20-20V156A20,20,0,0,0,208,136Zm-4,52H52V160H204Zm4-144H48A20,20,0,0,0,28,64v36a20,20,0,0,0,20,20H208a20,20,0,0,0,20-20V64A20,20,0,0,0,208,44Zm-4,52H52V68H204Z",
   },
   previous: {
     phosphor: "caret-left",
@@ -57,6 +57,14 @@ const ICONS = {
   swap: {
     phosphor: "arrows-left-right",
     d: "m216.49 184.49l-32 32a12 12 0 0 1-17-17L179 188H48a12 12 0 0 1 0-24h131l-11.52-11.51a12 12 0 0 1 17-17l32 32a12 12 0 0 1 .01 17m-145-64a12 12 0 0 0 17-17L77 92h131a12 12 0 0 0 0-24H77l11.49-11.51a12 12 0 0 0-17-17l-32 32a12 12 0 0 0 0 17Z",
+  },
+  rename: {
+    phosphor: "pencil-simple",
+    d: "M227.31 73.37 182.63 28.68a16 16 0 0 0-22.63 0L36.69 152A15.86 15.86 0 0 0 32 163.31V208a16 16 0 0 0 16 16h44.69a15.86 15.86 0 0 0 11.31-4.69L227.31 96a16 16 0 0 0 0-22.63ZM92.69 208H48v-44.69l88-88L180.69 120ZM192 108.68 147.31 64l24-24L216 84.68Z",
+  },
+  copy: {
+    phosphor: "copy",
+    d: "M216,28H88A12,12,0,0,0,76,40V76H40A12,12,0,0,0,28,88V216a12,12,0,0,0,12,12H168a12,12,0,0,0,12-12V180h36a12,12,0,0,0,12-12V40A12,12,0,0,0,216,28ZM156,204H52V100H156Zm48-48H180V88a12,12,0,0,0-12-12H100V52H204Z",
   },
   plus: {
     phosphor: "plus",

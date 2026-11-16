@@ -1,5 +1,6 @@
 import type { CardioBlock, CardioEnd } from "@/data/conditioning";
 import type { Pattern } from "@/data/exercises";
+import type { WorkoutKind } from "@/data/kinds";
 
 /**
  * The split: workouts in a cycle, each a list of exercise slots.
@@ -155,11 +156,25 @@ export type Entry = {
    * one — see `setsFor`.
    */
   sets?: number;
+  /**
+   * Where in the workout it runs: with the warm-up at the start, among the
+   * finishers at the end, or — absent — with the main lifts in between.
+   */
+  part?: EntryPart;
 };
+
+/** The start and finish of a workout, around its main lifts. */
+export type EntryPart = "start" | "finish";
 
 export type Workout = {
   id: string;
   name: string;
+  /**
+   * What it is for — Push, Pull, Legs, Full body, or Empty. Guides what Add
+   * exercise shows first; never limits it. Absent on workouts made before
+   * kinds: see `kindOf`.
+   */
+  kind?: WorkoutKind;
   /** What the workout trains, in lower case. Keep it to a few words. */
   subtitle: string;
   exercises: Entry[];
@@ -206,9 +221,9 @@ const FULL_CYCLE: Authored[] = [
     exercises: [
       { slot: "Horizontal press", pattern: "horizontal_push", options: ["db_bench"], scheme: DEFAULT_SCHEME },
       { slot: "Vertical press", pattern: "vertical_push", options: ["db_shoulder"], scheme: DEFAULT_SCHEME },
-      { slot: "Chest fly", pattern: "chest_iso", options: ["cable_crossover"], scheme: DEFAULT_SCHEME },
+      { slot: "Bodyweight press", pattern: "horizontal_push", options: ["incline_push_up", "knee_push_up"], scheme: DEFAULT_SCHEME },
       { slot: "Triceps", pattern: "triceps", options: ["pushdown"], scheme: DEFAULT_SCHEME },
-      { slot: "Abs", pattern: "abs", options: ["machine_crunch"], scheme: DEFAULT_SCHEME },
+      { slot: "Abs", pattern: "abs", options: ["dead_bug"], scheme: DEFAULT_SCHEME },
     ],
   },
   {
@@ -230,7 +245,7 @@ const FULL_CYCLE: Authored[] = [
     exercises: [
       { slot: "Squat", pattern: "squat", options: ["goblet_squat"], scheme: DEFAULT_SCHEME },
       { slot: "Hinge", pattern: "hinge", options: ["db_rdl"], scheme: DEFAULT_SCHEME },
-      { slot: "Leg press", pattern: "quads", options: ["leg_press"], scheme: DEFAULT_SCHEME },
+      { slot: "Single leg", pattern: "lunge", options: ["split_squat"], scheme: DEFAULT_SCHEME },
       { slot: "Hamstrings", pattern: "hamstrings", options: ["leg_curl"], scheme: DEFAULT_SCHEME },
     ],
   },

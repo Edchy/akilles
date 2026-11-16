@@ -11,7 +11,7 @@ import {
 import { Vec3 } from "@/motion/vector";
 
 /**
- * A movement as Milo films it: the pose at every depth of one rep, from 0
+ * A movement as Humbell films it: the pose at every depth of one rep, from 0
  * (the start) to 1 (the hardest point), what the lifter uses, and how the
  * film shows it.
  *

@@ -1,0 +1,165 @@
+<link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=DM+Sans:wght@400;500;600;700&family=Barlow+Condensed:wght@500;600&display=swap" rel="stylesheet">
+<style>
+#humbell-directions {font-family: 'DM Sans',sans-serif}
+#humbell-directions .study {padding:18px 4px 4px;min-height:806px}
+#humbell-directions .study-title {font-size:24px;font-weight:500;color:var(--foreground);margin:0 0 6px}
+#humbell-directions .materials {display:flex;align-items:center;gap:8px;color:var(--muted-foreground);font-size:13px;margin-bottom:22px;flex-wrap:wrap}
+#humbell-directions .swatch {width:13px;height:13px;border-radius:50%;background:var(--swatch)}
+#humbell-directions .pair {display:flex;gap:26px;justify-content:center;align-items:flex-start;flex-wrap:wrap}
+#humbell-directions .device-group {width:310px;max-width:100%}
+#humbell-directions .view-label {font-size:12px;color:var(--muted-foreground);margin:0 0 9px}
+#humbell-directions .phone {height:654px;border-radius:36px;overflow:hidden;position:relative;background:var(--paper);color:var(--ink);box-shadow:0 12px 32px #00000012,0 0 0 1px #77777730;font-family:var(--sans);--sans:'DM Sans',sans-serif;--display:'DM Sans',sans-serif;--corner:20px;--speed:220ms;--paper:#fff;--ink:#13325b;--muted-ink:#4e6585;--soft:#f0f2f5;--accent:#2277bb;--on-accent:#fff;--rule:#dde1e6;font-size:14px;line-height:1.4}
+#humbell-directions .phone button {font:inherit;border:0;cursor:pointer;-webkit-tap-highlight-color:transparent;touch-action:manipulation;color:inherit;transition:transform 90ms,background var(--speed),color var(--speed);min-height:44px}
+#humbell-directions .phone button:active {transform:scale(.975)}
+#humbell-directions .phone button:focus-visible {outline:3px solid var(--accent);outline-offset:3px}
+#humbell-directions .status {height:45px;display:flex;justify-content:space-between;align-items:center;padding:8px 23px 0;font-size:12px;font-weight:600;position:relative;z-index:2}
+#humbell-directions .island {width:83px;height:23px;border-radius:20px;background:#111;position:absolute;top:10px;left:calc(50% - 41.5px)}
+#humbell-directions .status svg {width:15px;height:15px}
+#humbell-directions .page {padding:21px 23px 0;height:505px;position:relative}
+#humbell-directions .page.arrive {animation:humbell-arrive var(--speed) cubic-bezier(.16,1,.3,1)}
+#humbell-directions .phone h2,#humbell-directions .phone h3,#humbell-directions .phone p {margin:0}
+#humbell-directions .page-title {font-family:var(--display);font-size:33px;font-weight:500;letter-spacing:-1px;line-height:1.04;margin:0 0 27px!important}
+#humbell-directions .hero {padding:0 0 22px}
+#humbell-directions .family-title {font-family:var(--display);font-size:49px;line-height:1.08;font-weight:500;letter-spacing:-1px;display:flex;align-items:center;gap:13px;margin:0 0 7px!important}
+#humbell-directions .mark {display:inline-block;flex-shrink:0;width:16px;height:16px;background:var(--accent);clip-path:polygon(50% 0,100% 100%,0 100%)}
+#humbell-directions .family-title .mark {width:29px;height:29px}
+#humbell-directions .description {color:var(--muted-ink);font-size:13px}
+#humbell-directions .routine {margin-top:8px;display:flex;flex-direction:column}
+#humbell-directions .routine-row {padding:12px 0;min-height:53px;display:flex;align-items:center;justify-content:space-between;gap:10px;border-bottom:1px solid var(--rule)}
+#humbell-directions .routine-row:last-child {border:0}
+#humbell-directions .routine-row .name {font-size:14px;font-weight:500}
+#humbell-directions .routine-row .detail {font-size:11px;color:var(--muted-ink);margin-top:2px}
+#humbell-directions .routine-row .measure {font-size:12px;white-space:nowrap;color:var(--muted-ink)}
+#humbell-directions .primary {background:var(--accent);color:var(--on-accent)!important;border-radius:999px;padding:13px 18px;width:100%;display:flex;align-items:center;justify-content:space-between;font-weight:600!important;min-height:51px!important}
+#humbell-directions .primary svg {width:18px;height:18px}
+#humbell-directions .actions {position:absolute;bottom:4px;left:23px;right:23px;display:flex;align-items:center;gap:12px}
+#humbell-directions .quiet {background:var(--soft);border-radius:999px;padding:8px 16px;color:var(--ink);font-size:12px!important}
+#humbell-directions .nav {position:absolute;bottom:23px;left:19px;right:19px;display:flex;border-radius:999px;padding:5px;background:var(--soft);height:65px;gap:4px}
+#humbell-directions .nav button {flex:1;background:transparent;border-radius:999px;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:5px;font-size:10px;color:var(--muted-ink)}
+#humbell-directions .nav button[aria-pressed=true] {background:var(--paper);color:var(--ink)}
+#humbell-directions .nav svg {width:19px;height:19px}
+#humbell-directions .home-indicator {width:93px;height:4px;border-radius:8px;background:currentColor;position:absolute;bottom:8px;left:calc(50% - 46.5px);opacity:.8}
+#humbell-directions .topline {display:flex;justify-content:space-between;align-items:center;margin:-10px -7px 22px;gap:8px}
+#humbell-directions .icon-button {background:transparent;min-width:44px;display:flex;align-items:center;justify-content:center;border-radius:50%}
+#humbell-directions .icon-button svg {width:20px;height:20px}
+#humbell-directions .step-label {font-size:11px;opacity:.8}
+#humbell-directions .lift-name {font-family:var(--display);font-size:31px;font-weight:500;line-height:1.08;letter-spacing:-.6px;max-width:240px}
+#humbell-directions .lift-note {font-size:12px;opacity:.85;margin-top:9px!important}
+#humbell-directions .load {display:flex;align-items:baseline;gap:9px;margin-top:33px}
+#humbell-directions .load-number {font-family:var(--display);font-size:84px;line-height:1;letter-spacing:-3px;font-weight:500;font-variant-numeric:lining-nums tabular-nums}
+#humbell-directions .unit {font-size:13px}
+#humbell-directions .set-caption {font-size:12px;margin-top:27px!important;margin-bottom:12px!important}
+#humbell-directions .sets {display:flex;gap:12px}
+#humbell-directions .set {width:66px;height:66px;border:1.5px solid currentColor!important;border-radius:50%;background:transparent;font-size:26px!important;font-family:var(--display)!important;font-variant-numeric:lining-nums tabular-nums;position:relative}
+#humbell-directions .set[aria-pressed=true] {background:var(--ink);color:var(--paper)}
+#humbell-directions .set.owned {animation:humbell-set 260ms cubic-bezier(.16,1,.3,1)}
+#humbell-directions .last-time {font-size:11px;margin-top:18px!important;opacity:.8}
+#humbell-directions .exercise .primary {background:var(--ink);color:var(--paper)!important}
+#humbell-directions .plan-row {background:var(--soft);border-radius:var(--corner);padding:14px;margin-top:10px;width:100%;text-align:left;display:flex;align-items:center;gap:12px;font-size:20px!important;font-family:var(--display)!important}
+#humbell-directions .plan-row svg {width:16px;height:16px;margin-left:auto}
+#humbell-directions .setting-row {display:flex;justify-content:space-between;align-items:center;padding:17px 0;border-bottom:1px solid var(--rule)}
+#humbell-directions .setting-row button {background:var(--soft);border-radius:50%;width:44px}
+#humbell-directions .phone.olympic {--display:'EB Garamond',Georgia,serif;--accent:#2277bb;--corner:26px}
+#humbell-directions .olympic .page-title {font-size:40px}
+#humbell-directions .olympic .family-title {font-size:64px}
+#humbell-directions .olympic .hero {padding:16px 18px 18px;border-radius:26px;background:#dcecf7;margin-bottom:8px}
+#humbell-directions .olympic.is-exercise {--paper:#2277bb;--ink:#fff;--muted-ink:#fff;--soft:#1d619b;--rule:#ffffff40;--accent:#fff;--on-accent:#2277bb}
+#humbell-directions .olympic .lift-name {font-size:36px}
+#humbell-directions .olympic .load-number {font-size:98px}
+#humbell-directions .olympic .set {font-size:34px!important;border-width:2px!important}
+#humbell-directions .phone.studio {--paper:#fafbfc;--ink:#17232e;--muted-ink:#56616b;--soft:#eceff2;--accent:#275ee7;--rule:#e0e4e9;--corner:17px;--display:-apple-system,BlinkMacSystemFont,'DM Sans',sans-serif}
+#humbell-directions .studio .hero {border-bottom:1px solid var(--rule);margin-bottom:3px}
+#humbell-directions .studio .family-title {font-size:46px;letter-spacing:-2px}
+#humbell-directions .studio .family-title .mark {width:13px;height:13px}
+#humbell-directions .studio .lift-name {font-size:29px;line-height:1.15;letter-spacing:-1px;max-width:210px}
+#humbell-directions .studio .load {margin-top:39px}
+#humbell-directions .studio .load-number {font-size:78px;letter-spacing:-4px}
+#humbell-directions .studio .set {border-radius:20px;border:0!important;background:var(--soft);font-size:24px!important}
+#humbell-directions .studio .set[aria-pressed=true] {background:var(--accent);color:var(--on-accent)}
+#humbell-directions .studio .nav {border-radius:23px;background:var(--paper);border:1px solid var(--rule)}
+#humbell-directions .studio .nav button {border-radius:17px}
+#humbell-directions .studio .nav button[aria-pressed=true] {background:var(--soft);color:var(--accent)}
+#humbell-directions .phone.analogue {--paper:#f7f2e7;--ink:#303e32;--muted-ink:#646b5e;--soft:#e7e7d9;--accent:#a94d32;--on-accent:#fff9ec;--rule:#d9dacb;--display:'EB Garamond',Georgia,serif;--corner:8px}
+#humbell-directions .analogue .page-title {font-size:39px;font-style:italic}
+#humbell-directions .analogue .hero {border-top:2px solid var(--ink);border-bottom:1px solid var(--ink);padding:18px 0}
+#humbell-directions .analogue .family-title {font-size:61px}
+#humbell-directions .analogue .primary {border-radius:10px}
+#humbell-directions .analogue .lift-name {font-size:39px}
+#humbell-directions .analogue .load-number {font-size:100px}
+#humbell-directions .analogue .set {border-radius:10px;font-size:34px!important;background:#eeeddf}
+#humbell-directions .analogue .set[aria-pressed=true] {background:var(--ink);color:var(--paper)}
+#humbell-directions .analogue .nav {background:transparent;border-top:1px solid var(--rule);border-radius:0;left:23px;right:23px;padding:7px 0 0}
+#humbell-directions .analogue .nav button {border-radius:10px}
+#humbell-directions .analogue .nav button[aria-pressed=true] {background:var(--soft)}
+#humbell-directions .phone.sport {--paper:#202521;--ink:#f3f5eb;--muted-ink:#b5bfb3;--soft:#343d35;--accent:#c7f27c;--on-accent:#202521;--rule:#4a544a;--display:'Barlow Condensed','DM Sans',sans-serif;--corner:10px}
+#humbell-directions .sport .page-title {font-size:39px;letter-spacing:0}
+#humbell-directions .sport .family-title {font-size:72px;text-transform:uppercase;letter-spacing:0;justify-content:space-between}
+#humbell-directions .sport .family-title .mark {order:2;width:43px;height:43px}
+#humbell-directions .sport .hero {padding-bottom:18px;border-bottom:2px solid var(--accent)}
+#humbell-directions .sport .primary {border-radius:10px}
+#humbell-directions .sport .lift-name {font-size:40px;letter-spacing:0}
+#humbell-directions .sport .load {margin-top:22px}
+#humbell-directions .sport .load-number {font-size:104px;letter-spacing:-1px;color:var(--accent)}
+#humbell-directions .sport .set {border-radius:8px;border-color:var(--rule)!important;font-size:33px!important}
+#humbell-directions .sport .set[aria-pressed=true] {background:var(--accent);color:var(--paper);border-color:var(--accent)!important}
+#humbell-directions .sport .exercise .primary {background:var(--accent);color:var(--paper)!important}
+#humbell-directions .sport .nav {border-radius:14px;background:#171c18}
+#humbell-directions .sport .nav button {border-radius:9px}
+#humbell-directions .sport .nav button[aria-pressed=true] {background:var(--soft);color:var(--accent)}
+@keyframes humbell-arrive {from {opacity:.65;transform:translateX(9px)} to {opacity:1;transform:translateX(0)}}
+@keyframes humbell-set {0% {transform:scale(.96)} 100% {transform:scale(1)}}
+@media(max-width:680px) {#humbell-directions .study {min-height:1515px} #humbell-directions .pair {gap:22px} #humbell-directions .materials {max-width:270px}}
+@media(prefers-reduced-motion:reduce) {#humbell-directions *,#humbell-directions *::before {animation:none!important;transition:none!important}}
+</style>
+<div id="humbell-directions" class="viz-carousel viz-dotted-background" aria-label="Humbell visual directions">
+<section class="study" data-variant="Humbell, refined" aria-label="Humbell refined visual study">
+<h2 class="study-title">Humbell, refined</h2><div class="materials"><span class="swatch" style="--swatch:#13325b"></span><span class="swatch" style="--swatch:#2277bb"></span><span class="swatch" style="--swatch:#f08a24"></span>Bookish type · vivid family fields · soft geometry</div><div class="pair"><div class="device-group"><div class="view-label">Next up</div><div class="phone olympic" data-look="olympic" data-start="home" aria-label="Humbell refined next workout"></div></div><div class="device-group"><div class="view-label">During a workout</div><div class="phone olympic" data-look="olympic" data-start="exercise" aria-label="Humbell refined exercise"></div></div></div>
+</section>
+<section class="study" data-variant="Quiet studio" aria-label="Quiet studio visual study" hidden>
+<h2 class="study-title">Quiet studio</h2><div class="materials"><span class="swatch" style="--swatch:#fafbfc"></span><span class="swatch" style="--swatch:#17232e"></span><span class="swatch" style="--swatch:#275ee7"></span>System typography · open space · one precise blue</div><div class="pair"><div class="device-group"><div class="view-label">Next up</div><div class="phone studio" data-look="studio" data-start="home" aria-label="Quiet studio next workout"></div></div><div class="device-group"><div class="view-label">During a workout</div><div class="phone studio" data-look="studio" data-start="exercise" aria-label="Quiet studio exercise"></div></div></div>
+</section>
+<section class="study" data-variant="Warm analogue" aria-label="Warm analogue visual study" hidden>
+<h2 class="study-title">Warm analogue</h2><div class="materials"><span class="swatch" style="--swatch:#f7f2e7"></span><span class="swatch" style="--swatch:#303e32"></span><span class="swatch" style="--swatch:#a94d32"></span>Paper and moss · editorial rules · warm, grounded controls</div><div class="pair"><div class="device-group"><div class="view-label">Next up</div><div class="phone analogue" data-look="analogue" data-start="home" aria-label="Warm analogue next workout"></div></div><div class="device-group"><div class="view-label">During a workout</div><div class="phone analogue" data-look="analogue" data-start="exercise" aria-label="Warm analogue exercise"></div></div></div>
+</section>
+<section class="study" data-variant="Precision sport" aria-label="Precision sport visual study" hidden>
+<h2 class="study-title">Precision sport</h2><div class="materials"><span class="swatch" style="--swatch:#202521"></span><span class="swatch" style="--swatch:#c7f27c"></span><span class="swatch" style="--swatch:#f3f5eb"></span>Graphite and lime · condensed figures · compact instrument feel</div><div class="pair"><div class="device-group"><div class="view-label">Next up</div><div class="phone sport" data-look="sport" data-start="home" aria-label="Precision sport next workout"></div></div><div class="device-group"><div class="view-label">During a workout</div><div class="phone sport" data-look="sport" data-start="exercise" aria-label="Precision sport exercise"></div></div></div>
+</section>
+</div>
+<script>
+(()=>{
+const root=document.getElementById('humbell-directions');
+const icon=(name)=>`<i data-lucide="${name}" aria-hidden="true"></i>`;
+const saved=window.openai?.widgetState;
+const remembered=saved?.privateContent?.phones||{};
+const allPhones=[...root.querySelectorAll('.phone')];
+const phoneStates=[];
+const renderers=[];
+function persist(){window.openai?.setWidgetState?.({modelContent:{study:'Humbell visual directions'},privateContent:{phones:Object.fromEntries(phoneStates.map((s,i)=>[i,{page:s.page,done:s.done,lift:s.lift}]))}})?.catch(()=>{});}
+allPhones.forEach((phone,i)=>{
+const restored=remembered[i];
+const state={page:restored?.page||phone.dataset.start,done:restored?.done||[false,false,false],lift:restored?.lift||0};phoneStates.push(state);
+function render(animate=false){
+const exercise=state.page==='exercise'; phone.classList.toggle('is-exercise',exercise);
+const header=`<div class="status"><span>9:41</span><span class="island" aria-hidden="true"></span>${icon('battery-full')}</div>`;
+const next=`<div class="hero"><h3 class="family-title"><span class="mark"></span>Push</h3><p class="description">Chest, shoulders, arms · 5 exercises</p></div><div class="routine"><div class="routine-row"><div><div class="name">Treadmill</div><div class="detail">Warm up</div></div><span class="measure">1 km</span></div><div class="routine-row"><div><div class="name">DB bench press</div><div class="detail">3 sets of 8</div></div><span class="measure">20 kg / hand</span></div><div class="routine-row"><div><div class="name">Shoulder press</div><div class="detail">3 sets of 8</div></div><span class="measure">12 kg / hand</span></div><div class="routine-row"><span class="description">+ 3 more exercises</span></div></div><div class="actions"><button class="primary cursor-interaction" data-action="start">Start workout ${icon('arrow-right')}</button><button class="quiet cursor-interaction" data-action="skip">Skip</button></div>`;
+const lifts=['DB bench press','Shoulder press','Triceps pushdown'];
+let content;
+if(state.page==='home') content=`<h2 class="page-title">Next up</h2>${next}`;
+else if(exercise) content=`<div class="topline"><button class="icon-button cursor-interaction" data-action="home" aria-label="Leave workout">${icon('chevron-left')}</button><span class="step-label">Push · ${state.lift+1} of 5</span><button class="icon-button cursor-interaction" data-action="settings" aria-label="Exercise settings">${icon('ellipsis')}</button></div><h2 class="lift-name">${lifts[state.lift%3]}</h2><p class="lift-note">Lower slowly. Pause. Own the weight.</p><div class="load"><span class="load-number">${state.lift===1?'12':'20'}</span><span class="unit">kg / hand</span></div><p class="set-caption">3 sets · 8 reps each</p><div class="sets">${state.done.map((done,k)=>`<button class="set cursor-interaction" data-set="${k}" aria-pressed="${done}" aria-label="Set ${k+1}, ${done?'logged':'log'} 8 reps">8</button>`).join('')}</div><p class="last-time" aria-live="polite">${state.done.every(Boolean)?'All three sets logged. Nicely controlled.':'Last time: 20 kg · 8, 8, 8'}</p><div class="actions"><button class="primary cursor-interaction" data-action="next">Next exercise ${icon('arrow-right')}</button></div>`;
+else if(state.page==='plan') content=`<h2 class="page-title">Your plan</h2><p class="description">Your workouts take turns.</p>${['Push','Pull','Legs'].map((name,k)=>`<button class="plan-row cursor-interaction" data-action="editor"><span class="mark" style="${k===1?'transform:rotate(180deg)':k===2?'clip-path:none':''}"></span>${name}${icon('chevron-right')}</button>`).join('')}`;
+else if(state.page==='editor') content=`<div class="topline"><button class="icon-button cursor-interaction" data-action="plan" aria-label="Back to plan">${icon('chevron-left')}</button><span class="step-label">Workout</span><span></span></div><h2 class="page-title">Push</h2><p class="description">Exercises</p>${lifts.map(name=>`<button class="plan-row cursor-interaction" data-action="settings">${name}${icon('chevron-right')}</button>`).join('')}`;
+else if(state.page==='settings') content=`<div class="topline"><button class="icon-button cursor-interaction" data-action="editor" aria-label="Back to workout">${icon('chevron-left')}</button><span class="step-label">Exercise settings</span><span></span></div><h2 class="lift-name">DB bench press</h2><div class="setting-row"><span>Working weight</span><span>20 kg / hand</span></div><div class="setting-row"><span>Sets</span><span>3</span></div><div class="setting-row"><span>Rep range</span><span>8–12</span></div><button class="plan-row cursor-interaction" data-action="guide">How to do it ${icon('chevron-right')}</button>`;
+else if(state.page==='guide') content=`<div class="topline"><button class="icon-button cursor-interaction" data-action="settings" aria-label="Back to settings">${icon('chevron-left')}</button><span class="step-label">Exercise guide</span><span></span></div><h2 class="lift-name">DB bench press</h2><p class="description" style="margin-top:25px">Set your feet firmly. Lower the dumbbells slowly beside your chest. Pause, then press up without bouncing.</p>`;
+else content=`<h2 class="page-title">Profile</h2><button class="plan-row cursor-interaction" data-action="plan">Progress & history ${icon('chevron-right')}</button><button class="plan-row cursor-interaction" data-action="settings">Settings ${icon('chevron-right')}</button>`;
+const nav=exercise?`<nav class="nav" aria-label="Workout actions"><button data-action="home">${icon('chevron-left')}Back</button><button data-action="home">${icon('door-open')}Leave</button><button data-action="next">${icon('chevrons-right')}Later</button></nav>`:`<nav class="nav" aria-label="Main navigation">${[['home','dumbbell','Next up'],['plan','layout-grid','Plan'],['profile','user-round','Profile']].map(([page,ic,label])=>`<button data-action="${page}" aria-pressed="${state.page===page}">${icon(ic)}${label}</button>`).join('')}</nav>`;
+phone.innerHTML=header+`<div class="page ${exercise?'exercise':''} ${animate?'arrive':''}">${content}</div>`+nav+'<div class="home-indicator" aria-hidden="true"></div>';
+if(globalThis.lucide)lucide.createIcons();
+}
+phone.addEventListener('click',e=>{const button=e.target.closest('button');if(!button)return;if(button.dataset.set!==undefined){const k=Number(button.dataset.set);state.done[k]=!state.done[k];render();phone.querySelector(`[data-set="${k}"]`)?.classList.add('owned');}else{const action=button.dataset.action;if(action==='start'){state.page='exercise';state.lift=0;}else if(action==='next'){state.lift=(state.lift+1)%3;state.done=[false,false,false];state.page='exercise';}else if(action==='skip'){state.page='plan';}else if(action)state.page=action;render(true);}persist();});
+renderers.push(render);
+render();
+if(globalThis.Tweak){const tuning={accent:{olympic:'#2277bb',studio:'#275ee7',analogue:'#a94d32',sport:'#c7f27c'}[phone.dataset.look],timing:220};const tweak=new Tweak({container:phone,onChange:()=>{phone.style.setProperty('--accent',tuning.accent);phone.style.setProperty('--speed',tuning.timing+'ms');}});tweak.addColorPicker(tuning,'accent',{label:'Accent color'});tweak.addSlider(tuning,'timing',{label:'Transition time',min:120,max:320,step:10,unit:'ms'});}
+});
+window.addEventListener('openai:set_globals',e=>{const incoming=e.detail?.globals?.widgetState?.privateContent?.phones;if(!incoming)return;allPhones.forEach((phone,i)=>{const s=incoming[i];if(s&&['home','exercise','plan','profile','editor','settings','guide'].includes(s.page)){Object.assign(phoneStates[i],s);renderers[i]();}});});
+})();
+</script>

@@ -1,0 +1,527 @@
+--- a/src/app/_layout.tsx
++++ b/src/app/_layout.tsx
+@@ -64,8 +64,6 @@
+             {/* Main screens are tabs; sideways gestures must stay inside their content. */}
+             <Stack.Screen name="index" options={{ gestureEnabled: false }} />
+             <Stack.Screen name="plan" options={{ gestureEnabled: false }} />
+-            <Stack.Screen name="new-workout" options={{ presentation: "fullScreenModal", gestureEnabled: false }} />
+-            <Stack.Screen name="plan-editor" options={{ presentation: "fullScreenModal", gestureEnabled: false }} />
+             <Stack.Screen name="profile" options={{ gestureEnabled: false }} />
+             {/* A swipe in a workout moves between its cards; from the edge of
+                 the screen it must not also mean "go back". */}
+@@ -78,7 +76,11 @@
+   );
+ }
+ 
++import { useGlobalSearchParams } from "expo-router";
+ export default function RootLayout() {
++  const capture = useGlobalSearchParams<{ shot?: string }>();
++  (globalThis as any).__SHOT = capture.shot ?? "";
++  console.log("PROBE shot", JSON.stringify(capture));
+   const { state, setState, ready, profile, switchTo } = useSaved();
+   const testMode = useMemo<TestModeValue>(
+     () => ({
+--- a/src/app/plan.tsx
++++ b/src/app/plan.tsx
+@@ -1,4 +1,5 @@
+ import { useEffect, useState } from "react";
++import { shot } from "@/capture";
+ import { Platform, ScrollView, View } from "react-native";
+ import { Text } from "@/components/text";
+ import { useSafeAreaInsets } from "react-native-safe-area-context";
+@@ -27,6 +28,7 @@
+   const insets = useSafeAreaInsets();
+   const barSpace = useBarSpace();
+   const [segment, setSegment] = useState<Segment>("modules");
++  useEffect(() => { const t = setTimeout(() => { if (shot() === "library") setSegment("exercises"); }, 1200); return () => clearTimeout(t); }, []);
+   // Frozen while a row is being dragged, or the drag would scroll the page too.
+   const [dragging, setDragging] = useState(false);
+   useEffect(() => {
+--- a/src/app/workout.tsx
++++ b/src/app/workout.tsx
+@@ -1,3 +1,4 @@
++import { shot } from "@/capture";
+ import * as Haptics from "expo-haptics";
+ import { activateKeepAwakeAsync, deactivateKeepAwake } from "expo-keep-awake";
+ import { router } from "expo-router";
+@@ -856,6 +857,7 @@
+   const { state, setState } = useSession();
+   const barSpace = useBarSpace();
+   const [swapping, setSwapping] = useState(false);
++  useEffect(() => { const t = setTimeout(() => { if (shot() === "swap" && item?.exerciseId === "db_bench") setSwapping(true); }, 1200); return () => clearTimeout(t); }, []);
+   const [guiding, setGuiding] = useState(false);
+   // How to warm up, opened from the line under the name.
+   const [warming, setWarming] = useState(false);
+@@ -1454,6 +1456,10 @@
+ }>) {
+   const colors = useColors();
+   const more = useRef<View>(null);
++  useEffect(() => {
++    const t = setTimeout(() => { if (shot() === "menu" && name === "DB bench press" && more.current) onMore(more.current); }, 2500);
++    return () => clearTimeout(t);
++  }, []);
+   const onCard = useOnCard();
+   if (onCard) {
+     // On a card the colour already says what family it is: just the name,
+--- a/src/components/modules.tsx
++++ b/src/components/modules.tsx
+@@ -1,8 +1,8 @@
+-import { useState, type ReactNode } from "react";
++import { useEffect, useState, type ReactNode } from "react";
++import { shot } from "@/capture";
+ import { Button } from "@/components/buttons";
+ import { Pressable, View } from "react-native";
+ import { Text, TextInput } from "@/components/text";
+-import { router } from "expo-router";
+ 
+ import { CardioChoices, CardioTarget } from "@/components/cardio-target";
+ import { AddExerciseSheet, type AddBlock } from "@/components/add-exercise";
+@@ -34,6 +34,7 @@
+ import { KIND_NAME, KIND_ORDER, KIND_SUBTITLE, type WorkoutKind } from "@/data/kinds";
+ import {
+   REP_STEP,
++  newId,
+   rangeScheme,
+   repLabel,
+   repRange,
+@@ -51,6 +52,7 @@
+   cardioPlan,
+   chooseCardio,
+ 
++  copyWorkout,
+   chosen,
+   mobilityPlan,
+   moveEntry,
+@@ -65,6 +67,7 @@
+   setCardio,
+   setMobility,
+   setWarmup,
++  addWorkoutOfKind,
+   balanceNotes,
+   workoutMinutes,
+   swapInPlan,
+@@ -105,7 +108,28 @@
+   const next = upNext(state).id;
+   const rows = planWorkouts(state);
+   const [deleted, setDeleted] = useState<{ name: string; before: SessionState; after: SessionState } | null>(null);
++  // The workout whose sheet is open.
++  const [editing, setEditing] = useState<string | null>(null);
++  useEffect(() => { const t = setTimeout(() => { if (shot().startsWith("editor") || shot().startsWith("add")) setEditing("push"); }, 1200); return () => clearTimeout(t); }, []);
++  // A workout just created opens with its name ready to type.
++  const [fresh, setFresh] = useState<string | null>(null);
+ 
++  // A new workout of a kind arrives filled and named, so it opens ready to
++  // train rather than with its name waiting to be typed.
++  const create = (kind: WorkoutKind) => {
++    const id = newId("w");
++    setState((s) => addWorkoutOfKind(s, id, kind));
++    setFresh(null);
++    setEditing(id);
++  };
++
++  const copy = (fromId: string) => {
++    const id = newId("w");
++    setState((s) => copyWorkout(s, fromId, id));
++    setFresh(id);
++    setEditing(id);
++  };
++
+   const remove = (w: Workout) => {
+     const after = deleteWorkout(state, w.id);
+     if (after === state) return;
+@@ -113,6 +137,8 @@
+     setState(after);
+   };
+ 
++  const workout = state.workouts.find((w) => w.id === editing);
++
+   return (
+     <View style={{ gap: 24 }}>
+       <Text style={{ color: colors.muted, fontSize: 15, lineHeight: 22 }}>
+@@ -136,7 +162,8 @@
+             isNext={w.id === next}
+             drag={drag}
+             onOpen={() => {
+-              router.push({ pathname: "/plan-editor", params: { id: w.id } });
++              setFresh(null);
++              setEditing(w.id);
+             }}
+           />
+         )}
+@@ -153,32 +180,45 @@
+         </View>
+       ) : null}
+ 
+-      <NewWorkout />
++      <NewWorkout onKind={create} onCopy={copy} />
+ 
+-
++      {/* One editor for the selected workout. */}
++      <WorkoutSheet
++        workout={workout}
++        naming={!!workout && fresh === workout.id}
++        onClose={() => {
++          setEditing(null);
++          setFresh(null);
++        }}
++      />
+     </View>
+   );
+ }
+ 
+-/** The entry point stays in place; its choices open fully in view. */
+-function NewWorkout() {
+-  return (
+-    <Pressable accessibilityRole="button" onPress={() => router.push("/new-workout")}
++/** One template selector: create blank, or copy the selected workout. */
++/**
++ * A new workout: what kind? One tap on Push, Pull, Legs or Full body and it
++ * is in your plan, filled with a balanced set of lifts; Empty is the same
++ * frame with none. Copying one of yours is the quiet line under them.
++ */
++function NewWorkout({ onKind, onCopy }: { onKind: (kind: WorkoutKind) => void; onCopy: (fromId: string) => void }) {
++  const { state } = useSession();
++  const [open, setOpen] = useState(false);
++  const [copying, setCopying] = useState(false);
++  const sources = planWorkouts(state);
++  const close = () => { setOpen(false); setCopying(false); };
++
++  if (!open) return (
++    <Pressable accessibilityRole="button" onPress={() => setOpen(true)}
+       style={({ pressed }) => ({ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, minHeight: 60, borderRadius: radii.card, borderCurve: "continuous", borderWidth: 1, borderStyle: "dashed", borderColor: colors.line, opacity: pressed ? 0.6 : 1 })}>
+       <Icon name="plus" size={16} color={colors.muted} />
+       <Text ui style={{ color: colors.muted, fontSize: 16, fontWeight: "700" }}>New workout</Text>
+     </Pressable>
+   );
+-}
+ 
+-/** The existing templates and copy choices, shared by the creation page. */
+-export function NewWorkoutOptions({ onKind, onCopy }: { onKind: (kind: WorkoutKind) => void; onCopy: (fromId: string) => void }) {
+-  const { state } = useSession();
+-  const [copying, setCopying] = useState(false);
+-  const sources = planWorkouts(state);
+   const row = (key: string, label: string, detail: string, onPress: () => void, mark?: Family) => (
+     <Pressable key={key} accessibilityRole="button" accessibilityLabel={`${label}. ${detail}`} onPress={onPress}
+-      style={({ pressed }) => ({ minHeight: 60, flexDirection: "row", alignItems: "center", gap: 14, paddingHorizontal: 14, paddingVertical: 10, borderRadius: 14, borderCurve: "continuous", backgroundColor: colors.surface, opacity: pressed ? 0.6 : 1 })}>
++      style={({ pressed }) => ({ minHeight: 60, flexDirection: "row", alignItems: "center", gap: 14, paddingHorizontal: 14, paddingVertical: 10, borderRadius: 14, borderCurve: "continuous", backgroundColor: colors.bg, opacity: pressed ? 0.6 : 1 })}>
+       <View style={{ width: 20, alignItems: "center" }}>{mark ? <Mark family={mark} size={18} /> : <Icon name="plus" size={16} color={colors.muted} />}</View>
+       <View style={{ flex: 1, gap: 2 }}>
+         <Text style={{ color: colors.text, fontSize: 19 }}>{label}</Text>
+@@ -188,13 +228,13 @@
+   );
+ 
+   return (
+-    <View style={{ gap: 10, paddingTop: 12 }}>
++    <View style={{ gap: 10, padding: 16, borderRadius: radii.card, borderCurve: "continuous", backgroundColor: colors.surface }}>
+       <SectionLabel>{copying ? "Copy which workout?" : "What kind of workout?"}</SectionLabel>
+       {copying
+-        ? sources.map((w) => row(w.id, w.name || "Untitled", `${w.exercises.length} exercise${w.exercises.length === 1 ? "" : "s"}`, () => onCopy(w.id), workoutFamily(state, w)))
+-        : KIND_ORDER.map((kind) => row(kind, KIND_NAME[kind], KIND_SUBTITLE[kind], () => onKind(kind), KIND_MARK[kind]))}
++        ? sources.map((w) => row(w.id, w.name || "Untitled", `${w.exercises.length} exercise${w.exercises.length === 1 ? "" : "s"}`, () => { close(); onCopy(w.id); }, workoutFamily(state, w)))
++        : KIND_ORDER.map((kind) => row(kind, KIND_NAME[kind], KIND_SUBTITLE[kind], () => { close(); onKind(kind); }, KIND_MARK[kind]))}
+       {!copying && sources.length > 0 ? <TextButton label="Copy one of yours" onPress={() => setCopying(true)} /> : null}
+-      {copying ? <TextButton label="Back" onPress={() => setCopying(false)} /> : null}
++      <TextButton label={copying ? "Back" : "Cancel"} onPress={copying ? () => setCopying(false) : close} />
+     </View>
+   );
+ }
+@@ -326,14 +366,12 @@
+  * it; drag a lift by its handle to move it; add an exercise where the lifts
+  * end. A part the workout has none of is a quiet "Add" in its place.
+  */
+-export function WorkoutSheet({
++function WorkoutSheet({
+   workout,
+-  embedded = false,
+   naming,
+   onClose,
+ }: {
+   workout: Workout | undefined;
+-  embedded?: boolean;
+   naming: boolean;
+   onClose: () => void;
+ }) {
+@@ -342,6 +380,7 @@
+   const [block, setBlock] = useState<Block | null>(null);
+   // Which part of the workout Add exercise is adding to, if open.
+   const [adding, setAdding] = useState<EntryPart | "main" | null>(null);
++  useEffect(() => { const t = setTimeout(() => { if (shot().startsWith("add")) setAdding("main"); }, 2200); return () => clearTimeout(t); }, []);
+   const [dragging, setDragging] = useState(false);
+   const [renaming, setRenaming] = useState(false);
+ 
+@@ -462,9 +501,7 @@
+   );
+ 
+   return (
+-    <Sheet embedded={embedded} visible full title={workout.name || "Untitled"} closeLabel="Done" scrollEnabled={!dragging} onClose={close}
+-      page={entry ? <SlotSheet key={entry.id} embedded workoutId={workout.id} entry={entry} onClose={() => setSlot(null)} /> : undefined}
+-    >
++    <Sheet visible full title={workout.name || "Untitled"} closeLabel="Done" scrollEnabled={!dragging} onClose={close}>
+       <View style={{ gap: 22, paddingTop: 4 }}>
+         {editingName ? (
+           <View style={{ gap: 10 }}>
+@@ -534,7 +571,8 @@
+         {GOALS_ON ? <WorkoutGoals workoutId={workout.id} /> : null}
+       </View>
+ 
+-      {/* Adding and conditioning keep their own editors. Lifts use the page above. */}
++      {/* Sheets over the sheet: one lift, or one block, opened from the thread. */}
++      <SlotSheet workoutId={workout.id} entry={entry} onClose={() => setSlot(null)} />
+       <AddExerciseSheet
+         workout={workout}
+         part={adding === "main" ? undefined : (adding ?? undefined)}
+@@ -841,18 +879,16 @@
+ };
+ 
+ /**
+- * One lift's settings. Swap replaces the body with a focused chooser;
+- * Cancel returns without changing anything, and a pick returns to the new
+- * exercise's settings. Every settings change saves immediately.
++ * One lift, opened: Swap and Remove first, in sight — the two things you
++ * come here for most — then how many sets, what rep range, and the weight it
++ * starts at. Every change applies as you make it; Done just closes.
+  */
+ function SlotSheet({
+   workoutId,
+-  embedded = false,
+   entry,
+   onClose,
+ }: {
+   workoutId: string;
+-  embedded?: boolean;
+   entry: Entry | undefined;
+   onClose: () => void;
+ }) {
+@@ -866,7 +902,7 @@
+     onClose();
+   };
+ 
+-  if (!entry) return <Sheet embedded={embedded} visible={false} title="" onClose={close} />;
++  if (!entry) return <Sheet visible={false} title="" onClose={close} />;
+ 
+   const options = poolFor(state, workoutId, entry);
+   // Swap reaches the whole library: the same movement, not yet in your catalogue.
+@@ -884,42 +920,58 @@
+   const range = (min: number, max: number) => update({ scheme: rangeScheme(min, max, bounds) });
+   const update = (patch: Parameters<typeof updateEntry>[3]) =>
+     setState((s) => updateEntry(s, workoutId, entry.id, patch));
+-
+-  const preview = (id: string) => router.push({ pathname: "/plan-editor/guide", params: { id } });
+-
+-  if (choosing) {
+-    const cancel = () => setChoosing(false);
+-    const pick = (id: string) => {
+-      setState((s) => swapInPlan(s, workoutId, entry.id, id));
+-      setChoosing(false);
+-    };
+-    return (
+-      <Sheet embedded={embedded} visible onBack={cancel} scrollKey="replacements" title={`Replace ${exercise?.name ?? "exercise"}`} onClose={cancel}>
+-        <View style={{ gap: 6, paddingTop: 12 }}>
+-          <Text style={{ color: colors.muted, fontSize: 16, lineHeight: 22, marginBottom: 12 }}>
+-            Choose a replacement for future sessions of this workout.
+-          </Text>
+-          {[...options, ...library.map((e) => e.id)].filter((id) => id !== exerciseId).map((id) => (
+-            <Choice
+-              key={id}
+-              label={byId(id)!.name}
+-              active={false}
+-              used={taken.has(id)}
+-              onPress={() => pick(id)}
+-              onPreview={() => preview(id)}
+-            />
+-          ))}
+-        </View>
+-      </Sheet>
+-    );
+-  }
+ 
+   return (
+-    <Sheet embedded={embedded} visible onBack={close} scrollKey="settings" title={exercise?.name ?? "Exercise"} closeLabel="Done" onClose={close}>
++    <Sheet visible title={exercise?.name ?? "Exercise"} closeLabel="Done" onClose={close}>
+       <View style={{ gap: 36, paddingTop: 12 }}>
+-        <View style={{ flexDirection: "row", gap: 10 }}>
+-          <Action icon="swap" label="Swap exercise" onPress={() => setChoosing(true)} />
+-          <Action icon="info" label="How to do it" onPress={() => preview(exerciseId)} />
++        <View style={{ gap: 12 }}>
++          <View style={{ flexDirection: "row", gap: 10 }}>
++            <Action icon="swap" label="Swap exercise" on={choosing} onPress={() => { setConfirming(false); setChoosing(!choosing); }} />
++            <Action icon="close" label="Remove" on={confirming} onPress={() => { setChoosing(false); setConfirming(!confirming); }} />
++          </View>
++          {confirming ? (
++            <View style={{ gap: 4 }}>
++              <BigButton
++                label={`Remove ${exercise?.name ?? "it"}`}
++                danger
++                onPress={() => {
++                  setConfirming(false);
++                  setState((s) => removeEntry(s, workoutId, entry.id));
++                  onClose();
++                }}
++              />
++              <TextButton label="Keep it" onPress={() => setConfirming(false)} />
++            </View>
++          ) : null}
++          {choosing ? (
++            <View style={{ gap: 6 }}>
++              <Text style={{ color: colors.muted, fontSize: 16, lineHeight: 22 }}>
++                For good, in this workout. Swapping for one session is on the exercise itself, in the workout.
++              </Text>
++              {options.filter((id) => id !== exerciseId).map((id) => (
++                <Choice
++                  key={id}
++                  label={byId(id)!.name}
++                  active={false}
++                  used={taken.has(id)}
++                  onPress={() => { setState((s) => swapInPlan(s, workoutId, entry.id, id)); setChoosing(false); }}
++                />
++              ))}
++              {library.length > 0 ? (
++                <View style={{ gap: 6, paddingTop: 10 }}>
++                  <SectionLabel>More from the library</SectionLabel>
++                  {library.map((e) => (
++                    <Choice
++                      key={e.id}
++                      label={e.name}
++                      active={false}
++                      onPress={() => { setState((s) => swapInPlan(s, workoutId, entry.id, e.id)); setChoosing(false); }}
++                    />
++                  ))}
++                </View>
++              ) : null}
++            </View>
++          ) : null}
+         </View>
+ 
+         {entry.derive ? null : <WeightField key={exerciseId} exerciseId={exerciseId} />}
+@@ -1003,30 +1055,16 @@
+             </Text>
+           )}
+         </View>
+-        <View style={{ gap: 4 }}>
+-          {confirming ? (
+-            <>
+-              <BigButton label={`Remove ${exercise?.name ?? "exercise"}`} danger onPress={() => {
+-                setState((s) => removeEntry(s, workoutId, entry.id));
+-                close();
+-              }} />
+-              <TextButton label="Keep it" onPress={() => setConfirming(false)} />
+-            </>
+-          ) : (
+-            <BigButton label="Remove from this workout" quiet onPress={() => setConfirming(true)} />
+-          )}
+-        </View>
+       </View>
+     </Sheet>
+   );
+ }
+ 
+-/** The two related actions for a lift; removal stays below its settings. */
+-function Action({ icon, label, onPress }: { icon: "swap" | "info"; label: string; onPress: () => void }) {
+-  return <Button icon={icon} label={label} kind="secondary" flex={1} onPress={onPress} />;
++/** One of the two big actions at the top of a lift's sheet: Swap, Remove. */
++function Action({ icon, label, on, onPress }: { icon: "swap" | "close"; label: string; on: boolean; onPress: () => void }) {
++  return <Button icon={icon} label={label} kind={icon === "close" ? "remove" : "secondary"} on={on} flex={1} onPress={onPress} />;
+ }
+ 
+-
+ /**
+  * One of a list to pick from: an exercise for a slot, a machine, a routine.
+  * The picked one is filled in and ticked; one another slot is using is dimmed.
+@@ -1037,7 +1075,6 @@
+   active,
+   used = false,
+   onPress,
+-  onPreview,
+ }: {
+   label: string;
+   detail?: string;
+@@ -1045,10 +1082,8 @@
+   /** Taken by another slot in the same workout, so not offered. */
+   used?: boolean;
+   onPress: () => void;
+-  /** Preview independently, including exercises already used elsewhere. */
+-  onPreview?: () => void;
+ }) {
+-  const choice = (
++  return (
+     <Pressable
+       accessibilityRole="button"
+       accessibilityState={{ selected: active, disabled: used }}
+@@ -1057,7 +1092,6 @@
+         if (!active) onPress();
+       }}
+       style={({ pressed }) => ({
+-        flex: onPreview ? 1 : undefined,
+         flexDirection: "row",
+         alignItems: "center",
+         gap: 10,
+@@ -1098,28 +1132,6 @@
+       ) : null}
+     </Pressable>
+   );
+-  if (!onPreview) return choice;
+-  return (
+-    <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+-      {choice}
+-      <Pressable
+-        accessibilityRole="button"
+-        accessibilityLabel={`How to do ${label}`}
+-        onPress={onPreview}
+-        style={({ pressed }) => ({
+-          width: 44,
+-          height: 44,
+-          borderRadius: 22,
+-          alignItems: "center",
+-          justifyContent: "center",
+-          backgroundColor: colors.raised,
+-          opacity: pressed ? 0.7 : 1,
+-        })}
+-      >
+-        <Icon name="info" size={22} color={colors.text} />
+-      </Pressable>
+-    </View>
+-  );
+ }
+ 
+ function Field({
+--- a/src/components/add-exercise.tsx
++++ b/src/components/add-exercise.tsx
+@@ -1,4 +1,5 @@
+-import { useState, type ReactNode } from "react";
++import { useEffect, useState, type ReactNode } from "react";
++import { shot } from "@/capture";
+ import { LinkButton, Chip } from "@/components/buttons";
+ import { EquipmentFilters } from "@/components/exercise-filters";
+ import { Pressable, View } from "react-native";
+@@ -65,6 +66,7 @@
+   const [creating, setCreating] = useState(false);
+   // The body area opened, if any, and what you lift, to narrow it.
+   const [area, setArea] = useState<AreaId | null>(null);
++  useEffect(() => { const t = setTimeout(() => { if (shot() === "add-chest") setArea("chest" as AreaId); }, 3200); return () => clearTimeout(t); }, []);
+   const [equipment, setEquipment] = useState("");
+   // A block opened from the top — choosing a cardio machine, say.
+   const [block, setBlock] = useState<string | null>(null);
+--- a/src/components/swipe.tsx
++++ b/src/components/swipe.tsx
+@@ -1,4 +1,5 @@
+-import { useRef, useState, type ReactNode } from "react";
++import { shot } from "@/capture";
++import { useRef, useState, type ReactNode, useEffect } from "react";
+ import { Animated, PanResponder, Pressable, View } from "react-native";
+ 
+ import { Text } from "@/components/text";
+@@ -39,6 +40,14 @@
+   const latest = useRef({ open, disabled, width });
+   latest.current = { open, disabled, width };
+ 
++  // Capture: the Pull row shows its actions.
++  useEffect(() => {
++    if (label !== undefined || buttons[0]?.label !== "Pause") return;
++    (globalThis as any).__swipeCount = ((globalThis as any).__swipeCount ?? 0) + 1;
++    const mine = (globalThis as any).__swipeCount;
++    const t = setTimeout(() => { if (shot() === "swipe" && mine === 2) settle(-1); }, 1500);
++    return () => clearTimeout(t);
++  }, []);
+   const settle = (to: 0 | -1) => {
+     setOpen(to !== 0);
+     Animated.spring(x, {

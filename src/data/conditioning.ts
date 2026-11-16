@@ -18,7 +18,7 @@
 /** What a machine measures, and in what unit the number is entered. */
 export type CardioMetric = {
   /** Unit the distance is entered and stored in. */
-  unit: "km" | "m" | "skips";
+  unit: "km" | "m" | "skips" | "reps";
   /** Decimals shown and accepted. Metres are whole; kilometres are fine. */
   decimals: number;
   /** Nudge size for the +/- steppers. */
@@ -54,12 +54,12 @@ export type CardioExercise = {
  * different job from a treadmill before them.
  */
 export const CARDIO: CardioExercise[] = [
-  { id: "treadmill", name: "Treadmill", metric: KM, distance: 1, cue: "Stand tall, hands off the rails." },
+  { id: "treadmill", name: "Treadmill", metric: KM, distance: 1, cue: "Look ahead and let your arms move naturally. Use the rails for balance when needed." },
   { id: "row", name: "Rower", metric: METRES, cue: "Legs, back, arms — then the reverse." },
   { id: "ski_erg", name: "Ski-erg", metric: METRES, cue: "Hinge at the hips, finish past the pockets." },
   { id: "bike", name: "Bike", metric: KM },
   { id: "assault_bike", name: "Assault bike", metric: KM, cue: "Arms and legs, same effort." },
-  { id: "stair", name: "Stair climber", metric: KM, cue: "Stand tall, off the handrails." },
+  { id: "stair", name: "Stair climber", metric: KM, cue: "Stand upright. Use the rails for balance without leaning your weight on them." },
   { id: "elliptical", name: "Elliptical", metric: KM },
 ];
 
@@ -72,6 +72,7 @@ export const CARDIO: CardioExercise[] = [
 export const AWAY_CARDIO: CardioExercise[] = [
   { id: "outdoor", name: "Walk or jog outside", metric: KM, cue: "Out of the door and back. Enter the distance if you know it." },
   { id: "skipping", name: "Skipping rope", metric: SKIPS, cue: "Small hops on the balls of your feet. Count the skips if you like." },
+  { id: "jumping_jacks", name: "Jumping jacks", metric: { unit: "reps", decimals: 0, step: 10 } },
 ];
 
 /** The two ends of a session a cardio block can sit at. */
@@ -133,7 +134,7 @@ export const lengthOf = (
  * distance: the machine's own, else a round number in its unit.
  */
 export const defaultCourse = (machine: CardioExercise): number =>
-  machine.distance ?? (machine.metric.unit === "km" ? 1 : 1000);
+  machine.distance ?? (machine.metric.unit === "km" ? 1 : machine.metric.unit === "m" ? 1000 : 100);
 
 /**
  * A stretch the app knows: a photo, a how-to guide — both keyed by this id —
@@ -191,6 +192,19 @@ export const STRETCHES: Stretch[] = [
   { id: "arm_circles", name: "Arm circles", seconds: 30, cue: "Arms straight out. Small circles, then bigger." },
   { id: "wall_slide", name: "Wall slide", seconds: 30, reps: 10, cue: "Back and arms against a wall. Slide up slowly, then down." },
   { id: "prone_y_raise", name: "Lying Y-raise", seconds: 30, reps: 10, cue: "Face down, arms in a Y, thumbs up. Lift them off the floor." },
+  // Shoulder blades for pressing, the upper back for pulling.
+  { id: "scapular_pushup", name: "Scapular push-up", seconds: 30, reps: 10, cue: "Arms straight. Let the chest sink between the shoulders, then push it away." },
+  { id: "thread_needle", name: "Thread the needle", seconds: 30, perSide: true, cue: "On hands and knees. Slide one arm under the other and turn the upper back." },
+  // Yoga: slow holds for the spine, hips and hamstrings.
+  { id: "downward_dog", name: "Downward dog", seconds: 45, cue: "Hands and feet down, hips high. Let the heels sink toward the floor." },
+  { id: "low_lunge", name: "Low lunge", seconds: 30, perSide: true, cue: "Back knee down. Let the hips sink forward, chest up." },
+  { id: "pigeon", name: "Pigeon", seconds: 45, perSide: true, cue: "Front shin across, back leg long. Fold forward only as far as is easy." },
+  { id: "cobra", name: "Cobra", seconds: 30, cue: "Face down, hands under the shoulders. Lift the chest; the hips stay down." },
+  // Kung fu: loosening the legs and hips the way a class starts — from
+  // Järna Kung Fu, beside the wide and side stance above.
+  { id: "knee_circles", name: "Knee circles", seconds: 40, reps: 10, perSide: true, cue: "Arms out, stand tall. Lift a knee and draw big circles, five each way." },
+  { id: "hamstring_bounce", name: "Hamstring bounces", seconds: 45, cue: "Fold forward, knees soft. Small, gentle bounces; straighten the legs halfway." },
+  { id: "front_kick_swing", name: "Front kick swings", seconds: 40, reps: 10, perSide: true, cue: "Arms out, back straight. Swing the straight leg up, then lower it slowly." },
 ];
 
 export const stretchById = (id: string): Stretch | undefined => STRETCHES.find((s) => s.id === id);
@@ -255,6 +269,22 @@ export type MobilityRoutine = {
   subtitle: string;
   moves: MobilityMove[];
   enabled?: boolean;
+  /**
+   * Where it goes: "warmup" for mobility, done before the lifts to get you
+   * moving; absent for stretches, done at the end. Built-ins are told apart
+   * by id — see `routineUse`.
+   */
+  use?: RoutineUse;
+};
+
+/** Mobility opens a workout; stretches close it. */
+export type RoutineUse = "warmup" | "end";
+
+/** Whether a routine is mobility, for the warm-up, or stretches, for the cool-down. */
+export const routineUse = (routine: Pick<MobilityRoutine, "id" | "use">): RoutineUse => {
+  if (routine.use) return routine.use;
+  const id = routine.id.replace(/:away$/, "");
+  return (Object.values(WARMUP) as string[]).includes(id) || id.startsWith(SHOULDER_WARMUP) ? "warmup" : "end";
 };
 
 /** Your changes to a built-in routine: its name, its holds. Kept beside it, so it can be put back. */
@@ -264,11 +294,10 @@ export type MobilityEdit = { name?: string; moves?: MobilityMove[] };
 export const DEFAULT_MOBILITY = "everyday";
 
 /**
- * The warm-ups, one for each kind of day. Each opens the same way — the wide
- * stance, then the side stance for the hamstrings — and ends on what the day
- * is about to work: shoulders and chest on a push day, the back on a pull
- * day, the legs on a leg day. A workout opens with its day's, straight after
- * the cardio, unless you choose another in Plan.
+ * The warm-ups, one for each kind of day, each readying what that day works:
+ * the shoulders first and then the chest on a push day, the upper back and
+ * the lats on a pull day, the legs and hips on a leg day. A workout opens
+ * with its day's, straight after the cardio, unless you choose another.
  */
 export const WARMUP = { push: "warmup_push", pull: "warmup_pull", legs: "warmup_legs" } as const;
 export type WarmupDay = keyof typeof WARMUP;
@@ -298,21 +327,54 @@ export const MOBILITY: MobilityRoutine[] = [
   },
   {
     id: WARMUP.push,
-    name: "Push warm-up",
-    subtitle: "legs and hips, then shoulders and chest",
-    moves: [hold("wide_stance"), hold("side_stance"), hold("arm_circles"), hold("band_pull_apart"), hold("band_external_rotation")],
+    name: "Push mobility",
+    subtitle: "shoulders first, then the chest",
+    moves: [
+      hold("arm_circles"),
+      hold("band_external_rotation"),
+      hold("band_pull_apart"),
+      hold("scapular_pushup"),
+      hold("chest_opener", { seconds: 30 }),
+    ],
   },
   {
     id: WARMUP.pull,
-    name: "Pull warm-up",
-    subtitle: "legs and hips, then the back",
-    moves: [hold("wide_stance"), hold("side_stance"), hold("cat_cow", { seconds: 30 }), hold("lat_wall"), hold("band_pull_apart")],
+    name: "Pull mobility",
+    subtitle: "the upper back and the lats",
+    moves: [
+      hold("arm_circles"),
+      hold("cat_cow", { seconds: 30 }),
+      hold("thread_needle"),
+      hold("lat_wall"),
+      hold("band_pull_apart"),
+    ],
   },
   {
     id: WARMUP.legs,
-    name: "Leg warm-up",
+    name: "Leg mobility",
     subtitle: "legs and hips, a bit more",
     moves: [hold("wide_stance"), hold("side_stance"), hold("leg_swing"), hold("bodyweight_squat"), hold("worlds_greatest")],
+  },
+  {
+    id: "yoga",
+    name: "Yoga flow",
+    subtitle: "spine, hips and hamstrings",
+    moves: [
+      hold("cat_cow", { seconds: 45 }),
+      hold("downward_dog"),
+      hold("low_lunge"),
+      hold("pigeon"),
+      hold("cobra"),
+      hold("childs_pose"),
+      hold("supine_twist"),
+    ],
+  },
+  {
+    id: "kung_fu",
+    name: "Kung fu mobility",
+    subtitle: "legs and hips, the way a kung fu class starts",
+    use: "warmup",
+    moves: [hold("knee_circles"), hold("wide_stance"), hold("hamstring_bounce"), hold("side_stance"), hold("front_kick_swing")],
   },
 ];
 
@@ -343,13 +405,13 @@ export const awayVersion = (routine: MobilityRoutine): MobilityRoutine => {
 const OLD_WARMUPS: MobilityRoutine[] = [
   {
     id: SHOULDER_WARMUP,
-    name: "Shoulder warm-up",
+    name: "Shoulder mobility",
     subtitle: "before you press",
     moves: [hold("ball_shoulder"), hold("band_pull_apart"), hold("band_external_rotation")],
   },
   {
     id: "shoulder_warmup_away",
-    name: "Shoulder warm-up",
+    name: "Shoulder mobility",
     subtitle: "before you press, nothing needed",
     moves: [hold("arm_circles"), hold("wall_slide"), hold("prone_y_raise")],
   },
@@ -369,9 +431,9 @@ export const RETIRED_MOBILITY = ["full_body", "hips", "shoulders", "spine", "qui
  * Everything else ships removed and is one tap from coming back.
  */
 export const LEAN_CARDIO: string[] = ["treadmill", "ski_erg", "row"];
-export const LEAN_MOBILITY: string[] = [DEFAULT_MOBILITY, WARMUP.push, WARMUP.pull, WARMUP.legs];
+export const LEAN_MOBILITY: string[] = [DEFAULT_MOBILITY, WARMUP.push, WARMUP.pull, WARMUP.legs, "yoga", "kung_fu"];
 
-/** Built-in machines and routines that start out removed. */
+/** Built-in machines and routines a new phone starts without — added from the foot of their list. */
 export const leanHiddenConditioning = (): string[] => [
   ...CARDIO.filter((c) => !LEAN_CARDIO.includes(c.id)).map((c) => c.id),
   ...MOBILITY.filter((m) => !LEAN_MOBILITY.includes(m.id)).map((m) => m.id),
@@ -432,6 +494,7 @@ export const mobilityById = (id: string): MobilityRoutine | undefined => {
  */
 export const cardioPool = (hidden: string[] = []): CardioExercise[] => [
   ...CARDIO.filter((c) => c.enabled !== false && !hidden.includes(c.id)),
+  ...AWAY_CARDIO.filter((c) => !hidden.includes(c.id)),
   ...customCardio,
 ];
 
@@ -442,7 +505,7 @@ export const mobilityPool = (hidden: string[] = []): MobilityRoutine[] => [
 
 /** Built-ins you have removed, so they can be put back. */
 export const hiddenCardio = (hidden: string[]): CardioExercise[] =>
-  CARDIO.filter((c) => hidden.includes(c.id));
+  [...CARDIO, ...AWAY_CARDIO].filter((c) => hidden.includes(c.id));
 
 export const hiddenMobility = (hidden: string[]): MobilityRoutine[] =>
   MOBILITY.filter((m) => hidden.includes(m.id)).map(withMobilityEdits);
@@ -451,6 +514,7 @@ export const hiddenMobility = (hidden: string[]): MobilityRoutine[] =>
 export const METRICS: { label: string; metric: CardioMetric }[] = [
   { label: "Kilometres", metric: KM },
   { label: "Metres", metric: METRES },
+  { label: "Reps", metric: { unit: "reps", decimals: 0, step: 10 } },
 ];
 
 /** How long a routine takes, counting both sides of anything one-sided. */
@@ -470,7 +534,7 @@ export const courseLabel = (cardio: CardioExercise, distance: number): string =>
  * distance keeps its own record, so a free choice would scatter your times
  * across 1.35, 1.4 and 1.55 km with nothing to compare against.
  */
-export const COURSE_STEP: Record<CardioMetric["unit"], number> = { km: 0.5, m: 500, skips: 100 };
+export const COURSE_STEP: Record<CardioMetric["unit"], number> = { km: 0.5, m: 500, skips: 100, reps: 10 };
 
 /** How far − and + move a time, in seconds. */
 export const TIME_STEP = 5;
@@ -493,13 +557,14 @@ export const parseTime = (text: string): number | null => {
   const t = text.trim();
   if (!t) return null;
   const parts = t.split(/[:.,]/);
-  if (parts.some((p) => !/^\d*$/.test(p))) return null;
+  if (parts.length > 3 || parts.some((p) => !/^\d*$/.test(p)) || !parts.some((p) => p.length > 0)) return null;
   const nums = parts.map((p) => Number(p || 0));
   if (nums.length === 1) {
     const digits = parts[0];
     // Up to two digits is minutes; beyond that the last two are seconds.
     if (digits.length <= 2) return nums[0] * 60;
-    return Math.floor(nums[0] / 100) * 60 + (nums[0] % 100);
+    return nums[0] % 100 < 60 ? Math.floor(nums[0] / 100) * 60 + (nums[0] % 100) : null;
   }
+  if (nums.slice(1).some((n) => n >= 60)) return null;
   return nums.reduce((total, n) => total * 60 + n, 0);
 };

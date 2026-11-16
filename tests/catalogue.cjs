@@ -126,8 +126,10 @@ test("weights fit the equipment", () => {
   for (const e of EXERCISES) {
     assert.ok(e.increment >= 0, `${e.id}: negative step`);
     if (e.unloaded) assert.equal(e.increment, 0, `${e.id}: nothing to load, so no step`);
-    if (e.assistable || e.timed) {
-      assert.ok(e.bodyweight, `${e.id}: assisted or timed means bodyweight`);
+    if (e.assistable) assert.ok(e.bodyweight, `${e.id}: assistance subtracts from bodyweight`);
+    if (e.timed && !e.bodyweight) {
+      assert.ok(e.movements?.includes("carry"), `${e.id}: loaded timed work must explicitly be a carry`);
+      assert.ok(e.increment > 0, `${e.id}: a loaded carry needs a load increment`);
     }
     if (e.startWeight !== undefined) {
       assert.ok(e.startWeight > 0, `${e.id}: start weight`);

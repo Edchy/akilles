@@ -62,7 +62,7 @@ test("Push's triceps and abs open at 10 reps", () => {
     return store.currentPrescription({ ...state, active: { ...state.active, cursor: at } }).reps;
   };
   assert.equal(reps("pushdown"), 10);
-  assert.equal(reps("machine_crunch"), 10);
+  assert.equal(reps("dead_bug"), 10);
   assert.equal(reps("db_bench"), 6);
 });
 

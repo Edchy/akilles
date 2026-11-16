@@ -9,26 +9,28 @@ import { Icon } from "@/components/icon";
 import { useOpenIntro } from "@/components/intro";
 import { kitSummary, PlaceSheet, usualName } from "@/components/place";
 import { COLUMN } from "@/components/screen";
-import { OpenRow, SectionLabel, Sheet } from "@/components/sheet";
+import { BigButton, OpenRow, SectionLabel, Sheet } from "@/components/sheet";
 import { TestMode } from "@/components/test-mode";
 import { Text } from "@/components/text";
 import { colors, fonts } from "@/constants/theme";
-import { kitAt, placeOf, useSession } from "@/store/session";
+import { forgetBody, kitAt, placeOf, useSession } from "@/store/session";
 
 /**
  * Everything you set once and rarely touch, in one place, so the screens you
- * train from stay clear: where you are training, how Milo works, and your
+ * train from stay clear: where you are training, how Humbell works, and your
  * data. Reached from the gear on Plan.
  */
 export default function SettingsScreen() {
   const insets = useSafeAreaInsets();
   const barSpace = useBarSpace();
   const router = useRouter();
-  const { state } = useSession();
+  const { state, setState } = useSession();
   const openIntro = useOpenIntro();
-  const [sheet, setSheet] = useState<"place" | "backup" | "test" | null>(null);
+  const [sheet, setSheet] = useState<"place" | "backup" | "test" | "body" | null>(null);
 
   const away = placeOf(state) === "away";
+  // Said at the start, for first weights only: shown so it can be taken back.
+  const body = state.lifter && (state.lifter.bodyweight !== undefined || state.lifter.sex !== undefined);
 
   return (
     <ScrollView
@@ -72,14 +74,14 @@ export default function SettingsScreen() {
         detail={
           away
             ? kitSummary(kitAt(state, "away"))
-            : "Away for a while? Tell Milo what you have there."
+            : "Away for a while? Tell Humbell what you have there."
         }
         onPress={() => setSheet("place")}
       />
 
       <View style={{ height: 14 }} />
       <SectionLabel>Help</SectionLabel>
-      <OpenRow title="How Milo works" detail="Three short pages" onPress={openIntro} />
+      <OpenRow title="How Humbell works" detail="Three short pages" onPress={openIntro} />
 
       <View style={{ height: 14 }} />
       <SectionLabel>Your training</SectionLabel>
@@ -93,6 +95,13 @@ export default function SettingsScreen() {
         detail="Try things out without touching your training"
         onPress={() => setSheet("test")}
       />
+      {body ? (
+        <OpenRow
+          title="Your weight and sex"
+          detail="Used only to guess first weights"
+          onPress={() => setSheet("body")}
+        />
+      ) : null}
 
       {sheet === "place" ? <PlaceSheet onClose={() => setSheet(null)} /> : null}
       <Sheet
@@ -110,6 +119,35 @@ export default function SettingsScreen() {
         onClose={() => setSheet(null)}
       >
         <TestMode onDone={() => setSheet(null)} />
+      </Sheet>
+      <Sheet
+        visible={sheet === "body"}
+        title="Your weight and sex"
+        closeLabel="Done"
+        onClose={() => setSheet(null)}
+      >
+        <View style={{ gap: 20, paddingTop: 8 }}>
+          <Text style={{ color: colors.text, fontFamily: fonts.regular, fontSize: 19, lineHeight: 27 }}>
+            {[
+              state.lifter?.bodyweight !== undefined ? `${state.lifter.bodyweight} kg` : null,
+              state.lifter?.sex ? (state.lifter.sex === "woman" ? "Woman" : "Man") : null,
+            ]
+              .filter(Boolean)
+              .join(" · ")}
+          </Text>
+          <Text style={{ color: colors.text, fontFamily: fonts.regular, fontSize: 19, lineHeight: 27 }}>
+            Humbell uses these only to guess the weight for an exercise you have never done. They stay
+            on your phone. Once you have trained, your own weights matter more.
+          </Text>
+          <BigButton
+            label="Forget them"
+            danger
+            onPress={() => {
+              setState((s) => forgetBody(s));
+              setSheet(null);
+            }}
+          />
+        </View>
       </Sheet>
     </ScrollView>
   );

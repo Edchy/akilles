@@ -4,6 +4,7 @@ import { Text, TextInput } from "@/components/text";
 
 import { Count, Setting, Step } from "@/components/controls";
 import { DragList, type Drag } from "@/components/drag-list";
+import { Button, LinkButton } from "@/components/buttons";
 import { GuideButton } from "@/components/guide";
 import { Icon } from "@/components/icon";
 import { Illustration } from "@/components/illustration";
@@ -86,20 +87,7 @@ export function RoutineEditor({
         )}
       />
 
-      <Pressable
-        accessibilityRole="button"
-        onPress={() => setAdding(true)}
-        style={({ pressed }) => ({
-          flexDirection: "row",
-          alignItems: "center",
-          gap: 8,
-          minHeight: 52,
-          opacity: pressed ? 0.6 : 1,
-        })}
-      >
-        <Icon name="plus" size={16} color={colors.rise} />
-        <Text style={{ color: colors.rise, fontSize: 16, fontWeight: "700" }}>Add stretch</Text>
-      </Pressable>
+      <LinkButton kind="add" label="Add move" onPress={() => setAdding(true)} />
 
       {builtIn && isRoutineEdited(state, routineId) ? (
         <TextButton
@@ -262,22 +250,7 @@ function HoldControls({
         value={move.perSide ? "each" : "once"}
         onChange={(v) => onSides(v === "each")}
       />
-      <Pressable
-        accessibilityRole="button"
-        accessibilityState={{ disabled: last }}
-        disabled={last}
-        onPress={onRemove}
-        style={({ pressed }) => ({
-          alignSelf: "flex-start",
-          justifyContent: "center",
-          minHeight: 44,
-          opacity: last ? 0.3 : pressed ? 0.6 : 1,
-        })}
-      >
-        <Text style={{ color: colors.bend, fontSize: 15, fontWeight: "700" }}>
-          {last ? "The last stretch stays" : "Remove from routine"}
-        </Text>
-      </Pressable>
+      <Button kind="remove" label={last ? "The last move stays" : "Remove from routine"} disabled={last} onPress={onRemove} />
     </View>
   );
 }
@@ -306,7 +279,7 @@ function AddStretch({
   };
 
   return (
-    <Sheet visible={visible} title="Add a stretch" onClose={onClose}>
+    <Sheet visible={visible} title="Add a move" onClose={onClose}>
       <View style={{ gap: 28, paddingTop: 12 }}>
         <View style={{ gap: 8 }}>
           {STRETCHES.map((s) => (
@@ -361,7 +334,7 @@ function AddStretch({
             value={name}
             onChangeText={setName}
             onSubmitEditing={submit}
-            placeholder="Name of the stretch"
+            placeholder="Name of the move"
             placeholderTextColor={colors.faint}
             returnKeyType="done"
             style={{
@@ -386,7 +359,7 @@ function AddStretch({
               alignItems: "center",
               justifyContent: "center",
               minHeight: 48,
-              borderRadius: 999,
+              borderRadius: radii.button,
               backgroundColor: colors.raised,
               opacity: !name.trim() ? 0.4 : pressed ? 0.7 : 1,
             })}

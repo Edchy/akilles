@@ -5,8 +5,8 @@ const vm = require("node:vm");
 const { test } = require("node:test");
 const ts = require("typescript");
 
-// Every day opens with its warm-up, right after the cardio: the same two
-// stances, then what that day works.
+// Every day opens with its warm-up, right after the cardio: moves for what
+// that day works — shoulders and chest, the back and lats, or the legs.
 const modules = new Map();
 function load(name) {
   if (name === "@react-native-async-storage/async-storage") return {};
@@ -39,13 +39,13 @@ test("every day opens with its own warm-up, straight after the cardio", () => {
   assert.equal(warmupOf(fresh(), "pull").exerciseId, "warmup_pull");
   assert.equal(warmupOf(fresh(), "legs").exerciseId, "warmup_legs");
   const preview = store.workoutPreview(fresh(), store.workoutById(fresh(), "push"));
-  assert.deepEqual(plain(preview.slice(0, 2).map((r) => r.name)), ["Treadmill", "Push warm-up"]);
+  assert.deepEqual(plain(preview.slice(0, 2).map((r) => r.name)), ["Treadmill", "Push mobility"]);
 });
 
 test("each opens on the wide stance and the side stance, then the day's own moves", () => {
   const moves = (id) => plain(conditioning.mobilityById(id).moves.map((m) => m.id));
-  assert.deepEqual(moves("warmup_push"), ["wide_stance", "side_stance", "arm_circles", "band_pull_apart", "band_external_rotation"]);
-  assert.deepEqual(moves("warmup_pull"), ["wide_stance", "side_stance", "cat_cow", "lat_wall", "band_pull_apart"]);
+  assert.deepEqual(moves("warmup_push"), ["arm_circles", "band_external_rotation", "band_pull_apart", "scapular_pushup", "chest_opener"]);
+  assert.deepEqual(moves("warmup_pull"), ["arm_circles", "cat_cow", "thread_needle", "lat_wall", "band_pull_apart"]);
   assert.deepEqual(moves("warmup_legs"), ["wide_stance", "side_stance", "leg_swing", "bodyweight_squat", "worlds_greatest"]);
   for (const id of Object.values(conditioning.WARMUP)) {
     const routine = conditioning.mobilityById(id);
@@ -68,7 +68,7 @@ test("the day is what its lifts mostly are", () => {
 test("away from a gym the band moves become ones that need nothing", () => {
   const routine = conditioning.awayVersion(conditioning.mobilityById("warmup_push"));
   assert.equal(routine.id, "warmup_push:away");
-  assert.deepEqual(plain(routine.moves.map((m) => m.id)), ["wide_stance", "side_stance", "arm_circles", "prone_y_raise", "wall_slide"]);
+  assert.deepEqual(plain(routine.moves.map((m) => m.id)), ["arm_circles", "wall_slide", "prone_y_raise", "scapular_pushup", "chest_opener"]);
   assert.deepEqual(plain(conditioning.mobilityById("warmup_push:away")), plain(routine));
   // Nothing to swap: the routine as it is.
   const legs = conditioning.mobilityById("warmup_legs");
@@ -100,10 +100,10 @@ test("a move done for reps steps a rep at a time, within 5 to 30", () => {
   assert.equal(move("band_pull_apart").seconds, 48);
   for (let i = 0; i < 40; i++) state = store.nudgeHold(state, "warmup_push", "band_pull_apart", -1);
   assert.equal(move("band_pull_apart").reps, 5);
-  // A stance held on the clock still steps by fifteen seconds.
-  state = store.nudgeHold(state, "warmup_push", "wide_stance", 1);
-  assert.equal(move("wide_stance").seconds, 45);
-  assert.equal(move("wide_stance").reps, undefined);
+  // A hold on the clock still steps by fifteen seconds.
+  state = store.nudgeHold(state, "warmup_push", "chest_opener", 1);
+  assert.equal(move("chest_opener").seconds, 45);
+  assert.equal(move("chest_opener").reps, undefined);
 });
 
 test("a warm-up copied for one workout is that workout's alone", () => {

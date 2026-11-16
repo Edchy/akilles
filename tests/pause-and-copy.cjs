@@ -60,11 +60,10 @@ test("pausing the next workout moves next on; the last workout cannot be paused"
   assert.equal(store.pauseWorkout(s, s.workouts[0].id), s);
 });
 
-test("only a paused workout can be deleted, and its choices go with it", () => {
+test("a workout can be deleted directly, and its choices go with it", () => {
   let s = store.resetToDefault();
   s = store.chooseExercise(s, "legs", s.workouts.find((w) => w.id === "legs").exercises[0].id, "back_squat");
-  assert.equal(store.deleteWorkout(s, "legs"), s, "a running workout is not deleted");
-  const gone = store.deleteWorkout(store.pauseWorkout(s, "legs"), "legs");
+  const gone = store.deleteWorkout(s, "legs");
   assert.ok(!ids(gone).includes("legs"));
   assert.equal(paused(gone).length, 0);
   assert.ok(Object.keys(gone.choices).every((k) => !k.startsWith("legs/")));
@@ -117,4 +116,38 @@ test("a save from before Plan ordering reconstructs paused workouts in place", (
   s = store.pauseWorkout(s, original[1]);
   delete s.planOrder;
   assert.deepEqual([...store.planWorkouts(s).map((w) => w.id)], original);
+});
+
+test("deleting the next workout advances the rotation, clears scheduling references, and keeps training", () => {
+  let s = store.resetToDefault();
+  s = store.postponeWorkout(s);
+  const id = store.upNext(s).id;
+  const history = s.history;
+  const log = s.log;
+  const conditioning = s.conditioning;
+  const next = store.deleteWorkout(s, id);
+  assert.notEqual(store.upNext(next).id, id);
+  assert.ok(!next.workouts.some((w) => w.id === id));
+  assert.ok(!next.planOrder.includes(id));
+  assert.ok(!(next.workoutQueue ?? []).includes(id));
+  assert.ok(!(next.postponed ?? []).includes(id));
+  assert.equal(next.history, history);
+  assert.equal(next.log, log);
+  assert.equal(next.conditioning, conditioning);
+});
+
+test("a paused workout can be deleted without resuming it", () => {
+  let s = store.pauseWorkout(store.resetToDefault(), "legs");
+  s = store.deleteWorkout(s, "legs");
+  assert.ok(!store.planWorkouts(s).some((w) => w.id === "legs"));
+});
+
+test("the last workout and the workout in progress cannot be paused or deleted", () => {
+  let s = store.resetToDefault();
+  for (const id of ids(s).slice(1)) s = store.deleteWorkout(s, id);
+  assert.equal(s.workouts.length, 1);
+  assert.equal(store.deleteWorkout(s, s.workouts[0].id), s);
+  s = store.buildWorkout(store.resetToDefault());
+  assert.equal(store.deleteWorkout(s, s.active.workoutId), s);
+  assert.equal(store.pauseWorkout(s, s.active.workoutId), s);
 });

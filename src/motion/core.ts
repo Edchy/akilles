@@ -235,6 +235,23 @@ function lyingLegRaise(): Move {
   };
 }
 
+/** A hollow hold: shoulders and heels lifted, arms reaching along the thighs. */
+function hollowHold(): Move {
+  const pelvis = new Vec3(0, SIZE.trunk.side, 0);
+  const trunk = new Vec3(-Math.cos(rad(15)), Math.sin(rad(15)), 0);
+  const leg = turned(AHEAD, UP, 12);
+  return {
+    kit: {},
+    film: { views: [0], lifts: true, middle: new Vec3(-0.05, 0, 0), room: { height: 1.1, width: 2.2 } },
+    pose() {
+      const { knees, ankles } = legsFrom(pelvis, ACROSS, leg, leg);
+      const shoulder = pelvis.clone().addScaledVector(trunk, BODY.torso);
+      const hands = SIDES.map((side) => shoulder.clone().add(new Vec3(ARM * 0.98, -0.04, side * 0.18))) as [Vec3, Vec3];
+      return kneesAt(body(pelvis, trunk, { ankles, feet: [AHEAD, AHEAD], hands, elbowPole: mirror(new Vec3(0, 1, 0.6)) }), knees);
+    },
+  };
+}
+
 /** Knees bent, feet flat on the floor, lying or sitting with the hips at `pelvis`. */
 export function feetFlat(pelvis: Vec3, out = 0.36) {
   const toeOut = rad(6);
@@ -831,6 +848,7 @@ export const CORE: Record<string, () => Move> = {
   lying_leg_raise: lyingLegRaise,
   crunch,
   decline_situp: declineSitup,
+  hollow_hold: hollowHold,
   plank,
   side_plank: sidePlank,
   ab_wheel: abWheel,

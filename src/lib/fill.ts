@@ -39,11 +39,14 @@ export type Candidate = {
   known?: boolean;
   /** Topped out with nowhere further to go — see `ExerciseState.maxed`. */
   maxed?: boolean;
+  /** Must not round back up to a weight already found too heavy. */
+  lighterThan?: number;
 };
 
 /** How an exercise sits with the weights on hand. */
-export const fitOf = ({ ex, due, maxed, known }: Candidate, kit: Kit): Fit => {
+export const fitOf = ({ ex, due, maxed, known, lighterThan }: Candidate, kit: Kit): Fit => {
   const weights = weightsFor(ex, kit);
+  if (weights && lighterThan !== undefined && nearestWeight(weights, due) >= lighterThan) return "heavy";
   if (!weights || due <= 0 || !known) return "ok";
   const heaviest = weights[weights.length - 1];
   if (maxed && due >= heaviest) return "outgrown";

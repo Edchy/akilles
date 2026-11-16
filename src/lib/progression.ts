@@ -22,7 +22,7 @@
  */
 
 import { byId, highReps, type Exercise, type Pattern } from "@/data/exercises";
-import { nextWeightUp } from "@/data/kit";
+import { nextWeightDown, nextWeightUp } from "@/data/kit";
 import {
   HIGH_REPS_RANGE,
   HIGH_REPS_SCHEME,
@@ -92,6 +92,8 @@ export type ExerciseState = {
    * performed — by then the explanation belongs to the past.
    */
   pendingDecay?: Decay;
+  /** A failed bottom-rung attempt requires a weight below this, even with limited kit. */
+  lighterThan?: number;
   /** Previous session, for the "last time" line on screen. */
   lastPerformed?: {
     weight: number;
@@ -322,8 +324,8 @@ const roundTo = (value: number, step: number) =>
   step <= 0 ? value : Math.max(step, Math.round(value / step) * step);
 
 /**
- * Reasonable opening weight when there's no history and you have not set one
- * — see `startWeight`. You'll correct it once.
+ * Opening weight by movement type, for a lift with no history, no weight you
+ * set and no ratio in `START_RATIO` — one of your own. You'll correct it once.
  */
 const STARTING_WEIGHT: Partial<Record<Pattern, number>> = {
   horizontal_push: 40,
@@ -342,14 +344,17 @@ const STARTING_WEIGHT: Partial<Record<Pattern, number>> = {
   abs: 0,
 };
 
-export const freshState = (ex: Exercise): ExerciseState => ({
+export const freshState = (ex: Exercise, guess?: number): ExerciseState => ({
   exerciseId: ex.id,
-  // A per-hand exercise stores the weight of one dumbbell, so the opening
+  // A weight you set wins; then Humbell's guess for you (see `firstWeight` in
+  // lib/start-weight); then, for a lift with no guess, one by movement type.
+  // A per-hand exercise stores the weight of one dumbbell, so that last
   // guess is halved — 40kg of bench is a pair of 20s. A holds lift starts
   // with no hold unless told otherwise, and never past the longest.
   weight: ex.holds
     ? Math.min(HOLD_MAX, Math.max(0, Math.round(ex.startWeight ?? 0)))
     : (ex.startWeight ??
+      guess ??
       (ex.bodyweight
         ? 0
         : roundTo(
@@ -492,7 +497,7 @@ export const applyResult = (
 
   // Trained, whatever the outcome: the idle clock restarts and any cut we
   // were explaining is now history.
-  const trained = { ...state, lastTrainedAt: now, pendingDecay: undefined };
+  const trained = { ...state, lastTrainedAt: now, pendingDecay: undefined, lighterThan: undefined };
 
   // Left unfinished: repeat exactly, and count nothing against the weight.
   if (reps.some((r) => r === null)) {
@@ -563,10 +568,16 @@ export const applyResult = (
   // weight there is. Eased along the same axis as a layoff, so an assisted
   // pull-up gets more help rather than being rounded up to added weight.
   const held = state.rung > 0;
-  const cut = held ? state.weight : cutWeight(state.weight, 0.1, exercise.increment, !!exercise.assistable);
+  const intended = cutWeight(state.weight, 0.1, exercise.increment, !!exercise.assistable);
+  const available = held ? state.weight : nextWeightDown(weights, state.weight, intended);
+  // Keep the intended reduction when no lighter weight exists here. The
+  // equipment picker must substitute or omit this lift, never round it back
+  // up to the weight that was too heavy. A full gym can use the intention.
+  const cut = available ?? intended;
   return {
     ...trained,
     weight: cut,
+    lighterThan: !held && cut < state.weight ? state.weight : undefined,
     deloadHeld: held,
     maxed: undefined,
     rung: held ? state.rung - 1 : 0,

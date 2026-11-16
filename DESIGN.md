@@ -1,5 +1,5 @@
 ---
-name: Milo
+name: Humbell
 description: A strength-training app where each exercise owns the whole screen in its family's colour.
 colors:
   navy: "#13325B"
@@ -146,13 +146,13 @@ components:
     padding: "18px"
 ---
 
-# Design System: Milo
+# Design System: Humbell
 
 ## Overview
 
 **Creative North Star: "The Sports Hall in Munich Colours"**
 
-Milo is two grounds. Off the floor it is a white page with deep navy words, set in EB Garamond like a well-made programme. On the floor, each exercise takes the entire screen in its family's colour: the screen turns orange for the squat, blue for the bench, and you know what you are doing before you read a word. Colour carries meaning and nothing else; it is never decoration and never a status tint.
+Humbell is two grounds. Off the floor it is a white page with deep navy words, set in EB Garamond like a well-made programme. On the floor, each exercise takes the entire screen in its family's colour: the screen turns orange for the squat, blue for the bench, and you know what you are doing before you read a word. Colour carries meaning and nothing else; it is never decoration and never a status tint.
 
 Density is low and the targets are huge, because the reader is mid-set, sweaty-thumbed, at arm's length under bright light. The lift screen is a fixed vertical rhythm whose blocks are sized for their largest case, so nothing moves under a thumb. Hierarchy comes from size and italics, never from faded ink. Shapes are the family's six solid marks, soft circles in a tint of the field, one solid pill to move on, and a capsule of Liquid Glass floating over everything, tinted with whatever it floats over.
 
@@ -161,7 +161,7 @@ The system refuses the fitness-app default of a white card stack with a tinted a
 **Key Characteristics:**
 - One saturated field per exercise family while lifting; white ground with navy words everywhere else.
 - EB Garamond throughout, sentence case, lining figures for every number.
-- Milo's remarks and short labels in italics; instructions and facts in roman.
+- Humbell's remarks and short labels in italics; instructions and facts in roman.
 - Six bare solid marks on a 48-unit grid identify the families; no tiles behind them.
 - Secondary controls are soft circles and pills in a tint of the field; one solid slab moves you on.
 - A floating capsule bar of Liquid Glass, the same shape on every screen, tinted with the ground beneath it.
@@ -214,14 +214,14 @@ Every word goes through the app's own `Text` wrapper, which maps `fontWeight` an
 - **Number** (600, 84, -2% tracking): the weight on the lift screen, 64 when a superset is folded in. Unit beside it in Regular 22.
 - **Set count** (600, 50, lining and tabular): the rep count inside a 92pt set circle; 44 in an 80 circle and 28 in a 52 partner circle.
 - **Headline** (500, 27/33, single line with ellipsis): the exercise name beside its mark.
-- **Voice** (Italic 400, 24/28): Milo's remark once the sets are in; 20/26 on Today ("Back squat goes up to 60 kg. Earned.").
+- **Voice** (Italic 400, 24/28): Humbell's remark once the sets are in; 20/26 on Today ("Back squat goes up to 60 kg. Earned.").
 - **Body** (400, 19/24): facts and instructions, the top line's workout name, the rest timer.
 - **Label** (Italic 400, 19): short labels in a note slot: "Last time", "To beat", the n/total count. 15 for section labels in sheets and history.
 - **Action** (500 on a solid slab, 400 on a soft one, 21): slab words, "Next: X".
 - **Bar label** (400, 15/18): under each bottom-bar glyph.
 
 ### Named Rules
-**The Two Voices Rule.** Italics belong to Milo's remarks and to short labels. Instructions and facts are set roman.
+**The Two Voices Rule.** Italics belong to Humbell's remarks and to short labels. Instructions and facts are set roman.
 
 **The Sentence Case Rule.** Every label is sentence case. Small headings are italic, not tracked capitals.
 
@@ -235,11 +235,11 @@ The lift screen is a fixed rhythm, top to bottom: a top line (workout name with 
 
 **The Largest Case Rule.** Every block on the lift screen is sized for its largest content (a two-line remark, a five-figure weight). Smaller content sits inside that space; nothing shifts under the thumb.
 
-Today holds the day in one card: the day's field colour as a 10% wash over white (pale blue on push, pale orange on legs), 28px continuous corners, 18 side padding, flat like every card, so the name and its list read as one thing and the wash previews the field Start opens onto. Every text colour inside stays above 4.5:1 on any day's wash. Inside it reads left to right like the lift screen's title, on one left edge. A 30pt column holds the shapes (the day's mark at 30, the list's at 22, centred in it), with 14 to the words, so the name, subtitle and every list name start 44 in. The name at 44 and the italic subtitle lead straight into the list. Milo's line sits outside the card, apart from the day it comments on: at the foot, flush with the buttons, 19/25, just above Skip and Start (carrying the Undo after a skip). It appears only when there is news: day one, a return after a week or more, a second session in a day, a skip, or what changed since these lifts were last done (a weight up or down, a lift never done). An ordinary day has no line. Below that, the session reads like a timetable: shape, name, and one figure right-aligned in slate with tabular lining figures. The figure is the weight for a lift (in full navy medium when it went up, so Milo's line has a row to point at), the sets for a lift with no load, and the distance or minutes for cardio and the stretch. A lift never done shows no figure until it has a weight of its own. Skip and Start are pills side by side above the bar.
+Today holds the day in one card: the day's field colour as a 10% wash over white (pale blue on push, pale orange on legs), 28px continuous corners, 18 side padding, flat like every card, so the name and its list read as one thing and the wash previews the field Start opens onto. Every text colour inside stays above 4.5:1 on any day's wash. Inside it reads left to right like the lift screen's title, on one left edge. A 30pt column holds the shapes (the day's mark at 30, the list's at 22, centred in it), with 14 to the words, so the name, subtitle and every list name start 44 in. The name at 44 and the italic subtitle lead straight into the list. Humbell's line sits outside the card, apart from the day it comments on: at the foot, flush with the buttons, 19/25, just above Skip and Start (carrying the Undo after a skip). It appears only when there is news: day one, a return after a week or more, a second session in a day, a skip, or what changed since these lifts were last done (a weight up or down, a lift never done). An ordinary day has no line. Below that, the session reads like a timetable: shape, name, and one figure right-aligned in slate with tabular lining figures. The figure is the weight for a lift (in full navy medium when it went up, so Humbell's line has a row to point at), the sets for a lift with no load, and the distance or minutes for cardio and the stretch. A lift never done shows no figure until it has a weight of its own. Skip and Start are pills side by side above the bar.
 
 Plan's workout list uses Today's language, a row per workout, so the plan reads as the run of colours you will train through. Each workout is a card in its own 10% wash: its mark at 24 in a 26 column, 14 to the name in Display 28/34, the italic subtitle and exercise count under it in slate, "Next" in italic navy on the right of the next workout, and a chevron. The explanatory sentence above the list stays: it is the one place that says how the cycle works. Inside a workout, each exercise row carries its mark at 16 before the name.
 
-Under the loop, "New workout" is a dashed outline that opens in place (never a second sheet, so the new workout's own sheet can follow at once) into a Soft Grey card: a white "+ Start blank" pill, then "Or copy one" in italic and a white pill per workout, its mark at 12 before the name. A copy is the template; a workout's own sheet offers the same as a quiet "Make a copy" above "Pause workout", which slides that sheet away and the copy's up, its name selected. Below that, paused workouts sit under an italic "Paused" heading: outlined in a hairline rather than washed, since they are not in the run of colours, the mark at 40% and the name in slate, with a Soft Grey "Resume" pill on the right. Swiping a running workout pauses it; only a paused one can be swiped to Delete.
+Under the loop, "New workout" opens a small inline form with one collapsed "Start from" selector. It defaults to Blank workout; existing active and paused workouts are copy templates. Choose a template, then press Create workout. Workout rows reveal Pause/Resume and Delete directly on a left swipe. Delete works on active or paused workouts and offers Undo; training history is preserved. The last workout and the workout currently being trained cannot be removed. There is no workout-copy action in a row menu.
 
 ## Elevation & Depth
 
@@ -266,6 +266,11 @@ Tactile and unmistakable: one solid way on, everything else soft.
 - **Shape:** full pills, 60pt minimum height, 18px side padding.
 - **Primary (solid slab):** on white, Start takes the day's family field colour, with that field's own words (white on push, pull and core; navy on legs), so it previews the screen it opens; Close on Done stays push blue with white words. On a field, the field's ink (white on dark fields, navy on light) with the field colour as the words, plus a forward arrow ("Next: X →"). Only one solid slab per screen.
 - **Quiet slab:** Soft Grey on white (Skip), the field tint on a field. On the lift screen the Next slab stays quiet until every set is in, then turns solid.
+- **Remove:** a red outline (`colors.danger`) with red words, for anything that takes something away — an exercise, a routine, a goal, a move. Where it can't be undone in a tap it asks first, and the second tap is the **Delete slab**: solid red, white words.
+- **Text actions:** blue (Rise) words in the sans, 17/700, 48 tall: *add* with a plus ("+ Add move", "New routine"), *back* with a caret ("‹ All moves"), plain links ("Rename"). The way out ("Keep it", "Cancel") is the same in grey, centred under what it undoes.
+- **Chips:** for choosing among a few (an area, equipment, a weight): 44 tall full pills, Soft Grey, navy with white words when chosen.
+- **One source:** all of these are `Button`, `LinkButton` and `Chip` in `src/components/buttons.tsx`; screens never draw their own. The workout screen's Next slab and the bottom bar are the two exceptions, drawn on the field.
+- **Removed things:** Humbell's routines and machines that aren't in your list sit at the very foot of their page in a red dashed box, "Not in your list", each with + Add.
 - **Pressed:** opacity drops to 0.6–0.8 under the thumb. No hover states: this is a phone.
 
 ### Soft circles and pills
@@ -278,7 +283,7 @@ Tactile and unmistakable: one solid way on, everything else soft.
 ### Set circles
 The signature control. 92pt outlined circles holding the target reps in SemiBold 50; tap to log (fills solid), tap again to count down, hold to reset. A short set fills with the raised tint instead of solid ink. Under them, "Last time" in italic, last time's weight in roman, and last time's sets as small solid circles.
 
-**When a lift is done well.** Once the circles settle on target — 0.65s with no tap, since a short set passes through the target on its way down (tap for 6, tap again for 5) — the lift gets its moment, scaled to what was earned. *On target* (every set at its reps): a ripple runs through the circles left to right, each swelling about 9% and sending out a thin ring in the text colour that grows to 1.55× and fades, all over 1.1s, and a success buzz. *The heavier weight earned* (a reload owned): the same, plus each circle lets loose two or three of the family's marks (13–20pt, in the text colour, some fainter) as the ripple reaches it, coming out from behind it, fanning up and away from the middle, turning, and fading before they reach the weight; the "Up to … next time" line lights up with a soft white pill behind it; a second, firmer buzz. Milo's line itself appears the moment the last circle fills, as for any result. Nothing for a set short or a weight going down, which keep their calm line. It plays once per lift: putting a circle right afterwards, or coming back to a lift already done, plays nothing, and a circle put wrong while it plays takes it away at once. *The send-off:* pressing Next on a lift done well gives a light tap and a soft band of light passing once over the button that comes up in its place (the next lift's Next, its warm-up's Ready, cardio's Done, the stretches'), 0.7s, clipped to the pill. Nothing in any of it moves a control or takes a touch. With Reduce Motion, only the buzzes.
+**When a lift is done well.** Once the circles settle on target — 0.65s with no tap, since a short set passes through the target on its way down (tap for 6, tap again for 5) — the lift gets its moment, scaled to what was earned. *On target* (every set at its reps): a ripple runs through the circles left to right, each swelling about 9% and sending out a thin ring in the text colour that grows to 1.55× and fades, all over 1.1s, and a success buzz. *The heavier weight earned* (a reload owned): the same, plus each circle lets loose two or three of the family's marks (13–20pt, in the text colour, some fainter) as the ripple reaches it, coming out from behind it, fanning up and away from the middle, turning, and fading before they reach the weight; the "Up to … next time" line lights up with a soft white pill behind it; a second, firmer buzz. Humbell's line itself appears the moment the last circle fills, as for any result. Nothing for a set short or a weight going down, which keep their calm line. It plays once per lift: putting a circle right afterwards, or coming back to a lift already done, plays nothing, and a circle put wrong while it plays takes it away at once. *The send-off:* pressing Next on a lift done well gives a light tap and a soft band of light passing once over the button that comes up in its place (the next lift's Next, its warm-up's Ready, cardio's Done, the stretches'), 0.7s, clipped to the pill. Nothing in any of it moves a control or takes a touch. With Reduce Motion, only the buzzes.
 
 ### A goal's step
 A goal block sits straight after the warm-up, on Goal Violet, laid out like a lift so it reads the same way: the step's drill as the name with the ⋯ (Watch the tutorial, Change the goal), the goal's name in italics under it with the step's note, then, where a lift has its weight, the step number at 96 with "of 6" at 24 and the ladder in small under it (one 5pt bar a step, 22 wide, the current one 34, steps still to come at 30%). Then the work:
@@ -286,7 +291,7 @@ A goal block sits straight after the warm-up, on Goal Violet, laid out like a li
 - **Holds** are set circles with a small "s", each its own clock: tap and it counts down from the target, the circle a tint of the field with a 3pt ring running down clockwise from the top over a faint track; it buzzes at zero and logs the hold, and a tap mid-hold stops it and logs what was held.
 - **Practice** is one clock (76pt figures, "practice" beside it) with a white Start pill, and under the line an "I've got it — next step" pill that turns solid once pressed.
 
-The line under it follows a lift's: Milo in italics and the plain rule ("Move on: every set at 8, two sessions running.") before, then what it means. A step owned gets the lift's whole cheer with stars for marks, and "Step 3 next time: kick-ups to the wall." lights up. Next is always there for practice, since its clock is a guide, not a gate.
+The line under it follows a lift's: Humbell in italics and the plain rule ("Move on: every set at 8, two sessions running.") before, then what it means. A step owned gets the lift's whole cheer with stars for marks, and "Step 3 next time: kick-ups to the wall." lights up. Next is always there for practice, since its clock is a guide, not a gate.
 
 A fresh install comes with one goal, the handstand push-up, waiting in no workout: a grey row with the open star, "8 steps · not in a workout yet". Once there are no goals at all, Plan › Goals shows what one looks like: a violet-washed card with the start of that ladder as four rungs on a rail (done with a check, the one you are on as a ring with a dot, one still to come, and the open star for the goal), the one rule for moving up, and a violet "New goal" pill.
 
@@ -298,10 +303,10 @@ A fresh install comes with one goal, the handstand push-up, waiting in no workou
 - **Internal Padding:** 18px.
 
 ### Segments
-Two or three views of one tab (Plan's Workouts, Exercises and Goals, History's Sessions and Lifts): a Soft Grey pill track with 4pt padding; the chosen view is a white pill with a 1pt soft shadow and navy SemiBold words, the others slate roman. Never a family colour: a switch is not a family.
+Two or three views of one tab (Plan's Workouts, Library and Goals, History's Sessions and Lifts): a Soft Grey pill track with 4pt padding; the chosen view is a white pill with a 1pt soft shadow and navy SemiBold words, the others slate roman. Never a family colour: a switch is not a family.
 
 ### Swipe to remove
-A list row slides left 108pt to show one navy pill behind it (white words: Pause on a running workout, Remove on an exercise in a workout, Delete only on a paused workout, the one thing gone for good), with the row's own corners and a 10pt gap. The swipe only shows the button; the tap does the deed. Tapping the row or swiping back puts it away. Only a sideways drag (more across than down, past 12pt) is taken, so it lives inside scrolling sheets and hold-to-reorder lists. The same action always exists in the row's sheet too.
+Workout rows slide left to reveal two explicit actions: Pause (Resume when paused) and Delete. Exercise rows retain one Remove action. Swiping reveals buttons and never executes them; tapping the foreground or swiping right closes them. Closed rows ignore rightward and vertical drags. Screen readers get the corresponding row actions.
 
 ### Add exercise
 Exercise first, never movement first. One sheet: a pill search field (Soft Grey, magnifier, "Search exercises"), then every exercise you could add as plain rows on white, mark at 16 and name at 18, grouped Push, Pull, Legs, Core under italic headings. Rows already in the workout are faint with an italic "in it". Search matches names, other names (aliases), plurals and muscles, best first. When nothing matches exactly, the last row is a push-blue "+ Create “…”" link opening two plain questions as chips: "What do you lift?" and "What does it work?" (in gym words, one row per family led by its mark). Selected chips are navy with white words; the final pill is navy, since what you make could be any family.
@@ -326,7 +331,7 @@ Phosphor Icons in Bold, drawn in the current ink at one weight everywhere. Only 
 ### Do:
 - **Do** fill the whole lift screen with the exercise family's field colour and draw every word on it in that field's one ink at full strength.
 - **Do** build hierarchy from size and italics: 84 for the weight, 50 in the circles, 27 for the name, 19 for facts.
-- **Do** set Milo's remarks and short labels ("Last time", "To beat") in italics, and instructions and facts in roman.
+- **Do** set Humbell's remarks and short labels ("Last time", "To beat") in italics, and instructions and facts in roman.
 - **Do** keep one solid slab per screen and make every other control a soft circle or pill in a tint of the ground.
 - **Do** size every lift-screen block for its largest case so nothing moves under the thumb.
 - **Do** use the six family marks bare, on the 48-unit grid, in the deeper mark shade on white.
@@ -354,11 +359,14 @@ The existing family colours, Garamond typography and illustrations remain the vi
 - The workout overview is a rounded, bordered button above the cards, with a disclosure icon.
 - Plan owns lasting workout edits. Session swaps, targets and notes are for today only.
   Logged performance still drives the existing automatic progression.
-- Workout rows stay in place when paused and fade. Swipe left reveals Options:
-  Do this next, Make a copy, Pause / Resume. VoiceOver has a matching Options action.
-- Workout editing follows the session order: Before lifting / Exercises / After lifting.
+- Workout rows stay in place when paused and fade. Swipe left reveals Pause/Resume and Delete directly, with Undo after deletion. Copying belongs to the collapsed template selector under New workout.
+- Today, Plan and Profile disable native stack back-swipes. Plan blocks horizontal browser overscroll so gestures stay in its content.
+- Workout editing follows the session order: 1 · Warm up / 2 · Train / 3 · Finish.
   Add exercise precedes the exercise list. An empty warm-up routine opens a chooser.
-- Cardio shows its purpose, machine, editable target, today's typed result and Last time.
-  The single options button holds swapping and notes. There are no score steppers,
-  coaching paragraphs, repeated records or choices to permanently save a session target.
+- Cardio uses the same LiftTitle and three-dot ToolsMenu as strength cards. No purpose heading, separate Change button, or typing instructions. The note sits under the name and tapping it edits it; the menu offers Add a note only when empty. The saved target is plain text, with no distance/time switch or target editing on the workout card. Distance/time are configured in Plan’s workout editor; Treadmill defaults to 1 km with a time result, while choosing Time starts at five minutes. The result is one input (5:30 or 530 for time); Last time is the main comparison, with Fastest (or Furthest for a time target) secondary on the same quiet line. Today's result stays empty until entered. The card stays fixed with the keyboard closed, and Done stays at the bottom. While editing, the active input is revealed above the keyboard; tap blank space or the numeric keyboard's Done control to dismiss it. Titles use 34/40 Garamond, wrap to two lines and never shrink to fit. Cardio numbers have no underlines. Workout swaps are session-only; saved cardio targets, exercise replacements and notes are shared across future workouts.
 - Weights held in each hand say “kg / hand”. Shared exercise settings explain their scope.
+
+- The Library searches the complete built-in strength pool and custom exercises, with movement and equipment filters and overlapping tags. Push means pressing (chest, shoulders and triceps); Pull means pulling (back and biceps). Cardio targets are read-only in the Library and edited in Workouts. Notes remain shared for cardio.
+- Strength uses one working weight per exercise across workouts and rep ranges. Rep ladders remain range-specific; a stale range restarts at its bottom when the shared weight changes. A manual session weight carries forward only after actual sets are logged and the session finishes; untrained edits never change history.
+- Warm-up and mobility routines allow Previous, Next, a movement picker and Skip movement. Each side saves Done or Skipped independently; skipping never pretends a pose was performed.
+- Blank workouts start empty. No arbitrary exercise limit: a compact progress track shows up to ten marks around the current card; the expanded overview scrolls with 52-point rows and keeps Leave for now outside the scrolling list. Active workout rows use stronger family colours; paused rows use a neutral background.

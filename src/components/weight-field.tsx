@@ -33,7 +33,6 @@ export function WeightField({ exerciseId }: { exerciseId: string }) {
   const assisted = !!exercise.assistable;
   const holds = !!exercise.holds;
   const valid = parseWeight(text, assisted) !== null;
-  const trained = Object.values(state.history).some((r) => r.exerciseId === exerciseId);
   const perDumbbell = exercise.perHand ? ", per dumbbell" : "";
   const hint = holds
     ? `Seconds to hold at the hardest point of every rep, up to ${HOLD_MAX}. 0 is just the reps.`
@@ -41,13 +40,11 @@ export function WeightField({ exerciseId }: { exerciseId: string }) {
     ? assisted
       ? "0 is bodyweight. Above adds weight; below is help from the assist machine."
       : "0 is bodyweight. Above adds weight."
-    : trained
-      ? `What it opens at next time${perDumbbell}.`
-      : `Where it starts${perDumbbell}, until you have trained it.`;
+    : `What you will lift next time${perDumbbell}.`;
 
   return (
     <View style={{ gap: 12 }}>
-      <SectionLabel>{holds ? "Hold" : trained ? "Weight" : "Starting weight"}</SectionLabel>
+      <SectionLabel>{holds ? "Hold" : "Current weight"}</SectionLabel>
       <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
         <TextInput
           value={text}

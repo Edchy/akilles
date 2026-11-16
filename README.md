@@ -1,11 +1,11 @@
-# Milo
+# Humbell
 
 A workout app with one job: open it and know exactly what to do.
 
 No planning, no picking, no thinking. One exercise on screen at a time with the
 weight and reps already decided.
 
-**Own the weight.** Most gym apps count how much you lift. Milo counts how
+**Own the weight.** Most gym apps count how much you lift. Humbell counts how
 much you own. A rep counts when you lower it under control, hold it where it is
 hardest, and lift it without a swing or a bounce — so start lighter than your
 ego wants and log only the reps you owned. Progress is slow on purpose: every
@@ -73,7 +73,7 @@ sets at 40/60/80% of the working weight, for 10/6/3 reps. Tap each one as you
 finish it — **Ready** stays inert until all three are ticked, so the screen
 cannot be tapped past without reading. Nothing here is logged or affects
 progression; bodyweight and timed movements get no ramp at all. **Skip** on a
-warm-up is refused once with a word from Milo; pressed again it skips the
+warm-up is refused once with a word from Humbell; pressed again it skips the
 warm-up only and goes straight to that exercise's working sets.
 
 **Arms and abs close each session**; fold them into an earlier lift's rest
@@ -138,7 +138,7 @@ edit, clear it to remove it. One note per exercise or machine, not one per
 session, and nothing shows until there is one. The same note is under **Note**
 when you tap an exercise or machine in Plan.
 
-**Films** are Milo's own pictures, so far of the back squat and the bench
+**Films** are Humbell's own pictures, so far of the back squat and the bench
 press: a short loop drawn flat after the Munich '72 pictograms — a circle
 head, a ▽ trunk, even bars for limbs, in the family's ink on its field. A
 squat shows a rep from the side, turns, and shows one from the front; a bench
@@ -209,7 +209,7 @@ two steps: a dumbbell bench takes 10 sessions to gain 5 kg instead of 8.
 Waiting for three or four steps would barely be quicker, since the ladder is
 what takes the time, but a light lift would be 40–50% heavier before it ever
 stopped to consolidate. A reload is a hit, not a setback: Today announces it,
-the lift screen marks it, and Milo treats it as one.
+the lift screen marks it, and Humbell treats it as one.
 
 The one rule that reads the calendar is the **layoff**: three weeks or more
 away from a lift, and Today offers to ease it back 5–30% before you start.
@@ -244,7 +244,7 @@ and each progresses on its own reps.
 Three tabs, plus the workout itself which takes over the screen.
 
 **The intro.** A new phone opens on six short pages: why first (a little at
-a time, every visit counts, Milo tells you what to do, light and slow), then
+a time, every visit counts, Humbell tells you what to do, light and slow), then
 how (exercises are building blocks, workouts take turns). Skip is always
 there, and seeing or skipping it once is enough. A phone that already has
 training on it never gets it by itself; the **?** beside Plan's title opens
@@ -465,7 +465,7 @@ work on it from there; hold and drag to reorder. **Practise in** puts the goal
 in the workouts you choose — or switch it on from a workout's own sheet — and
 it runs there as its own block, first thing after the warm-up.
 
-Milo comes with one: **Handstand push-up**, in eight steps from the tutorial
+Humbell comes with one: **Handstand push-up**, in eight steps from the tutorial
 in its link — crow pose, handstand, forearm stand, planche lean, planche lean
 with a bend and press, pike push-up leaning forward, pike push-up with the
 feet floating, and the whole move put together. It is in no workout until you

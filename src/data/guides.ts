@@ -1,3 +1,5 @@
+import { REVIEWED_GUIDES } from "@/data/reviewed-guides";
+
 /**
  * How to do each movement well: a few steps, how to own it, and the one
  * mistake to watch for.
@@ -11,10 +13,19 @@
 export type Guide = {
   /** In order. Three is the aim; never more than four. */
   steps: string[];
-  /** The most common way it goes wrong. */
+  /** A documented technique mistake; do not claim a frequency ranking. */
   avoid: string;
   /** Lifts only: the position to hold, or the part to slow down — see `OWN`. */
   own?: string;
+  /** Short action headings, in the same order as the steps. */
+  stepTitles?: string[];
+  /** Technique and mistake references. Pause cues remain our coaching policy. */
+  sources?: { title: string; url: string }[];
+  /** Original publisher's demonstration when no reviewed in-app visual exists. */
+  demonstration?: { title: string; url: string };
+  reviewedOn?: string;
+  /** Exercise-specific pause wording for holds progression. */
+  hold?: string;
 };
 
 const g = (steps: string[], avoid: string): Guide => ({ steps, avoid });
@@ -29,14 +40,6 @@ const LIFTS: Record<string, Guide> = {
       "Touch, then drive up and slightly back over the shoulders.",
     ],
     "Bouncing the bar off your chest or letting the elbows flare straight out.",
-  ),
-  db_bench: g(
-    [
-      "Sit with the dumbbells on your thighs, lie back and kick them up.",
-      "Lower until you feel a stretch across the chest, elbows at 45°.",
-      "Press up and slightly in, without clanking them together.",
-    ],
-    "Dropping the elbows far below the bench and losing the shoulder position.",
   ),
   incline_bench: g(
     [
@@ -69,14 +72,6 @@ const LIFTS: Record<string, Guide> = {
       "Push back up to straight arms.",
     ],
     "Sinking so deep the shoulders roll forward and ache.",
-  ),
-  push_up: g(
-    [
-      "Hands just wider than the shoulders, body in one straight line.",
-      "Lower until the chest is a fist from the floor, elbows about 45°.",
-      "Push the floor away to straight arms.",
-    ],
-    "Hips sagging or piking — the body moves as one piece.",
   ),
   decline_bench: g(
     [
@@ -166,14 +161,6 @@ const LIFTS: Record<string, Guide> = {
     ],
     "Leaning back and turning it into a standing incline press.",
   ),
-  db_shoulder: g(
-    [
-      "Sit tall, dumbbells at ear height, palms forward.",
-      "Press up until the arms are straight, not quite touching.",
-      "Lower back to ear height under control.",
-    ],
-    "Arching the lower back off the seat to finish a rep.",
-  ),
   pike_push_up: g(
     [
       "Hands and feet on the floor, hips high, so your body makes an upside-down V.",
@@ -214,22 +201,6 @@ const LIFTS: Record<string, Guide> = {
     ],
     "Sitting so far back that the bar comes down on your face.",
   ),
-  pullup: g(
-    [
-      "Hang from an overhand grip a little wider than shoulders.",
-      "Pull the shoulders down, then drive the elbows toward your ribs.",
-      "Chin over the bar, then lower all the way to straight arms.",
-    ],
-    "Half reps — start every one from a full hang.",
-  ),
-  lat_pulldown: g(
-    [
-      "Thighs under the pad, grip a little wider than shoulders.",
-      "Lean back slightly, pull the bar to the top of the chest.",
-      "Let it rise until the arms are straight and the lats stretch.",
-    ],
-    "Swinging the whole body back to move the weight.",
-  ),
   chinup: g(
     [
       "Hang from an underhand grip, shoulder width.",
@@ -269,14 +240,6 @@ const LIFTS: Record<string, Guide> = {
       "Lower to straight arms without standing up.",
     ],
     "The torso rising with every rep until it becomes a shrug.",
-  ),
-  cable_row: g(
-    [
-      "Sit tall, knees soft, arms straight.",
-      "Pull the handle to the belly button, squeezing the shoulder blades.",
-      "Let it go forward until the shoulders reach, then repeat.",
-    ],
-    "Rocking back and forth to swing the weight.",
   ),
   chest_supported_row: g(
     [
@@ -382,30 +345,6 @@ const LIFTS: Record<string, Guide> = {
     ],
     "Elbows dropping, so the bar rolls forward.",
   ),
-  goblet_squat: g(
-    [
-      "Hold a dumbbell at the chest, elbows under it.",
-      "Squat down between the knees, chest up.",
-      "Stand up through the whole foot.",
-    ],
-    "Heels lifting — widen the stance if they do.",
-  ),
-  bw_squat: g(
-    [
-      "Feet a little wider than your hips, toes turned out a touch.",
-      "Reach your arms forward and sit down between your heels, chest up.",
-      "Go below level with your knees, then stand up tall.",
-    ],
-    "Heels lifting, or knees falling in toward each other.",
-  ),
-  kb_goblet_squat: g(
-    [
-      "Hold the bell by the horns at the chest, elbows down.",
-      "Squat down between the knees, elbows brushing inside them.",
-      "Stand up through the whole foot, chest tall.",
-    ],
-    "The bell drifting away from the chest and pulling you forward.",
-  ),
   hack_squat: g(
     [
       "Back flat on the pad, feet shoulder width mid-platform.",
@@ -430,14 +369,6 @@ const LIFTS: Record<string, Guide> = {
     ],
     "Cutting the depth short — the rails make it easy to stop high.",
   ),
-  deadlift: g(
-    [
-      "Bar over the midfoot, grip just outside the legs.",
-      "Chest up, back flat, pull the slack out of the bar.",
-      "Push the floor away and stand tall, bar close to the legs.",
-    ],
-    "Rounding the lower back to break the bar off the floor.",
-  ),
   rdl: g(
     [
       "Stand tall with the bar, knees soft.",
@@ -445,14 +376,6 @@ const LIFTS: Record<string, Guide> = {
       "Stop at a big hamstring stretch, then drive the hips forward.",
     ],
     "Turning it into a squat by bending the knees more.",
-  ),
-  kb_swing: g(
-    [
-      "Feet a little wider than the hips, bell a foot in front of you.",
-      "Hike it back between the legs, then snap the hips forward.",
-      "Let it float to chest height and fall back into the next hinge.",
-    ],
-    "Squatting it up or lifting with the arms — it is a hip snap.",
   ),
   good_morning: g(
     [
@@ -478,14 +401,6 @@ const LIFTS: Record<string, Guide> = {
     ],
     "Swinging up past straight into a big back arch.",
   ),
-  db_rdl: g(
-    [
-      "Dumbbells in front of the thighs, knees soft.",
-      "Hips back, dumbbells close to the legs.",
-      "Stretch, then drive the hips through to stand.",
-    ],
-    "Letting the dumbbells drift away from the legs.",
-  ),
   nordic_curl: g(
     [
       "Kneel with the ankles anchored.",
@@ -509,14 +424,6 @@ const LIFTS: Record<string, Guide> = {
       "Push the floor away and stand tall.",
     ],
     "Yanking it off the floor before the back is set.",
-  ),
-  glute_bridge: g(
-    [
-      "Lie on your back, knees bent, feet flat near the hips.",
-      "Drive through the heels and lift the hips until the body is straight.",
-      "Squeeze the glutes, then lower slowly.",
-    ],
-    "Pushing through the toes — keep the heels down.",
   ),
   cable_pull_through: g(
     [
@@ -566,22 +473,6 @@ const LIFTS: Record<string, Guide> = {
     ],
     "Stepping back so short that the front heel lifts.",
   ),
-  bw_split_squat: g(
-    [
-      "Long split stance, arms at your sides, back heel up.",
-      "Drop the back knee straight down until it nearly touches.",
-      "Drive up through the front heel, feet staying put.",
-    ],
-    "Leaning forward and pushing off the back foot instead of the front leg.",
-  ),
-  split_squat: g(
-    [
-      "Long split stance, dumbbells at your sides, back heel up.",
-      "Drop the back knee straight down.",
-      "Drive up through the front heel, feet staying put.",
-    ],
-    "Pushing off the back foot instead of the front leg.",
-  ),
   leg_ext: g(
     [
       "Knees in line with the machine's pivot.",
@@ -589,22 +480,6 @@ const LIFTS: Record<string, Guide> = {
       "Lower slowly.",
     ],
     "Kicking the weight up and letting it drop.",
-  ),
-  leg_curl: g(
-    [
-      "Knees in line with the pivot, pad above the heels.",
-      "Curl as far as you can, hips down.",
-      "Return slowly to straight.",
-    ],
-    "Hips lifting off the pad to finish the rep.",
-  ),
-  seated_leg_curl: g(
-    [
-      "Knees in line with the pivot, thigh pad snug, lower pad above the heels.",
-      "Curl the heels down and back as far as you can.",
-      "Return slowly to straight legs.",
-    ],
-    "Letting the pad fly back up instead of lowering it.",
   ),
   hip_abduction: g(
     [
@@ -645,14 +520,6 @@ const LIFTS: Record<string, Guide> = {
       "Lower under control.",
     ],
     "Squeezing the shoulder blades together — it's the rear shoulder, not the back.",
-  ),
-  face_pull: g(
-    [
-      "Rope at face height, thumbs toward you.",
-      "Pull toward the forehead, splitting the rope wide.",
-      "Finish with the hands beside the ears, then return.",
-    ],
-    "Going heavy and turning it into a row.",
   ),
   cable_lateral_raise: g(
     [
@@ -717,14 +584,6 @@ const LIFTS: Record<string, Guide> = {
       "Lower all the way to a stretch.",
     ],
     "Bending the elbows to help — the arms are just hooks.",
-  ),
-  db_curl: g(
-    [
-      "Stand tall, elbows at your sides.",
-      "Curl up, turning the palms to face you.",
-      "Lower all the way to straight arms.",
-    ],
-    "Swinging the elbows forward to lift more.",
   ),
   bb_curl: g(
     [
@@ -814,14 +673,6 @@ const LIFTS: Record<string, Guide> = {
     ],
     "Letting the wrists bend back as the forearms tire.",
   ),
-  pushdown: g(
-    [
-      "High pulley, elbows tucked at your sides.",
-      "Push down until the arms are straight.",
-      "Let the hands rise to chest height, elbows still.",
-    ],
-    "Elbows drifting forward so the shoulders do the work.",
-  ),
   overhead_ext: g(
     [
       "Weight behind the head, elbows pointing up.",
@@ -845,14 +696,6 @@ const LIFTS: Record<string, Guide> = {
       "Return to 90° at the elbow.",
     ],
     "The upper arm dropping as you tire.",
-  ),
-  rope_pushdown: g(
-    [
-      "Rope on a high pulley, elbows tucked at your sides.",
-      "Push down and spread the rope at the bottom.",
-      "Let the hands rise to chest height, elbows still.",
-    ],
-    "Leaning over the rope and pushing with the body.",
   ),
   cable_overhead_ext: g(
     [
@@ -998,13 +841,9 @@ const LIFTS: Record<string, Guide> = {
     ],
     "Twisting beyond where it feels good.",
   ),
-  plank: g(
-    [
-      "Forearms under the shoulders, body in one line.",
-      "Squeeze the glutes and pull the ribs down.",
-      "Breathe and hold.",
-    ],
-    "Hips sagging toward the floor.",
+  hollow_hold: g(
+    ["Lie on your back and press the lower back against the floor.", "Lift the shoulders and legs slightly, arms reaching toward the feet.", "Breathe while holding. Bend the knees if the lower back lifts."],
+    "Arching the lower back as the legs lower.",
   ),
   crunch: g(
     [
@@ -1062,14 +901,6 @@ const LIFTS: Record<string, Guide> = {
     ],
     "Moving only the arms — turn the ribs, not just the hands.",
   ),
-  side_plank: g(
-    [
-      "On one forearm, elbow under the shoulder, feet stacked.",
-      "Lift the hips until the body is in one line.",
-      "Breathe and hold. Switch sides.",
-    ],
-    "Hips drifting back behind the shoulders.",
-  ),
   pallof_press: g(
     [
       "Stand side-on to a cable at chest height, handle at the chest.",
@@ -1091,14 +922,6 @@ const LIFTS: Record<string, Guide> = {
 // ---- cardio ----
 
 const CARDIO: Record<string, Guide> = {
-  outdoor: g(
-    [
-      "Head out of the door at a brisk walk, or an easy jog.",
-      "Go out for half the minutes, then turn round and come back.",
-      "Keep it easy enough to talk. The lifts come next.",
-    ],
-    "Racing it — this is a warm-up, not the workout.",
-  ),
   skipping: g(
     [
       "Hold the handles at your hips, elbows in by your sides.",
@@ -1106,62 +929,6 @@ const CARDIO: Record<string, Guide> = {
       "Small hops on the balls of your feet, just high enough for the rope.",
     ],
     "Jumping high and landing on the heels.",
-  ),
-  treadmill: g(
-    [
-      "Start easy for the first minute.",
-      "Settle into a pace you can hold.",
-      "Speed up in the last stretch.",
-    ],
-    "Holding the handrails — let the arms swing.",
-  ),
-  row: g(
-    [
-      "Push with the legs first, then lean back, then pull the arms.",
-      "Return in reverse: arms, body, then knees.",
-      "Aim for long strokes, not fast ones.",
-    ],
-    "Pulling with the arms before the legs have finished.",
-  ),
-  ski_erg: g(
-    [
-      "Hands high, arms long.",
-      "Hinge at the hips and drive the handles down past the pockets.",
-      "Stand back up tall and repeat.",
-    ],
-    "Only pulling with the arms — the hips do the work.",
-  ),
-  bike: g(
-    [
-      "Seat so the knee is slightly bent at the bottom.",
-      "Settle into a steady cadence.",
-      "Add resistance rather than spinning faster.",
-    ],
-    "A seat so low the knees ache.",
-  ),
-  assault_bike: g(
-    [
-      "Push and pull the handles while you pedal.",
-      "Start controlled — this bike punishes a fast start.",
-      "Empty the tank at the end.",
-    ],
-    "Going flat out in the first ten seconds.",
-  ),
-  stair: g(
-    [
-      "Stand tall, hands light on the rails.",
-      "Step through the whole foot.",
-      "Keep a steady rhythm.",
-    ],
-    "Leaning on the rails and taking the weight off the legs.",
-  ),
-  elliptical: g(
-    [
-      "Stand tall, push and pull the handles.",
-      "Keep the whole foot on the pedals.",
-      "Add resistance to make it work.",
-    ],
-    "Coasting on momentum with no resistance.",
   ),
 };
 
@@ -1337,6 +1104,78 @@ const MOBILITY: Record<string, Guide> = {
     ],
     "Letting the knees fall in, or rounding the back to get lower.",
   ),
+  downward_dog: g(
+    [
+      "Start on hands and knees, hands a little in front of the shoulders.",
+      "Tuck the toes and lift the hips up and back, so the body makes an upside-down V.",
+      "Let the heels sink toward the floor and the head hang. Bend the knees if the back rounds.",
+    ],
+    "Rounding the back to get the heels down. The heels don't have to touch.",
+  ),
+  low_lunge: g(
+    [
+      "Step one foot forward into a lunge and put the back knee down on something soft.",
+      "Let the hips sink forward until you feel the front of the back hip.",
+      "Keep the chest up and the front knee over the ankle. Then the other side.",
+    ],
+    "Letting the front knee push far past the toes.",
+  ),
+  pigeon: g(
+    [
+      "From hands and knees, bring one knee forward and lay that shin across in front of you.",
+      "Slide the other leg straight back and settle the hips toward the floor.",
+      "Stay upright, or fold forward over the front leg only as far as is easy. Then the other side.",
+    ],
+    "Forcing it. If the front knee complains, use the figure-four stretch instead.",
+  ),
+  cobra: g(
+    [
+      "Lie face down with your hands under your shoulders, elbows close in.",
+      "Press gently and lift the chest, keeping the hips on the floor.",
+      "Shoulders down away from the ears. Lift only as high as the low back is happy.",
+    ],
+    "Pushing up to straight arms and pinching the low back.",
+  ),
+  scapular_pushup: g(
+    [
+      "Get into a push-up position, on your knees if you like, arms straight.",
+      "Keeping the arms straight, let the chest sink down between the shoulder blades.",
+      "Then push the floor away so the upper back rounds a little. That's one.",
+    ],
+    "Bending the elbows. Only the shoulder blades move.",
+  ),
+  thread_needle: g(
+    [
+      "Start on hands and knees.",
+      "Slide one arm under the other, along the floor, and let that shoulder come down.",
+      "Feel the upper back turn. Come back up and reach that arm to the ceiling. Then the other side.",
+    ],
+    "Letting the hips swing to the side. They stay over the knees.",
+  ),
+  knee_circles: g(
+    [
+      "Stand tall with your arms straight out to the sides at shoulder height.",
+      "Lift one knee and draw a big circle with it: in toward the other hand, then out.",
+      "Five circles that way, five the other way. Keep the upper body still. Then the other leg.",
+    ],
+    "Leaning with the upper body to make the circle bigger.",
+  ),
+  hamstring_bounce: g(
+    [
+      "Stand with your feet hip-width apart, knees a little bent.",
+      "Fold forward and let the head and arms hang. Make small, gentle bounces.",
+      "Halfway through, straighten the legs and let the hands reach a little further forward.",
+    ],
+    "Bouncing hard. Small and soft; the hands don't need to reach the floor.",
+  ),
+  front_kick_swing: g(
+    [
+      "Stand tall with your arms straight out to the sides at shoulder height.",
+      "Swing one straight leg forward and up, then let it come back down under control.",
+      "Start low and swing a little higher each time, as long as the back stays straight. Then the other leg.",
+    ],
+    "Swinging so high the back rounds or the upper body tips back.",
+  ),
   side_stance: g(
     [
       "From the wide stance, shift your weight over to one side and bend that knee.",
@@ -1373,7 +1212,6 @@ const MOBILITY: Record<string, Guide> = {
  */
 const OWN: Record<string, string> = {
   bench: "Pause with the bar on your chest. No bounce.",
-  db_bench: "Pause for a second in the stretch at the bottom.",
   db_floor_press: "Rest your upper arms on the floor for a second.",
   kb_floor_press: "Rest your upper arms on the floor for a second.",
   db_pullover: "Pause in the stretch behind your head.",
@@ -1384,7 +1222,6 @@ const OWN: Record<string, string> = {
   machine_chest: "Pause in the stretch before each press.",
   incline_db_press: "Pause for a second in the stretch at the bottom.",
   dips: "Pause at the bottom, upper arms level.",
-  push_up: "Pause with your chest just off the floor.",
   decline_bench: "Pause on the lower chest. No bounce.",
   close_grip_bench: "Pause on the chest, elbows tucked. No bounce.",
   smith_bench: "Pause with the bar on your chest. No bounce.",
@@ -1396,20 +1233,16 @@ const OWN: Record<string, string> = {
   db_fly: "Pause for a second in the stretch at the bottom.",
   incline_db_fly: "Pause for a second in the stretch at the bottom.",
   ohp: "Hold the lockout overhead for a second, ribs down.",
-  db_shoulder: "Pause at the bottom, dumbbells by your ears.",
   kb_press: "Pause in the rack, then press. No dip from the legs.",
   pike_push_up: "Pause with your head just off the floor.",
   machine_shoulder: "Pause at the bottom without resting the stack.",
   arnold_press: "Pause at the bottom, palms facing you.",
   smith_shoulder_press: "Pause at the bottom without resting the bar.",
-  pullup: "Hold your chin over the bar for a second.",
-  lat_pulldown: "Hold the bar at your upper chest for a second.",
   chinup: "Hold your chin over the bar for a second.",
   close_grip_pulldown: "Hold the handle at your upper chest for a second.",
   machine_pulldown: "Hold the handles at your shoulders for a second.",
   straight_arm_pulldown: "Hold the bar at your thighs for a second.",
   bb_row: "Hold the bar at your stomach for a second. Torso still.",
-  cable_row: "Hold the handle at your stomach for a second.",
   chest_supported_row: "Hold the squeeze at the top for a second.",
   machine_row: "Hold the squeeze at the top for a second.",
   db_row: "Hold the dumbbell at your hip for a second.",
@@ -1417,40 +1250,28 @@ const OWN: Record<string, string> = {
   inverted_row: "Hold your chest at the bar for a second.",
   back_squat: "Pause at the bottom, staying tight. Then stand.",
   front_squat: "Pause at the bottom, elbows high. Then stand.",
-  goblet_squat: "Pause at the bottom, chest up.",
-  kb_goblet_squat: "Pause at the bottom, chest up.",
-  bw_squat: "Pause at the bottom, chest up, heels down.",
   hack_squat: "Pause at the bottom. No bounce out of it.",
   leg_press: "Pause at the bottom. No bounce out of it.",
   smith_squat: "Pause at the bottom, staying tight. Then stand.",
-  deadlift: "Stand tall for a second, then lower it under control.",
   rdl: "Pause in the stretch, back flat.",
-  kb_swing: "Hold the top for a beat: glutes tight, body straight.",
   good_morning: "Pause in the stretch, back flat.",
   hip_thrust: "Hold the top for a second, glutes squeezed.",
   back_ext: "Hold the top for a second, body in a line.",
-  db_rdl: "Pause in the stretch, back flat.",
   nordic_curl: "Lower as slowly as you can. That is the rep.",
   sumo_deadlift: "Stand tall for a second, then lower it under control.",
   trap_bar_deadlift: "Stand tall for a second, then lower it under control.",
-  glute_bridge: "Hold the top for a second, glutes squeezed.",
   cable_pull_through: "Hold the top for a second, glutes squeezed.",
   single_leg_rdl: "Pause in the stretch, hips square.",
   bulgarian: "Pause at the bottom, front heel down.",
   walking_lunge: "Pause with the back knee just off the floor.",
   step_up: "Stand tall on the box for a second. No push from the back foot.",
   reverse_lunge: "Pause with the back knee just off the floor.",
-  split_squat: "Pause at the bottom, front heel down.",
-  bw_split_squat: "Pause at the bottom, front heel down.",
   leg_ext: "Hold the legs straight for a second.",
-  leg_curl: "Hold the squeeze for a second.",
-  seated_leg_curl: "Hold the squeeze for a second.",
   hip_abduction: "Hold the knees wide for a second.",
   hip_adduction: "Hold the knees together for a second.",
   cable_kickback: "Hold the leg back for a second, glute squeezed.",
   lateral_raise: "Hold at shoulder height for a second.",
   rear_delt_fly: "Hold the arms out wide for a second.",
-  face_pull: "Hold the rope by your ears for a second.",
   cable_lateral_raise: "Hold at shoulder height for a second.",
   machine_lateral_raise: "Hold at shoulder height for a second.",
   front_raise: "Hold at shoulder height for a second.",
@@ -1459,7 +1280,6 @@ const OWN: Record<string, string> = {
   cable_rear_delt_fly: "Hold the arms out wide for a second.",
   db_shrug: "Hold the top for a second, shoulders by the ears.",
   bb_shrug: "Hold the top for a second, shoulders by the ears.",
-  db_curl: "Hold at the top for a second, elbows still.",
   bb_curl: "Hold at the top for a second, elbows still.",
   hammer_curl: "Hold at the top for a second, elbows still.",
   cable_curl: "Hold at the top for a second, elbows still.",
@@ -1471,11 +1291,9 @@ const OWN: Record<string, string> = {
   machine_curl: "Hold at the top for a second.",
   cable_hammer_curl: "Hold at the top for a second, elbows still.",
   reverse_curl: "Hold at the top for a second, wrists straight.",
-  pushdown: "Hold the lockout for a second, elbows pinned.",
   overhead_ext: "Pause in the stretch behind your head.",
   skullcrusher: "Lower slowly and pause just above your forehead.",
   kickback: "Hold the arm straight for a second.",
-  rope_pushdown: "Hold the lockout for a second, rope spread.",
   cable_overhead_ext: "Pause in the stretch behind your head.",
   seated_dip: "Hold the lockout for a second.",
   bench_dip: "Pause at the bottom, upper arms level.",
@@ -1494,7 +1312,7 @@ const OWN: Record<string, string> = {
   rotation_machine: "Pause at the end of each turn.",
   cable_crunch: "Hold the crunch for a second.",
   ab_machine: "Pause at the end of each turn.",
-  plank: "Still and quiet. Breathe.",
+  hollow_hold: "Keep the lower back down. Breathe.",
   crunch: "Hold the crunch for a second.",
   machine_crunch: "Hold the crunch for a second.",
   decline_situp: "Lower slowly. No dropping back to the bench.",
@@ -1502,7 +1320,6 @@ const OWN: Record<string, string> = {
   lying_leg_raise: "Hold the heels just off the floor for a second.",
   captains_chair: "Hold the knees up for a second. No swing.",
   russian_twist: "Pause at the end of each turn.",
-  side_plank: "Still and quiet. Breathe.",
   pallof_press: "Hold the arms out for a second, chest square.",
   woodchop: "Pause at the end of each turn.",
 };
@@ -1538,11 +1355,11 @@ const HOLD_ANY = "Hold where it's hardest for {s}.";
  */
 export const ownCue = (id: string, seconds = 0): string =>
   seconds > 0
-    ? (HOLD[id] ?? HOLD_ANY).replace("{s}", seconds === 1 ? "1 second" : `${seconds} seconds`)
-    : (OWN[id] ?? OWN_ANY);
+    ? (REVIEWED_GUIDES[id]?.hold ?? HOLD[id] ?? HOLD_ANY).replace("{s}", seconds === 1 ? "1 second" : `${seconds} seconds`)
+    : (REVIEWED_GUIDES[id]?.own ?? OWN[id] ?? OWN_ANY);
 
 const GUIDES: Record<string, Guide> = { ...LIFTS, ...CARDIO, ...MOBILITY };
 
 /** The guide for an exercise, machine or pose, if one has been written. */
 export const guideFor = (id: string): Guide | undefined =>
-  GUIDES[id] && OWN[id] ? { ...GUIDES[id], own: OWN[id] } : GUIDES[id];
+  REVIEWED_GUIDES[id] ?? (GUIDES[id] && OWN[id] ? { ...GUIDES[id], own: OWN[id] } : GUIDES[id]);

@@ -8,7 +8,7 @@ import { draw, type FilmColors } from "@/motion/marks";
 import { MOVES } from "@/motion/moves";
 
 /**
- * A movement's short film (see `motion/film.ts`), drawn flat in Milo's marks
+ * A movement's short film (see `motion/film.ts`), drawn flat in Humbell's marks
  * (see `motion/marks.ts`), looping for as long as it is on screen — or, given
  * `plays`, that many times before it rests on its still. With Reduce Motion
  * it holds the still from the start: the hardest point, from the side.

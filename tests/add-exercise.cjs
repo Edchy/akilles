@@ -23,6 +23,9 @@ function load(name) {
 
 const store = load("@/store/session");
 const find = load("@/lib/find-exercise");
+const { byId, EXERCISES } = load("@/data/exercises");
+const tags = load("@/data/exercise-tags");
+const kit = load("@/data/kit");
 
 const names = (state, workoutId) => {
   const w = store.workoutById(state, workoutId);
@@ -85,4 +88,105 @@ test("search finds what people type, best first", () => {
 test("search leaves out the speed lifts that belong only to the power day", () => {
   const all = store.everyExercise(store.resetToDefault());
   assert.ok(all.every((e) => !e.restricted));
+});
+
+test("equipment and overlapping movement tags are searchable and filterable", () => {
+  const all = store.everyExercise(store.resetToDefault());
+  assert.ok(find.searchExercises(all, "kettlebell").some((e) => e.id === "kb_goblet_squat"));
+  assert.ok(find.searchExercises(all, "hollow body").some((e) => e.id === "hollow_hold"));
+  assert.equal(find.matchesExerciseFilters(all.find((e) => e.id === "bench"), "push", "barbell"), true);
+  assert.equal(find.matchesExerciseFilters(all.find((e) => e.id === "bench"), "pull", "barbell"), false);
+  assert.equal(find.matchesExerciseFilters(all.find((e) => e.id === "push_up"), "push", "bodyweight"), true);
+  const multiple = all.find((e) => new Set(find.exerciseTags(e).filter((tag) => ["Push", "Pull", "Legs", "Core"].includes(tag))).size > 1);
+  assert.ok(multiple, "at least one exercise belongs to multiple movement families");
+});
+
+test("bodyweight and no equipment are different: pull-ups still need a bar", () => {
+  const pullup = byId("pullup");
+  assert.ok(find.matchesExerciseFilters(pullup, "pull", "bodyweight"));
+  assert.ok(find.matchesExerciseFilters(pullup, "pull", "pullup_bar"));
+  assert.ok(!find.matchesExerciseFilters(pullup, "", "no_equipment"));
+  assert.ok(find.matchesExerciseFilters(byId("push_up"), "push", "no_equipment"));
+  assert.ok(find.exerciseTags(pullup).includes("Bodyweight"));
+  assert.ok(find.exerciseTags(pullup).includes("Pull-up bar"));
+});
+
+test("anatomy and movement search do not inherit a convenient workout slot", () => {
+  const adduction = byId("hip_adduction");
+  assert.ok(adduction.patterns.includes("hamstrings"), "existing slot compatibility stays intact");
+  assert.ok(find.searchExercises([adduction], "inner thighs").length);
+  assert.equal(find.searchExercises([adduction], "hamstrings").length, 0);
+  assert.ok(find.searchExercises(EXERCISES, "resisting rotation").some((e) => e.id === "pallof_press"));
+  assert.ok(find.searchExercises(EXERCISES, "kettlebell glutes").some((e) => e.id === "kb_goblet_squat"));
+  assert.ok(find.searchExercises(EXERCISES, "bodyweight pull").some((e) => e.id === "pullup"));
+});
+
+test("explicit discovery tags describe a new movement without changing its slot", () => {
+  const carry = { id: "custom_carry", name: "Suitcase walk", patterns: ["abs"], increment: 4,
+    equipment: ["kettlebell"], movements: ["carry"], muscles: ["obliques", "forearms"] };
+  assert.ok(find.searchExercises([carry], "kettlebell carry").length);
+  assert.ok(find.searchExercises([carry], "forearms").length);
+  assert.equal(find.searchExercises([carry], "trunk flexion").length, 0);
+  assert.equal(carry.patterns.join(), "abs");
+});
+
+test("equipment requirements combine with AND; an anchor is not optional", () => {
+  const exercise = { id: "custom_band_press", name: "Band press", patterns: ["horizontal_push"],
+    increment: 1, equipment: ["resistance_band", "band_anchor"] };
+  const created = store.createExerciseInWorkout(store.resetToDefault(), "push", exercise);
+  assert.ok(find.matchesExerciseFilters(exercise, "push", "resistance_band"));
+  assert.ok(find.searchExercises([exercise], "bands").length);
+  assert.ok(!kit.fits(exercise, { gear: ["resistance_band"] }));
+  assert.ok(kit.fits(exercise, { gear: ["resistance_band", "band_anchor"] }));
+  assert.ok(kit.fits(exercise, kit.GYM));
+  const storage = load("@/store/storage");
+  const restored = storage.fromSaved(storage.toSaved(created));
+  assert.equal(restored.custom.find((e) => e.id === exercise.id).equipment.join(), exercise.equipment.join());
+});
+
+test("the existing pool has valid discovery tags, distinct ball equipment and no false knee curls", () => {
+  for (const exercise of EXERCISES) {
+    assert.ok(tags.movementsOf(exercise).length, exercise.id);
+    assert.ok(tags.musclesOf(exercise).length, exercise.id);
+    for (const tag of tags.movementsOf(exercise)) assert.ok(tags.MOVEMENT_LABEL[tag], exercise.id);
+    for (const tag of tags.musclesOf(exercise)) assert.ok(tags.MUSCLE_LABEL[tag], exercise.id);
+  }
+  assert.equal(tags.movementsOf(byId("hip_thrust")).join(), "hip_extension");
+  assert.equal(tags.movementsOf(byId("db_rdl")).join(), "hinge");
+  assert.equal(tags.movementsOf(byId("leg_press")).join(), "squat");
+  assert.ok(find.matchesExerciseFilters(byId("med_ball_slam"), "", "slam_ball"));
+  assert.ok(!find.matchesExerciseFilters(byId("med_ball_slam"), "", "stability_ball"));
+});
+
+test("a blank workout is empty; twenty exercises can be added, reordered, copied and started", () => {
+  let state = store.addWorkout(store.resetToDefault(), "twenty", "Long workout");
+  let built = store.buildWorkout(store.setNextWorkout(state, "twenty"));
+  assert.equal(built.active.items.length, 0);
+  const ids = store.everyExercise(state).filter((e) => !e.restricted).slice(0, 20).map((e) => e.id);
+  for (const id of ids) state = store.addExerciseToWorkout(state, "twenty", id);
+  const before = store.workoutById(state, "twenty");
+  assert.equal(before.exercises.length, 20);
+  state = store.moveEntry(state, "twenty", 19, 0);
+  assert.equal(store.workoutById(state, "twenty").exercises[0].id, before.exercises[19].id);
+  state = store.copyWorkout(state, "twenty", "copy_twenty");
+  assert.equal(store.workoutById(state, "copy_twenty").exercises.length, 20);
+  built = store.buildWorkout(store.setNextWorkout(state, "copy_twenty"));
+  assert.equal(built.active.items.length, 20);
+  assert.equal(new Set(built.active.items.map((e) => e.exerciseId)).size, 20);
+  for (let i = 0; i < 20; i++) assert.equal(store.goToCard(built, i).active.cursor, i);
+  assert.equal(store.finishWorkout(built).log.length, 0, "browsing a large workout must not record training");
+});
+
+test("custom equipment and multiple movement tags survive saving and work in filters", () => {
+  const storage = load("@/store/storage");
+  const kit = load("@/data/kit");
+  let state = store.createExerciseInWorkout(store.resetToDefault(), "push", {
+    id: "custom_clean_press", name: "Kettlebell clean and press", patterns: ["vertical_push", "hinge"], equipment: ["kettlebell"], increment: 4,
+  });
+  state = storage.fromSaved(storage.toSaved(state));
+  const exercise = store.everyExercise(state).find((e) => e.id === "custom_clean_press");
+  assert.equal(find.matchesExerciseFilters(exercise, "push", "kettlebell"), true);
+  assert.equal(find.matchesExerciseFilters(exercise, "legs", "kettlebell"), true);
+  assert.equal(kit.fits(exercise, { gear: [] }), false);
+  assert.equal(kit.fits(exercise, { gear: ["kettlebell"] }), true);
 });

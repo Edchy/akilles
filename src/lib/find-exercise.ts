@@ -1,4 +1,31 @@
-import { PATTERN_LABEL, PATTERN_ORDER, groupOf, type Exercise } from "@/data/exercises";
+import { CATEGORY_LABEL, categoriesOf, PATTERN_ORDER, type Exercise, type Category } from "@/data/exercises";
+import { MOVEMENT_LABEL, MUSCLE_LABEL, movementsOf, musclesOf } from "@/data/exercise-tags";
+
+import { needsOf, type Gear } from "@/data/kit";
+
+export const GEAR_NAME: Record<Gear, string> = {
+  barbell: "Barbell", dumbbells: "Dumbbells", kettlebell: "Kettlebell", cable: "Cable",
+  machine: "Machine", pullup_bar: "Pull-up bar", bench: "Bench", gym: "Gym",
+  resistance_band: "Resistance band", band_anchor: "Band anchor", stability_ball: "Stability ball",
+  medicine_ball: "Medicine ball", slam_ball: "Slam ball", rings: "Rings",
+  suspension_trainer: "Suspension trainer", parallel_bars: "Parallel bars", ab_wheel: "Ab wheel",
+};
+
+export const EQUIPMENT_FILTERS: [string, string][] = [
+  ["", "All equipment"], ["bodyweight", "Bodyweight"], ["no_equipment", "No equipment"],
+  ...Object.entries(GEAR_NAME).map(([id, label]): [string, string] => [id, label]),
+];
+
+export const exerciseTags = (exercise: Exercise): string[] => [
+  ...categoriesOf(exercise).map((c) => CATEGORY_LABEL[c]),
+  ...(exercise.bodyweight ? ["Bodyweight"] : []),
+  ...(needsOf(exercise).length ? needsOf(exercise).map((g) => GEAR_NAME[g]) : ["No equipment"]),
+];
+export const matchesExerciseFilters = (exercise: Exercise, category: string, equipment: string) =>
+  (!category || categoriesOf(exercise).includes(category as Category)) &&
+  (!equipment || (equipment === "bodyweight" ? exercise.bodyweight === true
+    : equipment === "no_equipment" ? needsOf(exercise).length === 0
+    : needsOf(exercise).includes(equipment as Gear)));
 
 /**
  * Finding an exercise by what you would call it. Add exercise's search box,
@@ -28,7 +55,13 @@ export function searchExercises(all: Exercise[], typed: string): Exercise[] {
   const scored = all.flatMap((e) => {
     const name = squash(e.name);
     const aliases = (e.aliases ?? []).map(squash);
-    const kinds = [...e.patterns.map((p) => squash(PATTERN_LABEL[p])), squash(groupOf(e))];
+    const muscles = musclesOf(e);
+    const kinds = [
+      ...movementsOf(e).map((p) => squash(MOVEMENT_LABEL[p])),
+      ...muscles.flatMap((m) => [squash(m), squash(MUSCLE_LABEL[m])]),
+      ...(muscles.some((m) => ["lats", "upper_back", "lower_back"].includes(m)) ? ["back"] : []),
+      ...exerciseTags(e).map(squash),
+    ];
     const has = (hay: string[]) =>
       hay.some((h) => h.includes(whole)) || words.every((w) => hay.some((h) => h.includes(w)));
     const score = name.startsWith(whole)

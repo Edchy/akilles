@@ -1,0 +1,45 @@
+{
+  "voice": "scratch (macOS Daniel)",
+  "scenes": {
+    "own": {
+      "file": "own.wav",
+      "seconds": 4.193832
+    },
+    "open": {
+      "file": "open.wav",
+      "seconds": 6.057324
+    },
+    "sets": {
+      "file": "sets.wav",
+      "seconds": 4.769705
+    },
+    "workouts": {
+      "file": "workouts.wav",
+      "seconds": 6.491111
+    },
+    "library": {
+      "file": "library.wav",
+      "seconds": 6.514739
+    },
+    "order": {
+      "file": "order.wav",
+      "seconds": 5.433197
+    },
+    "swap": {
+      "file": "swap.wav",
+      "seconds": 2.499002
+    },
+    "add": {
+      "file": "add.wav",
+      "seconds": 1.43034
+    },
+    "pause": {
+      "file": "pause.wav",
+      "seconds": 3.335011
+    },
+    "end": {
+      "file": "end.wav",
+      "seconds": 2.077188
+    }
+  }
+}
