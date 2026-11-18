@@ -1,5 +1,4 @@
-import { useEffect, useState } from "react";
-import { Image, View, type ViewStyle } from "react-native";
+import { View, type ViewStyle } from "react-native";
 import { Text } from "@/components/text";
 
 import { useCardActive } from "@/components/card-context";
@@ -12,7 +11,6 @@ import { ART } from "@/data/art";
 import { CARDIO, STRETCHES } from "@/data/conditioning";
 import { byId } from "@/data/exercises";
 import { familyOf, type Family } from "@/data/families";
-import { PHOTOS } from "@/data/photos";
 import { mix } from "@/motion/marks";
 import { MOVES, RESHOOT } from "@/motion/moves";
 
@@ -23,12 +21,9 @@ import { MOVES, RESHOOT } from "@/motion/moves";
  */
 const DRAWN: ReadonlySet<string> = new Set(["goblet_squat"]);
 
-/** Whether there is an in-app drawing, film, or fallback photograph. */
+/** Whether there is a picture: the clay figure, a drawing, or a film that reads. */
 export const hasIllustration = (id: string): boolean =>
-  hasClay(id) || DRAWN.has(id) || (id in MOVES && !RESHOOT.has(id)) || !!PHOTOS[id]?.length;
-
-/** How long each frame of a lift shows before flipping to the other. */
-const FRAME_MS = 1100;
+  hasClay(id) || DRAWN.has(id) || (id in MOVES && !RESHOOT.has(id));
 
 /**
  * The picture of a movement — a lift, a machine or a stretch — by its id.
@@ -37,19 +32,13 @@ const FRAME_MS = 1100;
  * those, before anything below.
  *
  * Klay's own drawing where one has passed (`DRAWN`): the figure moving at the pace
- * of a rep, the part that works in the accent. Otherwise,
- * a film where there is one (see `motion/`): the movement drawn flat in
- * Klay's marks, a rep from the side and a rep from the front — except as a
- * thumbnail, where the photo stays if there is one, and a film that doesn't
- * read yet (`RESHOOT`), which shows its photo. Given `plays`, a film loops that many
- * times and then holds its still, so a picture on screen through a whole
- * hold or set isn't drawing all the while. Otherwise a photo (see
- * `data/photos.ts`); a lift's start and finish frames flip back and forth so
- * the movement reads like a short loop. Both frames are mounted and only
- * their opacity changes, so the flip never waits on an image to load.
- * Anything without a photo shows a quiet placeholder.
- * Every screen asks for its picture here, so changing the art — photos,
- * films — is a change to this file, `data/photos.ts` and `motion/` alone.
+ * of a rep, the part that works in the accent. Otherwise a film where there
+ * is one that reads (see `motion/`; not one waiting to be reshot, `RESHOOT`):
+ * the movement drawn flat in Klay's marks. Given `plays`, a film loops that
+ * many times and then holds its still, so a picture on screen through a whole
+ * hold or set isn't drawing all the while. Anything else shows a quiet
+ * placeholder. Every screen asks for its picture here, so changing the art is
+ * a change to this file, `components/clay.tsx` and `motion/` alone.
  */
 export function Illustration({
   id,
@@ -68,22 +57,9 @@ export function Illustration({
   plays?: number;
 }) {
   const active = useCardActive();
-  const frames = PHOTOS[id];
-  const count = frames?.length ?? 0;
-  const [frame, setFrame] = useState(0);
-
-  // A thumbnail keeps the photo, and so does a film waiting to be reshot;
-  // with no photo, the film shows — as a thumbnail, its still.
   const always = !!filmed && id in MOVES;
-  const drawn = !always && DRAWN.has(id) && id in ART && (!compact || !frames);
-  const film = always || (!drawn && id in MOVES && (!frames || (!compact && !RESHOOT.has(id))));
-
-  useEffect(() => {
-    setFrame(0);
-    if (!active || drawn || film || count < 2) return;
-    const flip = setInterval(() => setFrame((f) => (f + 1) % count), FRAME_MS);
-    return () => clearInterval(flip);
-  }, [id, count, film, drawn, active]);
+  const drawn = !always && DRAWN.has(id) && id in ART;
+  const film = always || (!drawn && id in MOVES && !RESHOOT.has(id));
 
   // A stretch in the clay figure's pictures, breathing by itself; still as a thumbnail or at rest.
   if (hasClay(id)) {
@@ -108,32 +84,6 @@ export function Illustration({
   if (film) {
     const colors = filmColors(familyOfPicture(id));
     return <Film key={id} id={id} colors={colors} style={style} plays={compact || !active ? 0 : plays} />;
-  }
-
-  if (frames) {
-    return (
-      <View
-        accessibilityElementsHidden
-        importantForAccessibility="no-hide-descendants"
-        style={[{ overflow: "hidden", backgroundColor: colors.raised }, style]}
-      >
-        {frames.map((source, i) => (
-          <Image
-            key={i}
-            source={source}
-            resizeMode="cover"
-            style={{
-              position: "absolute",
-              top: 0,
-              left: 0,
-              width: "100%",
-              height: "100%",
-              opacity: i === frame ? 1 : 0,
-            }}
-          />
-        ))}
-      </View>
-    );
   }
 
   return (

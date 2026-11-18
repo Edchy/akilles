@@ -20,6 +20,6 @@ shows all of it; `git diff full-app-2026-11-13 core` shows what changed since.
 | What | Why | Where |
 | --- | --- | --- |
 | **Films computed from a skeleton** ("Humbell's marks") as the picture of every movement. | Open, side-on poses read; folded and floor poses turn into a pile of limbs, and the trunk can't bend. | `src/motion/`, `src/components/film.tsx`. Still shown wherever there is no drawing; sixteen that don't read show their photo instead (`RESHOOT` in `src/motion/moves.ts`). |
-| **Drawn figure four and lying twist.** | Knotted floor stretches don't read drawn either; they keep their photos. | `art/drawn/figure_four-0.png`, `art/drawn/supine_twist-0.png`. |
+| **Drawn figure four and lying twist.** | Knotted floor stretches don't read drawn either; they are clay now. | `art/drawn/figure_four-0.png`, `art/drawn/supine_twist-0.png`. |
 
 Add a row here whenever something is cut or put away.

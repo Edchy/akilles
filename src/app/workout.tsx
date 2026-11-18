@@ -18,7 +18,6 @@ import {
 import {
   Animated,
   Easing,
-  Image,
   Keyboard,
   Pressable,
   ScrollView,
@@ -61,9 +60,9 @@ import { GuideButton, GuideSheet } from "@/components/guide";
 import { CardActiveContext, useCardActive, CardContext, useOnCard } from "@/components/card-context";
 import { Illustration } from "@/components/illustration";
 import { FloatingTip, firstUnseen } from "@/components/tips";
+import { ClayStretch, hasClay } from "@/components/clay";
 import { GoalSheet, Pips, hasTutorial, openTutorial } from "@/components/goals";
 import { BigButton, Sheet, TextButton } from "@/components/sheet";
-import { PHOTOS } from "@/data/photos";
 import { colors, colors as paper, FAMILY, fieldColors, fieldIsDark, fonts, PAPER, radii } from "@/constants/theme";
 import { byId, inSentence, type Exercise } from "@/data/exercises";
 import { ownCue } from "@/data/guides";
@@ -3060,9 +3059,10 @@ function MobilityCard({ move, side, turned, left, number, count, prompt }: {
   const colors = useColors();
   const done = left <= 0 && side !== "Left side";
   const progress = 1 - left / holdOf(move);
-  // The frame that shows the position: a hold's only one, a rep move's last.
-  const frames = PHOTOS[pictureOf(move)];
-  const photo = frames?.[frames.length - 1];
+  const active = useCardActive();
+  // The clay figure where the stretch has it (see `components/clay.tsx`):
+  // breathing by itself while the clock runs, still before it starts.
+  const clay = hasClay(pictureOf(move)) ? pictureOf(move) : null;
 
   // The picture is the card: what the position looks like, as big as the
   // words leave room for. Under it the move's name with its clock beside it,
@@ -3082,17 +3082,11 @@ function MobilityCard({ move, side, turned, left, number, count, prompt }: {
           borderCurve: "continuous",
           borderWidth: 1.5,
           borderColor: colors.text,
-          backgroundColor: "#FFFFFF",
+          backgroundColor: paper.bg,
         }}
       >
-        {photo ? (
-          <Image
-            source={photo}
-            // Fills the frame: no white bars beside it.
-            resizeMode="cover"
-            accessibilityIgnoresInvertColors
-            style={{ width: "100%", height: "100%" }}
-          />
+        {clay ? (
+          <ClayStretch id={clay} still={!active || !!prompt || done} style={{ width: "100%", height: "100%" }} />
         ) : (
           <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
             <Mark family="mobility" size={72} />

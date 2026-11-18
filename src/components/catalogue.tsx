@@ -12,7 +12,7 @@ import { BigButton, OpenRow, SectionLabel, Sheet, TextButton } from "@/component
 import { WeightField, parseWeight } from "@/components/weight-field";
 import { FAMILY, colors, radii } from "@/constants/theme";
 import { Mark } from "@/components/mark";
-import { PHOTOS } from "@/data/photos";
+import { CLAY } from "@/data/clay";
 import { guideFor } from "@/data/guides";
 import { hasIllustration, Illustration } from "@/components/illustration";
 import { Guide, GuideInstructions } from "@/components/guide";
@@ -517,8 +517,6 @@ function MobilitySheet({
           <Text style={{ color: colors.text, fontSize: 28, fontWeight: "700" }}>{shown.name}</Text>
           {hasIllustration(shown.id) ? (
             <Illustration key={shown.id} id={shown.id} style={{ height: 240, borderRadius: radii.card, borderCurve: "continuous" }} />
-          ) : PHOTOS[shown.id]?.[0] ? (
-            <Image source={PHOTOS[shown.id][0]} resizeMode="contain" style={{ width: "100%", height: 200, borderRadius: 16, backgroundColor: colors.surface }} />
           ) : null}
           <Text ui style={{ color: colors.muted, fontSize: 16 }}>{moveAmount(shown)}</Text>
           {guideFor(shown.id) ? (
@@ -675,7 +673,8 @@ function RoutineCard({
   onPress: () => void;
 }) {
   const pictures = routine.moves
-    .map((m) => (m.stretch ? PHOTOS[m.stretch]?.[0] : undefined))
+    // The clay figure in the stretch: its last picture, the stretch itself.
+    .map((m) => (m.stretch ? CLAY[m.stretch]?.frames.at(-1) : undefined))
     .filter((p) => p !== undefined)
     .slice(0, 5);
   return (

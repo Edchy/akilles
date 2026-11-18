@@ -30,7 +30,6 @@ function load(name) {
   if (name === "@/components/field") return { useColors: () => load("@/constants/theme").colors };
   if (name === "@/components/card-context") return { useCardActive: () => true };
   if (name.startsWith("@/components/")) return new Proxy({}, { get: (_, key) => String(key) });
-  if (name === "@/data/photos") return { PHOTOS: {} };
   if (name === "@/lib/chime") return { chime() {}, cue() {} };
   if (!name.startsWith("@/")) return require(name);
   const base = path.resolve(__dirname, "../src", name.slice(2));

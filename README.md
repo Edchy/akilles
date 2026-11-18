@@ -147,16 +147,12 @@ coach gives — feet flat, knees over the toes, the bar over mid-foot; on the
 bench, the arch, forearms upright, elbows about 45° — so it is true from any
 side, and `tests/motion.cjs` checks it against a coach's ranges. A plate seen
 from the side is see-through, so the bar reads as where it is. With Reduce
-Motion, a film holds the bottom of the rep. See `src/motion/`. Thumbnails in
-lists keep the photo.
+Motion, a film holds the bottom of the rep. See `src/motion/`.
 
-**Photos** come from [free-exercise-db](https://github.com/yuhonas/free-exercise-db),
-public domain under the Unlicense, matched by hand in `src/data/photos.ts`. A
-lift's start and finish frames flip back and forth like a short loop; a
-stretch shows the one frame of the hold. Only stretches with a photo are
-offered; the couch stretch borrows the kneeling hip-flexor stretch, its nearest
-match. Where their library has no true match — the ski-erg, the assault bike
-and the rotary torso machine — a placeholder shows.
+**Stretches** are the clay figure (`art/clay.mjs`, exported to `assets/clay`
+by `art/clay-export.mjs`): one picture for a hold, two that swap with the
+breath for a movement. A lift without a film that reads shows a placeholder.
+There are no stock photos.
 
 **Logging a set** — one circle per set. Tap it and it fills at the target reps;
 tap again and it counts down if you got fewer — and a rep you swung, bounced or

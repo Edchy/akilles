@@ -99,8 +99,7 @@ sign-off or a promise that an exercise cannot cause injury.
   and available kit. These entries are not automatic substitution candidates.
 
 Run `npm run audit:exercises` for current counts, default-plan coverage, source
-links and the complete remaining review queue. The current snapshot is
-`work/exercise-library/audit.md`. A link-count check cannot certify the meaning
+links and the complete remaining review queue. A link-count check cannot certify the meaning
 of the instructions: qualified review remains a separate step.
 
 ## Steps from here

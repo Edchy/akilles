@@ -74,7 +74,7 @@ test("every built-in has an id of its own", () => {
     // Exercises you create are `custom_…`; a built-in must never shadow one.
     assert.ok(!id.startsWith("custom_"), `${id} looks like a custom id`);
   }
-  // Guides and photos are keyed by id across lifts, machines and stretches.
+  // Guides and pictures are keyed by id across lifts, machines and stretches.
   const others = [
     ...conditioning.CARDIO.map((c) => c.id),
     ...conditioning.STRETCHES.map((s) => s.id),

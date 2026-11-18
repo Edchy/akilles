@@ -63,17 +63,10 @@ test("out of the box, every workout ends on the everyday stretch", () => {
   assert.equal(store.routineMinutes(everyday), 7);
 });
 
-/** The day warm-ups' stances: free-exercise-db shows them only with a weight in hand. */
-const NO_PHOTO = ["wide_stance", "side_stance", "downward_dog", "low_lunge", "pigeon", "cobra", "knee_circles", "hamstring_bounce", "front_kick_swing", "scapular_pushup", "thread_needle"];
-
-test("every stretch has a photo and a guide, and so does every hold in the everyday stretch", () => {
-  const photos = fs.readFileSync(path.resolve(__dirname, "../src/data/photos.ts"), "utf8");
-  // No photo matches these.
-  const filmOnly = ["ball_shoulder", "wall_slide", "prone_y_raise", ...NO_PHOTO];
+test("every stretch has the clay figure and a guide, and so does every hold in the everyday stretch", () => {
+  const clay = fs.readFileSync(path.resolve(__dirname, "../src/data/clay.ts"), "utf8");
   for (const s of conditioning.STRETCHES) {
-    if (!filmOnly.includes(s.id)) {
-      assert.match(photos, new RegExp(`\\n  ${s.id}: \\[require`), `${s.id} has no photo`);
-    }
+    assert.match(clay, new RegExp(`\\n  ${s.id}: \\{ frames`), `${s.id} has no clay picture`);
     assert.ok(guides.guideFor(s.id), `${s.id} has no guide`);
   }
   for (const m of conditioning.mobilityById("everyday").moves) {

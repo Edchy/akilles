@@ -137,11 +137,11 @@ export const defaultCourse = (machine: CardioExercise): number =>
   machine.distance ?? (machine.metric.unit === "km" ? 1 : machine.metric.unit === "m" ? 1000 : 100);
 
 /**
- * A stretch the app knows: a photo, a how-to guide — both keyed by this id —
+ * A stretch the app knows: its clay picture, a how-to guide — both keyed by this id —
  * and the hold it starts with when added to a routine.
  *
- * Only stretches with a real photo belong here (see `data/photos.ts`); one you
- * type in yourself is just a name and a time, and shows a placeholder.
+ * Only stretches with the clay figure's pictures belong here (see
+ * `data/clay.ts`); one you type in yourself is just a name and a time, and shows a placeholder.
  */
 export type Stretch = {
   id: string;
@@ -226,7 +226,7 @@ export type MobilityMove = {
   /** Unique within its routine. */
   id: string;
   /**
-   * The stretch this is, for its photo and guide. Absent for one you typed in
+   * The stretch this is, for its picture and guide. Absent for one you typed in
    * yourself, which shows a placeholder.
    */
   stretch?: string;
@@ -240,7 +240,7 @@ export type MobilityMove = {
   cue?: string;
 };
 
-/** The id a move's photo and guide are found under. */
+/** The id a move's picture and guide are found under. */
 export const pictureOf = (move: MobilityMove): string => move.stretch ?? move.id;
 
 /** A stretch from the library as a hold in a routine, with its own times unless told otherwise. */
@@ -308,7 +308,7 @@ export const SHOULDER_WARMUP = "shoulder_warmup";
 /**
  * The built-in routines: one, and a good one. The best of the stretches for
  * someone who lifts — hips, hamstrings, glutes, chest and back — in about seven
- * minutes. Every hold has a photo and a guide. Change it in Plan, or make
+ * minutes. Every hold has a picture and a guide. Change it in Plan, or make
  * routines of your own for particular days.
  */
 export const MOBILITY: MobilityRoutine[] = [

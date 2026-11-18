@@ -37,7 +37,7 @@ test("every exercise has a film or a source-checked reference demonstration", ()
   const { EXERCISES } = load("@/data/exercises");
   const { CARDIO, STRETCHES } = load("@/data/conditioning");
   // The day warm-ups' opening and leg moves came after the films: a stretch
-  // card shows its photo, or its words alone.
+  // card shows its clay picture, or its words alone.
   // So did yoga's and kung fu's.
   const unfilmed = ["wide_stance", "side_stance", "leg_swing", "bodyweight_squat", "downward_dog", "low_lunge", "pigeon", "cobra", "knee_circles", "hamstring_bounce", "front_kick_swing", "scapular_pushup", "thread_needle"];
   const ids = [...EXERCISES, ...CARDIO, ...STRETCHES].map((e) => e.id).filter((id) => !unfilmed.includes(id));
@@ -50,13 +50,9 @@ test("every exercise has a film or a source-checked reference demonstration", ()
   }
 });
 
-test("a film waiting to be reshot has a photo to show instead", () => {
+test("a film waiting to be reshot is a film", () => {
   const { RESHOOT } = load("@/motion/moves");
-  const photos = fs.readFileSync(path.resolve(__dirname, "../src/data/photos.ts"), "utf8");
-  for (const id of RESHOOT) {
-    assert.ok(id in MOVES, `${id} is not a film`);
-    assert.match(photos, new RegExp(`\\n  ${id}: \\[require`), `${id} has no photo`);
-  }
+  for (const id of RESHOOT) assert.ok(id in MOVES, `${id} is not a film`);
 });
 
 test("every bone keeps its length at every depth", () => {
