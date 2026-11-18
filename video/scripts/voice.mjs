@@ -1,13 +1,13 @@
 // The narration, one file per scene, and how long each takes.
 //
-//   npm run voice                      ElevenLabs, with the voice in HUMBELL_VOICE_ID (or George)
+//   npm run voice                      ElevenLabs, with the voice in KLAY_VOICE_ID (or George)
 //   npm run voice -- --voice=<id>      another ElevenLabs voice
 //   npm run voice -- --voices          list the voices on your account
 //   npm run voice -- --scratch         the Mac's own voice, to time scenes with no key
 //
-// The key is read from ELEVENLABS_API_KEY, which video/.env can set
-// (ELEVENLABS_API_KEY=…). That file is ignored by git, so the key never
-// leaves this machine.
+// The key is read from ELEVENLABS_API_KEY or ELEVEN_API_KEY, set in .local.env
+// at the top of the project or in video/.env. Both are ignored by git, so the
+// key never leaves this machine.
 
 import { execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
@@ -22,9 +22,12 @@ const args = Object.fromEntries(
   }),
 );
 
-const envFile = new URL("../.env", import.meta.url).pathname;
-if (existsSync(envFile)) process.loadEnvFile(envFile);
-const key = process.env.ELEVENLABS_API_KEY?.trim() ?? "";
+// video/.env, or .local.env at the top of the project (where the key lives now).
+for (const file of ["../.env", "../../.local.env"]) {
+  const path = new URL(file, import.meta.url).pathname;
+  if (existsSync(path)) process.loadEnvFile(path);
+}
+const key = (process.env.ELEVENLABS_API_KEY ?? process.env.ELEVEN_API_KEY)?.trim() ?? "";
 const API = "https://api.elevenlabs.io/v1";
 
 if (args.voices) {
@@ -38,8 +41,8 @@ if (args.voices) {
 const scratch = args.scratch || !key;
 if (!args.scratch && !key) console.warn("No ElevenLabs key in video/.env, so this is the Mac's scratch voice.");
 
-// George: warm, calm, unhurried. Change with --voice= or HUMBELL_VOICE_ID.
-const voice = args.voice ?? process.env.HUMBELL_VOICE_ID ?? "JBFqnCBsd6RMkjVDRZzb";
+// George: warm, calm, unhurried. Change with --voice= or KLAY_VOICE_ID.
+const voice = args.voice ?? process.env.KLAY_VOICE_ID ?? "JBFqnCBsd6RMkjVDRZzb";
 const model = args.model ?? "eleven_multilingual_v2";
 
 mkdirSync(OUT, { recursive: true });

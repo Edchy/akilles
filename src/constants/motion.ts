@@ -1,7 +1,7 @@
 import { Easing } from "react-native-reanimated";
 
 /**
- * How Humbell moves — one small set, used everywhere, so the same kind of
+ * How Klay moves — one small set, used everywhere, so the same kind of
  * movement always feels the same.
  *
  * - Springs for anything a finger drives or can interrupt (rows, cards,

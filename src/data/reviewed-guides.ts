@@ -2,7 +2,7 @@ import type { Guide } from "@/data/guides";
 
 /** Original summaries checked against the linked technique and mistake guidance.
  * The date records a source check, not clinical validation or professional sign-off.
- * A deliberate pause is Humbell's coaching choice, not a claim that the source
+ * A deliberate pause is Klay's coaching choice, not a claim that the source
  * prescribes that pause or that one angle maximizes tension for every person.
  */
 const nasm = (slug: string, title: string) => ({ title: `NASM · ${title}`, url: `https://www.nasm.org/resource-center/exercise-library/${slug}` });
@@ -62,6 +62,13 @@ export const REVIEWED_GUIDES: Record<string, Guide> = {
     "Push the floor away to return. Use an elevated surface if you cannot keep the same body position throughout.",
   ], "Letting the hips sag or rise before the chest. Choose an easier version so you can move your whole body together.",
   [nasm("push-up", "Push-up"), nasm("incline-push-up", "Incline push-up")], "Pause with your chest just off the floor, keeping your whole body firm. Then press."),
+  dead_hang: reviewed([
+    "Use a secure bar you can reach from a step or bench. Take an overhand grip about shoulder width.",
+    "Step off and hang with your arms straight. Draw the shoulder blades gently down so you are not slumped into the shoulders, and keep your trunk steady.",
+    "Breathe while you hold. Step back onto the bench before you let go, rather than dropping.",
+  ], "Jumping up into the hang or dropping off at the end. Get on and off from the step, under control.",
+  [{ title: "Healthline · Dead hang: how to do it", url: "https://www.healthline.com/health/fitness-exercise/dead-hang" }],
+  "Hang still, arms straight, and keep breathing. Step down before your grip gives."),
   plank: reviewed([
     "Place your forearms on the floor with elbows under shoulders. Step the feet back about hip width.",
     "Brace your trunk and glutes, keeping your head, hips and heels in one line.",
@@ -267,6 +274,20 @@ export const REVIEWED_GUIDES: Record<string, Guide> = {
     "Lower under control to long arms again. Use assistance if you cannot move without swinging.",
   ], "Kipping or swinging to get above the bar, then dropping down. Choose assistance and control the full repetition.",
   [nasm("pull-up", "Pull-up")], "Pause briefly above the bar, then lower smoothly without swinging."),
+  scap_pullup: reviewed([
+    "Hang from a secure bar with an overhand grip about shoulder width, arms straight.",
+    "Keeping the elbows straight, pull your shoulders down away from your ears so your body rises a little.",
+    "Let the shoulders rise back up slowly to the hang, then repeat.",
+  ], "Bending the elbows to help. Only the shoulders move; the arms stay long.",
+  [{ title: "StrengthLog · Scap pull-up", url: "https://www.strengthlog.com/scap-pull-up" }],
+  "Hold the top for a second, shoulders down, before you lower."),
+  pullup_negative: reviewed([
+    "Use a step or a small jump to get your chin over the bar, hands about shoulder width.",
+    "Lower yourself slowly, taking about five seconds to reach straight arms.",
+    "Step back up to the top, rather than pulling, and repeat.",
+  ], "Dropping quickly through the bottom half. Keep the whole way down slow and even.",
+  [{ title: "MasterClass · Negative pull-ups", url: "https://www.masterclass.com/articles/negative-pull-ups" }],
+  "Take a full five seconds on every lowering, top to bottom."),
   deadlift: reviewed([
     "Stand with the bar over the middle of your feet. Bend the hips and knees to grip just outside the legs, then brace and take up the slack.",
     "Push through your feet and extend the hips and knees to stand, keeping the bar close.",

@@ -1,7 +1,7 @@
 import { Vec3 } from "@/motion/vector";
 
 /**
- * Humbell's figure: a body with real joints in the right places, so every angle
+ * Klay's figure: a body with real joints in the right places, so every angle
  * of a movement is true from any side.
  *
  * Lengths are in metres for someone 1.75 m tall, from standard body-segment

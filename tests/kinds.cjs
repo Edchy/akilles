@@ -32,7 +32,7 @@ test("a new workout of each kind arrives named, filled and balanced", () => {
   let state = store.resetToDefault();
   for (const kind of kinds.KIND_ORDER) state = store.addWorkoutOfKind(state, `w_${kind}`, kind);
   const made = (kind) => state.workouts.find((w) => w.id === `w_${kind}`);
-  assert.equal(made("push").name, "Push 2", "Humbell's own Push is already there");
+  assert.equal(made("push").name, "Push 2", "Klay's own Push is already there");
   assert.equal(made("full").name, "Full body");
   assert.equal(made("free").name, "Empty");
   assert.equal(made("free").exercises.length, 0);
@@ -104,7 +104,7 @@ test("a workout's shape comes from its kind, else from what is in it", () => {
   assert.equal(familyOfLifts("free", ["push", "core"]), "push");
   assert.equal(familyOfLifts("free", []), undefined);
 
-  // Humbell's own full-body days are full, and Push stays push.
+  // Klay's own full-body days are full, and Push stays push.
   let state = store.resetToDefault();
   state = store.addWorkoutOfKind(state, "fb", "full");
   assert.equal(store.workoutFamily(state, store.workoutById(state, "fb")), "full");
@@ -120,7 +120,8 @@ test("swap for today always has somewhere to go, and works after a set too", () 
   let state = store.addWorkoutOfKind(store.resetToDefault(), "home", "free");
   state = store.addExerciseToWorkout(state, "home", "push_up");
   state = { ...state, hidden: [...state.hidden, ...["db_bench", "bench", "machine_chest_press", "incline_db"].filter((id) => !state.hidden.includes(id))] };
-  state = store.buildWorkout(store.setNextWorkout(state, "home"));
+  // The push-up chain at the push-up itself.
+  state = store.buildWorkout(store.setNextWorkout({ ...state, steps: { push_up: 3 } }, "home"));
   state = store.goToCard(state, state.active.items.findIndex((it) => it.exerciseId === "push_up"));
   const pool = store.currentPool(state);
   assert.ok(pool.length > 1, "the library is in reach");
@@ -134,7 +135,7 @@ test("swap for today always has somewhere to go, and works after a set too", () 
   assert.ok(item.logged.every((r) => r === null));
 });
 
-test("yoga and kung fu routines come with Humbell, made of moves the library has", () => {
+test("yoga and kung fu routines come with Klay, made of moves the library has", () => {
   const c = load("@/data/conditioning");
   const yoga = c.mobilityById("yoga");
   const kungFu = c.mobilityById("kung_fu");
@@ -152,7 +153,7 @@ test("a removed routine shows as removed, workouts fall back, and it puts back",
   assert.equal(store.mobilityPlan(state, store.workoutById(state, "push")).id, "yoga");
   state = store.removeConditioning(state, "yoga");
   assert.ok(store.hiddenConditioningList(state).some((r) => r.id === "yoga" && r.kind === "mobility"));
-  // Push gets Humbell's usual stretch instead.
+  // Push gets Klay's usual stretch instead.
   assert.equal(store.mobilityPlan(state, store.workoutById(state, "push")).id, "everyday");
   state = store.restoreConditioning(state, "yoga");
   assert.ok(!store.hiddenConditioningList(state).some((r) => r.id === "yoga"));

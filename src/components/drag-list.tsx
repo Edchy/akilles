@@ -178,7 +178,9 @@ export function DragList<T>({
                 { translateY: offset(k) },
                 { scale: active ? lift.interpolate({ inputRange: [0, 1], outputRange: [1, 1.03] }) : 1 },
               ],
-              zIndex: active ? 1 : 0,
+              // Each row over the one after it, so anything a row reaches
+              // down past its edge — Plan's tabs — shows; the held row over all.
+              zIndex: active ? data.length + 1 : data.length - index,
               opacity: activeKey && !active ? 0.85 : 1,
             }}
           >

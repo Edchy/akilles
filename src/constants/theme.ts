@@ -24,6 +24,13 @@ import type { Family } from "@/data/families";
  */
 export const PAPER = true;
 
+/**
+ * The workout's cards in their family's colour, on the paper app: each card
+ * filled with it, its words white or navy (see `fieldColors`), framed in ink.
+ * Today, Plan and the rest stay paper. Since 16 November 2026.
+ */
+export const COLOURED_CARDS = true;
+
 const NAVY = {
   bg: "#FFFFFF",
   surface: "#F0F2F5",
@@ -112,25 +119,22 @@ export const colors = {
 /** The palette a screen draws with — the white one above, or a family's field. */
 export type Palette = typeof colors;
 
-/**
- * Each family's colour, twice. `field` fills the whole lift screen; `mark` is
- * the solid shape on white, a shade deeper where the field colour would be
- * too faint on white to see in a bright gym. Dark fields carry white, light
- * fields carry navy.
- */
-export const FAMILY: Record<Family, { field: string; mark: string; dark: boolean }> = {
-  push: { field: "#2277BB", mark: "#2277BB", dark: true },
-  pull: { field: "#23864D", mark: "#23864D", dark: true },
-  legs: { field: "#F08A24", mark: "#E07400", dark: false },
-  core: { field: "#D6287E", mark: "#D6287E", dark: true },
-  cardio: { field: "#3CC2CB", mark: "#1E9CA6", dark: false },
-  mobility: { field: "#F6C12A", mark: "#BC8B00", dark: false },
-  // The one hue the six leave free: something you are learning, not lifting.
-  goal: { field: "#6A4AB0", mark: "#6A4AB0", dark: true },
-  // A full body day: the three shapes together, in the one strong hue the
-  // others leave free — a red, clear of legs' orange and core's pink.
-  full: { field: "#D2402E", mark: "#D2402E", dark: true },
+/** Ice & acid: one hue per family, from the light card to its deep ink. */
+type FamilyColour = { field: string; mark: string; dark: boolean; pastel?: string };
+
+export const FAMILY: Record<Family, FamilyColour> = {
+  push: { field: "#D7EFFF", mark: "#285C82", dark: false },
+  pull: { field: "#AEB8A0", mark: "#30422D", dark: false },
+  legs: { field: "#D5C7ED", mark: "#564177", dark: false },
+  core: { field: "#EDCAD9", mark: "#783F5D", dark: false },
+  cardio: { field: "#A6D8D5", mark: "#17504D", dark: false },
+  mobility: { field: "#F4D681", mark: "#6C501B", dark: false },
+  goal: { field: "#DFCEE8", mark: "#62406D", dark: false },
+  full: { field: "#E9F056", mark: "#4E541C", dark: false },
 };
+
+/** Outlined geometry uses its family's ink, rather than a second colour. */
+export const MARK_EDGE = true;
 
 /** One opaque category tint for Plan rows and the exercise rows inside them.
  * Mixing with white here keeps the colour identical over every section background.
@@ -145,8 +149,8 @@ export function familyWash(family: Family): string {
   }).join("")}`;
 }
 
-/** Whether the lift screen's ground is dark: never, on paper. */
-export const fieldIsDark = (family: Family): boolean => !PAPER && FAMILY[family].dark;
+/** Whether a family card needs light text. */
+export const fieldIsDark = (family: Family): boolean => (!PAPER || COLOURED_CARDS) && FAMILY[family].dark;
 
 /** Quiet backgrounds for the three connected stages in the workout editor. */
 export const WORKOUT_STAGE = {
@@ -155,47 +159,45 @@ export const WORKOUT_STAGE = {
   cooldown: "#E5F4ED",
 };
 
-/**
- * The lift screen's palette: the family's colour as the ground, and every
- * word on it in one colour — white or navy — at full strength. Hierarchy
- * comes from size and italics rather than faded text, so nothing drops below
- * a readable contrast. Secondary controls are a tint of the field itself;
- * filled things (a logged set, the way on) are solid white or navy with the
- * field's colour on top.
- */
+/** A card uses one family hue for its background, ink, controls and set fills. */
 export function fieldColors(family: Family): Palette {
   // On paper the screen stays paper; the family's colour is the wash.
-  if (PAPER) return { ...colors, wash: FAMILY[family].field };
-  const { field, dark } = FAMILY[family];
-  const on = dark ? colors.white : colors.text;
+  if (PAPER && !COLOURED_CARDS) return { ...colors, wash: FAMILY[family].field };
+  const { field, mark } = FAMILY[family];
   return {
     bg: field,
-    surface: dark ? "rgba(8, 28, 60, 0.20)" : "rgba(255, 255, 255, 0.38)",
-    raised: dark ? "rgba(8, 28, 60, 0.30)" : "rgba(255, 255, 255, 0.55)",
-    line: dark ? "rgba(255, 255, 255, 0.28)" : "rgba(19, 50, 91, 0.22)",
-    panel: dark ? "rgba(8, 28, 60, 0.20)" : "rgba(255, 255, 255, 0.38)",
-    panelEdge: dark ? "rgba(255, 255, 255, 0.28)" : "rgba(19, 50, 91, 0.22)",
-    text: on,
-    muted: on,
-    faint: on,
-    // As far back as a field allows while staying 4.5:1: on the dark fields
-    // that is no distance at all, so there the line under the number says it.
-    dim: dark ? on : "rgba(19, 50, 91, 0.9)",
-    rise: on,
-    riseWash: dark ? "rgba(8, 28, 60, 0.20)" : "rgba(255, 255, 255, 0.38)",
-    bend: on,
-    // On a coloured field, plain red would fight the field: the words' own colour.
-    danger: on,
-    cloud: on,
+    surface: mix(field, mark, 0.08),
+    raised: mix(field, mark, 0.14),
+    line: mix(field, mark, 0.3),
+    panel: field,
+    panelEdge: mark,
+    text: mark,
+    muted: mark,
+    faint: mark,
+    dim: mark,
+    rise: mark,
+    riseWash: mix(field, mark, 0.08),
+    bend: mark,
+    danger: mark,
+    cloud: mark,
     ink: field,
     white: colors.white,
-    wash: on,
+    wash: mark,
   };
+}
+
+/** Mix two shades of the same family without adding a neutral overlay. */
+function mix(from: string, to: string, amount: number): string {
+  return `#${[1, 3, 5].map((at) => {
+    const a = parseInt(from.slice(at, at + 2), 16);
+    const b = parseInt(to.slice(at, at + 2), 16);
+    return Math.round(a + (b - a) * amount).toString(16).padStart(2, "0");
+  }).join("")}`;
 }
 
 /**
  * EB Garamond, throughout. A classic book face: sentence case, with italics
- * for Humbell's voice. Custom faces ignore `fontWeight` on iOS, so each weight
+ * for Klay's voice. Custom faces ignore `fontWeight` on iOS, so each weight
  * is its own family name; `Text` in `components/text.tsx` picks the right one
  * from an ordinary `fontWeight`, so most text never names a face at all.
  */
@@ -204,7 +206,7 @@ export const fonts = {
   display: "EBGaramond_500Medium",
   /** Numbers: the weight, the circles, scores. */
   displayBold: "EBGaramond_600SemiBold",
-  /** Humbell talking: a quip, in italics. */
+  /** Klay talking: a quip, in italics. */
   voice: "EBGaramond_400Regular_Italic",
   regular: "EBGaramond_400Regular",
   medium: "EBGaramond_500Medium",
@@ -217,7 +219,7 @@ export const fonts = {
    * The interface — tabs, buttons, chips, small labels, sets and reps — in
    * Atkinson Hyperlegible Next: a sans made for low vision, every letter
    * told apart. Garamond stays for what you read: names, headings, numbers,
-   * Humbell's voice. Reached with `<Text ui>`.
+   * Klay's voice. Reached with `<Text ui>`.
    */
   ui: "AtkinsonHyperlegibleNext_400Regular",
   uiItalic: "AtkinsonHyperlegibleNext_400Regular_Italic",

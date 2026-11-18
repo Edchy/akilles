@@ -30,7 +30,9 @@ const prog = load("@/lib/progression");
 const store = load("@/store/session");
 
 const SCHEME = "6-12";
-const fresh = () => store.resetToDefault();
+// Chains placed at the exercise itself, so these read as they always have:
+// what a chain does is tested on its own (workout-order.cjs).
+const fresh = () => ({ ...store.resetToDefault(), steps: { push_up: 3, pullup: 3 } });
 const workout = (state, id) => state.workouts.find((w) => w.id === id);
 const filled = (state, id, k, choices) => store.fillWorkout(state, workout(state, id), k, choices);
 const withRecord = (state, id, weight, extra = {}) => ({

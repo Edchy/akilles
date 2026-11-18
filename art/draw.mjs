@@ -30,6 +30,8 @@ const flag = (name) => {
 const ref = flag("--ref");
 const base = flag("--base");
 const tag = flag("--tag") ?? "";
+// Another brief in place of STYLE.md: STYLE-stick.md draws in the code-drawn pictograms' style.
+const style = flag("--style") ?? "STYLE.md";
 const [id, frameArg] = args;
 const frame = Number(frameArg ?? 0);
 
@@ -60,15 +62,16 @@ const feel = spec.feel
 const prompt =
   "Use your image generation tool to make the image described below. Do not write any code or" +
   " files; just generate the image once and reply 'done'.\n\n" +
-  readFileSync(join(here, "STYLE.md"), "utf8")
+  readFileSync(join(here, style), "utf8")
     .replace("{moment}", spec.moment)
     .replace("{view}", spec.view)
     .replace("{style_ref}", styleRef)
     .replace("{feel}", feel);
 
-const photo = join(here, "..", "assets", "photos", spec.photo);
+// A frame may have no photo: then the words alone give the pose.
+const photo = spec.photo ? join(here, "..", "assets", "photos", spec.photo) : undefined;
 const second = base ?? ref;
-const images = ["--image", photo, ...(second ? ["--image", second] : [])];
+const images = [...(photo ? ["--image", photo] : []), ...(second ? ["--image", second] : [])];
 const run = spawnSync(
   "codex",
   [

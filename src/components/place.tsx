@@ -17,7 +17,7 @@ import { kitAt, placeOf, setPlace, useSession, type Place } from "@/store/sessio
  * it. Most days it just says "At the gym". Away for a week, you set it once:
  * somewhere else, and what is there — and it stays until you change it.
  *
- * Nothing else moves. The plan and the loop are the same; Humbell fills each
+ * Nothing else moves. The plan and the loop are the same; Klay fills each
  * slot with what the place has.
  */
 
@@ -323,7 +323,7 @@ export function Option({
 
 
 /**
- * The gear, drawn the way Humbell's marks draw it in the films: flat ink shapes
+ * The gear, drawn the way Klay's marks draw it in the films: flat ink shapes
  * with rounded ends. A dumbbell's two heads, a kettlebell's bell and handle, a
  * bar between two brackets, a bench's pad on its legs — and for nothing, the
  * figure itself.

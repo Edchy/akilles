@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "Humbell",
+    "name": "Klay",
     "slug": "akilles",
     "version": "0.1.0",
     "orientation": "portrait",
@@ -26,7 +26,9 @@
       "expo-splash-screen",
       "expo-status-bar",
       "expo-sharing",
-      "expo-font"
+      "expo-font",
+      "expo-audio",
+      "expo-video"
     ],
     "experiments": {
       "typedRoutes": true

@@ -47,13 +47,14 @@ def masks(png: Path):
     v = np.asarray(image.convert("L"))
     ink = (v < INK_BELOW) | accent
     tint = (v >= INK_BELOW) & (v <= GROUND_ABOVE) & ~accent
+    # The floor: rows that are grey across most of the width — found before the
+    # clean-up below, which would open a hairline floor away.
+    rows = np.where(tint.mean(axis=1) > 0.6)[0]
     # Antialiasing between black and white passes through grey: a halo one or
     # two pixels wide. Opening the grey mask removes it and keeps real shapes.
     t = Image.fromarray((tint * 255).astype(np.uint8))
     t = t.filter(ImageFilter.MinFilter(3)).filter(ImageFilter.MaxFilter(3))
     tint = np.asarray(t) > 127
-    # The floor: rows that are grey across most of the width.
-    rows = np.where(tint.mean(axis=1) > 0.6)[0]
     if len(rows) == 0:
         raise ValueError(f"{png.name}: no floor line found")
     tint = tint.copy()
@@ -157,7 +158,7 @@ def main():
 
     lines = [
         "/**",
-        " * Humbell's own pictures of each movement, traced from the drawings in art/drawn",
+        " * Klay's own pictures of each movement, traced from the drawings in art/drawn",
         " * by art/trace.py. Don't edit by hand: redraw and retrace. Each frame is two",
         " * paths on a 768 x 512 view box: `tint` (the far limbs and the equipment, and",
         " * under everything) and `ink` (the near side of the body, drawn on top) —",

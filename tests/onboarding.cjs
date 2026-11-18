@@ -48,7 +48,7 @@ test("everyone starts on Push, Pull, Legs, whatever else is said", () => {
   assert.equal(plan({ time: "long", shape: "upper_lower" })[0].exercises.length, 5);
 });
 
-test("at a gym with an hour, the plan is the one Humbell has always started with", () => {
+test("at a gym with an hour, the plan is the one Klay has always started with", () => {
   const got = plan({ time: "long" });
   const want = templates.SHAPES.ppl;
   assert.equal(got.map((w) => ids(w).join()).join("|"), want.map((w) => ids(w).join()).join("|"));

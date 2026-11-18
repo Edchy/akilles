@@ -68,7 +68,7 @@ const lift = (slot: string, pattern: Entry["pattern"], option: string): Entry =>
   scheme: DEFAULT_SCHEME,
 });
 
-/** The lifts a new workout of each kind starts with: Humbell's own, balanced. */
+/** The lifts a new workout of each kind starts with: Klay's own, balanced. */
 export const KIND_LIFTS: Record<WorkoutKind, () => Entry[]> = {
   push: () => fromDefault("push"),
   pull: () => fromDefault("pull"),
@@ -93,7 +93,7 @@ export const KIND_LIFTS: Record<WorkoutKind, () => Entry[]> = {
 
 /**
  * A workout's kind. Workouts made before kinds existed read as one from
- * their id — Humbell's own Push, Pull and Legs, and the full-body pair — and
+ * their id — Klay's own Push, Pull and Legs, and the full-body pair — and
  * anything else as Empty, which guides nothing and so changes nothing.
  */
 export const kindOf = (workout: Pick<Workout, "id" | "kind">): WorkoutKind => {

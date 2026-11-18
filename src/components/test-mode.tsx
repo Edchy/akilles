@@ -15,14 +15,14 @@ import { useTestMode, type TestStart } from "@/store/test-mode";
  * family, so it reads as the app talking rather than part of a workout.
  */
 export function TestStrip() {
-  const { on, leave } = useTestMode();
+  const { on, leave, fixed } = useTestMode();
   const insets = useSafeAreaInsets();
   if (!on) return null;
   return (
     <View style={{ paddingTop: insets.top, backgroundColor: colors.bg }}>
       <View
         accessible
-        accessibilityLabel="Test mode. Your real training is safe."
+        accessibilityLabel={fixed ? "Test mode, from your Mac. Your real training is never changed." : "Test mode. Your real training is safe."}
         style={{
           minHeight: 40,
           paddingLeft: 18,
@@ -34,9 +34,9 @@ export function TestStrip() {
       >
         <Text style={{ flex: 1, color: colors.ink, fontSize: 15 }} numberOfLines={1}>
           <Text style={{ color: colors.ink, fontSize: 15, fontWeight: "700" }}>Test mode</Text>
-          {" · your real training is safe"}
+          {fixed ? " · from your Mac" : " · your real training is safe"}
         </Text>
-        <Pressable
+        {fixed ? null : <Pressable
           accessibilityRole="button"
           accessibilityLabel="Leave test mode"
           onPress={leave}
@@ -48,7 +48,7 @@ export function TestStrip() {
           })}
         >
           <Text style={{ color: colors.ink, fontSize: 15, fontWeight: "700" }}>Leave</Text>
-        </Pressable>
+        </Pressable>}
       </View>
     </View>
   );
@@ -62,7 +62,7 @@ export function TestStrip() {
  * gone, so the intro — a new phone's first sight — has room to open.
  */
 export function TestMode({ onDone }: { onDone: () => void }) {
-  const { on, start, leave } = useTestMode();
+  const { on, start, leave, fixed } = useTestMode();
   const { state, setState } = useSession();
   const [canResume, setCanResume] = useState(false);
   const [startingOver, setStartingOver] = useState(false);
@@ -120,7 +120,9 @@ export function TestMode({ onDone }: { onDone: () => void }) {
   return (
     <View style={{ gap: 28, paddingTop: 8 }}>
       <Text style={{ color: colors.muted, fontSize: 16, lineHeight: 23 }}>
-        You are in test mode. Your real training is saved and waiting, exactly as you left it.
+        {fixed
+          ? "Running from your Mac, Klay is always in test mode, so nothing you try here can reach your real training. That only changes in the app you train with."
+          : "You are in test mode. Your real training is saved and waiting, exactly as you left it."}
       </Text>
 
       <View
@@ -165,7 +167,7 @@ export function TestMode({ onDone }: { onDone: () => void }) {
         </View>
       ) : (
         <View style={{ gap: 12 }}>
-          <BigButton label="Leave test mode" onPress={() => after(leave)} />
+          {fixed ? null : <BigButton label="Leave test mode" onPress={() => after(leave)} />}
           <BigButton label="Start over" quiet onPress={() => setStartingOver(true)} />
         </View>
       )}

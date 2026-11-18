@@ -7,7 +7,7 @@ import { useReduceMotion } from "@/lib/use-reduce-motion";
 import type { FilmColors } from "@/motion/marks";
 
 /**
- * The pace of a rep, in seconds, as Humbell teaches it: stand ready, lower
+ * The pace of a rep, in seconds, as Klay teaches it: stand ready, lower
  * slowly, pause at the hardest point, come up. The picture keeps this time,
  * so watching it is learning the pace — owning the weight on the way down.
  */
@@ -19,7 +19,7 @@ export type DrawingColors = FilmColors & {
 };
 
 /**
- * Humbell's own picture of a movement (see `data/art.ts`): the figure drawn from the
+ * Klay's own picture of a movement (see `data/art.ts`): the figure drawn from the
  * start of the rep to its hardest point, one frame cutting to the next at
  * the pace of a rep (see `TEMPO`), with the part of the body that works in
  * the accent. A cut, never a blend: two poses blended are two ghosts, and

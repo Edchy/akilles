@@ -1,7 +1,7 @@
 import * as Haptics from "expo-haptics";
 
 /**
- * Humbell's haptics, by meaning — so the phone says the same thing with the
+ * Klay's haptics, by meaning — so the phone says the same thing with the
  * same tap wherever it happens. Never for every touch: only where something
  * changed that you'd otherwise have to look to know.
  *

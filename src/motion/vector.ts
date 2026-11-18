@@ -1,5 +1,5 @@
 /**
- * A point or a direction in space, in metres: the few sums Humbell's figure
+ * A point or a direction in space, in metres: the few sums Klay's figure
  * needs. Each method changes the vector it is called on and returns it, so
  * sums chain — `a.clone().sub(b).normalize()` — and `clone` keeps the
  * original.

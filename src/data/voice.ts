@@ -1,7 +1,7 @@
 import { inSentence } from "@/data/exercises";
 
 /**
- * Humbell talks back.
+ * Klay talks back.
  *
  * The voice is cheeky and blunt about the lifting — never about the person.
  * It teases momentum, swinging, bouncing and ego; it never teases a small
@@ -112,7 +112,7 @@ export const fillLine = (line: string, vars: { days?: number; name?: string }): 
   line.replace("{days}", String(vars.days ?? "")).replace("{name}", vars.name ?? "");
 
 /**
- * What changed since you last did a workout's lifts, in Humbell's words. One
+ * What changed since you last did a workout's lifts, in Klay's words. One
  * kind of news gets a voiced line; two or three are said plainly, one after
  * the other. `{name}` is the lift at the start of a sentence, `{lname}` the
  * same mid-sentence, `{count}` a number word.
@@ -215,7 +215,7 @@ export const FINISHED_LINES = {
     "The ego wanted more. You didn't give it any. Good.",
     "The weight won a few. Your form won the day.",
     "Lighter next time, and every rep yours. That's the plan working.",
-    "Humble day. That's the name on the app.",
+    "Shaped a little more today. That's how it works.",
     "Hard and honest. Nothing better to bring home.",
   ],
   /** Left with lifts skipped or unfinished. */
@@ -232,7 +232,7 @@ export const FINISHED_LINES = {
 
 export type FinishedMood = keyof typeof FINISHED_LINES;
 
-/** Skip pressed on a warm-up: Humbell refuses, once. */
+/** Skip pressed on a warm-up: Klay refuses, once. */
 export const WARMUP_SKIP_LINES = [
   "Even the strongest started with a warm-up. Your turn.",
   "Cold muscles, hot take.",

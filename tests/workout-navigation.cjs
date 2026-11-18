@@ -5,13 +5,24 @@ const vm = require("node:vm");
 const { test } = require("node:test");
 const ts = require("typescript");
 let state, slots = [], at = 0;
-const react = { ...require("react"), useEffect() {}, useState(initial) { const i = at++; if (!(i in slots)) slots[i] = typeof initial === "function" ? initial() : initial; return [slots[i], (v) => { slots[i] = typeof v === "function" ? v(slots[i]) : v; }]; }, useRef(initial) { const i = at++; return slots[i] ??= { current: initial }; } };
+const react = { ...require("react"), useEffect() {}, useLayoutEffect() {}, useState(initial) { const i = at++; if (!(i in slots)) slots[i] = typeof initial === "function" ? initial() : initial; return [slots[i], (v) => { slots[i] = typeof v === "function" ? v(slots[i]) : v; }]; }, useRef(initial) { const i = at++; return slots[i] ??= { current: initial }; } };
 const cache = new Map();
 let store;
 function load(name) {
   if (name === "react") return react;
   if (name === "react-native") return { View: "View", Pressable: "Pressable", ScrollView: "ScrollView", Animated: {}, StyleSheet: { create: (v) => v } };
-  if (name === "react-native-reanimated") return { __esModule: true, default: { View: "AnimatedView", ScrollView: "ScrollView" }, useAnimatedStyle: (fn) => fn() };
+  if (name === "react-native-reanimated") return {
+    __esModule: true, default: { View: "AnimatedView", ScrollView: "ScrollView" }, useAnimatedStyle: (fn) => fn(),
+    useSharedValue: (value) => ({ value }),
+    // Animations land at once: a card thrown is gone.
+    withTiming: (to, _config, done) => { done?.(true); return to; },
+    withSpring: (to) => to,
+  };
+  if (name === "react-native-worklets") return { scheduleOnRN: (fn, ...args) => fn(...args) };
+  if (name === "react-native-gesture-handler") {
+    const chain = new Proxy({}, { get: () => () => chain });
+    return { Gesture: { Pan: () => chain }, GestureDetector: "GestureDetector" };
+  }
   if (name === "expo-haptics") return { impactAsync() {}, ImpactFeedbackStyle: {}, notificationAsync() {}, NotificationFeedbackType: {} };
   if (name === "@react-native-async-storage/async-storage") return {};
   if (name.startsWith("expo-") || name.startsWith("react-native-")) return {};
@@ -20,6 +31,7 @@ function load(name) {
   if (name === "@/components/card-context") return { useCardActive: () => true };
   if (name.startsWith("@/components/")) return new Proxy({}, { get: (_, key) => String(key) });
   if (name === "@/data/photos") return { PHOTOS: {} };
+  if (name === "@/lib/chime") return { chime() {}, cue() {} };
   if (!name.startsWith("@/")) return require(name);
   const base = path.resolve(__dirname, "../src", name.slice(2));
   const file = fs.existsSync(base + ".ts") ? base + ".ts" : base + ".tsx";
@@ -27,7 +39,7 @@ function load(name) {
   const module = { exports: {} }; cache.set(file, module);
   let source = fs.readFileSync(file, "utf8");
   if (name === "@/app/workout") source += "\nexport { MobilityDeck, WorkoutCard, DeckTrack };";
-  vm.runInNewContext(ts.transpileModule(source, { compilerOptions: { jsx: ts.JsxEmit.ReactJSX, module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 } }).outputText, { module, exports: module.exports, require: load, console, process, Date });
+  vm.runInNewContext(ts.transpileModule(source, { compilerOptions: { jsx: ts.JsxEmit.ReactJSX, module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 } }).outputText, { module, exports: module.exports, require: load, console, process, Date, setTimeout: () => 0, clearTimeout() {} });
   return module.exports;
 }
 store = load("@/store/session");
@@ -40,38 +52,35 @@ function findAll(node, predicate) {
 }
 const label = (tree, text) => findAll(tree, (n) => n.props?.label === text)[0];
 
-test("the stretch card: Up next skips one, and the skipped one comes back round at the end", () => {
+test("the stretch card: one card a move, thrown away to move on, and a tap sets it running", () => {
   slots = [];
   state = store.buildWorkout(store.setNextWorkout(store.resetToDefault(), "legs"));
   state = store.goToCard(state, state.active.items.findIndex((it) => it.slot === "Warm-up"));
   const routine = store.currentRoutine(state);
-  const cards = routine.moves.flatMap((m) => m.perSide ? [m, m] : [m]);
-  const count = cards.length;
-  const draw = () => render(MobilityDeck, { routine, barSpace: 0, completed: state.active.items[state.active.cursor].moves, steps: state.active.items[state.active.cursor].routineSteps, onStep: (i, status) => { state = store.resolveRoutineStep(state, i, status); }, onFinish() {} });
-  const upNext = (tree) => findAll(tree, (n) => typeof n.props?.accessibilityLabel === "string" && n.props.accessibilityLabel.startsWith("Up next: "))[0];
-  const card = (tree) => findAll(tree, (n) => n.type === "Pressable" && typeof n.props?.accessibilityHint === "string" && n.props.accessibilityHint.startsWith("Tap"))[0];
+  const moves = routine.moves;
+  const item = () => state.active.items[state.active.cursor];
+  let finished = false;
+  const draw = () => render(MobilityDeck, { routine, barSpace: 0, completed: item().moves, steps: item().routineSteps, onStep: (i, status) => { state = store.resolveRoutineStep(state, i, status); }, onFinish() { finished = true; } });
+  const card = (tree) => findAll(tree, (n) => n.type === "Pressable" && n.props?.accessibilityActions)[0];
+  const throwAway = (tree) => card(tree).props.onAccessibilityAction({ nativeEvent: { actionName: "next" } });
+
   let tree = draw();
-  assert.equal(card(tree).props.accessibilityHint, cards[0].reps ? "Tap when you've done them" : "Tap anywhere to start");
-  // Skip the first: it is left undone, and the card moves on.
-  upNext(tree).props.onPress();
+  // One card a move — a move with two sides is one card, on one clock.
+  assert.ok(findAll(tree, (n) => n.props?.accessibilityLabel === `Move 1 of ${moves.length}`).length, "counted by moves, not sides");
+  assert.ok(card(tree).props.accessibilityLabel.startsWith(moves[0].name));
+  // Thrown away before it was held: nothing is recorded for it, and the next is on top.
+  throwAway(tree);
   tree = draw();
-  assert.equal(state.active.items[state.active.cursor].routineSteps[0], "skipped");
-  assert.ok(card(tree).props.accessibilityLabel.startsWith(cards[1].name), "on to the second");
-  // Skip on to the last: its Up next is the skipped first one, come back round.
-  for (let i = 1; i < count - 1; i++) { upNext(draw()).props.onPress(); }
+  assert.equal(item().routineSteps?.[0] ?? null, null);
+  assert.ok(card(tree).props.accessibilityLabel.startsWith(moves[1].name), "on to the second");
+
+  // A tap starts it, and from then on it runs itself.
+  card(tree).props.onPress();
   tree = draw();
-  assert.equal(upNext(tree).props.accessibilityLabel.startsWith(`Up next: ${cards[0].name}`), true, "the skipped one comes back round");
-  // A rep movement is done with a tap on the card.
-  const repStep = cards.findIndex((m) => m.reps);
-  if (repStep >= 0) {
-    slots = []; state = store.buildWorkout(store.setNextWorkout(store.resetToDefault(), "legs"));
-    state = store.goToCard(state, state.active.items.findIndex((it) => it.slot === "Warm-up"));
-    for (let i = 0; i < repStep; i++) upNext(draw()).props.onPress();
-    tree = draw();
-    card(tree).props.onPress();
-    assert.equal(state.active.items[state.active.cursor].routineSteps[repStep], "done");
-    assert.equal(state.active.items[state.active.cursor].routineSteps[0], "skipped", "doing another movement does not do the skipped one");
-  }
+  assert.ok(card(tree).props.accessibilityHint.startsWith("Tap to pause"), "running");
+  // The last one thrown away finishes the routine.
+  for (let i = 0; i < moves.length && !finished; i++) throwAway(draw());
+  assert.ok(finished);
 });
 
 test("twenty-card overview keeps every row scrollable and its current progress mark visible", () => {

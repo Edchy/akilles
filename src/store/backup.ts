@@ -14,10 +14,10 @@ import * as Sharing from "expo-sharing";
 import type { SessionState } from "@/store/session";
 import { fromSaved, toSaved, type Unreadable } from "@/store/storage";
 
-/** "humbell-2026-09-23.json" — the date sorts, and says which backup is which. */
+/** "klay-2026-09-23.json" — the date sorts, and says which backup is which. */
 const fileName = (now: Date) => {
   const pad = (n: number) => String(n).padStart(2, "0");
-  return `humbell-${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}.json`;
+  return `klay-${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}.json`;
 };
 
 /**
@@ -31,7 +31,7 @@ export const exportBackup = async (state: SessionState): Promise<void> => {
   await Sharing.shareAsync(file.uri, {
     mimeType: "application/json",
     UTI: "public.json",
-    dialogTitle: "Save your Humbell backup",
+    dialogTitle: "Save your Klay backup",
   });
 };
 

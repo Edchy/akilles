@@ -1,7 +1,8 @@
-import { View, type ViewStyle } from "react-native";
-import Svg, { Polygon, Rect } from "react-native-svg";
+import type { ReactNode } from "react";
+import { View } from "react-native";
+import Svg, { Circle, G, Path, Polygon, Rect } from "react-native-svg";
 
-import { FAMILY } from "@/constants/theme";
+import { FAMILY, MARK_EDGE } from "@/constants/theme";
 import type { Family } from "@/data/families";
 
 /**
@@ -12,8 +13,8 @@ import type { Family } from "@/data/families";
  *
  * Six solid primitives on one 48-unit grid, each sized to carry the same
  * visual weight — a circle is drawn a little larger than a square to look the
- * same size. Plain views (a border, a radius, a turn), so they need nothing
- * beyond React Native and are crisp at any size.
+ * same size. Drawn as SVG, so a pastel shape can carry its fine ink edge
+ * (`MARK_EDGE`) and stays crisp at any size.
  */
 export function Mark({
   family,
@@ -22,83 +23,51 @@ export function Mark({
 }: {
   family: Family;
   size: number;
-  /** Defaults to the family's colour on white. */
+  /** Used by unoutlined palettes; outlined symbols keep their family fill. */
   color?: string;
 }) {
-  const c = color ?? FAMILY[family].mark;
-  const u = size / 48;
+  const { mark } = FAMILY[family];
+  // Strong family fills stay distinct against the softer coloured cards.
+  const c = MARK_EDGE ? mark : (color ?? mark);
+  // The edge stays about one point at any size; the shape draws in by half of
+  // it, so the edge is never cut off at the frame.
+  const edge = MARK_EDGE ? Math.max(1, size / 24) * (48 / size) : 0;
+  const k = (48 - edge) / 48;
+  const paint = { fill: c, stroke: MARK_EDGE ? mark : undefined, strokeWidth: edge || undefined, strokeLinejoin: "round" as const };
 
-  // Full body: push, pull and legs together, small — a bit of everything.
-  if (family === "full") {
-    return (
-      <View
-        accessibilityElementsHidden
-        importantForAccessibility="no-hide-descendants"
-        style={{ width: size, height: size }}
-      >
-        <Svg width={size} height={size} viewBox="0 0 48 48">
-          <Polygon points="2,22 12,4 22,22" fill={c} />
-          <Polygon points="26,4 46,4 36,22" fill={c} />
-          <Rect x={15} y={27} width={18} height={18} fill={c} />
-        </Svg>
-      </View>
-    );
-  }
-
-  // Five points don't fall out of a border and a turn, so the star is drawn.
-  if (family === "goal") {
-    return (
-      <View
-        accessibilityElementsHidden
-        importantForAccessibility="no-hide-descendants"
-        style={{ width: size, height: size }}
-      >
-        <Svg width={size} height={size} viewBox="0 0 48 48">
-          <Polygon points={STAR} fill={c} />
-        </Svg>
-      </View>
-    );
-  }
-
-  let shape: ViewStyle;
+  let shape: ReactNode;
   switch (family) {
+    case "full":
+      // Push, pull and legs together, small — a bit of everything.
+      shape = (
+        <>
+          <Polygon points="2,22 12,4 22,22" {...paint} />
+          <Polygon points="26,4 46,4 36,22" {...paint} />
+          <Rect x={15} y={27} width={18} height={18} {...paint} />
+        </>
+      );
+      break;
+    case "goal":
+      shape = <Polygon points={STAR} {...paint} />;
+      break;
     case "push":
+      shape = <Polygon points="3,38 45,38 24,1" {...paint} />;
+      break;
     case "pull":
-      shape = {
-        left: 3 * u,
-        top: (family === "push" ? 1 : 10) * u,
-        width: 0,
-        height: 0,
-        borderLeftWidth: 21 * u,
-        borderRightWidth: 21 * u,
-        borderLeftColor: "transparent",
-        borderRightColor: "transparent",
-        ...(family === "push"
-          ? { borderBottomWidth: 37 * u, borderBottomColor: c }
-          : { borderTopWidth: 37 * u, borderTopColor: c }),
-      };
+      shape = <Polygon points="3,10 45,10 24,47" {...paint} />;
       break;
     case "legs":
-      shape = { left: 6.5 * u, top: 6.5 * u, width: 35 * u, height: 35 * u, backgroundColor: c };
+      shape = <Rect x={6.5} y={6.5} width={35} height={35} {...paint} />;
       break;
     case "core":
-      shape = { left: 5 * u, top: 5 * u, width: 38 * u, height: 38 * u, borderRadius: 19 * u, backgroundColor: c };
+      shape = <Circle cx={24} cy={24} r={19} {...paint} />;
       break;
-    case "cardio": {
+    case "cardio":
       // A square on its point: 44 units corner to corner.
-      const side = 44 / Math.SQRT2;
-      shape = {
-        left: ((48 - side) / 2) * u,
-        top: ((48 - side) / 2) * u,
-        width: side * u,
-        height: side * u,
-        backgroundColor: c,
-        transform: [{ rotate: "45deg" }],
-      };
+      shape = <Polygon points="24,2 46,24 24,46 2,24" {...paint} />;
       break;
-    }
     case "mobility":
-      shape = { left: 9 * u, top: 3 * u, width: 36 * u, height: 36 * u, borderTopRightRadius: 36 * u, backgroundColor: c };
+      shape = <Path d="M9 39 L9 3 A36 36 0 0 1 45 39 Z" {...paint} />;
       break;
   }
 
@@ -108,7 +77,9 @@ export function Mark({
       importantForAccessibility="no-hide-descendants"
       style={{ width: size, height: size }}
     >
-      <View style={[{ position: "absolute" }, shape]} />
+      <Svg width={size} height={size} viewBox="0 0 48 48">
+        <G transform={`translate(${edge / 2} ${edge / 2}) scale(${k})`}>{shape}</G>
+      </Svg>
     </View>
   );
 }

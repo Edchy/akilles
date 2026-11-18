@@ -8,7 +8,7 @@ ios
 
 ## Users
 
-Right now: one person, the author, training in a commercial gym with an iPhone in hand between sets. The app is also meant to grow into a product for the people described in `PRODUCT_STRATEGY.md`: people who want to train but struggle to start and keep coming back. Design for the first user without closing the door on the second group. The only onboarding is the intro: six pages on first launch (why, then how), reopened from Plan's ?. There is no marketing surface yet.
+Right now: one person, the author, training in a commercial gym with an iPhone in hand between sets. The app is also meant to grow into a product for the people described in `PRODUCT_STRATEGY.md`: people who want to train but struggle to start and keep coming back. Design for the first user without closing the door on the second group. Teaching is in two parts: one film of about a minute (why: move every day, like eating and sleeping; then how a workout goes: Start, the circles, a short set, next time, swiping between cards, a stretch, Finish), shown after the two onboarding questions and again from Settings; and first-time tips on the screens for everything else (swap, warm-ups, a short set, the list of every card, Plan's workouts, the Library; never one a screen already says in its own words), each shown once. There is no marketing surface yet.
 
 Situation of use: mid-session, heart rate up, sweaty hands, a glance at arm's length, often while walking between machines.
 
@@ -24,7 +24,7 @@ Today always shows the next workout with Start and Skip, even after training ear
 
 ## Philosophy: Own the Weight
 
-**Train movements for life.** Humbell is a movement app: stand up, squat down,
+**Train movements for life.** Klay is a movement app: stand up, squat down,
 lift something from the floor, push, pull, step and carry. Recommended workouts
 start with a few useful movements that involve several joints and muscles.
 Single-leg work and trunk stability belong alongside squats, hinges and presses.
@@ -54,28 +54,28 @@ We do not invent a "most common" mistake or imply a frequency ranking without
 evidence. Source checking is separate from qualified professional review, and
 neither guarantees that an exercise is appropriate or injury-free for everyone.
 
-Leave the ego at the door. Humbell is the opposite of the typical gym-bro app, and it wants gym bros anyway.
+Leave the ego at the door. Klay is the opposite of the typical gym-bro app, and it wants gym bros anyway.
 
-> Most gym apps count how much you lift. Humbell counts how much you own. A rep counts when you lower it slowly, hold it where it's hardest, and lift it without a swing. When a lift climbs, it reloads: back down the ladder and up again, slower. Lighter today is how you get heavier for good.
+> Most gym apps count how much you lift. Klay counts how much you own. A rep counts when you lower it slowly, hold it where it's hardest, and lift it without a swing. When a lift climbs, it reloads: back down the ladder and up again, slower. Lighter today is how you get heavier for good.
 
 - **A rep counts when it is owned:** lowered under control, held where it is hardest, no swing and no bounce. Progression runs entirely on the reps you log, so honest counting is the form check. Progress slows to the speed of your form without another rule.
 - **Go light.** Weights start with two reps to spare. Light and controlled is praised over heavy and sloppy.
 - **Harder without heavier.** Where nothing can be added — a hanging leg raise, a push-up — the step up is a longer hold at the hardest point, a second at a time up to five. Owning the position is the progress.
 - **Reload as you climb.** After two steps up, a lift climbs the same weight again before the next. Progress calls it, never the calendar. Today explains changes beside each exercise: heavier or lighter weight, changed reps, or a repeat climb to practise control. Time away does not change weights in the normal Today flow.
 - **Reps before weight.** One completed attempt short of target repeats unchanged. Two lower the reps one step at the same weight; only at the bottom of the range does the weight decrease. Skipped or unfinished work never counts as a miss. Reductions use the weights available; if none is lighter, a suitable alternative fills the slot or it sits out.
-- **Make control the flex.** Reloads, honest short counts and slow reps are what Humbell praises. Momentum and ego are what it teases. The only pitch that reaches gym bros is control as the harder, more impressive thing, so say it in their language: "lighter is the flex", "owned, not borrowed".
+- **Make control the flex.** Reloads, honest short counts and slow reps are what Klay praises. Momentum and ego are what it teases. The only pitch that reaches gym bros is control as the harder, more impressive thing, so say it in their language: "lighter is the flex", "owned, not borrowed".
 
 ## The Core (November 2026)
 
-Humbell is being cut back to its core and rebuilt from it. What was put away is listed in `ARCHIVE.md`.
+Klay is being cut back to its core and rebuilt from it. What was put away is listed in `ARCHIVE.md`.
 
-- **Move every day.** The aim is that everyone trains every day, not three times a week: the hard thing done daily until it is not so hard. A day can be small — twenty minutes of cardio and a stretch — but there is always something for today, and Humbell has it worked out. Start small, build up, drop back a little, build up again.
+- **Move every day.** The aim is that everyone trains every day, not three times a week: the hard thing done daily until it is not so hard. A day can be small — twenty minutes of cardio and a stretch — but there is always something for today, and Klay has it worked out. Start small, build up, drop back a little, build up again.
 - **Two people.** Someone who has trained for years and never stayed consistent, and someone anxious about the gym who doesn't know where to go or what to do. Both get the same app: everything decided, easy to change, never a reason to feel ashamed.
 - **Make a light weight feel heavy.** That is the skill. Every lift's instructions say how to breathe, how fast to move, and where to pause.
 - **Never wait.** A lift you skip comes back after the others, so a taken bench costs nothing. Swapping the exercise for today is the other way round it.
 - **The one that gets done.** The stretch, the cardio, the whole day: what is easy enough to do beats what is best on paper.
 - **Start small, grow by showing up.** A new plan is Push, Pull, Legs with three lifts each, easy cardio to open and a stretch to close: about half an hour. Three weeks of coming most days (twelve workouts) earns an offer at the top of Today: one more exercise, more cardio, or a longer stretch. Each choice says exactly what it adds where, and nothing changes without a yes. Growth stops at the full plan (five lifts, cardio at both ends); past that, the weights do the growing. It works on slots, so a slot you swapped is never added twice and one you removed never comes back. See `src/data/growth.ts`.
-- **Loops, for when life changes.** A loop is a set of workouts that take turns. Everyone has one, unnamed and invisible. A second loop (Bodyweight for a holiday, say) is made from Plan, or offered when a new workout needs different equipment from its loop. One loop is in use at a time, each remembers what's next, and switching is one tap. Weights belong to exercises, so they are the same in every loop.
+- **Active and paused, for when life changes.** Plan has two lists: the active workouts, which take turns, and the paused ones, which wait exactly as they were. Away from the gym, pause what you can't do there and add a workout you can; back home, resume them. Weights belong to exercises, so nothing is lost either way. (Loops, a second set of workouts to switch to, were built and scrapped on 16 November 2026: too hard to understand, even for the person who designed them.)
 - **Still to design:** the ladder of day sizes, one tap to train with the equipment at hand (barbell, dumbbells, kettlebell, machines, nothing), a core of the best exercises in place of the long catalogue, a short intro, a voice that talks you through the stretch, and goals in a simpler form.
 
 ## Operating Context
@@ -96,8 +96,8 @@ Humbell is being cut back to its core and rebuilt from it. What was put away is 
 
 ## Brand Commitments
 
-- The name is **Humbell**: *humble* and dumb*bell*. Every other gym app is called heavy, strong or big; this one is about leaving the ego at the door, going light, and showing up. On the App Store it is **"Humbell: Strength Training"**. Never say "lift less" to users: it sounds like training fewer days, and Humbell wants you there every day. Only the weight is ever less. It was called Akilles before. The repository folder ("achilles"), the Expo slug and scheme ("akilles") and the storage key (`achilles/state`) keep the old name, so saved training and published updates carry over.
-- Two voices. **Instructions and facts** are plain and direct: what to do, what happens next time, in full sentences. **Humbell itself** talks back: cheeky, blunt, a bit harsh — about the lifting, never about the person. It teases momentum, swinging and ego, never a small number. It respects an honest short count, doesn't call anyone weak, and doesn't guilt anyone for skipping. A quip is always paired with the plain fact, so nothing important lives only in the joke. Lines live in `src/data/voice.ts`.
+- The app name is **Klay**, with the line **"Shape your life"** (App Store: **"Klay: Shape your life"**). The figure in the stretch pictures is a little clay fellow, and that is the idea: you are shaped slowly, by hand, a little every day — go light, own the weight, show up. Every other gym app is called heavy, strong or big; this one is soft clay that gets shaped. Never say "lift less" to users: it sounds like training fewer days, and Klay wants you there every day. Only the weight is ever less. It was called Akilles, then Humbell, then Humble Training before (renamed to Klay 2026-11-18). The repository folder ("achilles"), the Expo slug and scheme ("akilles") and the storage key (`achilles/state`) keep the old name, so saved training and published updates carry over.
+- Two voices. **Instructions and facts** are plain and direct: what to do, what happens next time, in full sentences. **Klay itself** talks back: cheeky, blunt, a bit harsh — about the lifting, never about the person. It teases momentum, swinging and ego, never a small number. It respects an honest short count, doesn't call anyone weak, and doesn't guilt anyone for skipping. A quip is always paired with the plain fact, so nothing important lives only in the joke. Lines live in `src/data/voice.ts`.
 - The product promise: "Open the app. Do the next useful thing. Leave before you hate it."
 
 ## Evidence on Hand
@@ -112,7 +112,7 @@ No users other than the author, and no testimonials, metrics or press. None shou
 4. No guilt: a short session is a complete session, and skipping is always one tap and never punished.
 5. Own the weight. Control beats load: the app slows progress on purpose, says why, and never rewards a heavier number for its own sake.
 6. Clear to anyone. An 80-year-old opening the app for the first time should understand exactly what is going on. Plain words in full sentences, a heading that says what it means rather than a slogan, and no gym word (rep, set, reload) left unexplained where someone new meets it.
-7. Simple is the product. Humbell is the answer to gym apps that are far too cluttered, and that is its reason to exist. Every new feature has to stay minimal, clean and intuitive and add no cognitive load: one smart default beats a setting, one quiet line beats a new screen, and an option that doesn't change what Humbell builds gets cut. Grow by filling real gaps, never by adding more for its own sake.
+7. Simple is the product. Klay is the answer to gym apps that are far too cluttered, and that is its reason to exist. Every new feature has to stay minimal, clean and intuitive and add no cognitive load: one smart default beats a setting, one quiet line beats a new screen, and an option that doesn't change what Klay builds gets cut. Grow by filling real gaps, never by adding more for its own sake.
 
 ## Accessibility & Inclusion
 
@@ -124,3 +124,5 @@ Session swaps apply to today only. Cardio mode and target are set in Plan’s wo
 - Strength uses one working weight per exercise across workouts and rep ranges. Rep ladders remain range-specific; a stale range restarts at its bottom when the shared weight changes. A manual session weight carries forward only after actual sets are logged and the session finishes; untrained edits never change history.
 - Warm-up and mobility routines allow Previous, Next, a movement picker and Skip movement. Each side saves Done or Skipped independently; skipping never pretends a pose was performed.
 - Blank workouts start empty. No arbitrary exercise limit: a compact progress track shows up to ten marks around the current card; the expanded overview scrolls with 52-point rows and keeps Leave for now outside the scrolling list. Active workout rows use stronger family colours; paused rows use a neutral background.
+
+- Cardio in the Library shows every built-in and custom cardio exercise in one list. Built-ins cannot be hidden from the Library; only custom cardio can be deleted. Workout cardio pickers show the same full pool, and explicitly choosing a previously hidden exercise makes it available again without changing saved records.

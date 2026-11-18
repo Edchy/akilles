@@ -346,7 +346,7 @@ const STARTING_WEIGHT: Partial<Record<Pattern, number>> = {
 
 export const freshState = (ex: Exercise, guess?: number): ExerciseState => ({
   exerciseId: ex.id,
-  // A weight you set wins; then Humbell's guess for you (see `firstWeight` in
+  // A weight you set wins; then Klay's guess for you (see `firstWeight` in
   // lib/start-weight); then, for a lift with no guess, one by movement type.
   // A per-hand exercise stores the weight of one dumbbell, so that last
   // guess is halved — 40kg of bench is a pair of 20s. A holds lift starts
@@ -398,6 +398,12 @@ export const schemeOf = (exercise: Exercise | undefined, scheme: Scheme): Scheme
 
 /** The ladder an exercise actually climbs: the scheme's, in seconds for a timed hold. */
 export const ladderOf = (exercise: Exercise | undefined, scheme: Scheme): number[] => {
+  if (exercise?.timed && exercise.seconds) {
+    const { from, to, step } = exercise.seconds;
+    const rungs: number[] = [];
+    for (let s = from; s <= to; s += step) rungs.push(s);
+    return rungs;
+  }
   const ladder = ladderFor(schemeOf(exercise, scheme));
   return exercise?.timed ? ladder.map((reps) => reps * TIMED_SECONDS) : ladder;
 };

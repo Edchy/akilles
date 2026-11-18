@@ -195,6 +195,31 @@ export type Workout = {
    * see `DEFAULT_MOBILITY`; null means none.
    */
   mobility?: string | null;
+  /**
+   * More cardio and routines, as many as you like, in any of the three
+   * blocks — a second stretch, a run between two lifts. The ones above are
+   * each block's first; these are the rest.
+   */
+  extras?: Extra[];
+  /**
+   * The order of each block, by id — exercises, extras, and the cardio and
+   * routines above by their slot. Absent, or missing an id, the usual order:
+   * see `partIds`.
+   */
+  order?: Partial<Record<Block, string[]>>;
+};
+
+/** The three blocks of a workout, in the order you do them. */
+export type Block = EntryPart | "main";
+
+/** A cardio block or a routine added to a workout: one or the other. */
+export type Extra = {
+  id: string;
+  /** Which block it is in; absent, the main one. */
+  part?: EntryPart;
+  cardio?: CardioBlock;
+  /** A mobility routine's id. */
+  routine?: string;
 };
 
 /** A workout as authored below — slot ids are filled in from the labels. */
@@ -221,7 +246,8 @@ const FULL_CYCLE: Authored[] = [
     exercises: [
       { slot: "Horizontal press", pattern: "horizontal_push", options: ["db_bench"], scheme: DEFAULT_SCHEME },
       { slot: "Vertical press", pattern: "vertical_push", options: ["db_shoulder"], scheme: DEFAULT_SCHEME },
-      { slot: "Bodyweight press", pattern: "horizontal_push", options: ["incline_push_up", "knee_push_up"], scheme: DEFAULT_SCHEME },
+      // The push-up chain: done at your step, from the wall to the floor (see `chains.ts`).
+      { slot: "Bodyweight press", pattern: "horizontal_push", options: ["push_up", "incline_push_up", "knee_push_up"], scheme: DEFAULT_SCHEME },
       { slot: "Triceps", pattern: "triceps", options: ["pushdown"], scheme: DEFAULT_SCHEME },
       { slot: "Abs", pattern: "abs", options: ["dead_bug"], scheme: DEFAULT_SCHEME },
     ],
@@ -231,6 +257,10 @@ const FULL_CYCLE: Authored[] = [
     name: "Pull",
     subtitle: "back, arms",
     exercises: [
+      // The pull-up chain first, while you are fresh: from a hang to the whole
+      // pull-up, a step at a time (see `chains.ts`). The pulldown builds the
+      // strength alongside it.
+      { slot: "Pull-up", pattern: "vertical_pull", options: ["pullup"], scheme: DEFAULT_SCHEME },
       { slot: "Vertical pull", pattern: "vertical_pull", options: ["lat_pulldown"], scheme: DEFAULT_SCHEME },
       { slot: "Row", pattern: "horizontal_pull", options: ["cable_row"], scheme: DEFAULT_SCHEME },
       { slot: "Rear shoulders", pattern: "shoulders", options: ["face_pull"], scheme: DEFAULT_SCHEME },

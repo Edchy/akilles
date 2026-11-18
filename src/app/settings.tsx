@@ -17,7 +17,7 @@ import { forgetBody, kitAt, placeOf, useSession } from "@/store/session";
 
 /**
  * Everything you set once and rarely touch, in one place, so the screens you
- * train from stay clear: where you are training, how Humbell works, and your
+ * train from stay clear: where you are training, how Klay works, and your
  * data. Reached from the gear on Plan.
  */
 export default function SettingsScreen() {
@@ -74,14 +74,14 @@ export default function SettingsScreen() {
         detail={
           away
             ? kitSummary(kitAt(state, "away"))
-            : "Away for a while? Tell Humbell what you have there."
+            : "Away for a while? Tell Klay what you have there."
         }
         onPress={() => setSheet("place")}
       />
 
       <View style={{ height: 14 }} />
       <SectionLabel>Help</SectionLabel>
-      <OpenRow title="How Humbell works" detail="Three short pages" onPress={openIntro} />
+      <OpenRow title="Why Klay, and how it works" detail="A one-minute film" onPress={openIntro} />
 
       <View style={{ height: 14 }} />
       <SectionLabel>Your training</SectionLabel>
@@ -136,7 +136,7 @@ export default function SettingsScreen() {
               .join(" · ")}
           </Text>
           <Text style={{ color: colors.text, fontFamily: fonts.regular, fontSize: 19, lineHeight: 27 }}>
-            Humbell uses these only to guess the weight for an exercise you have never done. They stay
+            Klay uses these only to guess the weight for an exercise you have never done. They stay
             on your phone. Once you have trained, your own weights matter more.
           </Text>
           <BigButton

@@ -762,13 +762,33 @@ function lazily(makers: Record<string, () => Move>) {
   const moves: Record<string, Move> = {};
   for (const [id, make] of Object.entries(makers)) {
     let move: Move | undefined;
-    Object.defineProperty(moves, id, { enumerable: true, get: () => (move ??= make()) });
+    Object.defineProperty(moves, id, { enumerable: true, get: () => (move ??= turned(id, make())) });
   }
   return moves;
 }
 
 /**
- * Every movement Humbell can film, by its id — built only when first shown, so
+ * Standing with a weight in each hand, side on, the near arm hides the far
+ * one and the body is a thin stripe: these turn a little toward us instead,
+ * so both arms and both weights show. A barbell, a bench or a machine stays
+ * square side on, where its plates and frame read cleanly.
+ */
+const TURNED = new Set([
+  "db_curl", "kb_curl", "hammer_curl", "goblet_squat", "kb_goblet_squat", "db_rdl", "kb_rdl",
+  "kb_press", "overhead_ext", "kickback", "rear_delt_fly", "front_raise", "db_shrug", "kb_swing",
+  "single_leg_rdl", "split_squat", "reverse_lunge",
+]);
+/** How far a turned side view comes round toward the viewer, in degrees. */
+const SIDE_TURN = 20;
+
+function turned(id: string, move: Move): Move {
+  if (!TURNED.has(id)) return move;
+  const views = move.film.views.map((v) => (v === 0 ? SIDE_TURN : v));
+  return { ...move, film: { ...move.film, views } };
+}
+
+/**
+ * Every movement Klay can film, by its id — built only when first shown, so
  * the app pays for none at start. Ask `id in MOVES` to know if one exists.
  */
 export const MOVES: Record<string, Move> = lazily({

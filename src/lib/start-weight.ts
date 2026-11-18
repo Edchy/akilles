@@ -8,7 +8,7 @@ import { START_RATIO } from "@/data/start-ratios";
  *
  * 1. What you have actually lifted. Once a few lifts have history, a lift you
  *    have never done is guessed from how your real weights compare with what
- *    Humbell would have guessed for them (`personalFactor`). After a workout or
+ *    Klay would have guessed for them (`personalFactor`). After a workout or
  *    two this is what counts.
  * 2. Before that, the first questions: how much you have lifted, and — if you
  *    chose to say — your weight and sex. Those are used for this and nothing
@@ -46,7 +46,7 @@ export const UNSAID_BODYWEIGHT = 60;
 /** The weight assumed before the questions existed — a phone set up earlier. */
 const EARLIER_BODYWEIGHT = 75;
 
-/** A body weight Humbell will take, in kg. */
+/** A body weight Klay will take, in kg. */
 export const BODYWEIGHT_RANGE = { min: 30, max: 250 } as const;
 
 const LOWER = new Set<Pattern>(["squat", "hinge", "lunge", "quads", "hamstrings", "calves"]);
@@ -55,7 +55,7 @@ const LOWER = new Set<Pattern>(["squat", "hinge", "lunge", "quads", "hamstrings"
 export const isLower = (ex: Exercise): boolean => LOWER.has(ex.patterns[0]);
 
 /**
- * Humbell's first guess for a lift from the answers alone, or undefined for one
+ * Klay's first guess for a lift from the answers alone, or undefined for one
  * without a ratio — a bodyweight exercise, or one of your own.
  */
 export const startGuess = (ex: Exercise, lifter?: Lifter): number | undefined => {
@@ -75,7 +75,7 @@ const settle = (raw: number, step: number, bar: number): number =>
   Math.max(bar, step, Math.round(raw / step) * step);
 
 /**
- * How you compare with Humbell's guesses, from lifts you have trained: your
+ * How you compare with Klay's guesses, from lifts you have trained: your
  * weight over the guess, for each, and the middle of those. Lifts of the same
  * half of the body — legs, or the rest — count first; the other half only
  * when there are none.
@@ -126,7 +126,7 @@ export const firstWeight = (
 /**
  * How the first time on a lift felt, said in one tap under the circles. Reps
  * alone can't say a weight was too light — you log up to the target and no
- * further — so Humbell asks, once, while it is still learning the lift.
+ * further — so Klay asks, once, while it is still learning the lift.
  */
 export type Feel = "light" | "right" | "heavy";
 

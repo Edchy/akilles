@@ -48,7 +48,7 @@ export function SetCircle({
   filled: boolean;
   /** Logged as 0, a set not done: no wash, and crossed out. */
   zero?: boolean;
-  /** Logged under the target: a paler wash. */
+  /** Logged under the target: an outline instead of a filled circle. */
   short: boolean;
   /** The wash's colour. */
   wash: string;
@@ -66,10 +66,11 @@ export function SetCircle({
   children: ReactNode;
 }) {
   const reduce = useReduceMotion();
+  const fillColor = wash;
   // How much wash is in the circle (1 = full, settled) and how hard it is
   // still moving from the last tap (1 = just thrown, 0 = still).
   // Only a set that was done gets colour.
-  const washed = filled && !zero;
+  const washed = filled && !zero && !short;
   const fill = useSharedValue(washed ? 1 : 0);
   const cross = useSharedValue(zero ? 1 : 0);
   const splash = useSharedValue(0);
@@ -183,22 +184,22 @@ export function SetCircle({
       >
         {/* The wash spills past the ring, so it is drawn on a larger canvas. */}
         <View pointerEvents="none" style={{ position: "absolute", left: -pad, top: -pad, width: size + pad * 2, height: size + pad * 2 }}>
-          <Animated.View style={[{ position: "absolute", inset: 0 }, spray]}>
+          <Animated.View style={[{ position: "absolute", inset: 0 }, spray, short || zero ? { opacity: 0 } : null]}>
             <Svg width={size + pad * 2} height={size + pad * 2}>
-              <Path d={art.spray} fill="none" stroke={wash} strokeOpacity={0.55} strokeWidth={2} />
+              <Path d={art.spray} fill="none" stroke={fillColor} strokeOpacity={0.55} strokeWidth={2} />
             </Svg>
           </Animated.View>
-          <View style={{ position: "absolute", inset: 0, opacity: short ? 0.5 : 1 }}>
+          <View style={{ position: "absolute", inset: 0, opacity: short || zero ? 0 : 1 }}>
             {art.blobs.map((d, k) => (
               <Animated.View key={k} style={[{ position: "absolute", inset: 0 }, layers[k]]}>
                 <Svg width={size + pad * 2} height={size + pad * 2}>
-                  <Path d={d} fill={wash} fillOpacity={k === 0 ? 0.42 : 0.24} stroke={wash} strokeOpacity={0.45} strokeWidth={1.4} />
+                  <Path d={d} fill={fillColor} fillOpacity={k === 0 ? 0.72 : 0.48} stroke={fillColor} strokeOpacity={0.45} strokeWidth={1.4} />
                 </Svg>
               </Animated.View>
             ))}
           </View>
           <Svg width={size + pad * 2} height={size + pad * 2} style={{ position: "absolute" }}>
-            <Path d={art.ring} fill="none" stroke={ink} strokeWidth={ringWidth} strokeLinecap="round" />
+            <Path d={art.ring} fill="none" stroke={ink} strokeWidth={short && !zero ? ringWidth + 1 : filled ? ringWidth : Math.max(1, ringWidth - 1)} strokeLinecap="round" />
           </Svg>
         </View>
         <Animated.View pointerEvents="none" style={[{ position: "absolute", left: 0, top: 0, width: size, height: size, alignItems: "center", justifyContent: "center" }, number]}>{children}</Animated.View>

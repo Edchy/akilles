@@ -112,10 +112,15 @@ test("Today renders per-exercise changes, includes them in accessibility labels,
     "goblet_squat:6-12": { ...done("goblet_squat", 20, 18), lastTrainedAt: Date.now() - 30 * 864e5 },
     "db_rdl:6-12": { ...done("db_rdl", 16, 18), pendingDecay: { kind: "layoff", fraction: 0.05, days: 21 } },
   } };
-  const fakeReact = { ...require("react"), useState: (initial) => [initial, () => {}] };
+  const fakeReact = { ...require("react"), useState: (initial) => [initial, () => {}], useLayoutEffect: () => {} };
   const uiRequire = (name) => {
     if (name === "react") return fakeReact;
-    if (name === "react-native") return { Pressable: "Pressable", ScrollView: "ScrollView", View: "View" };
+    if (name === "react-native") return { Pressable: "Pressable", ScrollView: "ScrollView", View: "View", useWindowDimensions: () => ({ width: 390, height: 844 }) };
+    if (name === "react-native-gesture-handler") {
+      const chain = new Proxy({}, { get: () => () => chain });
+      return { Gesture: { Pan: () => chain }, GestureDetector: "GestureDetector" };
+    }
+    if (name === "react-native-worklets") return { scheduleOnRN: () => {} };
     if (name === "expo-router") return { router: { push: () => {} } };
     if (name === "react-native-safe-area-context") return { useSafeAreaInsets: () => ({ top: 0 }) };
     if (name === "react-native-svg") return { __esModule: true, default: "Svg", Defs: "Defs", LinearGradient: "LinearGradient", Rect: "Rect", Stop: "Stop" };
@@ -128,10 +133,13 @@ test("Today renders per-exercise changes, includes them in accessibility labels,
     if (name === "@/components/mark") return { Mark: "Mark" };
     if (name === "@/components/place") return { PlaceLine: "PlaceLine" };
     if (name === "@/components/growth-offer") return { GrowthOffer: "GrowthOffer" };
+    if (name === "@/lib/use-reduce-motion") return { useReduceMotion: () => true };
+    if (name === "react-native-reanimated") return { __esModule: true, default: { View: "AnimatedView" }, useSharedValue: (v) => ({ value: v }), useAnimatedStyle: () => ({}), withSpring: (v) => v, withTiming: (v) => v };
     return load(name);
   };
   const module = { exports: {} };
-  const { outputText } = ts.transpileModule(fs.readFileSync(path.resolve(__dirname, "../src/app/index.tsx"), "utf8"), {
+  const source = fs.readFileSync(path.resolve(__dirname, "../src/app/index.tsx"), "utf8");
+  const { outputText } = ts.transpileModule(source, {
     compilerOptions: { jsx: ts.JsxEmit.ReactJSX, module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 },
   });
   vm.runInNewContext(outputText, { module, exports: module.exports, require: uiRequire, Date });
@@ -171,7 +179,8 @@ test("Today renders per-exercise changes, includes them in accessibility labels,
   assert.doesNotMatch(afterText, /Done for today|Go home|Trained already|Recovery is where/);
   const button = (label) => nodes.find((n) => n.type === "Button" && n.props.label === label);
   assert.ok(button("Start"));
-  assert.ok(button("Skip"));
+  // No Skip: swiping the deck to another workout is the way to do something else.
+  assert.ok(!button("Skip"));
   button("Start").props.onPress();
   assert.equal(state.active.workoutId, "push");
   nodes.length = 0;

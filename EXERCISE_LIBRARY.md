@@ -1,6 +1,6 @@
 # Exercise library
 
-Keep the full pool broad and searchable, while Humbell's recommended workouts stay small.
+Keep the full pool broad and searchable, while Klay's recommended workouts stay small.
 Expand toward 500 exercises in reviewed batches, starting with common movements and
 meaningful equipment variations. Alternate names belong in `aliases`, not duplicate entries.
 
@@ -84,7 +84,7 @@ sign-off or a promise that an exercise cannot cause injury.
   saying something is a mistake does not establish how often it occurs.
 - Keep session prescriptions out of technique guides: no instruction to sprint at
   the end, empty the tank, or prepare for the lifts next.
-- "Own it" and longer pause progression are Humbell coaching choices. Describe a
+- "Own it" and longer pause progression are Klay coaching choices. Describe a
   stable, controllable position, not an invented universal point of maximum tension.
   Squeezing or feeling a muscle does not prove effectiveness. Repetition counting
   conventions and time targets are also app choices, not quotations from a source.

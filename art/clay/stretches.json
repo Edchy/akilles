@@ -1,0 +1,373 @@
+{
+ "figure_four": {
+  "what": "The figure-four stretch, lying on the back.",
+  "view": "Seen from the side and a little above, the figure's head to the right. The near leg is the crossed one.",
+  "frames": [
+   "lying on the back, head and shoulders on the floor; the far knee bent with its foot flat on the floor; the near leg lifted with its ankle resting across the far knee, the near knee falling open to the side, so the legs make a clear figure 4.",
+   "the far foot lifted off the floor and both hands holding behind the far thigh, gently pulling both legs toward the chest; head and shoulders still resting on the floor."
+  ],
+  "breath": {
+   "to1": "exhale",
+   "to0": "inhale"
+  }
+ },
+ "seated_hamstring": {
+  "what": "The seated hamstring stretch, one leg at a time.",
+  "view": "Seen exactly from the side, the figure facing right. The straight leg is the near leg, reaching to the right.",
+  "frames": [
+   "sitting on the floor, the near leg straight out in front, toes up; the far knee bent with its foot against the inside of the straight thigh; back straight and tall, hands resting on the thighs.",
+   "hinging forward from the hips over the straight leg with a long flat back, hands reaching along the shin toward the ankle; the straight leg stays straight."
+  ],
+  "breath": {
+   "to1": "exhale",
+   "to0": "inhale"
+  }
+ },
+ "forward_fold": {
+  "what": "The standing forward fold.",
+  "view": "Seen exactly from the side, the figure facing right.",
+  "frames": [
+   "feet hip-width apart, knees soft, arms reaching up overhead, body long.",
+   "folded forward from the hips, upper body hanging down in front of the legs, head and arms hanging loose toward the floor, knees softly bent."
+  ],
+  "breath": {
+   "to1": "exhale",
+   "to0": "inhale"
+  }
+ },
+ "supine_twist": {
+  "what": "The lying twist.",
+  "view": "Seen from the side and a little above, the figure lying on its back on the floor with its head to the right.",
+  "frames": [
+   "lying flat on the back on the floor, arms out wide on the floor at shoulder height; the far leg lying straight along the floor; the near knee bent and drawn up toward the chest, the near foot off the floor.",
+   "still lying on the back, both shoulders flat on the floor, the far arm out wide; the near bent knee taken across the body and down to the floor on the far side, the far hand resting on top of that knee; the head turned toward the near side, away from the knee."
+  ],
+  "breath": "steady",
+  "single": 1
+ },
+ "knees_to_chest": {
+  "what": "Knees to chest, lying on the back.",
+  "view": "Seen from the side and a little above, the figure's head to the right.",
+  "frames": [
+   "lying on the back, head resting on the floor, both knees bent and drawn in loosely, hands resting under the knees, arms long.",
+   "both knees hugged in close to the chest, hands under the knees, head still resting on the floor, the low back rounding gently."
+  ],
+  "breath": "steady",
+  "single": 1
+ },
+ "cat_cow": {
+  "what": "Cat-cow on all fours, one slow breath per position.",
+  "view": "Seen exactly from the side, the figure facing right.",
+  "frames": [
+   "on hands and knees, hands under the shoulders and knees under the hips; the belly sinks toward the floor so the back curves down, chest forward, head lifted to look ahead.",
+   "same hands and knees, the back rounded high up toward the ceiling like an angry cat, the head dropped down between the arms, chin toward the chest."
+  ],
+  "breath": {
+   "to1": "exhale",
+   "to0": "inhale"
+  }
+ },
+ "childs_pose": {
+  "what": "Child's pose.",
+  "view": "Seen exactly from the side, the figure facing right.",
+  "frames": [
+   "kneeling with big toes together and knees apart, sitting on the heels, body upright, hands resting on the thighs.",
+   "the hips sunk back onto the heels, the body folded forward between the knees, the forehead resting on the floor, both arms stretched long on the floor in front."
+  ],
+  "breath": {
+   "to1": "exhale",
+   "to0": "inhale"
+  }
+ },
+ "chest_opener": {
+  "what": "The chest and shoulder opener with a stick.",
+  "view": "Seen from the front at three-quarters, the figure facing to the left of the camera, so the whole length of the stick shows.",
+  "frames": [
+   "standing tall, both hands holding the long wooden stick far wider than the shoulders, arms straight, the stick raised straight up above the head.",
+   "arms still straight and wide, the stick taken back behind the head, so it is now behind the back of the head and the shoulders and chest open; the body stays upright."
+  ],
+  "props": "a long thin light-wood stick, about 1.5 m long, clearly visible, held in both hands",
+  "breath": {
+   "to1": "exhale",
+   "to0": "inhale"
+  }
+ },
+ "band_external_rotation": {
+  "what": "Band external rotation, standing side-on to the band.",
+  "view": "Seen from the front, the figure facing the camera. The band comes in from the left edge of the picture; the figure holds it in the hand on the RIGHT side of the picture, so the band crosses in front of the belly.",
+  "frames": [
+   "standing tall; the arm on the right side of the picture has its elbow bent at a right angle and pinned against the waist, the hand in front of the belly holding the band, which runs across the belly to the left edge.",
+   "the same elbow still pinned against the waist; the forearm turned outward so the hand has swung out to the right side of the picture, away from the belly, stretching the band longer across the body."
+  ],
+  "props": "a light green resistance band running out of the left edge of the picture",
+  "breath": {
+   "to1": "exhale",
+   "to0": "inhale"
+  }
+ },
+ "wide_stance": {
+  "what": "The wide stance hip opener.",
+  "view": "Seen from the front at three-quarters, the figure facing to the left of the camera.",
+  "frames": [
+   "standing with the feet very wide apart, about twice the width of the shoulders, toes turned out a little, back upright, the palms pressed together in front of the chest.",
+   "a deep wide plié, like a ballet dancer: the same very wide feet, the knees bent deeply and pointing out over the toes so the body sinks low, the back perfectly upright, the palms together in front of the chest."
+  ],
+  "breath": {
+   "to1": "inhale",
+   "to0": "exhale"
+  }
+ },
+ "side_stance": {
+  "what": "The side stance, a sideways lunge stretch.",
+  "view": "Seen from the front, the figure facing the camera.",
+  "frames": [
+   "in a wide stance, feet well apart, toes slightly out, chest up, hands together in front of the chest.",
+   "weight shifted far over to the left side, sitting down low into the left leg: the left knee deeply bent so the hips are almost as low as the left knee, the left heel flat; the right leg fully straight out to the side with its heel on the floor and toes pointing up; chest up, back straight, palms together in front of the chest."
+  ],
+  "breath": {
+   "to1": "inhale",
+   "to0": "exhale"
+  }
+ },
+ "leg_swing": {
+  "what": "Leg swings, holding a wall.",
+  "view": "Seen exactly from the side, the figure facing right. The wall is behind the figure at the left; the near leg swings.",
+  "frames": [
+   "standing tall, the far hand on the wall for balance, the near leg swung back behind the body, straight and loose.",
+   "the near leg swung forward and up in front, straight and loose, about hip height; the body stays tall and still."
+  ],
+  "props": "a plain white wall at the left edge",
+  "breath": {
+   "to1": "exhale",
+   "to0": "inhale"
+  }
+ },
+ "bodyweight_squat": {
+  "what": "The bodyweight squat.",
+  "view": "Seen exactly from the side, the figure facing right.",
+  "frames": [
+   "standing tall, feet shoulder-width, arms out straight in front at shoulder height.",
+   "squatted down deep, hips back and down below the knees, chest up, heels flat, arms still out in front for balance."
+  ],
+  "breath": {
+   "to1": "inhale",
+   "to0": "exhale"
+  }
+ },
+ "scapular_pushup": {
+  "what": "The scapular push-up: arms stay straight, only the shoulder blades move.",
+  "view": "Seen exactly from the side, the figure facing right.",
+  "frames": [
+   "in a push-up position on the toes, arms straight, the body one straight line; the chest sinks down between the shoulder blades so the upper back dips.",
+   "arms still straight, pushing the floor away so the upper back rounds up a little between the shoulders; the body otherwise one straight line."
+  ],
+  "breath": {
+   "to1": "exhale",
+   "to0": "inhale"
+  }
+ },
+ "thread_needle": {
+  "what": "Thread the needle, on hands and knees.",
+  "view": "Seen from the side and a little in front, the figure facing right.",
+  "frames": [
+   "on hands and knees, hips over the knees, the left hand planted; the right arm reaching straight up to the ceiling, the chest turned open toward the camera, eyes following the hand.",
+   "the right arm threaded under the body, sliding along the floor through the gap between the left hand and the knees, palm up, so the right shoulder and the side of the head rest on the floor; the hips stay high, right over the knees."
+  ],
+  "breath": {
+   "to1": "exhale",
+   "to0": "inhale"
+  }
+ },
+ "downward_dog": {
+  "what": "Downward dog.",
+  "view": "Seen exactly from the side, the figure head to the left.",
+  "frames": [
+   "on hands and knees, hands a little in front of the shoulders, knees under the hips, back flat, toes tucked under.",
+   "hips lifted up and back so the body makes an upside-down V, arms and back in one straight line, legs straight, heels sinking toward the floor, head hanging between the arms."
+  ],
+  "breath": {
+   "to1": "exhale",
+   "to0": "inhale"
+  }
+ },
+ "low_lunge": {
+  "what": "The low lunge hip flexor stretch.",
+  "view": "Seen exactly from the side, the figure facing right.",
+  "frames": [
+   "the front foot forward with its knee bent at a right angle over the ankle, the back knee down on the floor behind, body upright, hands on the front thigh.",
+   "the hips sunk forward and down so the front knee moves forward a little and the front of the back hip stretches; chest up and tall, hands resting on the front thigh."
+  ],
+  "breath": "steady",
+  "single": 1
+ },
+ "pigeon": {
+  "what": "The pigeon stretch.",
+  "view": "Seen from the front-left at about 45 degrees, so both legs read clearly.",
+  "frames": [
+   "the front leg bent with its shin lying across the floor in front of the hips, the back leg stretched straight back with its knee and the top of the foot on the floor, hips settled down, body upright, hands on the floor either side.",
+   "the same legs; the body folded forward over the front shin, forearms resting on the floor in front, head resting on the stacked hands."
+  ],
+  "breath": {
+   "to1": "exhale",
+   "to0": "inhale"
+  }
+ },
+ "cobra": {
+  "what": "Cobra, lying face down.",
+  "view": "Seen exactly from the side, the figure facing right.",
+  "frames": [
+   "lying face down, legs long, tops of the feet on the floor; hands under the shoulders, elbows bent close in; pressing gently to lift the chest, hips staying on the floor, shoulders down away from the ears.",
+   "lying flat face down again, forehead resting on the floor, hands under the shoulders, elbows close in, the whole body relaxed."
+  ],
+  "breath": {
+   "to1": "exhale",
+   "to0": "inhale"
+  }
+ },
+ "knee_circles": {
+  "what": "Knee circles, standing.",
+  "view": "Seen from the front at three-quarters, the figure facing to the right of the camera.",
+  "frames": [
+   "standing tall on one leg, arms straight out to the sides at shoulder height, the other knee lifted high in front, toward the opposite hand.",
+   "the lifted knee opened out wide to the side, so the thigh points out to the right at hip height and the foot hangs under the knee; the standing leg straight, arms still out to the sides."
+  ],
+  "breath": "steady"
+ },
+ "hamstring_bounce": {
+  "what": "Hamstring bounces.",
+  "view": "Seen exactly from the side, the figure facing right.",
+  "frames": [
+   "standing with feet hip-width, knees a little bent, folded forward from the hips, head and arms hanging, hands at about knee height.",
+   "a gentle toe touch: the same bend forward, now with straight legs, the hands hanging down in front of the shins, the head relaxed."
+  ],
+  "breath": "steady",
+  "single": 0
+ },
+ "front_kick_swing": {
+  "what": "Front kick swings.",
+  "view": "Seen exactly from the side, the figure facing right.",
+  "frames": [
+   "standing tall, arms straight out to the sides at shoulder height, both feet on the floor.",
+   "the near leg swung forward and up, straight, to about waist height; the back straight and the upper body tall, arms out."
+  ],
+  "breath": {
+   "to1": "exhale",
+   "to0": "inhale"
+  }
+ },
+ "couch": {
+  "what": "The couch stretch for the front of the hip, against a wall.",
+  "view": "Seen exactly from the side, the figure facing right, the wall behind it at the left.",
+  "frames": [
+   "the back knee down on the floor right against the wall, that shin and the top of the foot running straight up the wall; the front foot flat on the floor ahead with the knee bent at a right angle over the ankle; the body upright and tall, hands resting on the front knee."
+  ],
+  "single": 0,
+  "breath": "steady",
+  "props": "a plain white wall at the left, meeting the floor"
+ },
+ "standing_hip_flexor": {
+  "what": "The standing hip flexor stretch.",
+  "view": "Seen exactly from the side, the figure facing right.",
+  "frames": [
+   "a long split stance, front foot flat, back heel lifted; both knees a little bent; the pelvis tucked under and the body upright, shifted forward so the front of the back hip stretches; hands resting on the hips."
+  ],
+  "single": 0,
+  "breath": "steady"
+ },
+ "calf_wall": {
+  "what": "The calf stretch at a wall.",
+  "view": "Seen exactly from the side, the figure facing right toward a wall at the right.",
+  "frames": [
+   "both hands flat on the wall at shoulder height, arms almost straight; one foot forward with its knee bent; the other leg well behind, straight, its heel pressed flat to the floor; the body leaning into the wall in one straight line from the back heel to the head."
+  ],
+  "single": 0,
+  "breath": "steady",
+  "props": "a plain white wall at the right, meeting the floor"
+ },
+ "lat_wall": {
+  "what": "The lat stretch on a wall.",
+  "view": "Seen from the front at three-quarters, the figure facing to the left of the camera; the wall at the right edge, its surface the same flat #FCFCFA as the background.",
+  "frames": [
+   "the feet planted together about half a metre out from the wall; the whole body tilted sideways toward the wall like a leaning ladder, its weight resting on the right forearm, which lies flat and vertical against the wall high above the head from elbow to hand; the hips pushed out away from the wall so the body bows into a long C-shaped curve, the right armpit and side opened and stretched; the left hand on the left hip; head relaxed between the arms."
+  ],
+  "single": 0,
+  "breath": "steady",
+  "props": "a plain white wall at the right edge"
+ },
+ "cross_body": {
+  "what": "The cross-body shoulder stretch.",
+  "view": "Seen from the front, the figure facing the camera.",
+  "frames": [
+   "standing tall; the right arm straight across the chest at chest height; the left hand holding it just above the elbow and drawing it gently in; both shoulders level and down."
+  ],
+  "single": 0,
+  "breath": "steady"
+ },
+ "ball_shoulder": {
+  "what": "Ball on the wall, rolling out the front of the shoulder.",
+  "view": "Seen from the side and a little in front, the figure facing a wall at the right.",
+  "frames": [
+   "standing close to the wall, leaning the front of the right shoulder into a tennis ball pressed between the shoulder and the wall; the arm hanging relaxed; the body calm."
+  ],
+  "single": 0,
+  "breath": "steady",
+  "props": "a plain white wall at the right and one bright yellow tennis ball between the shoulder and the wall"
+ },
+ "arm_circles": {
+  "what": "Arm circles.",
+  "view": "Seen from the front, the figure facing the camera.",
+  "frames": [
+   "standing tall, both arms held straight out to the sides at shoulder height, palms down, the hands drawing small circles; shoulders relaxed, down away from the ears."
+  ],
+  "single": 0,
+  "breath": "steady"
+ },
+ "worlds_greatest": {
+  "what": "The world's greatest stretch: a long lunge with an elbow to the instep, then a turn of the chest.",
+  "view": "Seen from the front at three-quarters, the figure facing to the left of the camera.",
+  "frames": [
+   "a long lunge with the left foot forward and the back leg long, back knee off the floor; both hands on the floor inside the front foot; the right elbow sinking down toward the inside of the front foot.",
+   "the same long lunge, the left hand still on the floor inside the front foot; the chest turned open toward the camera and the right arm reaching straight up to the ceiling, eyes following the hand."
+  ],
+  "breath": {
+   "to1": "inhale",
+   "to0": "exhale"
+  }
+ },
+ "band_pull_apart": {
+  "what": "The band pull-apart.",
+  "view": "Seen from the front, the figure facing the camera.",
+  "frames": [
+   "standing tall, both arms straight out in front at shoulder height, hands shoulder-width apart holding a light resistance band.",
+   "arms still straight and at shoulder height, pulled out wide to the sides so the band stretches across the front of the chest; shoulder blades squeezed together, shoulders down."
+  ],
+  "breath": {
+   "to1": "exhale",
+   "to0": "inhale"
+  },
+  "props": "a light green resistance band held in both hands"
+ },
+ "wall_slide": {
+  "what": "The wall slide.",
+  "view": "Seen from the front, the figure facing the camera with its back against a wall.",
+  "frames": [
+   "back flat against the wall, feet a step out; the arms against the wall in a W: elbows bent and a little below the shoulders, the backs of the hands on the wall.",
+   "back still flat on the wall; the arms slid up the wall into a Y above the head, elbows nearly straight, the backs of the hands still on the wall."
+  ],
+  "breath": {
+   "to1": "exhale",
+   "to0": "inhale"
+  },
+  "props": "a plain white wall behind the figure"
+ },
+ "prone_y_raise": {
+  "what": "The lying Y-raise.",
+  "view": "Seen from above and behind at about 45 degrees, the figure lying face down with its head away from the camera, so both arms and the Y shape they make are clearly visible.",
+  "frames": [
+   "lying face down, legs long, forehead just above the floor; both arms reaching forward and out in a wide Y, about 45 degrees apart from the head, resting on the floor, thumbs pointing up.",
+   "still lying face down, legs and chest on the floor, head in line; both arms in the same wide Y lifted a hand's width off the floor, shoulder blades squeezed together, a small gap of shadow under each arm."
+  ],
+  "breath": "steady",
+  "single": 1
+ }
+}

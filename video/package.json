@@ -1,12 +1,13 @@
 {
-  "name": "humbell-video",
+  "name": "klay-video",
   "private": true,
-  "description": "Humbell's onboarding video, made in code with Remotion.",
+  "description": "Klay's onboarding film, made in code with Remotion.",
   "scripts": {
     "studio": "remotion studio src/index.ts",
-    "render": "remotion render src/index.ts Onboarding out/humbell-onboarding.mp4",
+    "render": "remotion render src/index.ts Onboarding out/klay-onboarding.mp4",
     "voice": "node scripts/voice.mjs",
-    "voice:scratch": "node scripts/voice.mjs --scratch"
+    "voice:scratch": "node scripts/voice.mjs --scratch",
+    "pictures": "node scripts/pictures.mjs"
   },
   "dependencies": {
     "@remotion/cli": "^4.0.543",

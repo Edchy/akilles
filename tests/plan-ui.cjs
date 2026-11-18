@@ -178,6 +178,21 @@ test("adding cardio to an empty workout opens a chooser before adding anything",
   assert.equal(store.cardioPlan(state, store.workoutById(state, "blank"), "close"), null);
 });
 
+test("a cardio hidden by an older save is available and can be added to a workout", () => {
+  hooks.clear(); state = store.addWorkout(store.resetToDefault(), "blank", "Blank");
+  assert.ok(state.hiddenConditioning.includes("bike"));
+  const history = state.conditioning;
+  const editor = editorFor("blank");
+  addTo(editor(), "Add to the warm-up").props.onPress();
+  const sheet = byType(editor(), "AddExerciseSheet");
+  const chooser = sheet.props.blocks[0].choose(() => {});
+  assert.ok(chooser.props.options.some((option) => option.id === "bike"));
+  chooser.props.onPick("bike");
+  assert.equal(store.cardioPlan(state, store.workoutById(state, "blank"), "open").machine.id, "bike");
+  assert.equal(state.conditioning, history, "selecting cardio preserves its records");
+});
+
+
 test("exercise and routine alternatives stay collapsed until explicitly opened", () => {
   hooks.clear(); state = store.resetToDefault();
   const editor = editorFor("push");

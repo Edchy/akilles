@@ -1,10 +1,9 @@
-import { useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { LinkButton, Chip } from "@/components/buttons";
 import { Image, Pressable, View } from "react-native";
 import { Text, TextInput } from "@/components/text";
 
-import { ExerciseFilters } from "@/components/exercise-filters";
-import { exerciseTags, matchesExerciseFilters, searchExercises } from "@/lib/find-exercise";
+import { Create, LibraryBrowser } from "@/components/add-exercise";
 import { Count, Setting, Step } from "@/components/controls";
 import { Icon } from "@/components/icon";
 import { NoteField } from "@/components/note";
@@ -15,7 +14,8 @@ import { FAMILY, colors, radii } from "@/constants/theme";
 import { Mark } from "@/components/mark";
 import { PHOTOS } from "@/data/photos";
 import { guideFor } from "@/data/guides";
-import { GuideInstructions } from "@/components/guide";
+import { hasIllustration, Illustration } from "@/components/illustration";
+import { Guide, GuideInstructions } from "@/components/guide";
 import {
   METRICS,
   cardioById,
@@ -39,7 +39,6 @@ import {
   type Pattern,
 } from "@/data/exercises";
 import { newId } from "@/data/split";
-import type { Gear } from "@/data/kit";
 import {
   addCardio,
   addExercise,
@@ -47,32 +46,22 @@ import {
   canRemoveConditioning,
   cardioTarget,
   catalogue,
+  hiddenExercises,
   everyExercise,
   createRoutine,
   editExercise,
   editRoutine,
   hiddenConditioningList,
-  hiddenExercises,
   isCustom,
   isCustomConditioning,
   removeConditioning,
   removeExercise,
   restoreConditioning,
-  restoreExercise,
   routineMinutes,
   useSession,
   workoutsUsing,
 } from "@/store/session";
 
-/** "2.5 kg steps", "holds" — the one detail worth showing in a list. */
-const stepLabel = (ex: Exercise) =>
-  ex.unloaded
-    ? "no weight"
-    : ex.holds
-      ? "longer holds"
-      : ex.timed
-        ? "seconds"
-        : `${ex.increment || 2.5} kg steps`;
 
 /**
  * Your exercises, grouped the way you train them: push, pull, legs, core —
@@ -83,188 +72,74 @@ const stepLabel = (ex: Exercise) =>
  * each exercise opens its own sheet on top, with room for what you can
  * change. Built-ins you are not using are the library, offered by Add.
  */
-const CATEGORY_DESCRIPTION: Record<Category, string> = {
-  push: "Pressing · chest, shoulders & triceps",
-  pull: "Pulling · back & biceps",
-  legs: "Squats, hinges & lunges",
-  core: "Trunk strength & stability",
-};
 
 type Group = Category | "cardio" | "mobility";
 
 const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
 
 export function Catalogue() {
-  const { state } = useSession();
-  const [open, setOpen] = useState<Group | null>(null);
-  const [query, setQuery] = useState("");
-  const [categoryFilter, setCategoryFilter] = useState("");
-  const [equipment, setEquipment] = useState("");
-  const [editing, setEditing] = useState<string | null>(null);
-  const all = everyExercise(state);
-  const browsing = !!(query.trim() || categoryFilter || equipment);
-  const filtered = all.filter((e) => matchesExerciseFilters(e, categoryFilter, equipment));
-  const results = query.trim() ? searchExercises(filtered, query) : filtered;
-
-  // An exercise spanning two groups — a face pull is shoulders and a row — is
-  // listed under both.
-  const byCategory = useMemo(() => {
-    const map = new Map<Category, Exercise[]>();
-    for (const e of catalogue(state)) {
-      for (const c of categoriesOf(e)) map.set(c, [...(map.get(c) ?? []), e]);
-    }
-    for (const list of map.values()) list.sort((a, b) => a.name.localeCompare(b.name));
-    return map;
-  }, [state]);
-
-  const cardio = cardioPool(state.hiddenConditioning);
-  const mobility = mobilityPool(state.hiddenConditioning);
-  const category = open && open !== "cardio" && open !== "mobility" ? open : null;
-
-  return (
-    <View style={{ gap: 24 }}>
-      {/* The same voice and size as the Workouts intro beside it: this says
-          what the tab is for, not only how to tap it. */}
-      <Text style={{ color: colors.muted, fontSize: 15, lineHeight: 22 }}>
-        Everything Humbell can put in a workout lives here: exercises, cardio and
-        mobility. Change something here and it changes in every workout that
-        uses it. To choose what goes in a workout, open the workout under
-        Workouts.
-      </Text>
-
-      <TextInput value={query} onChangeText={setQuery} placeholder="Search exercises, muscles or equipment" accessibilityLabel="Search exercise library" clearButtonMode="while-editing" autoCorrect={false} style={{ minHeight: 52, paddingHorizontal: 16, borderRadius: 16, backgroundColor: colors.surface, color: colors.text, fontSize: 17 }} />
-      <ExerciseFilters category={categoryFilter} equipment={equipment} onCategory={setCategoryFilter} onEquipment={setEquipment} />
-      {browsing ? <View style={{ gap: 8 }}>
-        {results.map((e) => <OpenRow key={e.id} title={e.name} detail={exerciseTags(e).join(" · ")} onPress={() => setEditing(e.id)} />)}
-        {!categoryFilter && !equipment ? <>
-          {cardio.filter((e) => e.name.toLowerCase().includes(query.toLowerCase())).map((e) => <OpenRow key={e.id} title={e.name} detail="Cardio" onPress={() => setOpen("cardio")} />)}
-          {mobility.filter((e) => e.name.toLowerCase().includes(query.toLowerCase())).map((e) => <OpenRow key={e.id} title={e.name} detail="Mobility routine" onPress={() => setOpen("mobility")} />)}
-        </> : null}
-        {!results.length ? <Text style={{ color: colors.muted, fontSize: 16 }}>No strength exercises match. Try another filter or add your own from a workout.</Text> : null}
-      </View> : <>
-      <View style={{ gap: 10 }}>
-        {CATEGORY_ORDER.map((c) => (
-          <OpenRow
-            key={c}
-            large
-            title={CATEGORY_LABEL[c]}
-            detail={`${CATEGORY_DESCRIPTION[c]} · ${plural((byCategory.get(c) ?? []).length, "exercise", "exercises")}`}
-            onPress={() => setOpen(c)}
-          />
-        ))}
-      </View>
-
-      {/* Cardio and mobility are pools in the same sense — add to them,
-          remove from them — but they are not push, pull, legs or core, so
-          they sit apart rather than being filed under one. */}
-      <View style={{ gap: 10 }}>
-        <OpenRow
-          large
-          title="Cardio"
-          detail={plural(cardio.length, "exercise", "exercises")}
-          onPress={() => setOpen("cardio")}
-        />
-        <OpenRow
-          large
-          title="Mobility"
-          detail={`${plural(mobility.length, "routine", "routines")} · ${STRETCHES.length} moves`}
-          onPress={() => setOpen("mobility")}
-        />
-      </View>
-
-      </>}
-      <ExerciseSheet exercise={all.find((e) => e.id === editing)} onClose={() => setEditing(null)} />
-      <CategorySheet
-        category={category}
-        list={category ? (byCategory.get(category) ?? []) : []}
-        onClose={() => setOpen(null)}
-      />
-      <CardioSheet visible={open === "cardio"} onClose={() => setOpen(null)} />
-      <MobilitySheet visible={open === "mobility"} onClose={() => setOpen(null)} />
-    </View>
-  );
-}
-
-/** One group's exercises. Tap one to change it; Add brings one in. */
-function CategorySheet({
-  category,
-  list,
-  onClose,
-}: {
-  category: Category | null;
-  list: Exercise[];
-  onClose: () => void;
-}) {
   const { state, setState } = useSession();
+  const [open, setOpen] = useState<"cardio" | "mobility" | null>(null);
   const [editing, setEditing] = useState<string | null>(null);
-  const [adding, setAdding] = useState(false);
+  // Making your own: the name typed so far, or null while not.
+  const [making, setMaking] = useState<string | null>(null);
+  const [makingFrom, setMakingFrom] = useState<Pattern | undefined>(undefined);
+  // Every exercise the app knows, and any you made: nothing is kept out of
+  // the Library. Which ones the app picks for your workouts is separate.
+  const all = [...catalogue(state), ...hiddenExercises(state)];
+  // A stretch found by the search opens in Mobility.
+  const [stretch, setStretch] = useState<string | null>(null);
+  const cardio = cardioPool();
+  const mobility = mobilityPool(state.hiddenConditioning);
 
-  const close = () => {
-    setEditing(null);
-    setAdding(false);
-    onClose();
-  };
-
-  const library = category
-    ? hiddenExercises(state)
-        .filter((e) => categoriesOf(e).includes(category))
-        .sort((a, b) => a.name.localeCompare(b.name))
-    : [];
-
+  // The same library as adding to a workout, so it looks and works the same;
+  // here a tap opens a thing to change it everywhere.
   return (
-    <Sheet
-      visible={!!category}
-      title={category ? CATEGORY_LABEL[category] : ""}
-      closeLabel="Done"
-      onClose={close}
-    >
-      <View style={{ gap: 12, paddingTop: 12 }}>
-        <AddLink label="Add exercise" onPress={() => setAdding(true)} />
-        {list.map((exercise) => (
-          <OpenRow
-            key={exercise.id}
-            title={exercise.name}
-            detail={stepLabel(exercise)}
-            onPress={() => setEditing(exercise.id)}
-          />
-        ))}
-        {list.length === 0 ? (
-          <Text style={{ color: colors.faint, fontSize: 15, paddingVertical: 12 }}>
-            Nothing here yet.
-          </Text>
-        ) : null}
-      </View>
-
-      <ExerciseSheet
-        exercise={list.find((e) => e.id === editing)}
-        onClose={() => setEditing(null)}
+    <View>
+      <LibraryBrowser
+        mode="edit"
+        exercises={all}
+        moves={STRETCHES}
+        onMove={(id) => {
+          setStretch(id);
+          setOpen("mobility");
+        }}
+        blocks={[
+          { id: "cardio", label: "Cardio", detail: plural(cardio.length, "machine or run", "machines and runs"), family: "cardio" },
+          { id: "mobility", label: "Mobility", detail: plural(mobility.length, "routine", "routines"), family: "mobility" },
+        ]}
+        onBlock={(id) => setOpen(id as "cardio" | "mobility")}
+        onPick={setEditing}
+        onCreate={(name, area) => {
+          setMakingFrom(area);
+          setMaking(name);
+        }}
       />
-
-      {category ? (
-        <Sheet
-          visible={adding}
-          title={`Add to ${CATEGORY_LABEL[category]}`}
-          onClose={() => setAdding(false)}
-        >
-          <AddPanel
-            library={library.map((e) => ({ id: e.id, name: e.name }))}
-            onTake={(id) => {
-              setState((s) => restoreExercise(s, id));
-              setAdding(false);
+      <ExerciseSheet exercise={all.find((e) => e.id === editing)} onClose={() => setEditing(null)} />
+      <CardioSheet visible={open === "cardio"} onClose={() => setOpen(null)} />
+      <MobilitySheet
+        visible={open === "mobility"}
+        start={stretch}
+        onClose={() => {
+          setStretch(null);
+          setOpen(null);
+        }}
+      />
+      <Sheet visible={making !== null} title="Create your own" onClose={() => setMaking(null)}>
+        {making !== null ? (
+          <Create
+            initialName={making}
+            workoutName="your library"
+            fallback={makingFrom}
+            onCreate={(exercise) => {
+              setState((s) => addExercise(s, exercise));
+              setMaking(null);
             }}
-            create={
-              <CreateExercise
-                category={category}
-                onCreate={(exercise) => {
-                  setAdding(false);
-                  setState((s) => addExercise(s, exercise));
-                }}
-              />
-            }
+            onBack={() => setMaking(null)}
           />
-        </Sheet>
-      ) : null}
-    </Sheet>
+        ) : null}
+      </Sheet>
+    </View>
   );
 }
 
@@ -348,8 +223,9 @@ function AddPanel({
 }
 
 /**
- * One exercise: its name, the weight it opens at, how far − and + move that
- * weight, and a way to remove it. Edits apply as you make them.
+ * One exercise: its name, how it's done (the figure and the steps), the
+ * weight it opens at, how far − and + move that weight, and — for one you
+ * made — a way to delete it. Edits apply as you make them.
  */
 function ExerciseSheet({
   exercise,
@@ -400,6 +276,10 @@ function ExerciseEditor({ exercise, onRemoved }: { exercise: Exercise; onRemoved
         }}
       />
 
+      {/* How it's done comes first: the Library is where you learn a lift.
+          A lift with no guide (one you made) goes straight to its settings. */}
+      {guideFor(exercise.id) || hasIllustration(exercise.id) ? <Guide id={exercise.id} /> : null}
+
       <WeightField exerciseId={exercise.id} />
 
       {/* A hold steps a second at a time and a timed hold not at all:
@@ -449,186 +329,54 @@ function ExerciseEditor({ exercise, onRemoved }: { exercise: Exercise; onRemoved
         <NoteField id={exercise.id} hint="Shared by every workout that uses this exercise. Notes edited during training are for that session only." />
       </View>
 
-      <View style={{ gap: 8 }}>
-        {confirming ? (
-          <>
-            <Text style={{ color: colors.text, fontSize: 17, lineHeight: 24 }}>
-              {mine
-                ? `${exercise.name} will be deleted for good. Workouts that use it get another exercise of the same kind instead.`
-                : `${exercise.name} goes back into Humbell's library, out of your list. Workouts that use it get another exercise of the same kind instead. To bring it back, tap Add exercise.`}
-            </Text>
-            <BigButton
-              label={`${mine ? "Delete" : "Remove"} ${exercise.name}`}
-              danger
-              onPress={() => {
-                setConfirming(false);
-                setState((s) => removeExercise(s, exercise.id));
-                onRemoved();
-              }}
-            />
-            <TextButton label="Keep it" onPress={() => setConfirming(false)} />
-          </>
-        ) : (
-          <BigButton
-            label={mine ? "Delete exercise" : "Remove exercise"}
-            quiet
-            // The last exercise of a type cannot go: a slot of that type
-            // would have nothing to prescribe.
-            disabled={!removable}
-            onPress={() => setConfirming(true)}
-          />
-        )}
-        {!removable ? (
-          <Text style={{ color: colors.faint, fontSize: 13, lineHeight: 19, textAlign: "center" }}>
-            The last of its kind stays, so a workout always has one to use.
-          </Text>
-        ) : null}
-      </View>
-    </View>
-  );
-}
-
-/** Kinds of equipment, each with the weight step it usually moves by. */
-const EQUIPMENT: {
-  label: string;
-  equipment: Gear[];
-  increment: number;
-  perHand?: boolean;
-  bodyweight?: boolean;
-  holds?: boolean;
-}[] =
-  [
-    { label: "Barbell", equipment: ["barbell"], increment: 2.5 },
-    { label: "Dumbbells", equipment: ["dumbbells"], increment: 2.5, perHand: true },
-    { label: "Kettlebell", equipment: ["kettlebell"], increment: 4 },
-    { label: "Machine", equipment: ["machine"], increment: 5 },
-    { label: "Cable", equipment: ["cable"], increment: 2.5 },
-    // Nothing to add to your own bodyweight in the gym, so it gets longer
-    // holds instead of kilograms — see `holds` in exercises.ts.
-    { label: "Bodyweight", equipment: [], increment: 1, bodyweight: true, holds: true },
-  ];
-
-/** Name it, say what it is, and it joins this group. */
-function CreateExercise({
-  category,
-  onCreate,
-}: {
-  category: Category;
-  onCreate: (exercise: Exercise) => void;
-}) {
-  const types = patternsIn(category);
-  const [name, setName] = useState("");
-  const [kind, setKind] = useState(0);
-  // Which movement types it counts as. A group holds several — Push has
-  // presses, flyes, raises and triceps — so this has to be asked.
-  const [picked, setPicked] = useState<Pattern[]>([types[0]]);
-  // Left blank, it starts from a guess for its movement type.
-  const [start, setStart] = useState("");
-  const startWeight = parseWeight(start);
-  const gear = EQUIPMENT[kind];
-
-  const ready = !!name.trim() && picked.length > 0 && (!start.trim() || startWeight !== null);
-
-  const submit = () => {
-    if (!ready) return;
-    const trimmed = name.trim();
-    onCreate({
-      // Prefixed so a custom exercise can never collide with a built-in id.
-      id: newId("cardio"),
-      name: trimmed,
-      patterns: picked,
-      equipment: gear.equipment,
-      increment: gear.increment,
-      perHand: gear.perHand,
-      bodyweight: gear.bodyweight,
-      holds: gear.holds,
-      ...(startWeight !== null ? { startWeight } : {}),
-    });
-    setName("");
-    setPicked([types[0]]);
-    setStart("");
-  };
-
-  return (
-    <View style={{ gap: 12, paddingTop: 6 }}>
-      <Label>Create your own</Label>
-      <TextInput
-        value={name}
-        onChangeText={setName}
-        onSubmitEditing={submit}
-        placeholder="Exercise name"
-        placeholderTextColor={colors.faint}
-        style={{
-          minHeight: 48,
-          paddingHorizontal: 14,
-          borderRadius: 12,
-          backgroundColor: colors.surface,
-          color: colors.text,
-          fontSize: 16,
-          fontWeight: "600",
-        }}
-      />
-
-      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-        {EQUIPMENT.map((g, i) => (
-          <Chip key={g.label} label={g.label} on={kind === i} onPress={() => setKind(i)} />
-        ))}
-      </View>
-
-      <TextInput
-        value={start}
-        onChangeText={setStart}
-        keyboardType="decimal-pad"
-        accessibilityLabel="Starting weight in kilograms"
-        placeholder={
-          gear.holds
-            ? "Seconds to hold, if any"
-            : `Starting weight in kg${gear.perHand ? ", per dumbbell" : ""}`
-        }
-        placeholderTextColor={colors.faint}
-        style={{
-          minHeight: 48,
-          paddingHorizontal: 14,
-          borderRadius: 12,
-          backgroundColor: colors.surface,
-          color: start.trim() && startWeight === null ? colors.bend : colors.text,
-          fontSize: 16,
-          fontWeight: "600",
-        }}
-      />
-
-      {types.length > 1 ? (
+      {/* Only one you made can be deleted: the app's own exercises are the
+          library itself. To stop using one, swap it in the workout. */}
+      {mine ? (
         <View style={{ gap: 8 }}>
-          <Label>Counts as</Label>
-          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-            {types.map((p) => {
-              const on = picked.includes(p);
-              return (
-                <Chip
-                  key={p}
-                  label={PATTERN_LABEL[p]}
-                  on={on}
-                  onPress={() =>
-                    setPicked((v) => (on ? v.filter((x) => x !== p) : [...v, p]))
-                  }
-                />
-              );
-            })}
-          </View>
+          {confirming ? (
+            <>
+              <Text style={{ color: colors.text, fontSize: 17, lineHeight: 24 }}>
+                {`${exercise.name} will be deleted for good. Workouts that use it get another exercise of the same kind instead.`}
+              </Text>
+              <BigButton
+                label={`Delete ${exercise.name}`}
+                danger
+                onPress={() => {
+                  setConfirming(false);
+                  setState((s) => removeExercise(s, exercise.id));
+                  onRemoved();
+                }}
+              />
+              <TextButton label="Keep it" onPress={() => setConfirming(false)} />
+            </>
+          ) : (
+            <BigButton
+              label="Delete exercise"
+              quiet
+              // The last exercise of a type cannot go: a slot of that type
+              // would have nothing to prescribe.
+              disabled={!removable}
+              onPress={() => setConfirming(true)}
+            />
+          )}
+          {!removable ? (
+            <Text style={{ color: colors.faint, fontSize: 13, lineHeight: 19, textAlign: "center" }}>
+              The last of its kind stays, so a workout always has one to use.
+            </Text>
+          ) : null}
         </View>
       ) : null}
-
-      <Submit label="Add" disabled={!ready} onPress={submit} />
     </View>
   );
 }
 
-/** The cardio machines. Tap one to change it; Add brings one in. */
+
+/** The full cardio library, including built-ins hidden by older versions. */
 function CardioSheet({ visible, onClose }: { visible: boolean; onClose: () => void }) {
   const { state, setState } = useSession();
   const [editing, setEditing] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
-  const machines = cardioPool(state.hiddenConditioning);
+  const machines = cardioPool();
 
   const close = () => {
     setEditing(null);
@@ -650,7 +398,6 @@ function CardioSheet({ visible, onClose }: { visible: boolean; onClose: () => vo
           />
         ))}
         <AddLink label="Add cardio exercise" onPress={() => setAdding(true)} />
-        <RemovedList kind="cardio" />
       </View>
 
       <Sheet
@@ -702,7 +449,7 @@ function MachineEditor({ id, onRemoved }: { id: string; onRemoved: () => void })
         <SectionLabel>Note</SectionLabel>
         <NoteField id={id} kind="cardio" hint={`Saved for ${exercise.name} in every workout.`} />
       </View>
-      <RemoveConditioning id={id} name={exercise.name} onRemoved={onRemoved} />
+      {isCustomConditioning(state, id) ? <RemoveConditioning id={id} name={exercise.name} onRemoved={onRemoved} /> : null}
     </View>
   );
 }
@@ -721,7 +468,16 @@ function MachineEditor({ id, onRemoved }: { id: string; onRemoved: () => void })
  * A routine is best before lifting or after; it says so, and the workout's
  * Add offers the fitting ones first, but any routine goes either end.
  */
-function MobilitySheet({ visible, onClose }: { visible: boolean; onClose: () => void }) {
+function MobilitySheet({
+  visible,
+  start,
+  onClose,
+}: {
+  visible: boolean;
+  /** A move to open straight away, from the Library's search. */
+  start?: string | null;
+  onClose: () => void;
+}) {
   const { state, setState } = useSession();
   const [editing, setEditing] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
@@ -730,6 +486,12 @@ function MobilitySheet({ visible, onClose }: { visible: boolean; onClose: () => 
   const [browsing, setBrowsing] = useState(false);
   const [move, setMove] = useState<string | null>(null);
   const [query, setQuery] = useState("");
+  useEffect(() => {
+    if (visible && start) {
+      setBrowsing(true);
+      setMove(start);
+    }
+  }, [visible, start]);
   const routines = mobilityPool(state.hiddenConditioning);
   const routine = routines.find((m) => m.id === editing);
 
@@ -753,7 +515,9 @@ function MobilitySheet({ visible, onClose }: { visible: boolean; onClose: () => 
         <View style={{ gap: 20, paddingTop: 8 }}>
           <LinkButton kind="back" label="All moves" onPress={() => setMove(null)} />
           <Text style={{ color: colors.text, fontSize: 28, fontWeight: "700" }}>{shown.name}</Text>
-          {PHOTOS[shown.id]?.[0] ? (
+          {hasIllustration(shown.id) ? (
+            <Illustration key={shown.id} id={shown.id} style={{ height: 240, borderRadius: radii.card, borderCurve: "continuous" }} />
+          ) : PHOTOS[shown.id]?.[0] ? (
             <Image source={PHOTOS[shown.id][0]} resizeMode="contain" style={{ width: "100%", height: 200, borderRadius: 16, backgroundColor: colors.surface }} />
           ) : null}
           <Text ui style={{ color: colors.muted, fontSize: 16 }}>{moveAmount(shown)}</Text>
@@ -977,7 +741,7 @@ function RemoveConditioning({
   const removable = canRemoveConditioning(state, id);
   const mine = isCustomConditioning(state, id);
   const routine = !!mobilityById(id);
-  const usual = routine ? "Humbell's usual routine" : "Humbell's usual cardio";
+  const usual = routine ? "Klay's usual routine" : "Klay's usual cardio";
 
   return (
     <View style={{ gap: 8 }}>
@@ -1018,7 +782,7 @@ function RemoveConditioning({
 }
 
 /**
- * Humbell's own machines or routines that aren't in your list — ones you
+ * Klay's own machines or routines that aren't in your list — ones you
  * removed, and ones a new phone starts without — at the foot of the list,
  * each a tap from coming in. Only there when there are some.
  */

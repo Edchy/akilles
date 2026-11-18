@@ -244,7 +244,8 @@ for (const seed of [1, 7, 42, 2026, 31337]) {
 
 // ---- one by one ----
 
-const fresh = () => store.resetToDefault();
+// Chains placed at the exercise itself; chains are tested on their own.
+const fresh = () => ({ ...store.resetToDefault(), steps: { push_up: 3, pullup: 3 } });
 const push = (s) => store.workoutById(s, "push");
 const slot = (s, wid, label) => store.workoutById(s, wid).exercises.find((e) => e.slot === label);
 /** Push's third slot, whatever the default plan puts there. */

@@ -214,6 +214,9 @@ const NEEDS: Record<string, Gear[]> = {
   speed_squat: ["barbell"],
   speed_deadlift: ["barbell"],
   // abs
+  dead_hang: ["pullup_bar"],
+  scap_pullup: ["pullup_bar"],
+  pullup_negative: ["pullup_bar"],
   hanging_leg_raise: ["pullup_bar"],
   rotation_machine: ["machine"],
   cable_crunch: ["cable"],

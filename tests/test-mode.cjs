@@ -12,6 +12,8 @@ const memory = {
   getItem: async (k) => (disk.has(k) ? disk.get(k) : null),
   setItem: async (k, v) => void disk.set(k, v),
   removeItem: async (k) => void disk.delete(k),
+  getAllKeys: async () => [...disk.keys()],
+  multiRemove: async (ks) => ks.forEach((k) => disk.delete(k)),
 };
 
 const modules = new Map();
@@ -48,8 +50,19 @@ test("the test save and the real one never touch", async () => {
   assert.equal((await storage.load("test")).shortWorkouts, true);
 });
 
+test("a save from a newer version is never written to", async () => {
+  disk.clear();
+  const newer = JSON.stringify({ version: 9999, state: { history: {} } });
+  disk.set("achilles/state", newer);
+  await storage.load("real");
+  assert.equal(storage.isLocked("real"), true);
+  await storage.save(mine(), "real");
+  assert.equal(disk.get("achilles/state"), newer, "left exactly as it was");
+  storage.unlock("real");
+});
+
 test("a save that cannot be read is kept aside before a fresh start writes over it", async () => {
-  for (const unreadable of ["{ not json", JSON.stringify({ version: 9999, state: { history: {} } })]) {
+  for (const unreadable of ["{ not json"]) {
     disk.clear();
     disk.set("achilles/state", unreadable);
     const fresh = await storage.load("real");
@@ -109,4 +122,56 @@ test("short workouts run, and show, only the first two exercises", () => {
   const named = (state) => store.workoutPreview(state, push).map((r) => r.name);
   assert.ok(!named({ ...s, shortWorkouts: true }).includes("Triceps pushdown"));
   assert.ok(named(s).includes("Triceps pushdown"));
+});
+
+test("a save with loops keeps every workout: the other loop's are paused", () => {
+  let s = store.resetToDefault();
+  const id = s.workouts[0].id;
+  s = store.startLoopWith(store.addWorkoutOfKind(s, "bw1", "bodyweight"), "bw1", store.loopInUse(s), "l_away");
+  const total = [...store.loopsOf(s)].reduce((n, l) => n + l.workouts.length, 0);
+  const folded = storage.fromSaved(storage.toSaved(s));
+  assert.equal(folded.loops, undefined);
+  assert.equal(folded.workouts.length + folded.removedWorkouts.length, total);
+  assert.ok(folded.removedWorkouts.some((r) => r.workout.id === "bw1"), "the away workout waits, paused");
+  assert.ok(folded.workouts.some((w) => w.id === id));
+});
+
+test("dragging the active workouts reorders only them, and keeps what is next", () => {
+  let s = store.resetToDefault();
+  s = store.pauseWorkout(s, s.workouts[2].id);
+  const next = s.nextWorkout;
+  const [a, b] = s.workouts.map((w) => w.id);
+  const moved = store.moveActiveWorkout(s, 0, 1);
+  assert.equal(moved.workouts.map((w) => w.id).join(), [b, a].join());
+  assert.equal(moved.nextWorkout, next);
+  assert.equal(moved.removedWorkouts.length, 1);
+});
+
+test("saving the editor's draft keeps only what the editor changed", () => {
+  const base = store.resetToDefault();
+  const draft = store.renameWorkout(base, base.workouts[0].id, { name: "Chest" });
+  // Meanwhile, elsewhere: test mode's short workouts were switched on.
+  const current = { ...base, shortWorkouts: true };
+  const saved = store.mergeDraft(base, current, draft);
+  assert.equal(saved.workouts[0].name, "Chest");
+  assert.equal(saved.shortWorkouts, true, "a change made elsewhere is kept");
+  // A draft with no changes saves nothing.
+  assert.equal(store.mergeDraft(base, current, base).workouts, current.workouts);
+});
+
+test("dragged below Paused a workout pauses; dragged above, it resumes, in the order dropped", () => {
+  let s = store.resetToDefault();
+  const [push, pull, legs] = s.workouts.map((w) => w.id);
+  s = store.setNextWorkout(s, pull);
+  // Pull dragged down into Paused: it pauses, and the next active one after it is next.
+  let after = store.arrangePlan(s, [push, legs], [pull]);
+  assert.equal(after.workouts.map((w) => w.id).join(), [push, legs].join());
+  assert.equal(after.removedWorkouts.map((r) => r.workout.id).join(), pull);
+  assert.equal(after.nextWorkout, legs);
+  // And back up, to the top.
+  after = store.arrangePlan(after, [pull, push, legs], []);
+  assert.equal(after.workouts.map((w) => w.id).join(), [pull, push, legs].join());
+  assert.equal(after.removedWorkouts.length, 0);
+  // Nothing left active: refused.
+  assert.equal(store.arrangePlan(s, [], [push, pull, legs]), s);
 });

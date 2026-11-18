@@ -1,45 +1,57 @@
 {
-  "voice": "scratch (macOS Daniel)",
+  "voice": "elevenlabs JBFqnCBsd6RMkjVDRZzb eleven_multilingual_v2",
   "scenes": {
-    "own": {
-      "file": "own.wav",
-      "seconds": 4.193832
+    "eat": {
+      "file": "eat.mp3",
+      "seconds": 1.38449
     },
-    "open": {
-      "file": "open.wav",
-      "seconds": 6.057324
+    "sleep": {
+      "file": "sleep.mp3",
+      "seconds": 1.48898
     },
-    "sets": {
-      "file": "sets.wav",
-      "seconds": 4.769705
+    "move": {
+      "file": "move.mp3",
+      "seconds": 2.873469
     },
-    "workouts": {
-      "file": "workouts.wav",
-      "seconds": 6.491111
+    "now-what": {
+      "file": "now-what.mp3",
+      "seconds": 2.35102
     },
-    "library": {
-      "file": "library.wav",
-      "seconds": 6.514739
+    "start": {
+      "file": "start.mp3",
+      "seconds": 4.858776
     },
-    "order": {
-      "file": "order.wav",
-      "seconds": 5.433197
+    "circles": {
+      "file": "circles.mp3",
+      "seconds": 5.982041
     },
-    "swap": {
-      "file": "swap.wav",
-      "seconds": 2.499002
+    "short": {
+      "file": "short.mp3",
+      "seconds": 5.093878
     },
-    "add": {
-      "file": "add.wav",
-      "seconds": 1.43034
+    "next": {
+      "file": "next.mp3",
+      "seconds": 5.746939
     },
-    "pause": {
-      "file": "pause.wav",
-      "seconds": 3.335011
+    "deck": {
+      "file": "deck.mp3",
+      "seconds": 6.217143
+    },
+    "stretch": {
+      "file": "stretch.mp3",
+      "seconds": 3.84
+    },
+    "finish": {
+      "file": "finish.mp3",
+      "seconds": 3.422041
+    },
+    "shaped": {
+      "file": "shaped.mp3",
+      "seconds": 2.821224
     },
     "end": {
-      "file": "end.wav",
-      "seconds": 2.077188
+      "file": "end.mp3",
+      "seconds": 1.933061
     }
   }
 }

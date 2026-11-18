@@ -1,13 +1,14 @@
 import { useEffect, useState } from "react";
-import { Platform, ScrollView } from "react-native";
+import { Platform, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useBarSpace } from "@/components/bottom-bar";
 import { Catalogue } from "@/components/catalogue";
 import { Goals } from "@/components/goals";
 import { GOALS_ON } from "@/data/goals";
-import { Modules } from "@/components/modules";
+import { Modules, NEW_SIZE, NewWorkoutButton } from "@/components/modules";
 import { COLUMN } from "@/components/screen";
+import { InlineTip } from "@/components/tips";
 import { Segments } from "@/components/segments";
 import { colors } from "@/constants/theme";
 
@@ -37,6 +38,7 @@ export default function PlanScreen() {
   }, []);
 
   return (
+    <View style={{ flex: 1, backgroundColor: colors.bg }}>
     <ScrollView
       scrollEnabled={!dragging}
       keyboardShouldPersistTaps="handled"
@@ -47,7 +49,8 @@ export default function PlanScreen() {
         width: "100%",
         maxWidth: COLUMN,
         alignSelf: "center",
-        paddingBottom: barSpace + 28,
+        // Room for the floating New workout button above the bar.
+        paddingBottom: barSpace + (segment === "modules" ? NEW_SIZE + 24 : 28),
         gap: 22,
       }}
     >
@@ -61,6 +64,10 @@ export default function PlanScreen() {
         onChange={setSegment}
       />
 
+      {/* The first time the Library is seen, a line on what it is (see `components/tips.tsx`).
+          Workouts says its own, once, at the top of its list. */}
+      {segment === "exercises" ? <InlineTip id="library" /> : null}
+
       {segment === "modules" ? (
         <Modules onDragChange={setDragging} />
       ) : segment === "goals" ? (
@@ -69,5 +76,7 @@ export default function PlanScreen() {
         <Catalogue />
       )}
     </ScrollView>
+    {segment === "modules" ? <NewWorkoutButton bottom={barSpace + 4} /> : null}
+    </View>
   );
 }

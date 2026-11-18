@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/buttons";
 import { Pressable, View } from "react-native";
 import { Text } from "@/components/text";
 
 import { colors } from "@/constants/theme";
 import { exportBackup, pickBackup } from "@/store/backup";
+import { dailyCopies, keepAside, type DailyCopy } from "@/store/storage";
 import { resetToDefault, useSession, type SessionState } from "@/store/session";
 import { useTestMode } from "@/store/test-mode";
 
@@ -21,6 +22,13 @@ export function Backup() {
   // Reset asked for once, waiting for the second tap.
   const [resetting, setResetting] = useState(false);
   const { on: testing } = useTestMode();
+  // The phone's own copies, one a day, made without asking.
+  const [copies, setCopies] = useState<DailyCopy[]>([]);
+  // Where the waiting restore came from, for the question asked about it.
+  const [source, setSource] = useState<"backup" | "copy">("backup");
+  useEffect(() => {
+    if (!testing) dailyCopies().then(setCopies);
+  }, [testing]);
 
   const run = async (task: () => Promise<void>) => {
     setBusy(true);
@@ -40,10 +48,11 @@ export function Backup() {
     run(async () => {
       const read = await pickBackup();
       if (read === null) return;
-      if (read === "invalid") return setNote("That file isn't a Humbell backup.");
+      if (read === "invalid") return setNote("That file isn't a Klay backup.");
       if (read === "newer") {
         return setNote("That backup is from a newer version of the app. Update first.");
       }
+      setSource("backup");
       setPending(read);
     });
 
@@ -90,8 +99,8 @@ export function Backup() {
       ) : pending ? (
         <View style={{ gap: 10 }}>
           <Text style={{ color: colors.bend, fontSize: 14, lineHeight: 20, fontWeight: "600" }}>
-            Replace everything on this phone with this backup? What is here now
-            is lost.
+            Replace everything on this phone with this {source}?
+            What is here now is replaced.
           </Text>
           <View style={{ flexDirection: "row", gap: 8 }}>
             <Action label="Cancel" onPress={() => setPending(null)} />
@@ -99,6 +108,7 @@ export function Backup() {
               label="Replace"
               tone="danger"
               onPress={() => {
+                void keepAside(state);
                 setState(pending);
                 setPending(null);
                 setNote("Restored.");
@@ -133,8 +143,55 @@ export function Backup() {
       )}
 
       {note ? <Text style={{ color: colors.muted, fontSize: 13 }}>{note}</Text> : null}
+
+      {copies.length && !pending && !resetting ? (
+        <View style={{ gap: 4, marginTop: 10 }}>
+          <Text style={{ color: colors.text, fontSize: 17, fontWeight: "700" }}>Earlier copies</Text>
+          <Text style={{ color: colors.muted, fontSize: 15, lineHeight: 22, marginBottom: 6 }}>
+            The phone keeps a copy of your training each day, for two weeks. Tap one to go back to it.
+          </Text>
+          {copies.map((c) => (
+            <Pressable
+              key={c.day}
+              accessibilityRole="button"
+              accessibilityLabel={`${dayName(c.day)}, ${workoutsLabel(c.workouts)}`}
+              onPress={() => {
+                setNote(null);
+                setSource("copy");
+                setPending(c.state);
+              }}
+              style={({ pressed }) => ({
+                minHeight: 48,
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "space-between",
+                borderTopWidth: 1,
+                borderTopColor: colors.line,
+                opacity: pressed ? 0.6 : 1,
+              })}
+            >
+              <Text style={{ color: colors.text, fontSize: 17 }}>{dayName(c.day)}</Text>
+              <Text style={{ color: colors.muted, fontSize: 15 }}>{workoutsLabel(c.workouts)}</Text>
+            </Pressable>
+          ))}
+        </View>
+      ) : null}
     </View>
   );
+}
+
+const workoutsLabel = (n: number) => (n === 1 ? "1 workout" : `${n} workouts`);
+
+/** "Today", "Yesterday", or "Sat 14 Nov". */
+function dayName(day: string): string {
+  const [y, m, d] = day.split("-").map(Number);
+  const date = new Date(y, m - 1, d);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const ago = Math.round((today.getTime() - date.getTime()) / 86_400_000);
+  if (ago === 0) return "Today";
+  if (ago === 1) return "Yesterday";
+  return date.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" });
 }
 
 function Action({

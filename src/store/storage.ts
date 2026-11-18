@@ -25,6 +25,7 @@ import {
 import {
   LEAN,
   MOVEMENT_EXPANSION_IDS,
+  PULLUP_STEP_IDS,
   byId,
   leanHiddenExercises,
   setCustomExercises,
@@ -43,6 +44,7 @@ import { HOLD_MAX, schemeOf, type ExerciseState } from "@/lib/progression";
 import {
   CARDIO_SLOTS,
   correctTreadmillTarget,
+  foldLoops,
   cardioKey,
   courseKey,
   CONDITIONING_ID,
@@ -75,6 +77,82 @@ const MODE_KEY = "achilles/mode";
  * save the app could not understand.
  */
 const KEPT = "achilles/kept";
+
+/**
+ * Running from the Mac (a development bundle served by Metro), rather than
+ * the version published to the phone. Expo Go keeps one store per project,
+ * so both see the same saves: from the Mac the app is always in test mode,
+ * and the real training is read — for "A copy of my training" — but never
+ * written. Your gym training can only ever be changed by the published app.
+ */
+export const FROM_MAC = typeof __DEV__ !== "undefined" && !!__DEV__;
+
+/**
+ * Saves this version found written by a newer one. Nothing is written to
+ * them, ever: an older version that started afresh over a newer save is how
+ * training was lost once (16 November 2026).
+ */
+const locked = new Set<Profile>();
+/** Whether a save is from a newer version, and so left alone. */
+export const isLocked = (profile: Profile): boolean => locked.has(profile);
+/** Test mode started afresh on purpose: its old save may now be written over. */
+export const unlock = (profile: Profile): void => {
+  locked.delete(profile);
+};
+
+/**
+ * One copy of the real training a day, as it was before that day's first
+ * change: `achilles/daily/<yyyy-mm-dd>`, the last two weeks of them. Settings
+ * › Backup lists them, to put one back.
+ */
+const DAILY = "achilles/daily";
+const KEEP_DAYS = 14;
+const dayOf = (d: Date) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+/** The day a copy was last made, so the check costs nothing after the first save. */
+let copiedOn: string | null = null;
+
+const copyToday = async (): Promise<void> => {
+  const today = dayOf(new Date());
+  if (copiedOn === today) return;
+  copiedOn = today;
+  const key = `${DAILY}/${today}`;
+  if ((await AsyncStorage.getItem(key)) !== null) return;
+  const raw = await AsyncStorage.getItem(KEYS.real);
+  if (!raw) return;
+  await AsyncStorage.setItem(key, raw);
+  const days = (await AsyncStorage.getAllKeys()).filter((k) => k.startsWith(`${DAILY}/`)).sort();
+  const old = days.slice(0, Math.max(0, days.length - KEEP_DAYS));
+  if (old.length) await AsyncStorage.multiRemove(old);
+};
+
+export type DailyCopy = { day: string; state: SessionState; workouts: number };
+
+/** The daily copies that can still be read, newest first. */
+export const dailyCopies = async (): Promise<DailyCopy[]> => {
+  try {
+    const keys = (await AsyncStorage.getAllKeys()).filter((k) => k.startsWith(`${DAILY}/`)).sort().reverse();
+    const copies: DailyCopy[] = [];
+    for (const key of keys) {
+      const raw = await AsyncStorage.getItem(key);
+      const state = raw ? fromSaved(raw) : "invalid";
+      if (typeof state === "string") continue;
+      copies.push({ day: key.slice(DAILY.length + 1), state, workouts: state.log?.length ?? 0 });
+    }
+    return copies;
+  } catch {
+    return [];
+  }
+};
+
+/** What is there now, set aside before a copy is put back over it. */
+export const keepAside = async (state: SessionState): Promise<void> => {
+  try {
+    await AsyncStorage.setItem(`${KEPT}/real/${Date.now()}`, toSaved(state));
+  } catch {
+    // Worst case, today's daily copy still holds the morning's training.
+  }
+};
 
 /**
  * Bumped whenever the saved shape changes in a way older blobs cannot satisfy.
@@ -133,11 +211,11 @@ const KEPT = "achilles/kept";
 // 17: correct treadmill time-trial targets to 1 km, including resumed sessions.
 // 18: add hollow hold to the optional exercise library.
 // 19: restore warm-up and cool-down defaults omitted by the first Bodyweight template.
-const VERSION = 20;
+const VERSION = 21;
 
 /**
  * Version 14: lifts for training away from a gym. They start in the library
- * on every phone, as on a fresh install; Humbell reaches for them away from the
+ * on every phone, as on a fresh install; Klay reaches for them away from the
  * gym whether or not they are in your catalogue.
  */
 const ADDED_IN_14: string[] = ["bw_squat", "bw_split_squat"];
@@ -522,6 +600,10 @@ export const fromSaved = (raw: string): SessionState | Unreadable => {
       const added = MOVEMENT_EXPANSION_IDS.filter((id) => !LEAN.includes(id) && !restored.hidden.includes(id));
       restored.hidden = [...restored.hidden, ...added];
     }
+    if (saved.version < 21) {
+      const added = PULLUP_STEP_IDS.filter((id) => !LEAN.includes(id) && !restored.hidden.includes(id));
+      restored.hidden = [...restored.hidden, ...added];
+    }
     // Before the custom list is registered below, so its holds lifts resolve as such.
     const held = saved.version < 12 ? toHolds(restored) : restored;
     // `byId`, `cardioById` and `mobilityById` resolve custom entries through
@@ -593,6 +675,8 @@ export const fromSaved = (raw: string): SessionState | Unreadable => {
     }
     // Close older sessions at the target actually trained, then correct the
     // saved plan and any current card that will genuinely be resumed.
+    // Not a version step: any save with loops, old or new, folds them in.
+    migrated = foldLoops(migrated);
     return correctTreadmillTarget(saved.version < 17 ? { ...migrated, treadmillTargetRevision: undefined } : migrated);
   } catch {
     return "invalid";
@@ -622,6 +706,11 @@ export const load = async (profile: Profile = "real"): Promise<SessionState> => 
     if (!raw) return resetToDefault();
     const state = fromSaved(raw);
     if (typeof state !== "string") return state;
+    // From a newer version: left exactly as it is, and never written to.
+    if (state === "newer") {
+      locked.add(profile);
+      return resetToDefault();
+    }
     await AsyncStorage.setItem(`${KEPT}/${profile}/${Date.now()}`, raw);
     return resetToDefault();
   } catch {
@@ -631,7 +720,12 @@ export const load = async (profile: Profile = "real"): Promise<SessionState> => 
 
 /** Write the training to disk. Errors are swallowed — see `useSaved`. */
 export const save = async (state: SessionState, profile: Profile = "real"): Promise<void> => {
+  // The two rules that keep the gym training safe, here at the bottom so no
+  // screen can get round them.
+  if (locked.has(profile)) return;
+  if (profile === "real" && FROM_MAC) return;
   try {
+    if (profile === "real") await copyToday();
     await AsyncStorage.setItem(KEYS[profile], toSaved(state));
   } catch {
     // A failed write is not worth interrupting a set for. The next change
@@ -650,6 +744,7 @@ export const hasSaved = async (profile: Profile): Promise<boolean> => {
 
 /** Which profile was on when the app last ran. Anything unreadable is the real one. */
 export const loadProfile = async (): Promise<Profile> => {
+  if (FROM_MAC) return "test";
   try {
     return (await AsyncStorage.getItem(MODE_KEY)) === "test" ? "test" : "real";
   } catch {
@@ -658,6 +753,9 @@ export const loadProfile = async (): Promise<Profile> => {
 };
 
 export const saveProfile = async (profile: Profile): Promise<void> => {
+  // From the Mac the mode is always test, and is never written: written, it
+  // would open the gym app in test mode too.
+  if (FROM_MAC) return;
   try {
     if (profile === "test") await AsyncStorage.setItem(MODE_KEY, "test");
     else await AsyncStorage.removeItem(MODE_KEY);

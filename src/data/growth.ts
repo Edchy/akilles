@@ -18,7 +18,7 @@ import { DEFAULT_SCHEME, DEFAULT_WORKOUTS, type Entry } from "@/data/split";
  *
  * Growth works on slots, never on exercises: a slot it added and you swapped
  * is still that slot, so it's never added twice; one you took out is never
- * put back. It only touches Humbell's own Push, Pull and Legs, running in the
+ * put back. It only touches Klay's own Push, Pull and Legs, running in the
  * loop in use — never a workout you made, or one you paused.
  */
 
@@ -42,7 +42,7 @@ export const LONGER_STRETCH = "yoga";
 /** How many lifts a starting workout begins with. */
 export const START_LIFTS = 3;
 
-/** Humbell's own workouts, which start small and grow. */
+/** Klay's own workouts, which start small and grow. */
 const GROWING = ["push", "pull", "legs"];
 
 const slotsOf = (id: string): Entry[] =>

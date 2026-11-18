@@ -21,3 +21,16 @@ expo-env.d.ts
 
 # Secrets, such as the ElevenLabs key for the video
 .env
+.local.env
+*.local.env
+
+# The clay figure's full-size originals (Codex, ~1.3 MB each): kept on disk to
+# re-export from, but out of git. The app's copies are in assets/clay.
+art/clay/*.png
+!art/clay/sheet.png
+art/clay/old/
+# Art experiments that weren't used: realistic photos, Codex stick drawings.
+art/photos/
+art/drawn/*-stick.png
+art/drawn/stick-style.png
+art/STYLE-stick.md

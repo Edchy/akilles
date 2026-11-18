@@ -1,5 +1,5 @@
 ---
-name: Humbell
+name: Klay
 description: A strength-training app where each exercise owns the whole screen in its family's colour.
 colors:
   navy: "#13325B"
@@ -146,13 +146,13 @@ components:
     padding: "18px"
 ---
 
-# Design System: Humbell
+# Design System: Klay
 
 ## Overview
 
 **Creative North Star: "The Sports Hall in Munich Colours"**
 
-Humbell is two grounds. Off the floor it is a white page with deep navy words, set in EB Garamond like a well-made programme. On the floor, each exercise takes the entire screen in its family's colour: the screen turns orange for the squat, blue for the bench, and you know what you are doing before you read a word. Colour carries meaning and nothing else; it is never decoration and never a status tint.
+Klay is two grounds. Off the floor it is a white page with deep navy words, set in EB Garamond like a well-made programme. On the floor, each exercise takes the entire screen in its family's colour: the screen turns orange for the squat, blue for the bench, and you know what you are doing before you read a word. Colour carries meaning and nothing else; it is never decoration and never a status tint.
 
 Density is low and the targets are huge, because the reader is mid-set, sweaty-thumbed, at arm's length under bright light. The lift screen is a fixed vertical rhythm whose blocks are sized for their largest case, so nothing moves under a thumb. Hierarchy comes from size and italics, never from faded ink. Shapes are the family's six solid marks, soft circles in a tint of the field, one solid pill to move on, and a capsule of Liquid Glass floating over everything, tinted with whatever it floats over.
 
@@ -161,7 +161,7 @@ The system refuses the fitness-app default of a white card stack with a tinted a
 **Key Characteristics:**
 - One saturated field per exercise family while lifting; white ground with navy words everywhere else.
 - EB Garamond throughout, sentence case, lining figures for every number.
-- Humbell's remarks and short labels in italics; instructions and facts in roman.
+- Klay's remarks and short labels in italics; instructions and facts in roman.
 - Six bare solid marks on a 48-unit grid identify the families; no tiles behind them.
 - Secondary controls are soft circles and pills in a tint of the field; one solid slab moves you on.
 - A floating capsule bar of Liquid Glass, the same shape on every screen, tinted with the ground beneath it.
@@ -214,14 +214,14 @@ Every word goes through the app's own `Text` wrapper, which maps `fontWeight` an
 - **Number** (600, 84, -2% tracking): the weight on the lift screen, 64 when a superset is folded in. Unit beside it in Regular 22.
 - **Set count** (600, 50, lining and tabular): the rep count inside a 92pt set circle; 44 in an 80 circle and 28 in a 52 partner circle.
 - **Headline** (500, 27/33, single line with ellipsis): the exercise name beside its mark.
-- **Voice** (Italic 400, 24/28): Humbell's remark once the sets are in; 20/26 on Today ("Back squat goes up to 60 kg. Earned.").
+- **Voice** (Italic 400, 24/28): Klay's remark once the sets are in; 20/26 on Today ("Back squat goes up to 60 kg. Earned.").
 - **Body** (400, 19/24): facts and instructions, the top line's workout name, the rest timer.
 - **Label** (Italic 400, 19): short labels in a note slot: "Last time", "To beat", the n/total count. 15 for section labels in sheets and history.
 - **Action** (500 on a solid slab, 400 on a soft one, 21): slab words, "Next: X".
 - **Bar label** (400, 15/18): under each bottom-bar glyph.
 
 ### Named Rules
-**The Two Voices Rule.** Italics belong to Humbell's remarks and to short labels. Instructions and facts are set roman.
+**The Two Voices Rule.** Italics belong to Klay's remarks and to short labels. Instructions and facts are set roman.
 
 **The Sentence Case Rule.** Every label is sentence case. Small headings are italic, not tracked capitals.
 
@@ -235,7 +235,7 @@ The lift screen is a fixed rhythm, top to bottom: a top line (workout name with 
 
 **The Largest Case Rule.** Every block on the lift screen is sized for its largest content (a two-line remark, a five-figure weight). Smaller content sits inside that space; nothing shifts under the thumb.
 
-Today holds the day in one card: the day's field colour as a 10% wash over white (pale blue on push, pale orange on legs), 28px continuous corners, 18 side padding, flat like every card, so the name and its list read as one thing and the wash previews the field Start opens onto. Every text colour inside stays above 4.5:1 on any day's wash. Inside it reads left to right like the lift screen's title, on one left edge. A 30pt column holds the shapes (the day's mark at 30, the list's at 22, centred in it), with 14 to the words, so the name, subtitle and every list name start 44 in. The name at 44 and the italic subtitle lead straight into the list. Humbell's line sits outside the card, apart from the day it comments on: at the foot, flush with the buttons, 19/25, just above Skip and Start (carrying the Undo after a skip). It appears only when there is news: day one, a return after a week or more, a second session in a day, a skip, or what changed since these lifts were last done (a weight up or down, a lift never done). An ordinary day has no line. Below that, the session reads like a timetable: shape, name, and one figure right-aligned in slate with tabular lining figures. The figure is the weight for a lift (in full navy medium when it went up, so Humbell's line has a row to point at), the sets for a lift with no load, and the distance or minutes for cardio and the stretch. A lift never done shows no figure until it has a weight of its own. Skip and Start are pills side by side above the bar.
+Today holds the day in one card: the day's field colour as a 10% wash over white (pale blue on push, pale orange on legs), 28px continuous corners, 18 side padding, flat like every card, so the name and its list read as one thing and the wash previews the field Start opens onto. Every text colour inside stays above 4.5:1 on any day's wash. Inside it reads left to right like the lift screen's title, on one left edge. A 30pt column holds the shapes (the day's mark at 30, the list's at 22, centred in it), with 14 to the words, so the name, subtitle and every list name start 44 in. The name at 44 and the italic subtitle lead straight into the list. Klay's line sits outside the card, apart from the day it comments on: at the foot, flush with the buttons, 19/25, just above Skip and Start (carrying the Undo after a skip). It appears only when there is news: day one, a return after a week or more, a second session in a day, a skip, or what changed since these lifts were last done (a weight up or down, a lift never done). An ordinary day has no line. Below that, the session reads like a timetable: shape, name, and one figure right-aligned in slate with tabular lining figures. The figure is the weight for a lift (in full navy medium when it went up, so Klay's line has a row to point at), the sets for a lift with no load, and the distance or minutes for cardio and the stretch. A lift never done shows no figure until it has a weight of its own. Skip and Start are pills side by side above the bar.
 
 Plan's workout list uses Today's language, a row per workout, so the plan reads as the run of colours you will train through. Each workout is a card in its own 10% wash: its mark at 24 in a 26 column, 14 to the name in Display 28/34, the italic subtitle and exercise count under it in slate, "Next" in italic navy on the right of the next workout, and a chevron. The explanatory sentence above the list stays: it is the one place that says how the cycle works. Inside a workout, each exercise row carries its mark at 16 before the name.
 
@@ -270,7 +270,7 @@ Tactile and unmistakable: one solid way on, everything else soft.
 - **Text actions:** blue (Rise) words in the sans, 17/700, 48 tall: *add* with a plus ("+ Add move", "New routine"), *back* with a caret ("‹ All moves"), plain links ("Rename"). The way out ("Keep it", "Cancel") is the same in grey, centred under what it undoes.
 - **Chips:** for choosing among a few (an area, equipment, a weight): 44 tall full pills, Soft Grey, navy with white words when chosen.
 - **One source:** all of these are `Button`, `LinkButton` and `Chip` in `src/components/buttons.tsx`; screens never draw their own. The workout screen's Next slab and the bottom bar are the two exceptions, drawn on the field.
-- **Removed things:** Humbell's routines and machines that aren't in your list sit at the very foot of their page in a red dashed box, "Not in your list", each with + Add.
+- **Removed things:** Klay's mobility routines that aren't in your list sit at the very foot of their page in a red dashed box, "Not in your list", each with + Add.
 - **Pressed:** opacity drops to 0.6–0.8 under the thumb. No hover states: this is a phone.
 
 ### Soft circles and pills
@@ -281,9 +281,12 @@ Tactile and unmistakable: one solid way on, everything else soft.
 - **More (⋯):** 36pt circle in the field tint at the end of the lift's name. Opens a 250pt white card, 22px corners, with a soft shadow, right-aligned under the button: rows 52 high, outline icon at 20 and body roman at 19, hairlines between. A tap anywhere else closes it.
 
 ### Set circles
+
+Current palette (18 November 2026): **Ice & acid**. Each family card uses one hue: a light field with its deeper shade for text, outlines, symbols, and completed sets. Push is ice blue; Pull jade; Legs lilac; Core dusty pink; Cardio pale teal; Mobility amber; Full body / Bodyweight wasabi. Completed sets use the light family shade for their figures. Short sets stay outlined with a stronger ring and show the actual count over the target (5/6); unlogged sets keep a thin outline and the target; zero remains crossed out. No red is used for short sets. These rules supersede the earlier palette and missed-set colour trials.
+
 The signature control. 92pt outlined circles holding the target reps in SemiBold 50; tap to log (fills solid), tap again to count down, hold to reset. A short set fills with the raised tint instead of solid ink. Under them, "Last time" in italic, last time's weight in roman, and last time's sets as small solid circles.
 
-**When a lift is done well.** Once the circles settle on target — 0.65s with no tap, since a short set passes through the target on its way down (tap for 6, tap again for 5) — the lift gets its moment, scaled to what was earned. *On target* (every set at its reps): a ripple runs through the circles left to right, each swelling about 9% and sending out a thin ring in the text colour that grows to 1.55× and fades, all over 1.1s, and a success buzz. *The heavier weight earned* (a reload owned): the same, plus each circle lets loose two or three of the family's marks (13–20pt, in the text colour, some fainter) as the ripple reaches it, coming out from behind it, fanning up and away from the middle, turning, and fading before they reach the weight; the "Up to … next time" line lights up with a soft white pill behind it; a second, firmer buzz. Humbell's line itself appears the moment the last circle fills, as for any result. Nothing for a set short or a weight going down, which keep their calm line. It plays once per lift: putting a circle right afterwards, or coming back to a lift already done, plays nothing, and a circle put wrong while it plays takes it away at once. *The send-off:* pressing Next on a lift done well gives a light tap and a soft band of light passing once over the button that comes up in its place (the next lift's Next, its warm-up's Ready, cardio's Done, the stretches'), 0.7s, clipped to the pill. Nothing in any of it moves a control or takes a touch. With Reduce Motion, only the buzzes.
+**When a lift is done well.** Once the circles settle on target — 0.65s with no tap, since a short set passes through the target on its way down (tap for 6, tap again for 5) — the lift gets its moment, scaled to what was earned. *On target* (every set at its reps): a ripple runs through the circles left to right, each swelling about 9% and sending out a thin ring in the text colour that grows to 1.55× and fades, all over 1.1s, and a success buzz. *The heavier weight earned* (a reload owned): the same, plus each circle lets loose two or three of the family's marks (13–20pt, in the text colour, some fainter) as the ripple reaches it, coming out from behind it, fanning up and away from the middle, turning, and fading before they reach the weight; the "Up to … next time" line lights up with a soft white pill behind it; a second, firmer buzz. Klay's line itself appears the moment the last circle fills, as for any result. Nothing for a set short or a weight going down, which keep their calm line. It plays once per lift: putting a circle right afterwards, or coming back to a lift already done, plays nothing, and a circle put wrong while it plays takes it away at once. *The send-off:* pressing Next on a lift done well gives a light tap and a soft band of light passing once over the button that comes up in its place (the next lift's Next, its warm-up's Ready, cardio's Done, the stretches'), 0.7s, clipped to the pill. Nothing in any of it moves a control or takes a touch. With Reduce Motion, only the buzzes.
 
 ### A goal's step
 A goal block sits straight after the warm-up, on Goal Violet, laid out like a lift so it reads the same way: the step's drill as the name with the ⋯ (Watch the tutorial, Change the goal), the goal's name in italics under it with the step's note, then, where a lift has its weight, the step number at 96 with "of 6" at 24 and the ladder in small under it (one 5pt bar a step, 22 wide, the current one 34, steps still to come at 30%). Then the work:
@@ -291,7 +294,7 @@ A goal block sits straight after the warm-up, on Goal Violet, laid out like a li
 - **Holds** are set circles with a small "s", each its own clock: tap and it counts down from the target, the circle a tint of the field with a 3pt ring running down clockwise from the top over a faint track; it buzzes at zero and logs the hold, and a tap mid-hold stops it and logs what was held.
 - **Practice** is one clock (76pt figures, "practice" beside it) with a white Start pill, and under the line an "I've got it — next step" pill that turns solid once pressed.
 
-The line under it follows a lift's: Humbell in italics and the plain rule ("Move on: every set at 8, two sessions running.") before, then what it means. A step owned gets the lift's whole cheer with stars for marks, and "Step 3 next time: kick-ups to the wall." lights up. Next is always there for practice, since its clock is a guide, not a gate.
+The line under it follows a lift's: Klay in italics and the plain rule ("Move on: every set at 8, two sessions running.") before, then what it means. A step owned gets the lift's whole cheer with stars for marks, and "Step 3 next time: kick-ups to the wall." lights up. Next is always there for practice, since its clock is a guide, not a gate.
 
 A fresh install comes with one goal, the handstand push-up, waiting in no workout: a grey row with the open star, "8 steps · not in a workout yet". Once there are no goals at all, Plan › Goals shows what one looks like: a violet-washed card with the start of that ladder as four rungs on a rail (done with a check, the one you are on as a ring with a dot, one still to come, and the open star for the goal), the one rule for moving up, and a violet "New goal" pill.
 
@@ -331,7 +334,7 @@ Phosphor Icons in Bold, drawn in the current ink at one weight everywhere. Only 
 ### Do:
 - **Do** fill the whole lift screen with the exercise family's field colour and draw every word on it in that field's one ink at full strength.
 - **Do** build hierarchy from size and italics: 84 for the weight, 50 in the circles, 27 for the name, 19 for facts.
-- **Do** set Humbell's remarks and short labels ("Last time", "To beat") in italics, and instructions and facts in roman.
+- **Do** set Klay's remarks and short labels ("Last time", "To beat") in italics, and instructions and facts in roman.
 - **Do** keep one solid slab per screen and make every other control a soft circle or pill in a tint of the ground.
 - **Do** size every lift-screen block for its largest case so nothing moves under the thumb.
 - **Do** use the six family marks bare, on the 48-unit grid, in the deeper mark shade on white.

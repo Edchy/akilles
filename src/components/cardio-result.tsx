@@ -3,7 +3,7 @@ import { View } from "react-native";
 import { useColors } from "@/components/field";
 import { Text } from "@/components/text";
 import { CardioInput } from "@/components/cardio-keyboard";
-import { fonts } from "@/constants/theme";
+import { fonts, radii } from "@/constants/theme";
 import { distanceLabel, parseTime, timeLabel, type CardioExercise } from "@/data/conditioning";
 import { cardioRecord, isTimed, scoreOf, type Item } from "@/store/session";
 
@@ -27,8 +27,9 @@ export function CardioResult({ cardio, item, record, onSet }: {
   const label = (value: number) => timed ? timeLabel(value) : distanceLabel(cardio, value);
 
   return (
-    <View style={{ alignItems: "center", gap: 12 }}>
-      <Text style={{ color: colors.text, fontFamily: fonts.regular, fontSize: 21 }}>
+    // A soft panel: the one place on the card you write in.
+    <View style={{ alignItems: "center", gap: 6, paddingTop: 16, paddingBottom: 18, paddingHorizontal: 16, borderRadius: radii.card, borderCurve: "continuous", backgroundColor: colors.surface }}>
+      <Text style={{ color: colors.muted, fontFamily: fonts.regular, fontSize: 18 }}>
         {timed ? "Your time" : counted ? "Reps completed" : "Your distance"}
       </Text>
       <View style={{ flexDirection: "row", alignItems: "baseline", justifyContent: "center", gap: 10 }}>
@@ -37,14 +38,16 @@ export function CardioResult({ cardio, item, record, onSet }: {
           returnKeyType="done" submitBehavior="blurAndSubmit" accessibilityLabel={timed ? "Your time, minutes and seconds" : `Result in ${cardio.metric.unit}`}
           onChangeText={(text) => { setDraft(text); onSet(parse(text)); }}
           onBlur={() => { const value = parse(draft); if (value !== null) setDraft(timed ? timeLabel(value) : value.toFixed(cardio.metric.decimals)); }}
-          style={{ width: timed ? 220 : 170, minHeight: 80, paddingVertical: 0, paddingHorizontal: 4, color: colors.text, fontFamily: fonts.medium, fontSize: 64, fontVariant: ["lining-nums", "tabular-nums"], textAlign: "center" }} />
+          // Tall enough for the whole of the figures at this size: shorter,
+          // and iOS cuts their foot off.
+          style={{ width: timed ? 220 : 170, height: 96, paddingVertical: 0, paddingHorizontal: 4, color: colors.text, fontFamily: fonts.medium, fontSize: 64, fontVariant: ["lining-nums", "tabular-nums"], textAlign: "center" }} />
         {!timed ? <Text style={{ color: colors.text, fontSize: 21 }}>{cardio.metric.unit}</Text> : null}
       </View>
       {invalid ? <Text style={{ color: colors.text, fontSize: 16, textAlign: "center" }}>
         {timed ? "Enter a valid time." : "Enter a result greater than zero."}
       </Text> : null}
       {record ? (
-        <Text style={{ color: colors.text, fontFamily: fonts.regular, fontSize: 19, textAlign: "center" }}>
+        <Text style={{ color: colors.muted, fontFamily: fonts.regular, fontSize: 17, textAlign: "center" }}>
           Last time: {label(record.last)}
           <Text style={{ fontFamily: fonts.italic, fontSize: 17 }}>
             {` · ${timed ? "Fastest" : counted ? "Most reps" : "Furthest"}: ${label(record.best)}`}

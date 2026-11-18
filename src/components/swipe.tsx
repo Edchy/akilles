@@ -23,6 +23,16 @@ let closeOpenRow: (() => void) | undefined;
 
 /** Native/UI-thread tracking: dragging never waits for a React render. Swipes
  * only reveal actions; removal always needs a deliberate tap. */
+/** When a row last began to slide: see `swipedRecently`. */
+let swipedAt = 0;
+
+/**
+ * True for a moment after a row began to slide. The finger lifting at the
+ * end of a swipe can also read as a tap on the row: a row checks this
+ * before opening, so a swipe left only ever shows its buttons.
+ */
+export const swipedRecently = () => Date.now() - swipedAt < 600;
+
 export function Swipe({ label, disabled = false, radius, onAction, actions, children }: {
   label?: string;
   disabled?: boolean;
@@ -62,7 +72,7 @@ export function Swipe({ label, disabled = false, radius, onAction, actions, chil
       enableTrackpadTwoFingerGesture
       animationOptions={{ ...spring.snappy, overshootClamping: true }}
       containerStyle={{ overflow: "visible" }}
-      onSwipeableOpenStartDrag={claim}
+      onSwipeableOpenStartDrag={() => { swipedAt = Date.now(); claim(); }}
       onSwipeableWillOpen={() => { claim(); setOpen(true); }}
       onSwipeableWillClose={() => setOpen(false)}
       onSwipeableClose={() => { if (closeOpenRow === close) closeOpenRow = undefined; }}
@@ -86,7 +96,7 @@ export function Swipe({ label, disabled = false, radius, onAction, actions, chil
                 opacity: action.disabled ? 0.35 : pressed ? 0.8 : 1,
               })}
             >
-              <Text ui style={{ color: action.destructive ? colors.white : colors.text, fontSize: 16, fontWeight: "600" }}>{action.label}</Text>
+              <Text ui numberOfLines={1} style={{ color: action.destructive ? colors.white : colors.text, fontSize: 16, fontWeight: "600" }}>{action.label}</Text>
             </Pressable>
           ))}
         </ActionTray>
@@ -120,8 +130,15 @@ function ActionTray({ progress, translation, width, reduce, children }: {
       if (was !== null && open !== was && open) runOnJS(haptic.tick)();
     },
   );
+  // The opening is exactly as wide as the row has moved; the buttons inside
+  // keep their full size and are uncovered from the right, never squeezed —
+  // a half-open row shows half a button, not "De-le-te" on three lines. Past
+  // open they stretch with the finger.
   const grow = useAnimatedStyle(() => ({
     width: Math.max(0, -translation.value),
+  }));
+  const full = useAnimatedStyle(() => ({
+    width: Math.max(width, -translation.value) - 10,
   }));
   const labels = useAnimatedStyle(() => ({
     opacity: interpolate(progress.value, [0, 0.35], [0, 1], Extrapolation.CLAMP),
@@ -130,8 +147,8 @@ function ActionTray({ progress, translation, width, reduce, children }: {
   // The tray's own width stays fixed: the row measures it to know where open is.
   return (
     <View style={{ width }}>
-      <Animated.View style={[{ position: "absolute", top: 0, bottom: 0, right: 0, paddingLeft: 10, flexDirection: "row", gap: 8 }, grow]}>
-        <Animated.View style={[{ flex: 1, flexDirection: "row", gap: 8 }, labels]}>{children}</Animated.View>
+      <Animated.View style={[{ position: "absolute", top: 0, bottom: 0, right: 0, overflow: "hidden" }, grow]}>
+        <Animated.View style={[{ position: "absolute", top: 0, bottom: 0, right: 0, flexDirection: "row", gap: 8 }, full, labels]}>{children}</Animated.View>
       </Animated.View>
     </View>
   );

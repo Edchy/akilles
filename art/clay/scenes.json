@@ -1,0 +1,89 @@
+{
+ "hello": {
+  "what": "The welcome picture of an exercise app: the clay figure saying hello.",
+  "view": "Seen from the front at a slight three-quarter angle, the figure facing the camera.",
+  "frames": [
+   "standing relaxed and happy, one hand raised beside the head in a friendly wave, the other arm by the side; weight on one leg, a small cheerful tilt of the head."
+  ]
+ },
+ "off_to_train": {
+  "what": "Moving every day is part of a normal day: the clay figure setting off to the gym, light and glad, as ordinary as going to breakfast.",
+  "view": "Seen exactly from the side, the figure facing and walking to the right.",
+  "frames": [
+   "walking along mid-stride with an easy, happy step, a small black clay gym bag held in one hand, the other arm swinging naturally; a white clay sweatband round one wrist."
+  ],
+  "props": "a small black clay gym bag and a white clay sweatband"
+ },
+ "eat": {
+  "what": "An ordinary morning: the clay figure eating breakfast.",
+  "view": "Seen from the side and a little in front, the figure facing to the right.",
+  "frames": [
+   "sitting on a small clay stool at a small round clay table, happily eating from a bowl with a spoon raised to the mouth."
+  ],
+  "props": "a small round light-wood clay table, a small clay stool, a white clay bowl and a spoon"
+ },
+ "sleep": {
+  "what": "An ordinary night: the clay figure fast asleep.",
+  "view": "Seen from the side and a little above.",
+  "frames": [
+   "lying asleep on its back in a small clay bed, eyes closed as two little curved lines, a content smile, a soft blanket pulled up to the chest, head on a pillow."
+  ],
+  "props": "a small simple clay bed with a light grey blanket and a white pillow"
+ },
+ "stretch_up": {
+  "what": "Feeling good: the clay figure stretching after waking, glad to move.",
+  "view": "Seen from the front at a slight three-quarter angle.",
+  "frames": [
+   "standing tall, both arms stretched straight up overhead, up on the toes a little, eyes happily closed, a big smile."
+  ],
+  "props": "none"
+ },
+ "gym_lost": {
+  "what": "Walking into a gym for the first time and not knowing what to do.",
+  "view": "Seen from the front at three-quarters, a little wider so some of the gym shows.",
+  "frames": [
+   "standing still between gym machines, one hand scratching the side of the head, looking around unsure, a small puzzled mouth instead of a smile."
+  ],
+  "props": "a few simple clay gym things around and behind the figure: a dumbbell rack with a few black dumbbells, a cable machine and a flat bench, all in matte grey and black clay, kept simple"
+ },
+ "guess": {
+  "what": "Guessing at the gym: trying something at random, unsure if it's right.",
+  "view": "Seen from the front at a slight three-quarter angle.",
+  "frames": [
+   "holding a black clay dumbbell in one hand at an odd angle and looking at it doubtfully, the other hand open in a shrug, a small unsure mouth."
+  ],
+  "props": "one black clay dumbbell"
+ },
+ "sofa": {
+  "what": "Giving up: the clay figure at home on the sofa instead of going to the gym.",
+  "view": "Seen from the side and a little in front, the figure facing to the right.",
+  "frames": [
+   "slumped low on a small clay sofa, arms limp, a flat bored mouth; the gym bag lies unopened on the floor beside the sofa."
+  ],
+  "props": "a small simple grey clay sofa and the small black clay gym bag on the floor"
+ },
+ "phone": {
+  "what": "At the gym, the clay figure checks its phone and knows exactly what to do.",
+  "view": "Seen from the side and a little in front, the figure facing to the right.",
+  "frames": [
+   "standing in the gym holding a small black clay phone in one hand, looking at it with a confident smile, a black clay dumbbell in the other hand."
+  ],
+  "props": "a small black clay phone and one black clay dumbbell; behind, kept soft and simple, a grey clay dumbbell rack"
+ },
+ "curl": {
+  "what": "Doing a little, every day: the clay figure lifting with slow, good form.",
+  "view": "Seen from the side and a little in front, the figure facing to the right.",
+  "frames": [
+   "standing tall doing a dumbbell curl, the elbow tucked at the side, the black clay dumbbell raised to the shoulder, a calm focused smile."
+  ],
+  "props": "one black clay dumbbell"
+ },
+ "shaped": {
+  "what": "Small days add up: the same clay figure some months on, a bit stronger.",
+  "view": "Seen from the front at a slight three-quarter angle.",
+  "frames": [
+   "standing tall and proud, hands on hips, chest open; the same figure but a little sturdier, with slightly fuller shoulders, arms and legs, as if a little more clay had been added and smoothed; a big warm smile."
+  ],
+  "props": "none"
+ }
+}

@@ -1,5 +1,6 @@
 import { Redirect, router, useLocalSearchParams } from "expo-router";
 import { WorkoutLoop } from "@/components/loop-scope";
+import { useDraft } from "@/components/draft-scope";
 import { WorkoutSheet } from "@/components/modules";
 import { SafeScreen } from "@/components/screen";
 import { useSession } from "@/store/session";
@@ -16,11 +17,13 @@ export default function PlanEditorScreen() {
 /** The workout, in whichever loop it is: see `WorkoutLoop`. */
 function Editor({ id, naming }: { id: string; naming: boolean }) {
   const { state } = useSession();
+  const draft = useDraft();
   const workout = state.workouts.find((w) => w.id === id);
   if (!workout) return <Redirect href="/plan" />;
   return (
     <SafeScreen>
-      <WorkoutSheet embedded workout={workout} naming={naming} onClose={() => router.back()} />
+      {/* Done saves the draft and closes: see `DraftScope`. */}
+      <WorkoutSheet embedded workout={workout} naming={naming} onClose={() => (draft ? draft.done() : router.back())} />
     </SafeScreen>
   );
 }

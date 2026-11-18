@@ -12,23 +12,16 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { Icon } from "@/components/icon";
-import { Illustration } from "@/components/illustration";
-import { HOW, type Turn } from "@/components/intro";
-import { Mark } from "@/components/mark";
+import { ClayPicture, HELLO, IntroFilm, MainButton } from "@/components/intro";
 import { Option } from "@/components/place";
 import { COLUMN } from "@/components/screen";
 import { SectionLabel, TextButton } from "@/components/sheet";
 import { Text, TextInput } from "@/components/text";
 import { colors, fonts, radii } from "@/constants/theme";
-import { byId } from "@/data/exercises";
-import { familyOf, type Family } from "@/data/families";
-import { familyOfLifts, kindOf } from "@/data/kinds";
-import type { Workout } from "@/data/split";
 import { BODYWEIGHT_RANGE, type Experience, type Lifter, type Sex } from "@/lib/start-weight";
 import { useReduceMotion } from "@/lib/use-reduce-motion";
 import {
   applyPlan,
-  makePlan,
   seeIntro,
   useSession,
   wantsOnboarding,
@@ -38,13 +31,13 @@ import {
 /**
  * The first launch, as one flow from hello to the first workout:
  *
- *   Welcome to Humbell.               a film of Humbell's marks, and a hello
+ *   Welcome to Klay.               the clay fellow says hello, and what Klay is for
  *   Have you lifted weights?       new, a bit, or for a while
  *   Your first weights             weight and sex, said or skipped
- *   How Humbell works                 three short pages, the last with your
- *                                  workouts in the order they come
+ *   The film                       why, and how a workout goes (see
+ *                                  `intro.tsx`), then Start lifting
  *
- * Humbell is opinionated so nobody has to set anything up: everyone starts on
+ * Klay is opinionated so nobody has to set anything up: everyone starts on
  * Push, Pull, Legs at a gym, small — three lifts a day, every day — and the
  * plan grows as you keep coming (see `data/growth.ts`). Changing it is Plan's
  * job: a workout of another kind, or a loop of its own for away. The only
@@ -62,11 +55,11 @@ export function Onboarding() {
   return <Steps onDone={(answers) => setState((s) => seeIntro(applyPlan(s, answers)))} />;
 }
 
-type Step = "welcome" | "lifted" | "body" | 0 | 1 | 2;
+type Step = "welcome" | "lifted" | "body" | "film";
 
 /** The steps the progress line counts. */
-const ALONG: Step[] = ["lifted", "body", 0, 1, 2];
-
+/** The steps the progress line counts. */
+const ALONG: Step[] = ["lifted", "body", "film"];
 const EXPERIENCE_LABEL: Record<Experience, string> = {
   new: "No, I'm new to this",
   some: "A bit",
@@ -75,7 +68,7 @@ const EXPERIENCE_LABEL: Record<Experience, string> = {
 
 const SEX_LABEL: Record<Sex, string> = { woman: "Woman", man: "Man" };
 
-/** A typed body weight, or undefined when it isn't one Humbell will take. */
+/** A typed body weight, or undefined when it isn't one Klay will take. */
 const readWeight = (text: string): number | undefined => {
   const kg = Number(text.replace(",", "."));
   return Number.isFinite(kg) && kg >= BODYWEIGHT_RANGE.min && kg <= BODYWEIGHT_RANGE.max
@@ -112,7 +105,6 @@ function Steps({ onDone }: { onDone: (answers: Answers) => void }) {
   };
   // The plan itself is not a question: Push, Pull, Legs at a gym.
   const answers: Answers = { home: null, time: "long", easy: [], lifter };
-  const plan = makePlan(state, answers);
   const finish = () => onDone(answers);
 
   const page = (() => {
@@ -121,8 +113,8 @@ function Steps({ onDone }: { onDone: (answers: Answers) => void }) {
         return (
           <Page
             art={<Welcome />}
-            title="Welcome to Humbell."
-            body="Come every day. Each workout is short, and the next one is always ready. Two quick questions and you're ready to lift."
+            title="Welcome to Klay."
+            body="Klay tells you what to do at the gym, writes down what you did, and helps you do a little better each time. Two quick questions, and you're ready."
             action={{ label: "Let's go", onPress: () => go("lifted") }}
           />
         );
@@ -130,7 +122,7 @@ function Steps({ onDone }: { onDone: (answers: Answers) => void }) {
         return (
           <Page
             title="Have you lifted weights before?"
-            body="So your first weights suit you. New to it? Humbell starts you light."
+            body="So your first weights suit you. New to it? Klay starts you light."
           >
             {(Object.keys(EXPERIENCE_LABEL) as Experience[]).map((e) => (
               <Option
@@ -151,13 +143,13 @@ function Steps({ onDone }: { onDone: (answers: Answers) => void }) {
         const unreadable = typed && readWeight(weightText) === undefined;
         return (
           <Page
-            title="Help Humbell pick your weights."
+            title="Help Klay pick your weights."
             body="Your weight and sex help pick a good starting weight for every new exercise: today, and whenever you add one later. Used for nothing else, and kept on your phone."
             action={{
               label: "Next",
               onPress: () => {
                 setSkippedBody(false);
-                go(0);
+                go("film");
               },
             }}
             after={
@@ -165,7 +157,7 @@ function Steps({ onDone }: { onDone: (answers: Answers) => void }) {
                 label="Skip"
                 onPress={() => {
                   setSkippedBody(true);
-                  go(0);
+                  go("film");
                 }}
               />
             }
@@ -213,27 +205,21 @@ function Steps({ onDone }: { onDone: (answers: Answers) => void }) {
               />
             ))}
             <Text style={{ marginTop: 12, color: colors.muted, fontFamily: fonts.regular, fontSize: 17, lineHeight: 24 }}>
-              Rather not say? Skip. Humbell starts you light and finds your weights as you go.
+              Rather not say? Skip. Klay starts you light and finds your weights as you go.
             </Text>
           </Page>
         );
       }
-      default: {
-        const how = HOW[step];
-        const last = step === HOW.length - 1;
-        const turns: Turn[] = plan.map((w) => ({ name: w.name, family: familyOfWorkout(w) }));
+      case "film":
+        // The film, then the way in: why, and how a workout goes (see `intro.tsx`).
         return (
-          <Page
-            art={<HowArt page={step} turns={turns} />}
-            title={how.title}
-            body={how.body}
-            action={{
-              label: last ? "Start lifting" : "Next",
-              onPress: () => (last ? finish() : go((step + 1) as Step)),
-            }}
-          />
+          <View style={{ flex: 1 }}>
+            <IntroFilm />
+            <View style={{ paddingHorizontal: 22, paddingTop: 10 }}>
+              <MainButton label="Start lifting" onPress={finish} />
+            </View>
+          </View>
         );
-      }
     }
   })();
 
@@ -274,7 +260,7 @@ function Steps({ onDone }: { onDone: (answers: Answers) => void }) {
             {along >= 0 ? <Progress at={along + 1} of={ALONG.length} /> : null}
           </View>
           <View style={{ width: 44, alignItems: "flex-end" }}>
-            {typeof step === "number" ? (
+            {step === "film" ? (
               <Pressable
                 accessibilityRole="button"
                 onPress={finish}
@@ -367,81 +353,20 @@ function Progress({ at, of }: { at: number; of: number }) {
 
 // ---- pictures ----
 
-/** The films the welcome takes turns through: legs, push, pull. */
-const WELCOME_FILMS = ["goblet_squat", "push_up", "db_row"];
-const FILM_MS = 3200;
-
-/**
- * Humbell's marks at work: a film that changes every few seconds, one kind of
- * lift after another, cross-fading — what the app is about, before a word
- * about it.
- */
+/** The clay fellow saying hello: the same figure as the stretches, before a word about lifting. */
 function Welcome() {
   const { width, height } = useWindowDimensions();
-  const still = useReduceMotion();
-  const [at, setAt] = useState(0);
-  const fade = useRef(new Animated.Value(1)).current;
-  useEffect(() => {
-    if (still) return;
-    const timer = setInterval(() => {
-      Animated.timing(fade, { toValue: 0, duration: 220, useNativeDriver: true }).start(() => {
-        setAt((i) => (i + 1) % WELCOME_FILMS.length);
-        Animated.timing(fade, { toValue: 1, duration: 280, useNativeDriver: true }).start();
-      });
-    }, FILM_MS);
-    return () => clearInterval(timer);
-  }, [fade, still]);
-  const side = Math.min(Math.min(width, COLUMN) - 44, height * 0.36, 340);
-  return (
-    <View style={{ alignItems: "center", paddingTop: 8, paddingBottom: 16 }}>
-      <View
-        style={{
-          width: side,
-          height: side,
-          borderRadius: radii.card + 8,
-          borderCurve: "continuous",
-          overflow: "hidden",
-        }}
-      >
-        <Animated.View style={{ flex: 1, opacity: fade }}>
-          <Illustration id={WELCOME_FILMS[at]} film style={{ width: side, height: side }} />
-        </Animated.View>
-      </View>
-      <View style={{ flexDirection: "row", gap: 14, marginTop: 18 }}>
-        {WELCOME_FILMS.map((id, i) => (
-          <View key={id} style={{ opacity: i === at ? 1 : 0.3 }}>
-            <Mark family={familyOf(byId(id)!)} size={16} />
-          </View>
-        ))}
-      </View>
-    </View>
-  );
-}
-
-/** A how-it-works picture, drawn smaller on a small phone. */
-function HowArt({ page, turns }: { page: number; turns: Turn[] }) {
-  const { width, height } = useWindowDimensions();
-  const how = HOW[page];
-  const column = Math.min(width, COLUMN) - 44;
-  const room = Math.max(180, height * 0.4);
-  const own = how.height(turns.length);
-  const scale = Math.min(1, room / own);
+  const side = Math.min(Math.min(width, COLUMN) - 44, height * 0.5, 420);
   return (
     <View
       accessibilityElementsHidden
       importantForAccessibility="no-hide-descendants"
-      style={{ height: own * scale + 24, alignItems: "center", justifyContent: "center" }}
+      style={{ alignItems: "center", paddingTop: 8, paddingBottom: 16 }}
     >
-      <View style={{ transform: [{ scale }] }}>{how.art(column, turns)}</View>
+      <ClayPicture source={HELLO} width={side} />
     </View>
   );
 }
-
-/** A workout's family, by the same rule as Plan and Today: see `familyOfLifts`. */
-const familyOfWorkout = (workout: Workout): Family => {
-  const exercises = workout.exercises.map((e) => byId(e.options[0])).filter((e) => e !== undefined);
-  return familyOfLifts(kindOf(workout), exercises.map((ex) => familyOf(ex))) ?? "push";
-};
 
 // ---- the page ----
 

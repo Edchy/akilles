@@ -5,7 +5,7 @@ const vm = require("node:vm");
 const { test } = require("node:test");
 const ts = require("typescript");
 
-// The intro: six pages on how Humbell works, opened by itself only on a phone
+// The intro: a short film on why and how Klay works, opened by itself only on a phone
 // that has trained nothing, and from Plan's ? after that.
 const modules = new Map();
 function load(name) {
@@ -49,4 +49,13 @@ test("having seen it survives a save, and a save from before it has none", () =>
   const old = JSON.parse(storage.toSaved(store.resetToDefault()));
   delete old.state.introSeen;
   assert.equal(storage.fromSaved(JSON.stringify(old)).introSeen, undefined);
+});
+
+test("a first-time tip shows once, and stays seen after a save", () => {
+  const fresh = store.resetToDefault();
+  assert.equal(store.seenTip(fresh, "swipe"), false);
+  const seen = store.seeTip(store.seeTip(fresh, "swipe"), "swipe");
+  assert.equal(JSON.stringify(seen.tipsSeen), JSON.stringify(["swipe"]));
+  assert.equal(store.seenTip(storage.fromSaved(storage.toSaved(seen)), "swipe"), true);
+  assert.equal(store.seenTip(seen, "menu"), false);
 });

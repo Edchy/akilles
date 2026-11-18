@@ -23,7 +23,10 @@ import { AppState } from "react-native";
 import { correctTreadmillTarget, initialState, resetToDefault, type SessionState } from "@/store/session";
 import {
   copyForTest,
+  FROM_MAC,
+  isLocked,
   load,
+  unlock,
   loadProfile,
   save,
   saveProfile,
@@ -39,6 +42,8 @@ type Held = { state: SessionState; profile: Profile };
 export const useSaved = () => {
   const [held, setHeld] = useState<Held>({ state: initialState, profile: "real" });
   const [ready, setReady] = useState(false);
+  // The save on screen is from a newer version: shown as such, never written.
+  const [locked, setLocked] = useState(false);
 
   useEffect(() => {
     let live = true;
@@ -48,6 +53,7 @@ export const useSaved = () => {
       const state = await load(profile);
       if (!live) return;
       setHeld({ state, profile });
+      setLocked(isLocked(profile));
       setReady(true);
     })();
     return () => {
@@ -104,6 +110,8 @@ export const useSaved = () => {
    * under it — and only then is the other read in.
    */
   const switchTo = useCallback(async (profile: Profile, from: TestStart = "resume") => {
+    // From the Mac there is no way out of test mode: see `FROM_MAC`.
+    if (profile === "real" && FROM_MAC) return;
     const now = latest.current;
     await save(now.state, now.profile);
     let state: SessionState;
@@ -112,10 +120,13 @@ export const useSaved = () => {
     else if (from === "copy") {
       state = copyForTest(now.profile === "real" ? now.state : await load("real"));
     } else state = await load("test");
+    // A new test, chosen on purpose, may replace one from a newer version.
+    if (profile === "test" && from !== "resume") unlock("test");
     if (profile === "test") await save(state, "test");
     await saveProfile(profile);
     setHeld({ state, profile });
+    setLocked(isLocked(profile));
   }, []);
 
-  return { state: held.state, setState, ready, profile: held.profile, switchTo };
+  return { state: held.state, setState, ready, locked, profile: held.profile, switchTo };
 };

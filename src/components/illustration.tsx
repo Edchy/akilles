@@ -3,6 +3,7 @@ import { Image, View, type ViewStyle } from "react-native";
 import { Text } from "@/components/text";
 
 import { useCardActive } from "@/components/card-context";
+import { ClayStretch, hasClay } from "@/components/clay";
 import { Drawing } from "@/components/drawing";
 import { Film } from "@/components/film";
 import { Icon } from "@/components/icon";
@@ -16,15 +17,15 @@ import { mix } from "@/motion/marks";
 import { MOVES, RESHOOT } from "@/motion/moves";
 
 /**
- * The movements shown in Humbell's own drawings (see `components/drawing.tsx`):
- * each drawn against Humbell's figure sheet and looked over, frame by frame.
+ * The movements shown in Klay's own drawings (see `components/drawing.tsx`):
+ * each drawn against Klay's figure sheet and looked over, frame by frame.
  * The rest of `ART` is drawn but not yet passed.
  */
 const DRAWN: ReadonlySet<string> = new Set(["goblet_squat"]);
 
 /** Whether there is an in-app drawing, film, or fallback photograph. */
 export const hasIllustration = (id: string): boolean =>
-  DRAWN.has(id) || (id in MOVES && !RESHOOT.has(id)) || !!PHOTOS[id]?.length;
+  hasClay(id) || DRAWN.has(id) || (id in MOVES && !RESHOOT.has(id)) || !!PHOTOS[id]?.length;
 
 /** How long each frame of a lift shows before flipping to the other. */
 const FRAME_MS = 1100;
@@ -32,10 +33,13 @@ const FRAME_MS = 1100;
 /**
  * The picture of a movement — a lift, a machine or a stretch — by its id.
  *
- * Humbell's own drawing where one has passed (`DRAWN`): the figure moving at the pace
+ * A stretch with the clay figure's pictures (see `components/clay.tsx`) shows
+ * those, before anything below.
+ *
+ * Klay's own drawing where one has passed (`DRAWN`): the figure moving at the pace
  * of a rep, the part that works in the accent. Otherwise,
  * a film where there is one (see `motion/`): the movement drawn flat in
- * Humbell's marks, a rep from the side and a rep from the front — except as a
+ * Klay's marks, a rep from the side and a rep from the front — except as a
  * thumbnail, where the photo stays if there is one, and a film that doesn't
  * read yet (`RESHOOT`), which shows its photo. Given `plays`, a film loops that many
  * times and then holds its still, so a picture on screen through a whole
@@ -81,10 +85,15 @@ export function Illustration({
     return () => clearInterval(flip);
   }, [id, count, film, drawn, active]);
 
+  // A stretch in the clay figure's pictures, breathing by itself; still as a thumbnail or at rest.
+  if (hasClay(id)) {
+    return <ClayStretch key={id} id={id} style={style} still={compact || !active || plays === 0} />;
+  }
+
   if (drawn) {
     const family = familyOfPicture(id);
-    // The part that works is in the field's other ink, so it stands out of the figure.
-    const accent = FAMILY[family].dark ? colors.text : colors.white;
+    // The part that works is in the family's colour, so it stands out of the black figure.
+    const accent = FAMILY[family].field;
     return (
       <Drawing
         key={id}
@@ -172,9 +181,14 @@ function familyOfPicture(id: string): Family {
  */
 const TINT = 0.42;
 
-/** A film's field, the field's one ink, and the ink's tint over the field. */
-function filmColors(family: Family) {
-  const { field, dark } = FAMILY[family];
-  const ink = dark ? colors.white : colors.text;
+/**
+ * A film's field, its one ink, and the ink's tint over the field: the app's
+ * own page and ink, the same for every family, so a picture reads as part of
+ * the page — the family's colour stays on the card and the mark round it.
+ * (Before 17 November 2026 the field was the family's colour.)
+ */
+function filmColors(_family: Family) {
+  const field = colors.bg;
+  const ink = colors.text;
   return { field, ink, tint: mix(ink, field, TINT) };
 }

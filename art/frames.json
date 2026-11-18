@@ -1,106 +1,133 @@
 {
-  "figure": {
-    "family": "legs",
-    "sheet": true,
-    "frames": [
-      {
-        "photo": "standing-calf-raises-0.jpg",
-        "moment": "The character sheet: the figure simply standing tall and relaxed, arms hanging straight down at the sides with the near arm in front of the torso, feet flat and together, looking straight ahead. No equipment at all, only the figure and the floor line.",
-        "view": "The person faces right."
-      }
-    ]
-  },
-  "back_squat": {
-    "family": "legs",
-    "frames": [
-      {
-        "photo": "barbell-squat-0.jpg",
-        "moment": "Back squat, the start: standing tall with a barbell resting across the upper back behind the neck, both hands gripping the bar just outside the shoulders, feet shoulder width apart, knees straight, chest up.",
-        "view": "The person faces right."
-      },
-      {
-        "photo": "barbell-squat-1.jpg",
-        "moment": "Back squat, the bottom: hips sat down and back until the thighs are just below parallel, chest up, back straight and leaning forward a little, knees forward over the toes, heels flat on the floor, the bar still across the upper back and directly over the middle of the foot.",
-        "view": "The person faces right."
-      }
-    ]
-  },
-  "bench": {
-    "family": "push",
-    "frames": [
-      {
-        "photo": "barbell-bench-press-medium-grip-0.jpg",
-        "moment": "Barbell bench press, arms locked: lying on a flat bench, eyes under the bar, the bar held straight up over the shoulders with arms locked, feet flat on the floor.",
-        "view": "The person lies on their back, head on the left, feet on the right."
-      },
-      {
-        "photo": "barbell-bench-press-medium-grip-1.jpg",
-        "moment": "Barbell bench press, the bottom: the bar lowered to touch the low chest, forearms vertical under the bar, elbows about 45 degrees from the sides, upper back and hips on the bench, feet flat on the floor.",
-        "view": "The person lies on their back, head on the left, feet on the right."
-      }
-    ]
-  },
-  "lat_pulldown": {
-    "family": "pull",
-    "frames": [
-      {
-        "photo": "wide-grip-lat-pulldown-0.jpg",
-        "moment": "Lat pulldown, arms up: seated at a lat pulldown machine, thighs locked under the knee pad, feet flat, arms straight up holding a long wide bar that hangs from a cable above.",
-        "view": "The person faces right, the machine's cable column behind them on the left."
-      },
-      {
-        "photo": "wide-grip-lat-pulldown-1.jpg",
-        "moment": "Lat pulldown, the bottom: the long wide bar pulled down to the top of the chest, elbows down and slightly back, chest up, leaning back only slightly, thighs under the pad.",
-        "view": "The person faces right, the machine's cable column behind them on the left."
-      }
-    ]
-  },
-  "childs_pose": {
-    "family": "mobility",
-    "frames": [
-      {
-        "photo": "childs-pose-0.jpg",
-        "moment": "Child's pose stretch, the hold: kneeling with the knees apart, sitting back onto the heels, torso folded forward between the thighs, forehead resting on the floor, arms stretched forward along the floor, palms down.",
-        "view": "The person faces right, arms reaching to the right."
-      }
-    ]
-  },
-  "db_row": {
-    "family": "pull",
-    "frames": [
-      {
-        "photo": "one-arm-dumbbell-row-0.jpg",
-        "moment": "One-arm dumbbell row, the bottom: one hand and the same-side knee on a flat bench, the other foot on the floor, back flat and level, the free arm hanging straight down holding a dumbbell.",
-        "view": "The person faces left, as in the photo: the hand on the bench at the left, the standing leg at the right. The arm with the dumbbell is the near one."
-      },
-      {
-        "photo": "one-arm-dumbbell-row-1.jpg",
-        "moment": "One-arm dumbbell row, the top: one hand and the same-side knee on a flat bench, the other foot on the floor, back flat and level, the dumbbell pulled up to the hip with the elbow bent, close to the body and pointing up above the back.",
-        "view": "The person faces left, as in the photo: the hand on the bench at the left, the standing leg at the right. The arm with the dumbbell is the near one."
-      }
-    ]
-  },
-  "goblet_squat": {
-    "family": "legs",
-    "frames": [
-      {
-        "photo": "goblet-squat-0.jpg",
-        "moment": "Goblet squat, standing: feet a little wider than the hips, holding one dumbbell upright against the chest with both hands, elbows under it.",
-        "view": "The person faces right.",
-        "feel": "the near thigh, from the hip to the knee"
-      },
-      {
-        "photo": "goblet-squat-1.jpg",
-        "moment": "Goblet squat, half way down: exactly between standing and the deep squat. The knees bent to about a right angle between thigh and shin opening wide, the thighs sloping at 45 degrees, hips a little back, heels flat. The torso tall and nearly upright, chest up, back straight. One dumbbell held upright against the chest with both hands, elbows pointing down. The head is half way between its standing height and its height in a deep squat.",
-        "view": "The person faces right. The far leg shows in grey just behind the near one, bent the same way.",
-        "feel": "the near thigh, from the hip to the knee"
-      },
-      {
-        "photo": "goblet-squat-1.jpg",
-        "moment": "Goblet squat, the bottom: a deep squat, the thighs just below level, heels flat on the floor, knees forward over the toes. The torso stays tall and nearly upright with the chest up and the back straight, not curled forward. One dumbbell held upright against the chest with both hands, elbows pointing down inside the knees.",
-        "view": "The person faces right. The far leg shows in grey just behind the near one, bent the same way, as in the standing frame.",
-        "feel": "the near thigh, from the hip to the knee"
-      }
-    ]
-  }
+ "figure": {
+  "family": "legs",
+  "sheet": true,
+  "frames": [
+   {
+    "photo": "standing-calf-raises-0.jpg",
+    "moment": "The character sheet: the figure simply standing tall and relaxed, arms hanging straight down at the sides with the near arm in front of the torso, feet flat and together, looking straight ahead. No equipment at all, only the figure and the floor line.",
+    "view": "The person faces right."
+   }
+  ]
+ },
+ "back_squat": {
+  "family": "legs",
+  "frames": [
+   {
+    "photo": "barbell-squat-0.jpg",
+    "moment": "Back squat, the start: standing tall with a barbell resting across the upper back behind the neck, both hands gripping the bar just outside the shoulders, feet shoulder width apart, knees straight, chest up.",
+    "view": "The person faces right."
+   },
+   {
+    "photo": "barbell-squat-1.jpg",
+    "moment": "Back squat, the bottom: hips sat down and back until the thighs are just below parallel, chest up, back straight and leaning forward a little, knees forward over the toes, heels flat on the floor, the bar still across the upper back and directly over the middle of the foot.",
+    "view": "The person faces right."
+   }
+  ]
+ },
+ "bench": {
+  "family": "push",
+  "frames": [
+   {
+    "photo": "barbell-bench-press-medium-grip-0.jpg",
+    "moment": "Barbell bench press, arms locked: lying on a flat bench, eyes under the bar, the bar held straight up over the shoulders with arms locked, feet flat on the floor.",
+    "view": "The person lies on their back, head on the left, feet on the right."
+   },
+   {
+    "photo": "barbell-bench-press-medium-grip-1.jpg",
+    "moment": "Barbell bench press, the bottom: the bar lowered to touch the low chest, forearms vertical under the bar, elbows about 45 degrees from the sides, upper back and hips on the bench, feet flat on the floor.",
+    "view": "The person lies on their back, head on the left, feet on the right."
+   }
+  ]
+ },
+ "lat_pulldown": {
+  "family": "pull",
+  "frames": [
+   {
+    "photo": "wide-grip-lat-pulldown-0.jpg",
+    "moment": "Lat pulldown, arms up: seated at a lat pulldown machine, thighs locked under the knee pad, feet flat, arms straight up holding a long wide bar that hangs from a cable above.",
+    "view": "The person faces right, the machine's cable column behind them on the left."
+   },
+   {
+    "photo": "wide-grip-lat-pulldown-1.jpg",
+    "moment": "Lat pulldown, the bottom: the long wide bar pulled down to the top of the chest, elbows down and slightly back, chest up, leaning back only slightly, thighs under the pad.",
+    "view": "The person faces right, the machine's cable column behind them on the left."
+   }
+  ]
+ },
+ "childs_pose": {
+  "family": "mobility",
+  "frames": [
+   {
+    "photo": "childs-pose-0.jpg",
+    "moment": "Child's pose stretch, the hold: kneeling with the knees apart, sitting back onto the heels, torso folded forward between the thighs, forehead resting on the floor, arms stretched forward along the floor, palms down.",
+    "view": "The person faces right, arms reaching to the right."
+   }
+  ]
+ },
+ "db_row": {
+  "family": "pull",
+  "frames": [
+   {
+    "photo": "one-arm-dumbbell-row-0.jpg",
+    "moment": "One-arm dumbbell row, the bottom: one hand and the same-side knee on a flat bench, the other foot on the floor, back flat and level, the free arm hanging straight down holding a dumbbell.",
+    "view": "The person faces left, as in the photo: the hand on the bench at the left, the standing leg at the right. The arm with the dumbbell is the near one."
+   },
+   {
+    "photo": "one-arm-dumbbell-row-1.jpg",
+    "moment": "One-arm dumbbell row, the top: one hand and the same-side knee on a flat bench, the other foot on the floor, back flat and level, the dumbbell pulled up to the hip with the elbow bent, close to the body and pointing up above the back.",
+    "view": "The person faces left, as in the photo: the hand on the bench at the left, the standing leg at the right. The arm with the dumbbell is the near one."
+   }
+  ]
+ },
+ "goblet_squat": {
+  "family": "legs",
+  "frames": [
+   {
+    "photo": "goblet-squat-0.jpg",
+    "moment": "Goblet squat, standing: feet a little wider than the hips, holding one dumbbell upright against the chest with both hands, elbows under it.",
+    "view": "The person faces right.",
+    "feel": "the near thigh, from the hip to the knee"
+   },
+   {
+    "photo": "goblet-squat-1.jpg",
+    "moment": "Goblet squat, half way down: exactly between standing and the deep squat. The knees bent to about a right angle between thigh and shin opening wide, the thighs sloping at 45 degrees, hips a little back, heels flat. The torso tall and nearly upright, chest up, back straight. One dumbbell held upright against the chest with both hands, elbows pointing down. The head is half way between its standing height and its height in a deep squat.",
+    "view": "The person faces right. The far leg shows in grey just behind the near one, bent the same way.",
+    "feel": "the near thigh, from the hip to the knee"
+   },
+   {
+    "photo": "goblet-squat-1.jpg",
+    "moment": "Goblet squat, the bottom: a deep squat, the thighs just below level, heels flat on the floor, knees forward over the toes. The torso stays tall and nearly upright with the chest up and the back straight, not curled forward. One dumbbell held upright against the chest with both hands, elbows pointing down inside the knees.",
+    "view": "The person faces right. The far leg shows in grey just behind the near one, bent the same way, as in the standing frame.",
+    "feel": "the near thigh, from the hip to the knee"
+   }
+  ]
+ },
+ "downward_dog": {
+  "family": "mobility",
+  "frames": [
+   {
+    "moment": "Downward dog, held. Hands flat on the floor shoulder-width apart, arms straight and in line with the back; hips pushed high and back so the body makes an upside-down V; the back straight, not rounded; legs straight or nearly straight, heels sinking toward the floor (lifted a little off it is fine); the head hangs between the arms, in line with the spine.",
+    "view": "The person's head is at the left, the feet at the right."
+   }
+  ]
+ },
+ "pigeon": {
+  "family": "mobility",
+  "frames": [
+   {
+    "moment": "The pigeon stretch, upright version, held. On the floor: the front leg bent with its shin lying across the floor in front of the hips (knee forward, foot toward the other hip); the back leg stretched straight back behind, its knee and the top of the foot on the floor; the hips settled down toward the floor; the trunk upright, hands resting on the floor either side of the front leg, arms straight.",
+    "view": "The person faces right; the bent front leg is the near leg (black), the long back leg the far leg (grey)."
+   }
+  ]
+ },
+ "thread_needle": {
+  "family": "mobility",
+  "frames": [
+   {
+    "moment": "Thread the needle, held. On hands and knees, knees under the hips; the far arm stays planted, its hand on the floor under the shoulder, arm straight; the near arm slides under the body along the floor, palm up, reaching across to the far side, so the near shoulder and the side of the head rest on the floor; the upper back turned; the hips stay high, right over the knees.",
+    "view": "The person faces right."
+   }
+  ]
+ }
 }

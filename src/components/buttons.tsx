@@ -1,7 +1,6 @@
 import Animated, { useAnimatedStyle, useSharedValue, withSpring, withTiming } from "react-native-reanimated";
 import { useReduceMotion } from "@/lib/use-reduce-motion";
 import { Pressable, View } from "react-native";
-import Svg, { Path } from "react-native-svg";
 
 import { Icon, type IconName } from "@/components/icon";
 import { Text } from "@/components/text";
@@ -9,34 +8,12 @@ import { duration, PRESS_SCALE, spring } from "@/constants/motion";
 import { colors, PAPER, radii } from "@/constants/theme";
 
 /**
- * A watercolour blot for the main button, drawn on a 100 × 100 box that
- * stretches to the button: lumpy, never a rounded rectangle, a little
- * different for each label so two buttons are never stamped from one mould.
- */
-function blotPath(seed: number): string {
-  const n = 14;
-  const pts = Array.from({ length: n }, (_, i) => {
-    const a = (i / n) * Math.PI * 2;
-    const r = 1 + 0.06 * Math.sin(3 * a + seed) + 0.04 * Math.cos(5 * a + seed * 1.7);
-    return [50 + Math.cos(a) * 52 * r, 50 + Math.sin(a) * 58 * r];
-  });
-  let d = `M${((pts[0][0] + pts[1][0]) / 2).toFixed(1)},${((pts[0][1] + pts[1][1]) / 2).toFixed(1)}`;
-  for (let i = 1; i <= n; i++) {
-    const p = pts[i % n];
-    const q = pts[(i + 1) % n];
-    d += ` Q${p[0].toFixed(1)},${p[1].toFixed(1)} ${((p[0] + q[0]) / 2).toFixed(1)},${((p[1] + q[1]) / 2).toFixed(1)}`;
-  }
-  return `${d}Z`;
-}
-const seedOf = (label: string) => [...label].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 997, 7) / 50;
-
-/**
  * Every button in the app, by what it does — so the same kind of action
  * always looks the same, wherever it is.
  *
  * Button, for doing something:
- * - primary — the one main thing on a screen. One per screen. On paper, an
- *   ink outline over a watercolour blot in the day's colour.
+ * - primary — the one main thing on a screen. One per screen. On paper,
+ *   flat in the day's colour; ink where there is no day.
  * - secondary — another thing you might do: the quiet grey slab (Skip).
  * - remove — taking something away: a red outline. Where it can't be
  *   undone in a tap, it asks first, and the second tap is a danger button.
@@ -90,38 +67,23 @@ export function Button({
   onPress: () => void;
 }) {
   const reduce = useReduceMotion();
-  // On paper the main button is an ink outline over a watercolour blot in
-  // the day's colour. A press spreads the blot a little and deepens it, under
-  // the thumb, and lets it settle back.
+  // On paper the main button is the day's colour, flat, so it says which
+  // day it is; with no day it is plain ink.
   const inked = PAPER && kind === "primary" && !on && !disabled;
   const scale = useSharedValue(1);
-  const spread = useSharedValue(0);
   const feedback = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
-  const blot = useAnimatedStyle(() => ({
-    opacity: 0.34 + 0.2 * spread.value,
-    transform: [{ scale: 1 + 0.1 * spread.value }, { rotate: `${-3 * spread.value}deg` }],
-  }));
   const press = () => {
     if (reduce) return;
-    scale.value = withTiming(PRESS_SCALE + (inked ? 0.01 : 0), { duration: duration.press });
-    if (inked) spread.value = withTiming(1, { duration: 180 });
+    scale.value = withTiming(PRESS_SCALE, { duration: duration.press });
   };
   const release = () => {
     scale.value = withSpring(1, spring.bouncy);
-    spread.value = withSpring(0, spring.gentle);
   };
   const look = on ? LOOK[kind === "remove" ? "danger" : "primary"] : LOOK[kind];
-  const bg = inked ? "transparent" : kind === "primary" && fill ? fill : look.bg;
-  const text = inked ? colors.text : kind === "primary" && fill ? onFill : look.text;
+  const bg = kind === "primary" && fill ? fill : look.bg;
+  const text = kind === "primary" && fill ? onFill : look.text;
   return (
     <Animated.View style={[{ flex }, feedback]}>
-    {inked ? (
-      <Animated.View pointerEvents="none" style={[{ position: "absolute", top: -5, bottom: -5, left: -8, right: -8 }, blot]}>
-        <Svg width="100%" height="100%" viewBox="0 0 100 100" preserveAspectRatio="none">
-          <Path d={blotPath(seedOf(label))} fill={fill ?? colors.wash} />
-        </Svg>
-      </Animated.View>
-    ) : null}
     <Animated.View>
     <Pressable
       accessibilityRole="button"
@@ -142,8 +104,9 @@ export function Button({
         borderCurve: "continuous",
         backgroundColor: bg,
         borderWidth: 2,
-        borderColor: inked ? colors.text : kind === "primary" && fill ? fill : look.border,
-        opacity: disabled ? 0.35 : pressed && !inked ? 0.75 : 1,
+        // No ink edge: it sits beside Skip, which has none, as a pair.
+        borderColor: kind === "primary" && fill ? fill : look.border,
+        opacity: disabled ? 0.35 : pressed ? (inked ? 0.88 : 0.75) : 1,
       })}
     >
       {icon ? <Icon name={icon} size={18} color={text} /> : null}

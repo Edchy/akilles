@@ -91,9 +91,9 @@ export function Guide({ id, cue }: { id: string; cue?: string }) {
       {hasIllustration(id) ? <Illustration
         id={id}
         style={{ height: 240, borderRadius: radii.card, borderCurve: "continuous" }}
-      /> : guide?.demonstration ? <ReferenceDemonstration key={id} source={guide.demonstration} /> : null}
+      /> : guide?.demonstration ? <ReferenceDemonstration key={`demo:${id}`} source={guide.demonstration} /> : null}
 
-      {guide ? <GuideInstructions key={id} id={id} /> : (
+      {guide ? <GuideInstructions key={`steps:${id}`} id={id} /> : (
         <Text style={{ color: colors.muted, fontSize: 16, lineHeight: 23 }}>
           {cue ?? "No guide for this one yet."}
         </Text>
@@ -157,7 +157,7 @@ export function GuideInstructions({ id }: { id: string }) {
             <Icon name={sourcesOpen ? "minus" : "plus"} color={colors.muted} size={18} />
           </Pressable>
           {sourcesOpen ? <>
-            {guide.own ? <Text ui style={{ color: colors.muted, fontSize: 14, lineHeight: 20 }}>The pause and control cues are Humbell’s coaching approach.</Text> : null}
+            {guide.own ? <Text ui style={{ color: colors.muted, fontSize: 14, lineHeight: 20 }}>The pause and control cues are Klay’s coaching approach.</Text> : null}
             {guide.sources.map((source) => <Pressable key={source.url} accessibilityRole="link" accessibilityLabel={`Open ${source.title}`}
               onPress={() => { setSourceError(false); void Linking.openURL(source.url).catch(() => setSourceError(true)); }}
               style={{ minHeight: 44, justifyContent: "center", paddingVertical: 8 }}>

@@ -4,7 +4,7 @@ import type { Move } from "@/motion/moves";
 import { Vec3 } from "@/motion/vector";
 
 /**
- * Humbell's marks: how a movement's figure is drawn, after the Munich '72
+ * Klay's marks: how a movement's figure is drawn, after the Munich '72
  * pictograms. The pose is true in 3D (see `figure.ts`); the drawing is a flat
  * view of it with every part a plain shape in one ink on the family's field —
  * a circle for the head, the ▽ of the trunk, even bars for the limbs, a
@@ -79,10 +79,11 @@ export function draw(
 ): Drawing {
   const pose = move.pose(depth);
   const { middle } = move.film;
-  // The film's own room, or closer where the movement leaves it empty.
+  // Every film at one size — the lifter standing tall fills the picture — so
+  // a push-up is no giant beside a squat; only what can't fit is drawn smaller.
   const fit = (r: Move["film"]["room"]) => Math.min((height * 0.88) / r.height, width / r.width);
   const needed = neededBy(move);
-  const room = fit(needed) > fit(move.film.room) ? needed : move.film.room;
+  const room = { height: Math.max(needed.height, STANDING), width: needed.width };
   const scale = fit(room);
   const floorY = Math.min(height * 0.88, (height + room.height * scale) / 2 + height * 0.05);
   const angle = (turn * Math.PI) / 180;
@@ -375,6 +376,9 @@ export function draw(
   };
   return { paints: [ground, ...parts.flatMap((p) => p.paints), ...over], clips };
 }
+
+/** The room every film is drawn for, in metres high: a lifter standing, with a little air above. */
+const STANDING = 1.95;
 
 /** Clear space kept above the highest point, and either side of the widest. */
 const HEADROOM = 1.06;

@@ -809,6 +809,14 @@ const LIFTS: Record<string, Guide> = {
     ],
     "Bouncing it off the floor.",
   ),
+  dead_hang: g(
+    [
+      "Grip a bar a little wider than your shoulders.",
+      "Let your feet leave the floor and hang, arms straight.",
+      "Breathe slowly. Step down before your grip gives.",
+    ],
+    "Dropping off the bar at the end instead of stepping down.",
+  ),
   hanging_leg_raise: g(
     [
       "Hang from a bar, shoulders engaged.",
@@ -1308,6 +1316,7 @@ const OWN: Record<string, string> = {
   med_ball_slam: "Stand tall and reset before every slam.",
   speed_squat: "Down slow and controlled. Only the way up is fast.",
   speed_deadlift: "Set your position every rep. Speed comes after.",
+  dead_hang: "Hang still and breathe. Step down before your grip gives.",
   hanging_leg_raise: "Hold the legs up for a second. No swing.",
   rotation_machine: "Pause at the end of each turn.",
   cable_crunch: "Hold the crunch for a second.",

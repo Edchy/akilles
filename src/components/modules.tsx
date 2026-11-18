@@ -1,7 +1,10 @@
 import { useEffect, useState, type ReactNode } from "react";
-import { Button, Chip, Chips, LinkButton } from "@/components/buttons";
-import { LoopScope, setPlanFocus, usePlanFocus } from "@/components/loop-scope";
+import { Button, Chip, Chips } from "@/components/buttons";
 import { Pressable, View } from "react-native";
+import Animated, { useAnimatedProps, useAnimatedStyle, useSharedValue, withSpring, withTiming } from "react-native-reanimated";
+import { duration, PRESS_SCALE, spring } from "@/constants/motion";
+import Svg, { Path } from "react-native-svg";
+import { useReduceMotion } from "@/lib/use-reduce-motion";
 import { Text, TextInput } from "@/components/text";
 import { router } from "expo-router";
 
@@ -9,12 +12,14 @@ import { CardioChoices, CardioTarget } from "@/components/cardio-target";
 import { AddExerciseSheet, type AddBlock } from "@/components/add-exercise";
 import { Count, Setting, Step } from "@/components/controls";
 import { DragList, type Drag } from "@/components/drag-list";
+import { useDraft } from "@/components/draft-scope";
 import { WorkoutGoals } from "@/components/goals";
 import { GOALS_ON } from "@/data/goals";
 import { Icon } from "@/components/icon";
 import { Mark } from "@/components/mark";
 import { Segments } from "@/components/segments";
-import { Swipe } from "@/components/swipe";
+import { Swipe, swipedRecently } from "@/components/swipe";
+import { InlineTip } from "@/components/tips";
 import {
   BigButton,
   OpenRow,
@@ -23,12 +28,11 @@ import {
   TextButton,
 } from "@/components/sheet";
 import { WeightField } from "@/components/weight-field";
-import { FAMILY, WORKOUT_STAGE, colors, familyWash, fonts, radii } from "@/constants/theme";
+import { FAMILY, colors, familyWash, fonts, radii } from "@/constants/theme";
 import {
   cardioPool,
   mobilityPool,
   routineUse,
-  type CardioEnd,
 } from "@/data/conditioning";
 import { byId, highReps, isPattern } from "@/data/exercises";
 import { familyOf, type Family } from "@/data/families";
@@ -47,24 +51,23 @@ import {
 import { repBounds, schemeOf } from "@/lib/progression";
 import {
   SETS_RANGE,
+  arrangePlan,
   canPauseWorkout,
-  copyToLoop,
-  deleteLoop,
   deleteWorkout,
-  hasLoops,
-  inLoop,
-  loopInUse,
-  loopsOf,
-  moveToLoop,
-  renameLoop,
-  switchLoop,
   cardioAmount,
   cardioPlan,
   chooseCardio,
+  restoreConditioning,
 
   chosen,
-  mobilityPlan,
-  moveEntry,
+  addExtra,
+  arrangePart,
+  chooseRoutine,
+  partContents,
+  routinePlan,
+  type CardioWhere,
+  type Placed,
+  type RoutineWhere,
   movePlanWorkout,
   planWorkouts,
   pauseWorkout,
@@ -74,8 +77,6 @@ import {
   resumeWorkout,
   routineMinutes,
   setCardio,
-  setMobility,
-  setWarmup,
   balanceNotes,
   workoutMinutes,
   swapInPlan,
@@ -84,10 +85,8 @@ import {
   upNext,
   updateEntry,
   useSession,
-  warmupPlan,
   workoutFamily,
   workoutsUsing,
-  type RoutineEnd,
   type SessionState,
 } from "@/store/session";
 
@@ -104,31 +103,32 @@ const moveActions = (drag: Drag) => ({
 });
 
 /**
- * Your workouts and what fills each slot. Rendered inside the Plan tab's
- * "Workouts" segment — see `plan.tsx` for the host, which freezes its scroll
- * while a row is being dragged.
+ * Your workouts, in two lists. Active: the ones that take turns, top to
+ * bottom and round again — drag to reorder. Paused: the ones waiting, out of
+ * the turns until you resume them. Away from the gym for a while, pause what
+ * you can't do there and add a workout you can: one plan, nothing to switch.
  *
- * The list itself is only names, big enough to hit. Everything you can change
- * about a workout lives in its sheet, where there is room for it.
+ * The rows are only names, big enough to hit. Everything you can change
+ * about a workout lives on its own screen. Rendered inside Plan — see
+ * `plan.tsx`, which freezes its scroll while a row is dragged.
  */
 export function Modules({ onDragChange }: { onDragChange: (dragging: boolean) => void }) {
   const { state, setState } = useSession();
-  const inUse = loopInUse(state);
-  const focus = usePlanFocus();
-  const [shown, setShown] = useState(inUse);
   const [notice, setNotice] = useState<Notice | null>(null);
-  const [moving, setMoving] = useState<Workout | null>(null);
-  const loops = loopsOf(state);
-  // The loop on screen: the one chosen, while it is still there.
-  const viewing = loops.some((l) => l.id === shown) ? shown : inUse;
-
-  // Back from making a workout: show the loop it went to, and say so.
-  useEffect(() => {
-    if (!focus) return;
-    setShown(focus.loop);
-    setNotice(focus.note ? { text: focus.note } : null);
-    setPlanFocus(null);
-  }, [focus]);
+  const [dragging, setDragging] = useState(false);
+  // One active row's height: the line and arrows are drawn from it.
+  const [rowHeight, setRowHeight] = useState(0);
+  const next = upNext(state).id;
+  const paused = state.removedWorkouts.map((r) => r.workout);
+  const training = state.active?.workoutId;
+  // One list, so a workout can be dragged across: the active ones, the line
+  // that says "Paused", then the paused ones. Where a row is dropped says
+  // which it is.
+  const items: PlanItem[] = [
+    ...state.workouts.map((w) => ({ workout: w, paused: false })),
+    DIVIDER,
+    ...paused.map((w) => ({ workout: w, paused: true })),
+  ];
 
   /** Change something, say what happened, and offer to put it back. */
   const change = (after: SessionState, text: string) => {
@@ -136,31 +136,76 @@ export function Modules({ onDragChange }: { onDragChange: (dragging: boolean) =>
     setNotice({ text, before: state, after });
     setState(after);
   };
+  const refuse = (id: string) =>
+    setNotice({
+      text: training === id
+        ? "You're training it right now. Finish it first."
+        : "Something has to be active. Add or resume another workout first, then pause this one.",
+    });
+
+  const pause = (w: Workout) => {
+    if (training === w.id || !canPauseWorkout(state)) return refuse(w.id);
+    // Not destructive, and you see it move: nothing to say, nothing to undo.
+    setNotice(null);
+    setState(pauseWorkout(state, w.id));
+  };
+  const resume = (w: Workout) => {
+    setNotice(null);
+    setState(resumeWorkout(state, w.id));
+  };
+  const remove = (w: Workout) => change(deleteWorkout(state, w.id), `${w.name || "Untitled"} deleted.`);
+  const open = (w: Workout) => router.push({ pathname: "/plan-editor", params: { id: w.id } });
+
+  const drop = (from: number, to: number) => {
+    const order = [...items];
+    const [moved] = order.splice(from, 1);
+    order.splice(to, 0, moved);
+    const cut = order.indexOf(DIVIDER);
+    const ids = (list: PlanItem[]) => list.map((i) => i.workout!.id);
+    const after = arrangePlan(state, ids(order.slice(0, cut)), ids(order.slice(cut + 1)));
+    if (after === state) return moved.workout ? refuse(moved.workout.id) : undefined;
+    setNotice(null);
+    setState(after);
+  };
 
   return (
-    <View style={{ gap: 24 }}>
-      {hasLoops(state) ? (
-        <Loops
-          viewing={viewing}
-          onShow={(id) => {
-            setShown(id);
-            setNotice(null);
+    <View style={{ gap: 16 }}>
+      {/* What the list is and how to handle it, said once (see `components/tips.tsx`). */}
+      <InlineTip id="plan" />
+      <Round count={state.workouts.length} rowHeight={rowHeight}>
+        <DragList
+          data={items}
+          keyOf={(i) => i.workout?.id ?? "paused"}
+          gap={TURN_GAP}
+          onDragChange={(on) => {
+            setDragging(on);
+            onDragChange(on);
           }}
-          onChange={change}
+          onMove={drop}
+          renderItem={(item, drag) =>
+            item.workout ? (
+              <View onLayout={item.paused ? undefined : (e) => setRowHeight(e.nativeEvent.layout.height)}>
+                <WorkoutRow
+                  workout={item.workout}
+                  paused={!!item.paused}
+                  onPause={() => (item.paused ? resume(item.workout!) : pause(item.workout!))}
+                  onDelete={() => remove(item.workout!)}
+                  canDelete={training !== item.workout.id && (item.paused || state.workouts.length > 1)}
+                  isNext={item.workout.id === next}
+                  drag={drag}
+                  onOpen={() => open(item.workout!)}
+                />
+              </View>
+            ) : (
+              // Always laid out, so rows can be dropped on either side of it;
+              // shown once something is paused, or while a row is in the air.
+              <View style={{ height: 30, justifyContent: "flex-end" }}>
+                {paused.length || dragging ? <SectionLabel>Paused</SectionLabel> : null}
+              </View>
+            )
+          }
         />
-      ) : null}
-
-      <LoopScope loop={viewing}>
-        <LoopWorkouts
-          onDragChange={onDragChange}
-          onMove={setMoving}
-          onChange={(before, after, text) => {
-            if (after === before) return;
-            // The change was made to the loop on screen; put it back in the whole.
-            change(inLoop(state, viewing, () => after), text);
-          }}
-        />
-      </LoopScope>
+      </Round>
 
       {notice && (!notice.after || state === notice.after) ? (
         <View style={{ flexDirection: "row", alignItems: "center", gap: 16 }}>
@@ -176,30 +221,74 @@ export function Modules({ onDragChange }: { onDragChange: (dragging: boolean) =>
           ) : null}
         </View>
       ) : null}
+    </View>
+  );
+}
 
-      <NewWorkout loop={viewing} />
+/** A row of Plan's one list: a workout, or the line between active and paused. */
+type PlanItem = { workout?: Workout; paused?: boolean };
+const DIVIDER: PlanItem = {};
 
-      {hasLoops(state) ? null : (
-        <View style={{ gap: 4 }}>
-          <LinkButton kind="add" label="New loop" onPress={() => router.push({ pathname: "/new-workout", params: { start: "1" } })} />
-          <Text style={{ color: colors.muted, fontSize: 15, lineHeight: 22 }}>
-            A second set of workouts for when things change, like a holiday with no gym. You switch between them here.
-          </Text>
-        </View>
-      )}
+/** Room beside the active list for the line back to the top. */
+const ROUND = 34;
+/** Between workouts. */
+const TURN_GAP = 10;
+const AnimatedPath = Animated.createAnimatedComponent(Path);
 
-      {moving ? (
-        <MoveSheet
-          workout={moving}
-          from={viewing}
-          onClose={() => setMoving(null)}
-          onDone={(after, text, to) => {
-            setMoving(null);
-            change(after, text);
-            setShown(to);
-          }}
-        />
-      ) : null}
+/**
+ * The active workouts, with a line drawn beside them from the last back up
+ * into the first — the same picture as the intro's "Come every day" — so
+ * the list reads as one after another, round and round. No arrows between
+ * rows: anything in a workout's colour vanishes against a next one of the
+ * same colour (Push A into Push B), and the order says it already. Paused workouts below sit outside it. Drawn from one row's
+ * measured height, so it never waits on the list's; it draws itself in, and
+ * again when the number of active workouts changes.
+ */
+function Round({ count, rowHeight, children }: { count: number; rowHeight: number; children: ReactNode }) {
+  const reduce = useReduceMotion();
+  const drawn = useSharedValue(reduce ? 1 : 0);
+  const height = count > 0 && rowHeight > 0 ? count * rowHeight + (count - 1) * TURN_GAP : 0;
+  const first = rowHeight / 2;
+  const last = height - rowHeight / 2;
+  const length = 2 * (ROUND - 6) + Math.max(0, last - first);
+  useEffect(() => {
+    if (reduce || !height) return;
+    drawn.value = 0;
+    drawn.value = withTiming(1, { duration: 700 });
+  }, [count, rowHeight > 0, reduce]); // eslint-disable-line react-hooks/exhaustive-deps
+  const line = useAnimatedProps(() => ({ strokeDashoffset: length * (1 - drawn.value) }));
+  const head = useAnimatedProps(() => ({ strokeOpacity: drawn.value > 0.9 ? (drawn.value - 0.9) * 10 : 0 }));
+  const shown = count > 1 && height > 0;
+  return (
+    <View style={{ flexDirection: "row" }}>
+      <View style={{ flex: 1 }}>
+        {children}
+      </View>
+      <View style={{ width: ROUND }}>
+        {shown ? (
+          <Svg pointerEvents="none" width={ROUND} height={height} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+            <AnimatedPath
+              d={`M2 ${last} H10 Q${ROUND - 6} ${last} ${ROUND - 6} ${last - 18} V${first + 18} Q${ROUND - 6} ${first} 10 ${first} H4`}
+              stroke={colors.muted}
+              strokeWidth={2}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              fill="none"
+              strokeDasharray={`${length} ${length}`}
+              animatedProps={line}
+            />
+            <AnimatedPath
+              d={`M11 ${first - 7} L4 ${first} L11 ${first + 7}`}
+              stroke={colors.muted}
+              strokeWidth={2}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              fill="none"
+              animatedProps={head}
+            />
+          </Svg>
+        ) : null}
+      </View>
     </View>
   );
 }
@@ -207,208 +296,41 @@ export function Modules({ onDragChange }: { onDragChange: (dragging: boolean) =>
 /** A line under the list saying what just happened, with Undo when it can be undone. */
 type Notice = { text: string; before?: SessionState; after?: SessionState };
 
+/** The floating button's size: a thumb's width, and the room Plan leaves for it. */
+export const NEW_SIZE = 60;
+
 /**
- * The loops, by name, with the one on screen picked out; the one in use
- * says so, and any other offers to be used. Rename and delete are here too.
+ * New workout: a round ink button that floats above the bottom bar on Plan,
+ * so it is in reach wherever the list is scrolled to.
  */
-function Loops({
-  viewing,
-  onShow,
-  onChange,
-}: {
-  viewing: string;
-  onShow: (id: string) => void;
-  onChange: (after: SessionState, text: string) => void;
-}) {
-  const { state } = useSession();
-  const loops = loopsOf(state);
-  const inUse = loops.find((l) => l.inUse)!;
-  const shown = loops.find((l) => l.id === viewing) ?? inUse;
-  const [renaming, setRenaming] = useState<string | null>(null);
-  const [deleting, setDeleting] = useState(false);
-  const count = shown.workouts.length;
-
+export function NewWorkoutButton({ bottom }: { bottom: number }) {
+  const reduce = useReduceMotion();
+  const scale = useSharedValue(1);
+  const pressed = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
   return (
-    <View style={{ gap: 14 }}>
-      <Chips>
-        {loops.map((l) => (
-          <Chip key={l.id} label={l.inUse ? `${l.name} ·  in use` : l.name} on={l.id === shown.id}
-            onPress={() => { onShow(l.id); setRenaming(null); setDeleting(false); }} />
-        ))}
-        <Chip label="+ New loop" on={false} onPress={() => router.push({ pathname: "/new-workout", params: { start: "1", loop: shown.id } })} />
-      </Chips>
-
-      {shown.inUse ? (
-        <Text style={{ color: colors.text, fontSize: 17, lineHeight: 24 }}>
-          In use: your workouts come from {shown.name}.
-        </Text>
-      ) : (
-        <View style={{ gap: 12, padding: 18, borderRadius: radii.card, borderCurve: "continuous", backgroundColor: colors.surface }}>
-          <Text style={{ color: colors.text, fontSize: 17, lineHeight: 24 }}>
-            Not in use. Your workouts come from {inUse.name} right now.
-          </Text>
-          <Button
-            label={`Use ${shown.name}`}
-            disabled={!!state.active}
-            onPress={() => {
-              const after = switchLoop(state, shown.id);
-              onChange(after, `Now using ${shown.name}. Next up: ${upNext(after).name}. ${inUse.name} waits where you left it.`);
-            }}
-          />
-          {state.active ? (
-            <Text style={{ color: colors.muted, fontSize: 15 }}>Finish your workout first.</Text>
-          ) : null}
-        </View>
-      )}
-
-      {renaming !== null ? (
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
-          <TextInput
-            autoFocus
-            accessibilityLabel="Loop name"
-            value={renaming}
-            onChangeText={setRenaming}
-            returnKeyType="done"
-            maxLength={30}
-            onSubmitEditing={() => {
-              onChange(renameLoop(state, shown.id, renaming), `Renamed to ${renaming.trim()}.`);
-              setRenaming(null);
-            }}
-            style={{ flex: 1, minHeight: 52, paddingHorizontal: 16, borderRadius: 14, backgroundColor: colors.surface, color: colors.text, fontSize: 19 }}
-          />
-          <LinkButton kind="link" label="Done" onPress={() => {
-            onChange(renameLoop(state, shown.id, renaming), `Renamed to ${renaming.trim()}.`);
-            setRenaming(null);
-          }} />
-        </View>
-      ) : deleting ? (
-        <View style={{ gap: 10 }}>
-          <Text style={{ color: colors.text, fontSize: 17, lineHeight: 24 }}>
-            Delete {shown.name}? Its {count} workout{count === 1 ? "" : "s"} can go with it, or move to {inUse.name}.
-          </Text>
-          <Button kind="secondary" label={`Move them to ${inUse.name}`} onPress={() => {
-            onShow(inUse.id);
-            onChange(deleteLoop(state, shown.id, inUse.id), `${shown.name} deleted. Its workouts are in ${inUse.name}.`);
-            setDeleting(false);
-          }} />
-          <Button kind="remove" label="Delete them too" onPress={() => {
-            onShow(inUse.id);
-            onChange(deleteLoop(state, shown.id), `${shown.name} deleted, with its workouts.`);
-            setDeleting(false);
-          }} />
-          <LinkButton kind="quiet" label="Cancel" onPress={() => setDeleting(false)} />
-        </View>
-      ) : (
-        <View style={{ flexDirection: "row", gap: 20 }}>
-          <LinkButton kind="link" label="Rename" onPress={() => setRenaming(shown.name)} />
-          {shown.inUse ? null : <LinkButton kind="link" label="Delete loop" onPress={() => setDeleting(true)} />}
-        </View>
-      )}
-    </View>
-  );
-}
-
-/** The workouts of the loop on screen — see `LoopScope` — to open, drag, swipe. */
-function LoopWorkouts({
-  onDragChange,
-  onMove,
-  onChange,
-}: {
-  onDragChange: (dragging: boolean) => void;
-  onMove: (workout: Workout) => void;
-  onChange: (before: SessionState, after: SessionState, text: string) => void;
-}) {
-  const { state, setState } = useSession();
-  const next = upNext(state).id;
-  const rows = planWorkouts(state);
-  const loops = hasLoops(state);
-  const isPaused = (w: Workout) => state.removedWorkouts.some((r) => r.workout.id === w.id);
-
-  return (
-    <View style={{ gap: 24 }}>
-      <Text style={{ color: colors.muted, fontSize: 15, lineHeight: 22 }}>
-        Your workouts take turns, top to bottom, then back to the top. Tap one
-        to change it. Hold and drag to move it. Swipe left to pause, resume{loops ? ", move" : ""} or delete.
-      </Text>
-
-      <DragList
-        data={rows}
-        keyOf={(w) => w.id}
-        gap={10}
-        onDragChange={onDragChange}
-        onMove={(from, to) => setState((s) => movePlanWorkout(s, from, to))}
-        renderItem={(w, drag) => (
-          <WorkoutRow
-            workout={w}
-            paused={isPaused(w)}
-            canManage={state.active?.workoutId !== w.id && (isPaused(w) || canPauseWorkout(state))}
-            onPause={() => setState((s) => (isPaused(w) ? resumeWorkout(s, w.id) : pauseWorkout(s, w.id)))}
-            onDelete={() => onChange(state, deleteWorkout(state, w.id), `${w.name || "Untitled"} deleted.`)}
-            onMove={loops ? () => onMove(w) : undefined}
-            isNext={w.id === next}
-            drag={drag}
-            onOpen={() => {
-              router.push({ pathname: "/plan-editor", params: { id: w.id } });
-            }}
-          />
-        )}
-      />
-    </View>
-  );
-}
-
-/** Move a workout to another loop, or copy it there. */
-function MoveSheet({
-  workout,
-  from,
-  onClose,
-  onDone,
-}: {
-  workout: Workout;
-  from: string;
-  onClose: () => void;
-  onDone: (after: SessionState, text: string, to: string) => void;
-}) {
-  const { state } = useSession();
-  const others = loopsOf(state).filter((l) => l.id !== from);
-  const name = workout.name || "Untitled";
-  return (
-    <Sheet visible title={`Move ${name}`} onClose={onClose}>
-      <View style={{ gap: 10, paddingTop: 8 }}>
-        {others.map((l) => {
-          const after = moveToLoop(state, workout.id, from, l.id);
-          return (
-            <Button key={l.id} label={`Move to ${l.name}`} disabled={after === state}
-              onPress={() => onDone(after, `${name} moved to ${l.name}.`, l.id)} />
-          );
-        })}
-        <Text style={{ color: colors.muted, fontSize: 15, lineHeight: 22, marginTop: 8 }}>
-          Or keep it here, and put a copy in another loop:
-        </Text>
-        {others.map((l) => (
-          <Button key={`copy-${l.id}`} kind="secondary" label={`Copy to ${l.name}`}
-            onPress={() => onDone(copyToLoop(state, workout.id, from, l.id, newId("w")), `A copy of ${name} is in ${l.name}.`, l.id)} />
-        ))}
-        {others.some((l) => moveToLoop(state, workout.id, from, l.id) === state) ? (
-          <Text style={{ color: colors.muted, fontSize: 15, lineHeight: 22 }}>
-            {state.active?.workoutId === workout.id
-              ? "It can't move while you're training it."
-              : "It's the last workout in its loop, so it stays. Copy it instead."}
-          </Text>
-        ) : null}
-      </View>
-    </Sheet>
-  );
-}
-
-/** The entry point stays in place; its choices open fully in view. */
-function NewWorkout({ loop }: { loop: string }) {
-  return (
-    <Pressable accessibilityRole="button" onPress={() => router.push({ pathname: "/new-workout", params: { loop } })}
-      style={({ pressed }) => ({ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, minHeight: 60, borderRadius: radii.card, borderCurve: "continuous", borderWidth: 1, borderStyle: "dashed", borderColor: colors.line, opacity: pressed ? 0.6 : 1 })}>
-      <Icon name="plus" size={16} color={colors.muted} />
-      <Text ui style={{ color: colors.muted, fontSize: 16, fontWeight: "700" }}>New workout</Text>
-    </Pressable>
+    <Animated.View style={[{ position: "absolute", right: 22, bottom }, pressed]}>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="New workout"
+        onPress={() => router.push("/new-workout")}
+        onPressIn={() => { if (!reduce) scale.value = withTiming(PRESS_SCALE, { duration: duration.press }); }}
+        onPressOut={() => { scale.value = withSpring(1, spring.bouncy); }}
+        style={{
+          width: NEW_SIZE,
+          height: NEW_SIZE,
+          borderRadius: NEW_SIZE / 2,
+          alignItems: "center",
+          justifyContent: "center",
+          backgroundColor: colors.text,
+          shadowColor: "#000",
+          shadowOpacity: 0.18,
+          shadowRadius: 10,
+          shadowOffset: { width: 0, height: 4 },
+        }}
+      >
+        <Icon name="plus" size={24} color={colors.white} />
+      </Pressable>
+    </Animated.View>
   );
 }
 
@@ -468,21 +390,19 @@ export const nextWord = (state: SessionState): string =>
 function WorkoutRow({
   workout,
   paused,
-  canManage,
+  canDelete,
   onPause,
   onDelete,
-  onMove,
   isNext,
   drag,
   onOpen,
 }: {
   workout: Workout;
   paused: boolean;
-  canManage: boolean;
+  canDelete: boolean;
+  /** Pause it, or — paused — resume it. */
   onPause: () => void;
   onDelete: () => void;
-  /** Present when there are other loops to move it to. */
-  onMove?: () => void;
   isNext: boolean;
   drag: Drag;
   onOpen: () => void;
@@ -490,14 +410,17 @@ function WorkoutRow({
   const { state } = useSession();
   const family = workoutFamily(state, workout);
   const count = workout.exercises.length;
+  // Active: the day's colour at full strength, with white words on the dark
+  // ones and ink on the light ones (legs, mobility), as on the Start button.
+  // Paused: grey, stepped back.
+  const fill = FAMILY[family];
+  const ink = paused ? colors.text : fill.mark;
   return (
     <Swipe
       actions={[
-        { label: paused ? "Resume" : "Pause", onPress: onPause, disabled: !canManage },
-        ...(onMove ? [{ label: "Move", onPress: onMove }] : []),
-        { label: "Delete", onPress: onDelete, disabled: !canManage, destructive: true },
+        { label: paused ? "Resume" : "Pause", onPress: onPause },
+        { label: "Delete", onPress: onDelete, disabled: !canDelete, destructive: true },
       ]}
-      // The last workout cannot go: the loop needs something in it.
       disabled={drag.active}
       radius={radii.card}
     >
@@ -506,8 +429,8 @@ function WorkoutRow({
         accessibilityLabel={paused ? `${workout.name || "Untitled"}, paused` : undefined}
         accessibilityHint={paused ? "Opens the workout. Swipe left to resume or delete it." : "Opens the workout. Hold and drag to reorder."}
         {...moveActions(drag)}
-        accessibilityActions={[...moveActions(drag).accessibilityActions, ...(canManage ? [{ name: "pause", label: paused ? "Resume workout" : "Pause workout" }, { name: "delete", label: "Delete workout" }] : [])]}
-        onAccessibilityAction={(e) => { if (e.nativeEvent.actionName === "pause" && canManage) onPause(); else if (e.nativeEvent.actionName === "delete" && canManage) onDelete(); else moveActions(drag).onAccessibilityAction(e); }}
+        accessibilityActions={[...moveActions(drag).accessibilityActions, { name: "pause", label: paused ? "Resume workout" : "Pause workout" }, ...(canDelete ? [{ name: "delete", label: "Delete workout" }] : [])]}
+        onAccessibilityAction={(e) => { if (e.nativeEvent.actionName === "pause") onPause(); else if (e.nativeEvent.actionName === "delete" && canDelete) onDelete(); else moveActions(drag).onAccessibilityAction(e); }}
         onPress={onOpen}
         onLongPress={drag.start}
         onPressOut={drag.cancel}
@@ -525,9 +448,9 @@ function WorkoutRow({
           paddingVertical: 16,
           borderRadius: radii.card,
           borderCurve: "continuous",
-          backgroundColor: paused ? colors.surface : familyWash(family),
+          backgroundColor: paused ? colors.surface : fill.field,
           borderWidth: 1.5,
-          borderColor: drag.active ? FAMILY[family].mark : "transparent",
+          borderColor: drag.active ? colors.text : "transparent",
           opacity: pressed && !drag.active ? 0.7 : 1,
         })}
       >
@@ -535,18 +458,18 @@ function WorkoutRow({
             as out of the loop at a glance; "Paused" says it in words too, and
             it comes back with a swipe left, Resume. */}
         <View style={{ width: 26, alignItems: "center" }}>
-          <Mark family={family} size={24} color={paused ? colors.faint : undefined} />
+          <Mark family={family} size={24} color={paused ? colors.faint : ink} />
         </View>
         <View style={{ flex: 1, gap: 2, opacity: paused ? 0.5 : 1 }}>
           <Text
             numberOfLines={1}
-            style={{ color: colors.text, fontFamily: fonts.display, fontSize: 28, lineHeight: 34 }}
+            style={{ color: ink, fontFamily: fonts.display, fontSize: 28, lineHeight: 34 }}
           >
             {workout.name || "Untitled"}
           </Text>
           <Text
             numberOfLines={1}
-            style={{ color: paused ? colors.muted : colors.text, fontSize: 16, fontStyle: "italic" }}
+            style={{ color: paused ? colors.muted : ink, fontSize: 16, fontStyle: "italic" }}
           >
             {[paused ? "Paused" : "", workout.subtitle, `${count} exercise${count === 1 ? "" : "s"}`]
               .filter(Boolean)
@@ -555,19 +478,42 @@ function WorkoutRow({
         </View>
         {paused ? null : isNext ? (
           <Text ui
-            style={{ color: colors.text, fontSize: 15, fontWeight: "600" }}
+            style={{ color: ink, fontSize: 15, fontWeight: "600" }}
           >
             {nextWord(state)}
           </Text>
         ) : null}
-        <Icon name="open" size={15} color={colors.text} />
+        {paused ? (
+          // Resuming is the one thing you come to a paused row for: in sight,
+          // not behind a swipe.
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={`Resume ${workout.name || "Untitled"}`}
+            hitSlop={8}
+            onPress={onPause}
+            style={({ pressed }) => ({
+              minHeight: 40,
+              paddingHorizontal: 14,
+              justifyContent: "center",
+              borderRadius: radii.button,
+              borderCurve: "continuous",
+              borderWidth: 1.5,
+              borderColor: colors.text,
+              opacity: pressed ? 0.6 : 1,
+            })}
+          >
+            <Text ui style={{ color: colors.text, fontSize: 15, fontWeight: "700" }}>Resume</Text>
+          </Pressable>
+        ) : (
+          <Icon name="open" size={15} color={ink} />
+        )}
       </Pressable>
     </Swipe>
   );
 }
 
 /** A block of conditioning in a workout: cardio at one end, or a routine at one. */
-type Block = CardioEnd | RoutineEnd;
+type BlockName = "start" | "main" | "finish";
 
 /**
  * A workout, opened from Plan: the whole of it on one screen, in the order
@@ -590,205 +536,195 @@ export function WorkoutSheet({
 }) {
   const { state, setState } = useSession();
   const [slot, setSlot] = useState<string | null>(null);
-  const [block, setBlock] = useState<Block | null>(null);
+  // The cardio or routine opened, and the block it is in.
+  const [block, setBlock] = useState<{ placed: Placed; part: BlockName } | null>(null);
   // Which part of the workout Add exercise is adding to, if open.
   const [adding, setAdding] = useState<EntryPart | "main" | null>(null);
   const [dragging, setDragging] = useState(false);
-  const [renaming, setRenaming] = useState(false);
+  const draft = useDraft();
 
   const close = () => {
     setSlot(null);
     setBlock(null);
     setAdding(null);
-    setRenaming(false);
     onClose();
   };
 
   if (!workout) return <Sheet visible={false} title="" onClose={close} />;
 
   const entry = workout.exercises.find((e) => e.id === slot);
-  const editingName = renaming || naming;
-  const cardioStop = (where: CardioEnd) => {
-    const plan = cardioPlan(state, workout, where);
-    return plan ? (
-      <Stop
-        family="cardio"
-        mark={<Mark family="cardio" size={16} />}
-        title={plan.machine.name}
-        detail={cardioAmount(plan)}
-        onPress={() => setBlock(where)}
-      />
-    ) : null;
-  };
-  const routineStop = (where: RoutineEnd) => {
-    const routine = routineAt(state, workout, where);
-    return routine ? (
-      <Stop
-        family="mobility"
-        mark={<Mark family="mobility" size={16} />}
-        title={routine.name}
-        detail={`about ${routineMinutes(routine)} min`}
-        onPress={() => setBlock(where)}
+
+  // One block: everything in it — exercises, cardio, routines — in the order
+  // it runs, held and dragged among themselves. Tap to change, swipe left to
+  // remove, as anywhere.
+  const part = (name: BlockName) => {
+    const list = partContents(state, workout, name);
+    return list.length ? (
+      <DragList
+        data={list}
+        keyOf={(p) => p.id}
+        gap={8}
+        onDragChange={setDragging}
+        onMove={(from, to) => {
+          const ids = list.map((p) => p.id);
+          const [moved] = ids.splice(from, 1);
+          ids.splice(to, 0, moved);
+          setState((s) => arrangePart(s, workout.id, name, ids));
+        }}
+        renderItem={(p, drag) => {
+          if ("entry" in p) {
+            const e = p.entry;
+            return (
+              <LiftRow
+                workoutId={workout.id}
+                entry={e}
+                drag={drag}
+                onOpen={() => embedded ? router.push({ pathname: "/plan-editor/exercise", params: { id: workout.id, slot: e.id } }) : setSlot(e.id)}
+                onRemove={() => setState((s) => removeEntry(s, workout.id, e.id))}
+              />
+            );
+          }
+          if ("cardio" in p) {
+            const plan = cardioPlan(state, workout, p.cardio)!;
+            return (
+              <Row
+                family="cardio"
+                title={plan.machine.name}
+                detail={cardioAmount(plan)}
+                drag={drag}
+                onPress={() => setBlock({ placed: p, part: name })}
+                onRemove={() => setState((s) => setCardio(s, workout.id, p.cardio, null))}
+              />
+            );
+          }
+          const routine = routinePlan(state, workout, p.routine)!;
+          return (
+            <Row
+              family="mobility"
+              title={routine.name}
+              detail={`about ${routineMinutes(routine)} min`}
+              drag={drag}
+              onPress={() => setBlock({ placed: p, part: name })}
+              onRemove={() => setState((s) => chooseRoutine(s, workout.id, p.routine, null))}
+            />
+          );
+        }}
       />
     ) : null;
   };
 
-  // The exercises of one part, to drag among themselves, and a way to add one.
-  // A part's list moves its own entries; the others keep their places.
-  const lifts = (part: EntryPart | "main") => {
-    const list = workout.exercises.filter((e) => (e.part ?? "main") === part);
-    return (
-      <>
-        <DragList
-          data={list}
-          keyOf={(e) => e.id}
-          onDragChange={setDragging}
-          onMove={(from, to) => {
-            const all = workout.exercises;
-            setState((s) => moveEntry(s, workout.id, all.indexOf(list[from]), all.indexOf(list[to])));
+  // One "Add" at the foot of each block, and one sheet behind it: exercises,
+  // and at its top, cardio and mobility. Adding always adds — what is there
+  // stays — so a block can hold as many of each as you like.
+  const blocksFor = (name: BlockName): AddBlock[] => [
+    {
+      id: "cardio",
+      label: "Cardio",
+      detail: "A machine, or a run",
+      family: "cardio",
+      choose: (done) => (
+        <CardioChoices
+          options={cardioPool()}
+          current=""
+          onPick={(id) => {
+            setState((s) => addExtra(restoreConditioning(s, id), workout.id, name, { cardio: { machine: id } }));
+            done();
           }}
-          renderItem={(e, drag) => (
-            <LiftStop workoutId={workout.id} entry={e} drag={drag} onOpen={() => embedded ? router.push({ pathname: "/plan-editor/exercise", params: { id: workout.id, slot: e.id } }) : setSlot(e.id)} />
-          )}
         />
-      </>
-    );
-  };
-
-  // One "Add" at the foot of each part, and one sheet behind it. The
-  // warm-up and cool-down also take cardio and mobility or stretches: those
-  // are offered at the top of the same sheet and chosen there.
-  const ends = { start: { cardio: "open", routine: "warmup" }, finish: { cardio: "close", routine: "end" } } as const;
-  const blocksFor = (part: EntryPart): AddBlock[] => {
-    const where = ends[part];
-    const plan = cardioPlan(state, workout, where.cardio);
-    const routine = routineAt(state, workout, where.routine);
-    const use = where.routine === "warmup" ? "warmup" : "end";
-    return [
-      {
-        id: "cardio",
-        label: "Cardio",
-        detail: plan ? `Instead of ${plan.machine.name}` : "A machine, or a run",
-        family: "cardio",
-        choose: (done) => (
-          <CardioChoices
-            options={cardioPool(state.hiddenConditioning)}
-            current={plan?.machine.id ?? ""}
-            onPick={(id) => {
-              setState((s) => (plan ? chooseCardio(s, workout.id, where.cardio, id) : setCardio(s, workout.id, where.cardio, { machine: id })));
-              done();
-            }}
-          />
-        ),
-      },
-      {
-        id: "routine",
-        label: "Mobility",
-        detail: routine ? `Instead of ${routine.name}` : use === "warmup" ? "To get moving" : "To finish on",
-        family: "mobility",
-        choose: (done) => (
-          <View style={{ gap: 6 }}>
-            {routinesFor(state, use).map((m) => (
-                <Choice
-                  key={m.id}
-                  label={m.name}
-                  detail={`${routineMinutes(m)} min`}
-                  active={m.id === routine?.id}
-                  onPress={() => {
-                    setState((s) => chooseRoutine(s, workout.id, where.routine, m.id));
-                    done();
-                  }}
-                />
-              ))}
-          </View>
-        ),
-      },
-    ];
-  };
-  const addRow = (part: EntryPart | "main") => (
-    <Stop
-      add
-      title="Add"
-      a11y={{ accessibilityLabel: part === "main" ? "Add an exercise" : `Add to the ${part === "start" ? "warm-up" : "cool-down"}` }}
+      ),
+    },
+    {
+      id: "routine",
+      label: "Mobility",
+      detail: name === "start" ? "To get moving" : "Stretches and moves",
+      family: "mobility",
+      choose: (done) => (
+        <View style={{ gap: 6 }}>
+          {routinesFor(state, name === "start" ? "warmup" : "end").map((m) => (
+            <Choice
+              key={m.id}
+              label={m.name}
+              detail={`${routineMinutes(m)} min`}
+              active={false}
+              onPress={() => {
+                setState((s) => addExtra(s, workout.id, name, { routine: m.id }));
+                done();
+              }}
+            />
+          ))}
+        </View>
+      ),
+    },
+  ];
+  const addButton = (part: EntryPart | "main") => (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={`Add to ${BLOCK_NAME[part]}`}
       onPress={() => setAdding(part)}
-    />
+      style={({ pressed }) => ({
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: 8,
+        minHeight: 52,
+        borderRadius: radii.card,
+        borderCurve: "continuous",
+        borderWidth: 1.5,
+        borderStyle: "dashed",
+        borderColor: colors.muted,
+        opacity: pressed ? 0.6 : 1,
+      })}
+    >
+      <Icon name="plus" size={16} color={colors.text} />
+      <Text ui style={{ color: colors.text, fontSize: 17, fontWeight: "700" }}>Add</Text>
+    </Pressable>
   );
+  const minutes = workoutMinutes(state, workout);
 
   return (
-    <Sheet embedded={embedded} visible full title={workout.name || "Untitled"} closeLabel="Done" scrollEnabled={!dragging} onClose={close}
+    <Sheet embedded={embedded} visible full title={draft?.isNew ? "New workout" : "Edit workout"} closeLabel="Done" scrollEnabled={!dragging} onClose={close}
       page={entry ? <SlotSheet key={entry.id} embedded workoutId={workout.id} entry={entry} onClose={() => setSlot(null)} /> : undefined}
     >
-      <View style={{ gap: 22, paddingTop: 4 }}>
-        {editingName ? (
-          <View style={{ gap: 10 }}>
-            <Field
-              value={workout.name}
-              placeholder="Name"
-              size="large"
-              autoFocus
-              onChange={(name) => setState((s) => renameWorkout(s, workout.id, { name }))}
-              onSubmit={() => setRenaming(false)}
-            />
-            <Field
-              value={workout.subtitle}
-              placeholder="What it trains (optional)"
-              onChange={(subtitle) => setState((s) => renameWorkout(s, workout.id, { subtitle }))}
-              onSubmit={() => setRenaming(false)}
-            />
-            {renaming ? <TextButton label="Done renaming" onPress={() => setRenaming(false)} /> : null}
-          </View>
-        ) : (
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
-            <Text style={{ flex: 1, color: colors.muted, fontSize: 18, fontStyle: "italic" }}>
-              {[workout.subtitle, `about ${workoutMinutes(state, workout)} min`].filter(Boolean).join(" · ")}
-            </Text>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Rename this workout"
-              hitSlop={8}
-              onPress={() => setRenaming(true)}
-              style={({ pressed }) => ({ flexDirection: "row", alignItems: "center", gap: 6, minHeight: 44, opacity: pressed ? 0.6 : 1 })}
-            >
-              <Icon name="rename" size={16} color={colors.rise} />
-              <Text ui style={{ color: colors.rise, fontSize: 17, fontWeight: "600" }}>Rename</Text>
-            </Pressable>
-          </View>
-        )}
-
-        {/* Three colour bands share one uninterrupted timeline and rail position. */}
-        <View style={{ marginHorizontal: -10, borderRadius: radii.card, borderCurve: "continuous", overflow: "hidden" }}>
-          <View style={{ paddingHorizontal: 10, backgroundColor: WORKOUT_STAGE.warmup }}>
-            <Part label="Warm-up" first />
-            {cardioStop("open")}
-            {routineStop("warmup")}
-            {lifts("start")}
-            {addRow("start")}
-          </View>
-
-          <View style={{ paddingHorizontal: 10, backgroundColor: WORKOUT_STAGE.exercises }}>
-            <Part label="Exercises" />
-            {lifts("main")}
-            {addRow("main")}
-            {balanceNotes(state, workout).map((note) => (
-              <Rail key={note}>
-                <Text style={{ paddingVertical: 6, color: colors.text, fontSize: 16, lineHeight: 22, fontStyle: "italic" }}>{note}</Text>
-              </Rail>
-            ))}
-          </View>
-
-          <View style={{ paddingHorizontal: 10, backgroundColor: WORKOUT_STAGE.cooldown }}>
-            <Part label="Cool-down" />
-            {lifts("finish")}
-            {cardioStop("close")}
-            {routineStop("end")}
-            {addRow("finish")}
-            <Rail last />
-          </View>
+      <View style={{ gap: 28, paddingTop: 4 }}>
+        {/* The name, and what it trains, ready to type in: no Rename step. */}
+        <View style={{ gap: 10 }}>
+          <Field
+            value={workout.name}
+            placeholder="Name"
+            size="large"
+            autoFocus={naming || !!draft?.isNew}
+            onChange={(name) => setState((s) => renameWorkout(s, workout.id, { name }))}
+          />
+          <Field
+            value={workout.subtitle}
+            placeholder="What it trains (optional)"
+            onChange={(subtitle) => setState((s) => renameWorkout(s, workout.id, { subtitle }))}
+          />
+          <Text style={{ color: colors.muted, fontSize: 16, fontStyle: "italic", paddingLeft: 4 }}>
+            About {minutes} min
+          </Text>
         </View>
 
-        <Text style={{ color: colors.muted, fontSize: 16, lineHeight: 23 }}>
-          Tap any part to change it. Hold an exercise and drag to move it.
-        </Text>
+        {/* Three blocks, in the order you do them, named by where they sit
+            and not by what goes in them: anything can go anywhere. Every row:
+            tap to change, swipe left to remove; exercises also hold to move. */}
+        <Part label={BLOCK_NAME.start}>
+          {part("start")}
+          {addButton("start")}
+        </Part>
+
+        <Part label={BLOCK_NAME.main}>
+          {part("main")}
+          {addButton("main")}
+          {balanceNotes(state, workout).map((note) => (
+            <Text key={note} style={{ color: colors.text, fontSize: 16, lineHeight: 22, fontStyle: "italic" }}>{note}</Text>
+          ))}
+        </Part>
+
+        <Part label={BLOCK_NAME.finish}>
+          {part("finish")}
+          {addButton("finish")}
+        </Part>
 
         {GOALS_ON ? <WorkoutGoals workoutId={workout.id} /> : null}
       </View>
@@ -797,188 +733,146 @@ export function WorkoutSheet({
       <AddExerciseSheet
         workout={workout}
         part={adding === "main" ? undefined : (adding ?? undefined)}
-        blocks={adding === "start" || adding === "finish" ? blocksFor(adding) : []}
+        blocks={adding ? blocksFor(adding) : []}
         visible={adding !== null}
         onClose={() => setAdding(null)}
       />
       <CardioSheet
         workout={workout}
-        where={block === "open" || block === "close" ? block : null}
+        where={block && "cardio" in block.placed ? block.placed.cardio : null}
         onClose={() => setBlock(null)}
       />
       <MobilitySheet
-        workout={block === "warmup" || block === "end" ? workout : undefined}
-        where={block === "warmup" ? "warmup" : "end"}
+        workout={block && "routine" in block.placed ? workout : undefined}
+        where={block && "routine" in block.placed ? block.placed.routine : "end"}
+        use={block?.part === "start" ? "warmup" : "end"}
         onClose={() => setBlock(null)}
       />
     </Sheet>
   );
 }
 
-/** The thread's column: wide enough for a mark, with the line down its middle. */
-const RAIL = 32;
-
 /**
- * A stretch of the thread with something beside it. The line runs the full
- * height, from the top of the first part to the end of the last.
+ * The three blocks of a workout, by where they sit. Usually cardio to get
+ * warm, then the lifts, then something to finish on — but that is yours to
+ * decide, so the names don't say it.
  */
-function Rail({ children, mark, first, last }: { children?: ReactNode; mark?: ReactNode; first?: boolean; last?: boolean }) {
+const BLOCK_NAME: Record<EntryPart | "main", string> = { start: "Start", main: "Main", finish: "Finish" };
+
+/** One part of a workout: its name, small, and what is in it. */
+function Part({ label, children }: { label: string; children: ReactNode }) {
   return (
-    <View style={{ flexDirection: "row", alignItems: "stretch", minHeight: last ? 10 : undefined }}>
-      <View style={{ width: RAIL, alignItems: "center", justifyContent: "center" }}>
-        <View
-          style={{
-            position: "absolute",
-            top: first ? "50%" : 0,
-            bottom: last ? "50%" : 0,
-            width: 2,
-            borderRadius: 1,
-            backgroundColor: colors.muted,
-            opacity: 0.35,
-          }}
-        />
-        {mark ? (
-          // A white disc behind the mark, so the thread stops at its edge.
-          <View style={{ width: 26, height: 26, borderRadius: 13, backgroundColor: colors.bg, alignItems: "center", justifyContent: "center" }}>
-            {mark}
-          </View>
-        ) : null}
-      </View>
-      <View style={{ flex: 1 }}>{children}</View>
+    <View style={{ gap: 8 }}>
+      <SectionLabel>{label}</SectionLabel>
+      {children}
     </View>
   );
 }
 
-/** The name of a stretch of the workout, small, beside the thread. */
-function Part({ label, first }: { label: string; first?: boolean }) {
-  return (
-    <Rail first={first}>
-      <Text ui style={{ paddingTop: 14, paddingBottom: 8, paddingLeft: 12, color: colors.text, fontSize: 15, fontWeight: "700" }}>
-        {label}
-      </Text>
-    </Rail>
-  );
-}
-
 /**
- * One part of the workout on the thread: its mark, its name and what it is,
- * and a way in. `add` is a part the workout doesn't have yet. `handle` makes it
- * one you hold and drag, like a workout in Plan.
+ * One thing in a workout. Tap to change it (the › says so), swipe left to
+ * remove it — as a workout swipes in Plan. `drag` makes it one you hold and
+ * move, and shows the ≡ that says so.
  */
-function Stop({
-  mark,
+function Row({
   family,
   title,
   detail,
   onPress,
-  add,
-  handle,
-  lifted,
+  onRemove,
+  drag,
   a11y,
 }: {
-  mark?: ReactNode;
-  family?: Family;
+  /** Its type: the row is that colour, so a workout reads at a glance as mostly legs, say. */
+  family: Family;
   title: string;
   detail?: string;
   onPress: () => void;
-  add?: boolean;
-  handle?: Drag;
-  lifted?: boolean;
+  onRemove: () => void;
+  drag?: Drag;
   a11y?: object;
 }) {
-  const tint = family ? familyWash(family) : undefined;
-  const ink = colors.text;
+  const lifted = !!drag?.active;
+  const fill = FAMILY[family];
+  const ink = fill.mark;
   return (
-    <Rail
-      mark={
-        add ? (
-          <View style={{ width: 22, height: 22, borderRadius: 11, borderWidth: 1.5, borderStyle: "dashed", borderColor: colors.text, alignItems: "center", justifyContent: "center" }}>
-            <Icon name="plus" size={11} color={colors.text} />
-          </View>
-        ) : (
-          mark
-        )
-      }
-    >
-      <View
-        style={{
+    <Swipe actions={[{ label: "Remove", onPress: onRemove, destructive: true }]} disabled={lifted} radius={radii.card}>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityActions={[{ name: "remove", label: "Remove" }]}
+        onAccessibilityAction={(e) => { if (e.nativeEvent.actionName === "remove") onRemove(); }}
+        {...a11y}
+        onPress={() => { if (!swipedRecently()) onPress(); }}
+        onLongPress={drag?.start}
+        onPressOut={drag?.cancel}
+        delayLongPress={250}
+        unstable_pressDelay={90}
+        style={({ pressed }) => ({
           flexDirection: "row",
           alignItems: "center",
-          marginVertical: 3,
-          borderRadius: 16,
+          gap: 12,
+          minHeight: 64,
+          paddingLeft: drag ? 10 : 16,
+          paddingRight: 16,
+          paddingVertical: 10,
+          borderRadius: radii.card,
           borderCurve: "continuous",
-          backgroundColor: add ? "transparent" : tint ?? (lifted ? colors.raised : colors.bg),
-          borderWidth: 1,
-          borderColor: lifted ? ink : "transparent",
-        }}
+          backgroundColor: fill.field,
+          borderWidth: 1.5,
+          borderColor: lifted ? colors.text : "transparent",
+          opacity: pressed && !lifted ? 0.6 : 1,
+        })}
       >
-        <Pressable
-          accessibilityRole="button"
-          {...a11y}
-          onPress={onPress}
-          onLongPress={handle?.start}
-          onPressOut={handle?.cancel}
-          style={({ pressed }) => ({
-            flex: 1,
-            flexDirection: "row",
-            alignItems: "center",
-            gap: 10,
-            minHeight: add ? 48 : 60,
-            paddingLeft: 14,
-            paddingRight: 14,
-            paddingVertical: 8,
-            opacity: pressed && !lifted ? 0.6 : 1,
-          })}
-        >
-          <View style={{ flex: 1, gap: 2 }}>
-            <Text ui={add} style={{ color: ink, fontSize: 18, fontWeight: add ? "700" : "600" }}>{title}</Text>
-            {detail ? <Text ui style={{ color: tint ? ink : colors.muted, fontSize: 15 }}>{detail}</Text> : null}
-          </View>
-          {add ? null : <Icon name="open" size={13} color={tint ? ink : colors.faint} />}
-        </Pressable>
-      </View>
-    </Rail>
+        {drag ? <Icon name="grip" size={16} color={ink} /> : null}
+        <View style={{ width: 18, alignItems: "center" }}><Mark family={family} size={16} color={ink} /></View>
+        <View style={{ flex: 1, gap: 2 }}>
+          <Text numberOfLines={1} style={{ color: ink, fontSize: 19 }}>{title}</Text>
+          {detail ? <Text ui style={{ color: ink, opacity: 0.85, fontSize: 15 }}>{detail}</Text> : null}
+        </View>
+        <Icon name="open" size={14} color={ink} />
+      </Pressable>
+    </Swipe>
   );
 }
 
-/** A lift on the thread: the exercise filling the slot and its sets and reps. Hold it to drag. */
-function LiftStop({
+/** An exercise in a workout: what fills the slot, and its sets and reps. Hold to move it. */
+function LiftRow({
   workoutId,
   entry,
   drag,
   onOpen,
+  onRemove,
 }: {
   workoutId: string;
   entry: Entry;
   drag: Drag;
   onOpen: () => void;
+  onRemove: () => void;
 }) {
   const { state } = useSession();
   const exercise = byId(chosen(state, workoutId, entry));
   const family = familyOf(exercise);
   return (
-    <Stop
+    <Row
       family={family}
-      mark={<Mark family={family} size={16} />}
       title={exercise?.name ?? "—"}
       detail={`${setsFor(entry)} × ${repLabel(schemeOf(exercise, entry.scheme))}`}
       onPress={onOpen}
-      handle={drag}
-      lifted={drag.active}
-      a11y={{ accessibilityHint: "Opens the exercise to swap, change or remove it.", ...moveActions(drag) }}
+      onRemove={onRemove}
+      drag={drag}
+      a11y={{
+        accessibilityHint: "Opens the exercise to swap or change it. Swipe left to remove it.",
+        accessibilityActions: [{ name: "remove", label: "Remove" }, ...moveActions(drag).accessibilityActions],
+        onAccessibilityAction: (e: { nativeEvent: { actionName: string } }) => {
+          if (e.nativeEvent.actionName === "remove") onRemove();
+          else moveActions(drag).onAccessibilityAction(e);
+        },
+      }}
     />
   );
 }
 
 /** A quiet + link at the foot of a list: Add exercise, Add cardio. */
-
-/** The routine at one end of a workout. */
-const routineAt = (state: SessionState, workout: Workout, where: RoutineEnd) =>
-  where === "warmup" ? warmupPlan(state, workout) : mobilityPlan(state, workout);
-
-/** Choose the routine at one end of a workout, or take it out with null. */
-const chooseRoutine = (s: SessionState, workoutId: string, where: RoutineEnd, id: string | null) =>
-  where === "warmup" ? setWarmup(s, workoutId, id) : setMobility(s, workoutId, id);
 
 /**
  * One cardio block, opened: which machine, and how long — a set distance
@@ -991,7 +885,7 @@ function CardioSheet({
   onClose,
 }: {
   workout: Workout;
-  where: CardioEnd | null;
+  where: CardioWhere | null;
   onClose: () => void;
 }) {
   const { state, setState } = useSession();
@@ -999,18 +893,18 @@ function CardioSheet({
   const plan = where ? cardioPlan(state, workout, where) : null;
   if (!where) return <Sheet visible={false} title="" onClose={onClose} />;
   if (!plan) return <Sheet visible title="Add cardio" onClose={onClose}>
-    <CardioChoices options={cardioPool(state.hiddenConditioning)} current="" onPick={(id) => setState((s) => setCardio(s, workout.id, where, { machine: id }))} />
+    <CardioChoices options={cardioPool()} current="" onPick={(id) => setState((s) => setCardio(restoreConditioning(s, id), workout.id, where, { machine: id }))} />
   </Sheet>;
   const close = () => { setChoosing(false); onClose(); };
   const target = plan.course !== undefined ? { course: plan.course } : { minutes: plan.minutes };
 
   return (
-    <Sheet visible title={choosing ? "Choose cardio" : where === "open" ? "Cardio to start" : "Cardio to finish"}
+    <Sheet visible title={choosing ? "Choose cardio" : "Cardio"}
       closeLabel={choosing ? "Back" : "Done"} onClose={choosing ? () => setChoosing(false) : close}>
       {choosing ? (
         <View style={{ gap: 12, paddingTop: 12 }}>
-          <CardioChoices options={cardioPool(state.hiddenConditioning)} current={plan.machine.id} onPick={(id) => {
-            setState((s) => chooseCardio(s, workout.id, where, id));
+          <CardioChoices options={cardioPool()} current={plan.machine.id} onPick={(id) => {
+            setState((s) => chooseCardio(restoreConditioning(s, id), workout.id, where, id));
             setChoosing(false);
           }} />
         </View>
@@ -1041,15 +935,18 @@ function CardioSheet({
 function MobilitySheet({
   workout,
   where,
+  use,
   onClose,
 }: {
   workout: Workout | undefined;
-  where: RoutineEnd;
+  where: RoutineWhere;
+  /** Which routines to offer first: ones to get moving, or to finish on. */
+  use: "warmup" | "end";
   onClose: () => void;
 }) {
   const { state, setState } = useSession();
   if (!workout) return <Sheet visible={false} title="" onClose={onClose} />;
-  const routine = routineAt(state, workout, where);
+  const routine = routinePlan(state, workout, where);
   const pick = (id: string) => {
     setState((s) => chooseRoutine(s, workout.id, where, id));
     onClose();
@@ -1059,7 +956,7 @@ function MobilitySheet({
     <Sheet visible title="Mobility" closeLabel="Done" onClose={onClose}>
       <View style={{ gap: 28, paddingTop: 12 }}>
         <View style={{ gap: 6 }}>
-          {routinesFor(state, where === "warmup" ? "warmup" : "end").map((m) => (
+          {routinesFor(state, use).map((m) => (
             <Choice
               key={m.id}
               label={m.name}

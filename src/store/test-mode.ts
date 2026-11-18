@@ -20,12 +20,15 @@ export type TestModeValue = {
   start: (from: TestStart) => Promise<void>;
   /** Back to your real training, exactly as it was. Test mode's is kept. */
   leave: () => Promise<void>;
+  /** Running from the Mac: test mode is always on, with no way out. */
+  fixed: boolean;
 };
 
 export const TestModeContext = createContext<TestModeValue>({
   on: false,
   start: async () => {},
   leave: async () => {},
+  fixed: false,
 });
 
 export const useTestMode = (): TestModeValue => useContext(TestModeContext);

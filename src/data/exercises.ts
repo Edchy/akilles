@@ -89,6 +89,12 @@ export type Exercise = {
    */
   timed?: boolean;
   /**
+   * A timed hold's own ladder, in seconds, in place of the slot's range:
+   * a dead hang starts at 10 and climbs 5 seconds at a time. The slot's range
+   * is ignored for it.
+   */
+  seconds?: { from: number; to: number; step: number };
+  /**
    * Can be done on an assist machine that takes weight off you. The weight
    * may then go negative — −30 means bodyweight minus 30 of assistance — and
    * progress is that number climbing back toward zero, then past it.
@@ -192,6 +198,14 @@ export const EXERCISES: Exercise[] = [
   // ---------- vertical pull ----------
   { id: "pullup", name: "Pull-up", patterns: ["vertical_pull"], increment: 2.5, bodyweight: true, assistable: true, cue: "Chest to bar, full hang each rep.",
     aliases: ["pull up", "pull ups", "pull-ups", "pullups", "assisted pull-up", "assisted pull up"] },
+  // Steps on the way to a pull-up (see `chains.ts`): offered by the chain,
+  // never picked on their own for a slot.
+  { id: "scap_pullup", name: "Scapular pull-up", patterns: ["vertical_pull"], autoSelect: false, increment: 1, bodyweight: true, holds: true,
+    cue: "Arms stay straight. Pull your shoulders down, away from your ears.",
+    aliases: ["scap pull up", "scap pull-ups", "scapular pull ups", "shoulder blade pull up"] },
+  { id: "pullup_negative", name: "Slow-lowering pull-up", patterns: ["vertical_pull"], autoSelect: false, increment: 1, bodyweight: true, holds: true,
+    cue: "Start with your chin over the bar. Take five seconds to lower.",
+    aliases: ["negative pull up", "pull up negatives", "eccentric pull up", "pull-up negative"] },
   { id: "lat_pulldown", name: "Lat pulldown", patterns: ["vertical_pull"], increment: 5,
     aliases: ["lat pull down", "lat pull-down", "pulldown", "wide grip pulldown", "lat machine"] },
   { id: "chinup", name: "Chin-up", patterns: ["vertical_pull", "biceps"], increment: 2.5, bodyweight: true, assistable: true,
@@ -413,6 +427,11 @@ export const EXERCISES: Exercise[] = [
   { id: "speed_deadlift", name: "Speed deadlift", patterns: ["hinge"], increment: 2.5, restricted: true, cue: "Accelerate through the whole pull." },
 
   // ---------- abs ----------
+  // Grip and shoulders as much as abs; 10 seconds is a fair start, and five
+  // more each time you own it, up to a full minute.
+  { id: "dead_hang", name: "Dead hang", patterns: ["abs"], increment: 0, bodyweight: true, timed: true,
+    seconds: { from: 10, to: 60, step: 5 }, cue: "Arms straight, shoulders gently down. Breathe.",
+    aliases: ["hang", "bar hang", "passive hang", "dead hangs"] },
   { id: "hanging_leg_raise", name: "Hanging leg raise", patterns: ["abs"], increment: 1, bodyweight: true, holds: true,
     aliases: ["hanging knee raise", "hanging leg raises", "hanging leg lift"] },
   // Retired: the same machine as ab_machine below. Kept, disabled, so any
@@ -483,6 +502,9 @@ export const EXERCISES: Exercise[] = [
   { id: "suitcase_carry", name: "DB suitcase carry", patterns: ["abs"], movements: ["carry", "lateral_stability"], muscles: ["forearms", "obliques"],
     autoSelect: false, increment: 2.5, timed: true, startWeight: 7.5, aliases: ["suitcase walk", "single arm loaded carry", "dumbbell suitcase carry"] },
 ];
+
+/** Frozen batch: the steps to a pull-up, new in save version 21. */
+export const PULLUP_STEP_IDS = ["scap_pullup", "pullup_negative"];
 
 /** Frozen batch for save migration: new library entries must not clutter old catalogues. */
 export const MOVEMENT_EXPANSION_IDS = [
@@ -557,6 +579,7 @@ export const LEAN: string[] = [
   "seated_leg_curl",
   "hip_abduction",
   // Core
+  "dead_hang",
   "hanging_leg_raise",
   "ab_machine",
   "machine_crunch",

@@ -542,11 +542,11 @@ function dips(): Move {
     const top = new Vec3(x, barY + Math.sqrt(reach ** 2 - (grip - BODY.shoulder) ** 2) - drop, 0);
     const trunk = new Vec3(Math.sin(lean), Math.cos(lean), 0);
     const pelvis = top.clone().addScaledVector(trunk, -BODY.torso);
-    // Thighs a little forward, knees bent, feet behind.
-    const knee = new Vec3(Math.sin(rad(15)), -Math.cos(rad(15)), 0).multiplyScalar(BODY.thigh);
+    // Thighs a little forward, knees well bent, feet behind and clear of the floor.
+    const knee = new Vec3(Math.sin(rad(12)), -Math.cos(rad(12)), 0).multiplyScalar(BODY.thigh);
     const shin = new Vec3(
-      -Math.sin(rad(55)),
-      -Math.cos(rad(55)),
+      -Math.sin(rad(75)),
+      -Math.cos(rad(75)),
       0,
     ).multiplyScalar(BODY.shin * 0.998);
     const ankles = SIDES.map((s) =>
@@ -580,16 +580,12 @@ function dips(): Move {
     ]);
     return pose;
   };
-  /** The upper arms level at the bottom: how far the shoulders drop. */
-  const lowest = (lean: number) => {
-    let drop = 0.3;
-    for (let i = 0; i < 30; i++) {
-      const pose = at(0, drop, lean);
-      const arm = pose.arms[0];
-      drop += (arm.root.y - arm.mid.y) * 0.6;
-    }
-    return drop;
-  };
+  /**
+   * The bottom: the upper arms level, the forearms still close to upright
+   * under them — the shoulders a forearm's height above the hands, never
+   * sunk to the bars with the arms folded flat.
+   */
+  const lowest = (lean: number) => at(0, 0, lean).arms[0].root.y - (barY + 0.92 * BODY.forearm);
   const leans = [rad(10), rad(28)];
   const drops = [0, lowest(leans[1])];
   const balanced = (drop: number, lean: number) =>

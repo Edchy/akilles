@@ -551,3 +551,43 @@ test("warm-up movements and sides can be skipped or completed independently and 
   assert.equal(store.cardMark(state, index), "done");
   assert.equal(store.resolveRoutineStep(state, -1, "done").active.items[index], state.active.items[index]);
 });
+
+test("a workout takes as much cardio and as many routines as you like, in any block, in your order", () => {
+  let state = fresh();
+  const legs = workout(state, "legs");
+  const firstLift = legs.exercises[0].id;
+  // A second stretch at the finish, and a run in the middle of the lifts.
+  state = store.addExtra(state, "legs", "finish", { routine: "everyday" }, "x1");
+  state = store.addExtra(state, "legs", "main", { cardio: { machine: "treadmill", minutes: 4 } }, "x2");
+  // The run goes first in Main.
+  const main = store.partIds(workout(state, "legs"), "main");
+  state = store.arrangePart(state, "legs", "main", ["x2", ...main.filter((id) => id !== "x2")]);
+
+  const items = store.buildWorkout(store.setNextWorkout(state, "legs")).active.items.map((it) => it.id);
+  const at = (id) => items.indexOf(id);
+  assert.ok(at("x2") >= 0 && at("x2") < at(firstLift), "the run comes before the first lift");
+  assert.equal(items.at(-1), "x1", "the added stretch comes last");
+  assert.ok(at(store.MOBILITY_SLOT) >= 0, "the usual stretch is still there too");
+
+  // Taking an extra out takes only it.
+  const fewer = store.chooseRoutine(state, "legs", "x1", null);
+  assert.equal(workout(fewer, "legs").extras.length, 1);
+  assert.ok(store.workoutMinutes(state, workout(state, "legs")) > store.workoutMinutes(fewer, workout(fewer, "legs")));
+});
+
+test("a block's new order puts its exercises in that order too", () => {
+  let state = fresh();
+  const ids = store.partIds(workout(state, "push"), "main");
+  state = store.arrangePart(state, "push", "main", [...ids].reverse());
+  assert.deepEqual(plain(workout(state, "push").exercises.filter((e) => !e.part).map((e) => e.id)), [...ids].reverse());
+});
+
+test("a routine finished counts as done, even with a move left out", () => {
+  let state = store.buildWorkout(store.setNextWorkout(fresh(), "legs"));
+  const at = state.active.items.findIndex((it) => store.isMobility(it));
+  state = { ...state, active: { ...state.active, cursor: at } };
+  assert.equal(store.cardMark(state, at), "todo");
+  state = store.resolveRoutineStep(state, 0, "skipped");
+  state = store.finishRoutine(state);
+  assert.equal(store.cardMark(state, at), "done");
+});

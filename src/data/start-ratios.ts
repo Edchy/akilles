@@ -5,7 +5,7 @@
  * spare — for a man who has lifted a bit, as a share of what he weighs. They
  * come from published strength tables (one-rep maxes for a "beginner", taken
  * down to about two thirds for a working weight) and are rounded towards
- * light: Humbell would rather you start low and climb than start high and swing.
+ * light: Klay would rather you start low and climb than start high and swing.
  *
  * Experience, sex and your weight scale them; see `startGuess`. A dumbbell
  * or per-hand lift is the weight of one dumbbell. `bar` is the least the lift

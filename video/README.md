@@ -1,4 +1,4 @@
-# Humbell's onboarding video
+# Humble's onboarding video
 
 About a minute, made in code with [Remotion](https://remotion.dev): real screens from the app in a phone frame, a finger showing each tap, hold and drag, a caption for every line, and a voice.
 
@@ -12,16 +12,16 @@ About a minute, made in code with [Remotion](https://remotion.dev): real screens
 ```sh
 npm install
 npm run voice -- --voices          # list your ElevenLabs voices
-npm run voice -- --voice=<id>      # narrate with one (or set HUMBELL_VOICE_ID)
+npm run voice -- --voice=<id>      # narrate with one (or set KLAY_VOICE_ID)
 npm run studio                     # watch and scrub it in the browser
-npm run render                     # out/humbell-onboarding.mp4
+npm run render                     # out/klay-onboarding.mp4
 ```
 
-The ElevenLabs key is read from `ELEVENLABS_API_KEY` or `video/.env` (`ELEVENLABS_API_KEY=…`), and is never stored in the project. With no key, `npm run voice:scratch` uses the Mac's own voice so the scenes can still be timed.
+The ElevenLabs key is read from `.local.env` at the top of the project (`ELEVEN_API_KEY=…`) or `video/.env`; both are ignored by git, so the key is never committed. With no key, `npm run voice:scratch` uses the Mac's own voice so the scenes can still be timed.
 
 ## New screens
 
-When the app changes, the stills need retaking. They come from a separate simulator ("Humbell Video"), with saved states built from the real store and opened by deep link, so your own simulator and saved training are never touched.
+When the app changes, the stills need retaking. They come from a separate simulator ("Humble Video"), with saved states built from the real store and opened by deep link, so your own simulator and saved training are never touched.
 
 `capture/` holds the tooling. It is run against a private copy of the app, never the app itself:
 - `stage.cjs` builds the saved states;

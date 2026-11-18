@@ -1,8 +1,10 @@
 import { router } from "expo-router";
 import { Button } from "@/components/buttons";
-import { useState } from "react";
-import Svg, { Defs, LinearGradient, Rect, Stop } from "react-native-svg";
-import { Pressable, ScrollView, View } from "react-native";
+import { useLayoutEffect, useState } from "react";
+import { Pressable, ScrollView, View, useWindowDimensions } from "react-native";
+import { Gesture, GestureDetector } from "react-native-gesture-handler";
+import Animated, { useAnimatedStyle, useSharedValue, withSpring, withTiming } from "react-native-reanimated";
+import { scheduleOnRN } from "react-native-worklets";
 import { Text } from "@/components/text";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -24,16 +26,15 @@ import {
   daysSinceTrained,
   didTrain,
   finishWorkout,
-  hasLoops,
   itemFamily,
-  loopInUse,
-  loopName,
   placeOf,
   sittingOut,
-  skipWorkout,
+  setNextWorkout,
+  upcomingWorkouts,
   upNext,
   useSession,
   workoutFamily,
+  workoutMinutes,
   workoutPreview,
 } from "@/store/session";
 
@@ -46,31 +47,23 @@ export default function TodayScreen() {
   // until you continue it or end it — or open the app on a later day, which
   // closes it out (see `storage.ts`).
   const inProgress = !!state.active;
-  const workout = inProgress ? currentWorkout(state) : upNext(state);
-  // With one workout there is nothing to skip to.
-  const canSkip = !inProgress && state.workouts.length > 1;
+  // The round from here, today's first: the deck you swipe through. A
+  // workout under way is the only card.
+  const round = inProgress ? [currentWorkout(state)] : upcomingWorkouts(state, state.workouts.length);
+  const [look, setLook] = useState(0);
+  const at = round.length ? ((look % round.length) + round.length) % round.length : 0;
+  const workout = round[at] ?? upNext(state);
   const [ending, setEnding] = useState(false);
-  // The workout just skipped, so a mis-tap is one tap to undo.
-  const [skipped, setSkipped] = useState<{
-    name: string;
-    before: Pick<SessionState, "nextWorkout" | "workoutQueue" | "postponed">;
-  } | null>(null);
 
   const idleDays = daysSinceTrained(state);
 
-  // The day's card fits the room before it ever scrolls: its rows close up,
-  // from roomy down to a tightest that still reads, and the words stay their
-  // size. Measured, then nudged: a row or two of difference settles in a
-  // render. Past the tightest it scrolls, with a fade at the foot.
-  const [room, setRoom] = useState(0);
-  const [content, setContent] = useState(0);
-  const [rowHeight, setRowHeight] = useState<number>(ROWS.most);
-  const [scrolledToEnd, setScrolledToEnd] = useState(false);
-
   const start = () => {
-    setSkipped(null);
+    const id = workout.id;
+    setLook(0);
     // Never over the top of one in progress — that would throw its sets away.
-    setState((s) => (s.active ? s : buildWorkout(s)));
+    // The deck is the round and the swipe only moves where you are in it:
+    // Start does the one on top, and next time the one after it is on top.
+    setState((s) => (s.active ? s : buildWorkout(setNextWorkout(s, id))));
     router.push("/workout");
   };
 
@@ -79,35 +72,55 @@ export default function TodayScreen() {
     setState((s) => finishWorkout(s));
   };
 
-  const skip = () => {
-    if (!canSkip) return;
-    setSkipped({
-      name: workout.name,
-      before: {
-        nextWorkout: state.nextWorkout,
-        workoutQueue: state.workoutQueue,
-        postponed: state.postponed,
-      },
-    });
-    setState((s) => skipWorkout(s));
-  };
-
-  const rows = workoutPreview(state, workout);
-  const fitRows = (contentHeight: number, roomHeight: number) => {
-    if (!roomHeight || !contentHeight || inProgress || rows.length === 0) return;
-    const slack = roomHeight - contentHeight;
-    // Leave a point or two either way, so it never flickers between sizes.
-    if (Math.abs(slack) < 2) return;
-    const next = Math.round(Math.min(ROWS.most, Math.max(ROWS.least, rowHeight + slack / rows.length)));
-    if (next !== rowHeight) setRowHeight(next);
-  };
-  const overflows = content > room + 1;
   const family = workoutFamily(state, workout);
-  // Slots with nothing here to do them with, said rather than hidden.
-  const missing = inProgress ? [] : sittingOut(state, workout);
+  // The next two in the round after the one on top, under it: the deck's edges.
+  const behind = [1, 2]
+    .filter((k) => round.length > k)
+    .map((k) => round[(at + k) % round.length])
+    .reverse();
+
+  // Sideways turns the deck. Left throws the top card off and the one after
+  // is already there under it; right brings the one before in from the left,
+  // over the top. Every card is the same size, so nothing moves but the card
+  // in your hand, and once it lands the deck simply is one further round.
+  const { width } = useWindowDimensions();
+  const away = width + 60;
+  const x = useSharedValue(0);
+  const turn = (by: number) => setLook((l) => l + by);
+  useLayoutEffect(() => {
+    x.value = 0;
+  }, [at, x]);
+  const swipe = Gesture.Pan()
+    .enabled(round.length > 1)
+    .activeOffsetX([-12, 12])
+    .failOffsetY([-14, 14])
+    .onChange((e) => {
+      x.value = e.translationX;
+    })
+    .onEnd((e) => {
+      const far = Math.abs(e.translationX) > width * 0.25 || Math.abs(e.velocityX) > 700;
+      if (!far) {
+        x.value = withSpring(0, { damping: 20, stiffness: 240 });
+        return;
+      }
+      const by = e.translationX < 0 ? 1 : -1;
+      x.value = withTiming(-by * away, { duration: 220 }, (done) => {
+        if (done) scheduleOnRN(turn, by);
+      });
+    });
+  // The top card goes left with the finger, tilting a little; going right it stays.
+  const top = useAnimatedStyle(() => {
+    const v = Math.min(0, x.value);
+    return { transform: [{ translateX: v }, { rotate: `${(v / Math.max(1, width)) * 8}deg` }] };
+  });
+  // The one before waits off to the left and follows the finger in.
+  const before = useAnimatedStyle(() => {
+    const v = Math.max(0, x.value);
+    return { transform: [{ translateX: v - away }, { rotate: `${((v - away) / Math.max(1, width)) * 8}deg` }] };
+  });
 
   // Today always points to the next workout, including after training today.
-  // Only first-use guidance, returning, and skip feedback need a remark.
+  // Only first-use guidance and returning need a remark.
   // Seeded by the day and workout so it holds still while you look at it.
   const seed = `${new Date().toDateString()}:${workout.id}`;
   const mood: TodayMood | null = idleDays === null
@@ -124,168 +137,113 @@ export default function TodayScreen() {
   const fact = inProgress
     ? // Counted as the workout card counts: a card is done or it is not.
       `In progress: ${state.active!.items.filter((_, i) => cardMark(state, i) === "done").length} of ${state.active!.items.length} done.`
-    : skipped
-      ? `Skipped ${skipped.name}.`
-      : null;
+    : null;
   const line = fact ?? remark;
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.bg }}>
-      <ScrollView
-        contentContainerStyle={{
-          flexGrow: 1,
+      <View
+        style={{
+          flex: 1,
           paddingTop: insets.top + 16,
           paddingHorizontal: 22,
           width: "100%",
           maxWidth: COLUMN,
           alignSelf: "center",
-          paddingBottom: 20,
-          gap: 28,
-        }}
-        onLayout={(e) => {
-          const h = e.nativeEvent.layout.height;
-          setRoom(h);
-          fitRows(content, h);
-        }}
-        onContentSizeChange={(_, h) => {
-          setContent(h);
-          fitRows(h, room);
-        }}
-        scrollEventThrottle={32}
-        onScroll={(e) => {
-          const { contentOffset, layoutMeasurement, contentSize } = e.nativeEvent;
-          const end = contentOffset.y + layoutMeasurement.height >= contentSize.height - 4;
-          if (end !== scrolledToEnd) setScrolledToEnd(end);
+          gap: 20,
         }}
       >
         {/* Away from your usual place: one quiet line, so a changed workout
             has its reason, and the way back. At home base, nothing. */}
-        {inProgress || placeOf(state) !== "away" ? null : (
-          <View style={{ marginBottom: -16 }}>
-            <PlaceLine />
-          </View>
-        )}
+        {inProgress || placeOf(state) !== "away" ? null : <PlaceLine />}
         {inProgress ? null : <GrowthOffer />}
-        {/* The day, in one card washed with its colour: the shape beside the
-            name, the subtitle on the same left edge as the list, and the
-            list itself — what you are about to do, held together, with
-            Humbell's word and the buttons outside it below. */}
-        <View
-          style={{
-            backgroundColor: `${FAMILY[family].field}1A`,
-            borderRadius: radii.card,
-            borderCurve: "continuous",
-            paddingHorizontal: 18,
-            paddingTop: 20,
-            paddingBottom: 14,
-            gap: 20,
-          }}
-        >
-          <View>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: GAP }}>
-              <View style={{ width: MARKS, alignItems: "center" }}>
-                <Mark family={family} size={MARKS} />
-              </View>
-              <Text
-                accessibilityRole="header"
-                numberOfLines={1}
+        {/* The round as a deck, the one on top the day's: all one size, the
+            room the screen has, so turning it moves only the card in your
+            hand. The next two show their edges under it, in their colours;
+            a long list scrolls inside its card. */}
+        <View style={{ flex: 1, marginBottom: 8 * behind.length }}>
+          {behind.map((w, k) => {
+            const depth = behind.length - k;
+            return (
+              <View
+                key={`edge-${depth}`}
+                pointerEvents="none"
                 style={{
-                  flex: 1,
-                  color: colors.text,
-                  fontFamily: fonts.display,
-                  fontSize: 44,
-                  lineHeight: 52,
+                  position: "absolute",
+                  top: 0,
+                  bottom: -8 * depth,
+                  left: 10 * depth,
+                  right: 10 * depth,
+                  borderRadius: radii.card,
+                  borderCurve: "continuous",
+                  borderWidth: 1.5,
+                  borderColor: colors.text,
+                  backgroundColor: FAMILY[workoutFamily(state, w)].field,
                 }}
-              >
-                {workout.name || "Untitled"}
-              </Text>
+              />
+            );
+          })}
+          {/* The one after, whole, under the top: there as soon as it goes. */}
+          {round.length > 1 ? (
+            <View pointerEvents="none" style={{ position: "absolute", top: 0, bottom: 0, left: 0, right: 0 }}>
+              <DayCard state={state} workout={round[(at + 1) % round.length]} />
             </View>
-            <View style={{ marginLeft: INDENT, alignItems: "flex-start" }}>
-              {hasLoops(state) ? (
-                <Text style={{ color: colors.muted, fontSize: 16 }}>
-                  From your {loopName(state, loopInUse(state))} loop
-                </Text>
-              ) : null}
-              {workout.subtitle ? (
-                <Text
-                  style={{
-                    color: colors.muted,
-                    fontSize: 19,
-                    fontStyle: "italic",
-                  }}
-                >
-                  {workout.subtitle}
-                </Text>
-              ) : null}
-            </View>
-          </View>
-
-          {inProgress ? <Progress /> : <Preview rows={rows} rowHeight={rowHeight} />}
-          {missing.length > 0 ? (
-            <Text style={{ marginLeft: INDENT, color: colors.muted, fontSize: 16, lineHeight: 22 }}>
-              {missingLine(missing.map((e) => e.slot))}
-            </Text>
           ) : null}
+          <GestureDetector gesture={swipe}>
+            <View style={{ flex: 1 }}>
+              <Animated.View style={[{ flex: 1 }, top]}>
+                <DayCard state={state} workout={workout} inProgress={inProgress} />
+              </Animated.View>
+              {round.length > 1 ? (
+                <Animated.View pointerEvents="none" style={[{ position: "absolute", top: 0, bottom: 0, left: 0, right: 0 }, before]}>
+                  <DayCard state={state} workout={round[(at - 1 + round.length) % round.length]} />
+                </Animated.View>
+              ) : null}
+            </View>
+          </GestureDetector>
         </View>
-      </ScrollView>
-      {/* More below: the card fades into the gap rather than being cut. */}
-      {overflows && !scrolledToEnd ? (
-        <View pointerEvents="none" style={{ height: 32, marginTop: -32 }}>
-          <Svg width="100%" height="100%">
-            <Defs>
-              <LinearGradient id="todayFoot" x1="0" y1="0" x2="0" y2="1">
-                <Stop offset="0" stopColor={colors.bg} stopOpacity={0} />
-                <Stop offset="1" stopColor={colors.bg} stopOpacity={1} />
-              </LinearGradient>
-            </Defs>
-            <Rect width="100%" height="100%" fill="url(#todayFoot)" />
-          </Svg>
-        </View>
-      ) : null}
+
+        {/* The round, one shape a workout, the one on top full size: where
+            you are in it, and a tap to go straight to one. */}
+        {round.length > 1 ? (
+          <View style={{ marginTop: -6, flexDirection: "row", justifyContent: "center", alignItems: "center", gap: 6 }}>
+            {round.map((w, i) => (
+              <Pressable
+                key={`${w.id}-${i}`}
+                accessibilityRole="button"
+                accessibilityLabel={`Show ${w.name || "Untitled"}`}
+                accessibilityState={{ selected: i === at }}
+                hitSlop={6}
+                onPress={() => setLook(i)}
+                style={{ width: 32, height: 32, alignItems: "center", justifyContent: "center", opacity: i === at ? 1 : 0.4 }}
+              >
+                <Mark family={workoutFamily(state, w)} size={i === at ? 20 : 14} />
+              </Pressable>
+            ))}
+          </View>
+        ) : null}
+      </View>
 
       {/* Always a clear gap between the card and the buttons. */}
       <View style={{ paddingHorizontal: 22, paddingTop: 14, paddingBottom: barSpace + 16 }}>
         <Column style={{ gap: 18 }}>
-          {/* Humbell's word, kept apart from the day it comments on: under
-              the list, just before you start. After a skip it carries the
-              Undo. */}
+          {/* Klay's word, kept apart from the day it comments on: under
+              the list, just before you start. */}
           {line ? (
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 16 }}>
-              <Text
-                style={{
-                  flex: 1,
-                  color: colors.text,
-                  fontSize: 19,
-                  lineHeight: 25,
-                  // Humbell's remark in italics; a plain fact in roman.
-                  fontStyle: fact ? "normal" : "italic",
-                }}
-              >
-                {line}
-              </Text>
-              {skipped ? (
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel={`Undo skipping ${skipped.name}`}
-                  hitSlop={12}
-                  onPress={() => {
-                    setState((s) => ({ ...s, ...skipped.before }));
-                    setSkipped(null);
-                  }}
-                  style={({ pressed }) => ({
-                    minHeight: 44,
-                    justifyContent: "center",
-                    opacity: pressed ? 0.5 : 1,
-                  })}
-                >
-                  <Text style={{ color: colors.rise, fontSize: 17, fontWeight: "600" }}>Undo</Text>
-                </Pressable>
-              ) : null}
-            </View>
+            <Text
+              style={{
+                color: colors.text,
+                fontSize: 19,
+                lineHeight: 25,
+                // Klay's remark in italics; a plain fact in roman.
+                fontStyle: fact ? "normal" : "italic",
+              }}
+            >
+              {line}
+            </Text>
           ) : null}
           <View style={{ flexDirection: "row", gap: 12 }}>
             {inProgress ? <BigButton label="End" onPress={() => setEnding(true)} /> : null}
-            {canSkip ? <BigButton label="Skip" onPress={skip} /> : null}
             <BigButton label={inProgress ? "Continue" : "Start"} primary={family} onPress={start} />
           </View>
         </Column>
@@ -307,6 +265,60 @@ export default function TodayScreen() {
   );
 }
 
+/**
+ * One workout as a card of the deck: its head in its colour — the shape, the
+ * name, what it trains and how long — and under it, on paper, what is in it,
+ * scrolling inside the card when it is long. Fills whatever room it is given,
+ * so every card in the deck is the same size.
+ */
+function DayCard({ state, workout, inProgress = false }: { state: SessionState; workout: ReturnType<typeof upNext>; inProgress?: boolean }) {
+  const family = workoutFamily(state, workout);
+  const card = cardInk(family);
+  const minutes = workoutMinutes(state, workout);
+  const rows = inProgress ? [] : workoutPreview(state, workout);
+  // Slots with nothing here to do them with, said rather than hidden.
+  const missing = inProgress ? [] : sittingOut(state, workout);
+  return (
+    <View
+      style={{
+        flex: 1,
+        borderRadius: radii.card,
+        borderCurve: "continuous",
+        borderWidth: 1.5,
+        borderColor: colors.text,
+        backgroundColor: colors.bg,
+        overflow: "hidden",
+      }}
+    >
+      <View style={{ backgroundColor: card.field, paddingHorizontal: 16, paddingTop: 14, paddingBottom: 14 }}>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: GAP }}>
+          <View style={{ width: MARKS, alignItems: "center" }}>
+            <Mark family={family} size={MARKS - 4} color={card.ink} />
+          </View>
+          <Text
+            accessibilityRole="header"
+            numberOfLines={2}
+            style={{ flex: 1, color: card.ink, fontFamily: fonts.display, fontSize: 40, lineHeight: 48 }}
+          >
+            {workout.name || "Untitled"}
+          </Text>
+        </View>
+        <Text style={{ marginLeft: INDENT, color: card.soft, fontSize: 19, fontStyle: "italic" }}>
+          {[workout.subtitle, `about ${minutes} min`].filter(Boolean).join(" · ")}
+        </Text>
+      </View>
+      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 10, paddingBottom: 14, gap: 12 }}>
+        {inProgress ? <Progress ink={PAPER} /> : <Preview rows={rows} ink={PAPER} />}
+        {missing.length > 0 ? (
+          <Text style={{ marginLeft: INDENT, color: colors.muted, fontSize: 16, lineHeight: 22 }}>
+            {missingLine(missing.map((e) => e.slot))}
+          </Text>
+        ) : null}
+      </ScrollView>
+    </View>
+  );
+}
+
 /** "No chest fly or vertical press today. Nothing here to do them with." */
 function missingLine(slots: string[]): string {
   const list = slots.map((s) => s.toLowerCase());
@@ -314,6 +326,18 @@ function missingLine(slots: string[]): string {
     list.length < 2 ? list[0] : `${list.slice(0, -1).join(", ")} or ${list.at(-1)}`;
   return `No ${named} today. No suitable equipment or lighter weight here for ${list.length === 1 ? "it" : "them"}.`;
 }
+
+/**
+ * What words and shapes are drawn in: on the day's colour, its own ink —
+ * white or navy, and a softer one — with every shape in it too; on paper,
+ * ink, and each shape in its own colour (`marks`).
+ */
+type CardInk = { field: string; ink: string; soft: string; marks?: boolean };
+const cardInk = (family: Family): CardInk => {
+  const { field, mark: ink } = FAMILY[family];
+  return { field, ink, soft: `${ink}CC` };
+};
+const PAPER: CardInk = { field: colors.bg, ink: colors.text, soft: colors.muted, marks: true };
 
 /** The left column every shape sits in, and the edge every word starts on. */
 const MARKS = 30;
@@ -324,7 +348,7 @@ const INDENT = MARKS + GAP;
 const ROWS = { most: 44, least: 36 } as const;
 
 /** The next workout, with short change labels tucked beneath the figures. */
-function Preview({ rows, rowHeight = ROWS.most }: { rows: PreviewRow[]; rowHeight?: number }) {
+function Preview({ rows, rowHeight = ROWS.most, ink }: { rows: PreviewRow[]; rowHeight?: number; ink: CardInk }) {
   return (
     <View accessibilityRole="list" style={{ gap: rowHeight >= ROWS.most ? 4 : 2 }}>
       {rows.map((r) => {
@@ -339,16 +363,16 @@ function Preview({ rows, rowHeight = ROWS.most }: { rows: PreviewRow[]; rowHeigh
             style={{ flexDirection: "row", alignItems: "center", gap: GAP, minHeight: rowHeight }}
           >
             <View style={{ width: MARKS, alignItems: "center" }}>
-              <Mark family={r.family} size={22} />
+              <Mark family={r.family} size={22} color={ink.marks ? undefined : ink.ink} />
             </View>
-            <Text style={{ flex: 1, color: colors.text, fontFamily: fonts.regular, fontSize: 20 }}>
+            <Text style={{ flex: 1, color: ink.ink, fontFamily: fonts.regular, fontSize: 20 }}>
               {r.name}
             </Text>
             {figure ? (
               <View style={{ alignItems: "flex-end", flexShrink: 0 }}>
                 <Text
                   style={{
-                    color: strong ? colors.text : colors.muted,
+                    color: strong ? ink.ink : ink.soft,
                     fontFamily: strong ? fonts.medium : fonts.regular,
                     fontSize: 17,
                     lineHeight: 21,
@@ -358,7 +382,7 @@ function Preview({ rows, rowHeight = ROWS.most }: { rows: PreviewRow[]; rowHeigh
                   {figure}
                 </Text>
                 {r.adjustmentLabel ? (
-                  <Text style={{ color: colors.muted, fontFamily: fonts.italic, fontSize: 13, lineHeight: 16 }}>
+                  <Text style={{ color: ink.soft, fontFamily: fonts.italic, fontSize: 13, lineHeight: 16 }}>
                     {r.adjustmentLabel}
                   </Text>
                 ) : null}
@@ -381,7 +405,7 @@ function Preview({ rows, rowHeight = ROWS.most }: { rows: PreviewRow[]; rowHeigh
  * and "Done" for what is done, an empty one for what is not — the same
  * marks as the workout card in the session.
  */
-function Progress() {
+function Progress({ ink }: { ink: CardInk }) {
   const { state } = useSession();
   const active = state.active;
   if (!active) return null;
@@ -389,7 +413,7 @@ function Progress() {
     <View accessibilityRole="list">
       {active.items.map((it, i) => {
         const done = cardMark(state, i) === "done";
-        const color = FAMILY[itemFamily(it)].mark;
+        const color = ink.marks ? FAMILY[itemFamily(it)].mark : ink.ink;
         return (
           <View
             key={i}
@@ -409,11 +433,11 @@ function Progress() {
                 }}
               />
             </View>
-            <Text numberOfLines={1} style={{ flex: 1, color: colors.text, fontFamily: fonts.regular, fontSize: 20 }}>
+            <Text numberOfLines={1} style={{ flex: 1, color: ink.ink, fontFamily: fonts.regular, fontSize: 20 }}>
               {cardName(state, i)}
             </Text>
             {done ? (
-              <Text style={{ color: colors.muted, fontFamily: fonts.italic, fontSize: 17 }}>Done</Text>
+              <Text style={{ color: ink.soft, fontFamily: fonts.italic, fontSize: 17 }}>Done</Text>
             ) : null}
           </View>
         );
@@ -432,13 +456,13 @@ function BigButton({
   primary?: Family;
   onPress: () => void;
 }) {
-  const fill = primary ? FAMILY[primary] : null;
+  // Always solid ink: a pale grey day would make it look switched off.
   return (
     <Button
       label={label}
-      kind={fill ? "primary" : "secondary"}
-      fill={fill?.field}
-      onFill={fill?.dark ? colors.white : colors.text}
+      kind={primary ? "primary" : "secondary"}
+      fill={primary ? colors.text : undefined}
+      onFill={colors.bg}
       // Start is the answer nearly every time, so it takes twice the room.
       flex={primary ? 2 : 1}
       onPress={onPress}

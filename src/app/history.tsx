@@ -1,8 +1,11 @@
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { useState } from "react";
 import { Pressable, ScrollView, View } from "react-native";
 import { Text } from "@/components/text";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { TrainingWeek } from "@/components/training-week";
+import { Icon } from "@/components/icon";
 import { GoalProgress } from "@/components/goal-progress";
 import { GOALS_ON } from "@/data/goals";
 import { useBarSpace } from "@/components/bottom-bar";
@@ -34,9 +37,11 @@ type Segment = "results" | "sessions" | "lifts";
  */
 export default function HistoryScreen() {
   const { state } = useSession();
+  const router = useRouter();
+  const params = useLocalSearchParams<{ view?: string }>();
   const insets = useSafeAreaInsets();
   const barSpace = useBarSpace();
-  const [segment, setSegment] = useState<Segment>("results");
+  const [segment, setSegment] = useState<Segment>(params.view === "sessions" ? "sessions" : "results");
 
   return (
     <ScrollView
@@ -51,7 +56,16 @@ export default function HistoryScreen() {
         gap: 22,
       }}
     >
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Back to Profile"
+        onPress={() => router.back()}
+        style={({ pressed }) => ({ width: 44, height: 44, marginLeft: -10, alignItems: "center", justifyContent: "center", opacity: pressed ? 0.6 : 1 })}
+      >
+        <Icon name="back" size={20} color={colors.text} />
+      </Pressable>
       <Text
+        accessibilityRole="header"
         style={{
           color: colors.text,
           fontFamily: fonts.display,
@@ -61,7 +75,7 @@ export default function HistoryScreen() {
         Progress
       </Text>
 
-      <Week state={state} />
+      <TrainingWeek state={state} />
 
       {GOALS_ON ? <GoalProgress /> : null}
 
@@ -113,76 +127,6 @@ const shortDate = (t: number) => {
   const d = new Date(t);
   return `${d.getDate()} ${MONTH[d.getMonth()]}`;
 };
-
-// ---- this week ----
-
-/**
- * Monday to Sunday as seven circles, filled on the days you trained. The same
- * circles as the sets, so a good week looks like a good session.
- */
-function Week({ state }: { state: SessionState }) {
-  const today = startOfDay(Date.now());
-  const monday = new Date(today);
-  monday.setDate(monday.getDate() - ((monday.getDay() + 6) % 7));
-  // Days are counted by calendar date, not by 24-hour steps, so a clock change
-  // mid-week cannot shift a circle. The log is the source; a lift's last
-  // trained date fills in for sessions from before the log existed.
-  const trained = new Set<number>([
-    ...state.log.map((s) => startOfDay(s.startedAt)),
-    ...Object.values(state.history).flatMap((h) =>
-      h.lastTrainedAt ? [startOfDay(h.lastTrainedAt)] : [],
-    ),
-  ]);
-  const days = Array.from({ length: 7 }, (_, i) => {
-    const d = new Date(monday);
-    d.setDate(d.getDate() + i);
-    return d.getTime();
-  });
-  const count = days.filter((d) => trained.has(d)).length;
-
-  return (
-    <View style={{ gap: 10 }}>
-      <View style={{ flexDirection: "row", alignItems: "baseline" }}>
-        <Text style={[caps, { flex: 1, color: colors.muted }]}>This week</Text>
-        <Text style={[caps, { color: count > 0 ? colors.rise : colors.faint }]}>
-          {count === 0 ? "Not yet" : count === 1 ? "1 session" : `${count} sessions`}
-        </Text>
-      </View>
-      <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
-        {days.map((d) => {
-          const done = trained.has(d);
-          const isToday = d === today;
-          return (
-            <View
-              key={d}
-              style={{
-                width: 40,
-                height: 40,
-                borderRadius: 20,
-                alignItems: "center",
-                justifyContent: "center",
-                backgroundColor: done ? colors.rise : "transparent",
-                borderWidth: done ? 0 : isToday ? 2 : 1.5,
-                borderColor: isToday ? colors.rise : colors.line,
-                opacity: d > today ? 0.5 : 1,
-              }}
-            >
-              <Text
-                style={{
-                  color: done ? colors.ink : isToday ? colors.rise : colors.faint,
-                  fontFamily: fonts.displayBold,
-                  fontSize: 17,
-                }}
-              >
-                {DAY[new Date(d).getDay()][0]}
-              </Text>
-            </View>
-          );
-        })}
-      </View>
-    </View>
-  );
-}
 
 // ---- sessions ----
 

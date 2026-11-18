@@ -65,7 +65,7 @@ test("your own lifts outweigh the questions for a lift you have never done", () 
   const lifter = { experience: "new", bodyweight: 60, sex: "woman" };
   const press = byId("leg_press");
   const guess = start.startGuess(press, lifter);
-  // Goblet squats at twice what Humbell would have guessed: the leg press follows, on the light side.
+  // Goblet squats at twice what Klay would have guessed: the leg press follows, on the light side.
   const goblet = byId("goblet_squat");
   const trained = [{ exercise: goblet, weight: start.startGuess(goblet, lifter) * 2 }];
   const learnt = start.firstWeight(press, trained, lifter);
@@ -105,7 +105,7 @@ test("a first time that felt off moves the weight by a step or more, to a weight
   assert.equal(start.feelWeight(goblet, 16, "heavy", [8, 12, 16]), 12);
 });
 
-test("Humbell asks how a lift's first time felt, and the answer carries to next time", () => {
+test("Klay asks how a lift's first time felt, and the answer carries to next time", () => {
   const run = (feel) => {
     let state = store.buildWorkout(store.setNextWorkout(store.resetToDefault(), "legs"));
     const at = state.active.items.findIndex((it) => it.exerciseId === "goblet_squat");

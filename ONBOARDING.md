@@ -4,20 +4,20 @@ Draft 2026-11-06; steps 1–3 built 2026-11-07. See **Status** at the end.
 
 ## The goal
 
-Today a new user gets the author's push / pull / legs, cables and all. Someone training at home with two dumbbells can't do a single workout of it. Onboarding has to give every new user a plan they can start **today, where they are, with what they have**, and feel like Humbell already understands them.
+Today a new user gets the author's push / pull / legs, cables and all. Someone training at home with two dumbbells can't do a single workout of it. Onboarding has to give every new user a plan they can start **today, where they are, with what they have**, and feel like Klay already understands them.
 
-It must not turn into planning. Humbell decides, you lift. Every question has to change what Humbell builds; if an answer wouldn't change the plan, the question goes.
+It must not turn into planning. Klay decides, you lift. Every question has to change what Klay builds; if an answer wouldn't change the plan, the question goes.
 
-## The fork: "Humbell's pick" or "make it mine"?
+## The fork: "Klay's pick" or "make it mine"?
 
-The instinct is right: some people want to answer questions, and some want to be handed something good. But Humbell's pick can't be one fixed plan. A great gym plan is useless in a living room, and an hour-long plan is useless to someone with 30 minutes. Humbell's pick needs **two facts** whatever happens: *where you train* and *how long you have*.
+The instinct is right: some people want to answer questions, and some want to be handed something good. But Klay's pick can't be one fixed plan. A great gym plan is useless in a living room, and an hour-long plan is useless to someone with 30 minutes. Klay's pick needs **two facts** whatever happens: *where you train* and *how long you have*.
 
 So instead of a fork at the start, the fork comes **after** two quick questions:
 
 1. Two questions everyone answers (two taps, about ten seconds).
-2. Humbell shows its pick for that answer: "Here's your plan."
+2. Klay shows its pick for that answer: "Here's your plan."
 3. Two doors:
-   - **Start with this** (big, primary): Humbell's pick, no more questions.
+   - **Start with this** (big, primary): Klay's pick, no more questions.
    - **Make it mine** (quiet, secondary): what to avoid, what to focus on, or a different shape of plan.
 
 People who want to be handed something get it almost straight away. People who want to customise do it while looking at a real plan, which is far easier than answering questions in the abstract. Nobody ever gets cable crossovers at home.
@@ -30,12 +30,12 @@ People who want to be handed something get it almost straight away. People who w
                                                                    └▶ Make it mine ─▶ Go easy on / Skip / Shape ─▶ Your plan
 ```
 
-Then the intro pages, the "why" of Humbell, now ending on *their* workouts instead of a generic picture. (Today the intro runs before anything; see Open questions.)
+Then the intro pages, the "why" of Klay, now ending on *their* workouts instead of a generic picture. (Today the intro runs before anything; see Open questions.)
 
 ### 1. Welcome
 
 > **Let's build your plan.**
-> Two quick questions, and Humbell does the rest.
+> Two quick questions, and Klay does the rest.
 >
 > [ Let's go ]
 
@@ -46,7 +46,7 @@ Then the intro pages, the "why" of Humbell, now ending on *their* workouts inste
 > ( At a gym )
 > ( At home )
 
-One tap moves on. At a gym means Humbell assumes a normal commercial gym: barbells, dumbbells, cables, machines.
+One tap moves on. At a gym means Klay assumes a normal commercial gym: barbells, dumbbells, cables, machines.
 
 ### 2b. What do you have at home? (home only)
 
@@ -96,18 +96,18 @@ Each workout card shows its name, what it trains, and its exercises with their p
 One screen, three short sections. Every change updates the plan live, and **Done** returns to the plan.
 
 > **Go easy on…**
-> Humbell will leave out the exercises that load these the most.
+> Klay will leave out the exercises that load these the most.
 > [ ] My knees  [ ] My lower back  [ ] My shoulders
 
 > **Leave these out**
 > [ ] Barbell squats  [ ] Deadlifts  [ ] Pressing overhead  [ ] Jumping
 
 > **Shape of plan** (shown only if more than one fits their time)
-> ( Humbell's pick: Upper / Lower )
+> ( Klay's pick: Upper / Lower )
 > ( Full body, every time )
 > ( Push / Pull / Legs )
 
-"Go easy on" is not medical advice and must not sound like it. It's a preference, like the others, and Humbell can say so plainly: "Humbell isn't a doctor. If something hurts, stop and ask one."
+"Go easy on" is not medical advice and must not sound like it. It's a preference, like the others, and Klay can say so plainly: "Klay isn't a doctor. If something hurts, stop and ask one."
 
 ---
 
@@ -115,19 +115,19 @@ One screen, three short sections. Every change updates the plan live, and **Done
 
 Time is the one question that decides both **how many exercises** sit in a workout and **how the loop is split**. Short visits have to cover the whole body each time; longer visits have room to specialise.
 
-| Time | Lifts per workout | Humbell's pick | Cardio + stretch |
+| Time | Lifts per workout | Klay's pick | Cardio + stretch |
 |---|---|---|---|
 | ~30 min | 3 | **Full body A / B** | 5 min to open, short stretch to close |
 | ~45 min | 4–5 | **Upper / Lower** | Opening block only, stretch to close |
 | 60+ min | 5 | **Push / Pull / Legs** (today's plan) | Both blocks, full stretch |
 
-The author's current plan is Humbell's pick for *gym, an hour or more*: nothing about it changes.
+The author's current plan is Klay's pick for *gym, an hour or more*: nothing about it changes.
 
 A lift with 3 sets and rests takes roughly 7–9 minutes. That's where the counts come from. These numbers should be checked against real sessions.
 
 ### The templates
 
-A template is a list of **slots**: a movement pattern, the reason it's there, and a preference list of exercises. Humbell fills each slot with the first exercise the user has the equipment for and hasn't ruled out. Every slot keeps the existing 6 → 8 → 10 → 12 ladder (10 → 14 for small muscles).
+A template is a list of **slots**: a movement pattern, the reason it's there, and a preference list of exercises. Klay fills each slot with the first exercise the user has the equipment for and hasn't ruled out. Every slot keeps the existing 6 → 8 → 10 → 12 ladder (10 → 14 for small muscles).
 
 **Full body A / B** (30 min)
 
@@ -205,9 +205,9 @@ The gaps are small and well known. These would close them:
 | KB deadlift | Hinge | kettlebell | weight |
 | KB curl | Biceps | kettlebell | weight |
 
-That's 9 exercises. Each needs a guide, a photo and a film in Humbell's marks, so the films are the real cost. Two honest limits remain:
+That's 9 exercises. Each needs a guide, a photo and a film in Klay's marks, so the films are the real cost. Two honest limits remain:
 - **Update, built:** the table row is just the inverted row (a low bar, or the edge of a sturdy table), so it needs no new exercise. Lunges all need dumbbells, so a **bodyweight split squat** joins the list, and with the **bodyweight squat** they're the first two built.
-- **Nothing at all + no bar** has no true vertical pull. The table row covers pulling; Humbell says plainly that a pull-up bar is the single best thing to buy.
+- **Nothing at all + no bar** has no true vertical pull. The table row covers pulling; Klay says plainly that a pull-up bar is the single best thing to buy.
 - **Kettlebell-only** progresses in big jumps (4 kg). The ladder already handles that by climbing reps first, but some lifts will sit on a weight for a while.
 
 ### Cardio and warm-up at home
@@ -236,7 +236,7 @@ These lists need a careful pass before they ship.
 
 ## After onboarding
 
-- **Changing it later:** Plan gets a **Change my plan** row that reruns these same screens. Every lift keeps its weight and its place on the ladder, because history is stored per exercise and per rep range, not per plan. Humbell can say so: "Your numbers come with you."
+- **Changing it later:** Plan gets a **Change my plan** row that reruns these same screens. Every lift keeps its weight and its place on the ladder, because history is stored per exercise and per rep range, not per plan. Klay can say so: "Your numbers come with you."
 - **The author's phone** never sees onboarding. Like the intro today, it only opens on a phone that has trained nothing yet.
 - **Answers are saved** (where, kit, time, avoid). Where and kit become the usual place for the switch below.
 
@@ -244,11 +244,11 @@ These lists need a careful pass before they ship.
 
 ## Training somewhere else
 
-Most weeks you train in your usual place. Some weeks you're away: a hotel with nothing, a cabin with one kettlebell, a friend's garage with dumbbells. Humbell should handle that with one switch, not a second plan.
+Most weeks you train in your usual place. Some weeks you're away: a hotel with nothing, a cabin with one kettlebell, a friend's garage with dumbbells. Klay should handle that with one switch, not a second plan.
 
 ### The idea: same plan, different exercises
 
-Switching place **doesn't change the plan**. Push is still Push and the loop carries on where it was. What changes is the exercise inside each slot: the horizontal press slot that holds the DB bench press at the gym holds push-ups in a hotel room. Each slot already knows its movement pattern, so Humbell picks the best exercise for it from what you have.
+Switching place **doesn't change the plan**. Push is still Push and the loop carries on where it was. What changes is the exercise inside each slot: the horizontal press slot that holds the DB bench press at the gym holds push-ups in a hotel room. Each slot already knows its movement pattern, so Klay picks the best exercise for it from what you have.
 
 - **Your gym numbers are untouched.** A push-up has its own history, separate from the bench press. When you're back, every gym lift is exactly where you left it.
 - **Away numbers build up too.** The next trip, push-ups pick up where the last trip ended.
@@ -261,7 +261,7 @@ Switching place **doesn't change the plan**. Push is still Push and the loop car
 There are exactly two places:
 
 1. **Your usual place.** What onboarding answered: "At the gym", or "At home" with its kit.
-2. **Somewhere else.** It has its own kit, which Humbell remembers until you change it.
+2. **Somewhere else.** It has its own kit, which Klay remembers until you change it.
 
 Two is enough for the cases that matter, and it stays one tap. Named saved places ("Hotel", "Cabin") can come later if two turns out too few.
 
@@ -299,9 +299,9 @@ Tap it and a sheet opens:
 
 The kit sheet asks which weights are there ("Any weight", or tick 10 kg). Then:
 
-- **The weight is the bell.** Humbell uses the heaviest weight there at or below what you're due.
+- **The weight is the bell.** Klay uses the heaviest weight there at or below what you're due.
 - **A first guess comes from the gym.** A kettlebell goblet squat or press you've never done borrows your dumbbell number (one bell in one hand moves like one dumbbell).
-- **Too light, a harder lift stands in.** If the bell is under 60% of what you're due, Humbell reaches for a loaded lift that fits, then a single-leg lift (a bodyweight split squat makes 10 kg plenty), and only then an easy bodyweight one. Someone with a 24 kg goblet squat and one 10 kg bell gets split squats; with a 24 kg bell, goblet squats.
+- **Too light, a harder lift stands in.** If the bell is under 60% of what you're due, Klay reaches for a loaded lift that fits, then a single-leg lift (a bodyweight split squat makes 10 kg plenty), and only then an easy bodyweight one. Someone with a 24 kg goblet squat and one 10 kg bell gets split squats; with a 24 kg bell, goblet squats.
 - **Too heavy, the slot sits out.** If even the lightest weight is over 130% of what you're due, that slot is left out of the session, said plainly on Today.
 - **Topping out moves you on.** A step up goes to the next weight there is, however far. With nothing heavier, the lift stays at the top and is marked as outgrown, and next time a harder lift takes the slot.
 - **No guessing from nothing.** A lift with no record of its own (and no dumbbell twin) is never called too light or too heavy: one set tells.
@@ -313,7 +313,7 @@ The kit sheet asks which weights are there ("Any weight", or tick 10 kg). Then:
 - **Questions first**, then the intro, its last page showing the user's own workouts.
 - **Time sets the shape**: 30 min → full body A/B, 45 → upper/lower, 60+ → push/pull/legs.
 - **Gym and home both** are handled now, with the place switch above.
-- **The 9 new exercises** get added, with films in Humbell's marks.
+- **The 9 new exercises** get added, with films in Klay's marks.
 - **Home cardio** starts as walk or jog outside, and skipping rope.
 
 ---
@@ -324,8 +324,8 @@ The kit sheet asks which weights are there ("Any weight", or tick 10 kg). Then:
 
 1. **Equipment.** Every exercise says what it needs (`src/data/kit.ts`); `src/lib/fill.ts` picks a slot's exercise from a kit, weights included. Progression steps to the next weight on hand and marks a lift outgrown at the heaviest (`src/lib/progression.ts`).
 2. **The place switch** lives in Settings (the gear on Plan), with the "Where are you training?" sheet and weights to tick (`src/components/place.tsx`, `src/app/settings.tsx`). Today says nothing at your usual place; away, one quiet line says where you are and why the workout changed. Away: slots filled from the kit, what sits out said plainly, gym numbers untouched.
-3. **Onboarding, one flow.** Welcome (a film of Humbell's marks), where, home kit, time, the plan, Make it mine, then three how-it-works pages — the last with your own workouts — under one progress line, each page sliding in (`src/components/onboarding.tsx`). The old six-page intro is three pages (the wrestler and the building blocks are gone) and opens again from Settings.
-4. **Home lifts:** bodyweight squat and split squat, pike push-up, KB row, KB Romanian deadlift, KB curl, DB and KB floor press, DB pullover — guides and films in Humbell's marks. Storage versions 14 and 15 put them in the library on existing phones.
+3. **Onboarding, one flow.** Welcome (a film of Klay's marks), where, home kit, time, the plan, Make it mine, then three how-it-works pages — the last with your own workouts — under one progress line, each page sliding in (`src/components/onboarding.tsx`). The old six-page intro is three pages (the wrestler and the building blocks are gone) and opens again from Settings.
+4. **Home lifts:** bodyweight squat and split squat, pike push-up, KB row, KB Romanian deadlift, KB curl, DB and KB floor press, DB pullover — guides and films in Klay's marks. Storage versions 14 and 15 put them in the library on existing phones.
 5. **No sparse workouts.** A slot with nothing of its own kind takes the nearest kind (no bar to pull down on: a row), and a plan tops a short workout up with extras (bench dips, planks) to its template's length.
 6. **The kit picker** has a drawn icon for each thing and "Another weight" to type any weight.
 

@@ -96,6 +96,22 @@ test("a plank holds 30, 40, 50, then 60 seconds, and stays at a minute", () => {
   assert.equal(prog.applyResult(record("plank", 0, { rung: 3 }), SCHEME, [60, 55], NOW).downStreak, 1);
 });
 
+test("a dead hang starts at 10 seconds and climbs five at a time, to a minute", () => {
+  assert.deepEqual([...prog.ladderOf(exercises.byId("dead_hang"), SCHEME)], [10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60]);
+  // Its own ladder, whatever range the slot is set to.
+  assert.deepEqual([...prog.ladderOf(exercises.byId("dead_hang"), "volume")].slice(0, 3), [10, 15, 20]);
+  let st = record("dead_hang", 0);
+  const seen = [];
+  for (let i = 0; i < 4; i++) {
+    seen.push(target(st));
+    st = hit(st);
+  }
+  assert.deepEqual(seen, [10, 15, 20, 25]);
+  // Falling short twice takes it back down five.
+  const short = prog.applyResult(prog.applyResult(record("dead_hang", 0, { rung: 2 }), SCHEME, [20, 14, 12], NOW), SCHEME, [20, 14, 12], NOW);
+  assert.equal(target(short), 15);
+});
+
 /** Push's abs, done: every set at its target, with the slot holding `rec`. */
 const absDone = (rec, reps) => {
   const base = store.resetToDefault();
