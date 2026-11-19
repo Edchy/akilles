@@ -1,4 +1,4 @@
-import type { CardioBlock, CardioEnd } from "@/data/conditioning";
+import { EVERYDAY_WARMUP, type CardioBlock, type CardioEnd } from "@/data/conditioning";
 import type { Pattern } from "@/data/exercises";
 import type { WorkoutKind } from "@/data/kinds";
 
@@ -54,7 +54,8 @@ const isNamed = (scheme: Scheme): scheme is NamedScheme => scheme in LADDERS;
 
 /**
  * Fewest and most reps a range can span, and the step between rungs. Every
- * target is one of 6, 8, 10 or 12 — never an 11 or a 13.
+ * target is one of 6, 8, 10 or 12 — never an 11 or a 13. Slots start on
+ * 6–10 (`DEFAULT_SCHEME`); 12 is there for a range you choose.
  */
 export const REPS_RANGE = { min: 6, max: 12 } as const;
 export const REP_STEP = 2;
@@ -70,8 +71,14 @@ export type RepBounds = { readonly min: number; readonly max: number };
 export const HIGH_REPS_RANGE = { min: 10, max: 14 } as const;
 export const HIGH_REPS_SCHEME: Scheme = `${HIGH_REPS_RANGE.min}-${HIGH_REPS_RANGE.max}`;
 
-/** The range every slot starts on: 6 → 8 → 10 → 12. */
-export const DEFAULT_SCHEME: Scheme = `${REPS_RANGE.min}-${REPS_RANGE.max}`;
+/**
+ * The range every slot starts on: 6 → 8 → 10, then the weight goes up. Ten
+ * clean reps at a weight you own is the signal to add to it; two more on top
+ * only add tiredness. Lifts that do their best work elsewhere keep their own
+ * range in any slot — see `ownRange` in `lib/progression.ts`.
+ */
+export const DEFAULT_REPS = { min: 6, max: 10 } as const;
+export const DEFAULT_SCHEME: Scheme = `${DEFAULT_REPS.min}-${DEFAULT_REPS.max}`;
 
 /** Snap a rep count onto the range's even steps. */
 const onStep = (reps: number, bounds: RepBounds): number =>
@@ -234,21 +241,28 @@ const FULL_CYCLE: Authored[] = [
    *
    * The picks are ones a first-timer can lower slowly and lift without
    * swinging from the first day — dumbbells, cables and machines, nothing
-   * that needs a spotter or a teacher. The harder versions (pull-ups, dips,
-   * barbell squats and rows) are one swap away.
+   * that needs a spotter or a teacher. The harder versions (pull-ups,
+   * barbell squats and rows) are one swap away. Lifts that work several
+   * joints at once, the most for the time: no curls, pushdowns, leg curls
+   * or face pulls.
    *
-   * Every slot climbs 6 → 8 → 10 → 12, then adds weight and starts again.
+   * Every slot climbs 6 → 8 → 10, then adds weight and starts again. Each
+   * day opens on five minutes of cardio — the rower on Pull, the treadmill
+   * otherwise — and the same four-minute warm-up.
    */
   {
     id: "push",
     name: "Push",
     subtitle: "chest, shoulders",
+    warmup: EVERYDAY_WARMUP,
     exercises: [
       { slot: "Horizontal press", pattern: "horizontal_push", options: ["db_bench"], scheme: DEFAULT_SCHEME },
       { slot: "Vertical press", pattern: "vertical_push", options: ["db_shoulder"], scheme: DEFAULT_SCHEME },
       // The push-up chain: done at your step, from the wall to the floor (see `chains.ts`).
       { slot: "Bodyweight press", pattern: "horizontal_push", options: ["push_up", "incline_push_up", "knee_push_up"], scheme: DEFAULT_SCHEME },
-      { slot: "Triceps", pattern: "triceps", options: ["pushdown"], scheme: DEFAULT_SCHEME },
+      // Dips over a pushdown: more of the press, the triceps included. The
+      // assisted machine takes off as much of you as you need.
+      { slot: "Dips", pattern: "triceps", options: ["dips"], scheme: DEFAULT_SCHEME },
       { slot: "Abs", pattern: "abs", options: ["dead_bug"], scheme: DEFAULT_SCHEME },
     ],
   },
@@ -256,6 +270,9 @@ const FULL_CYCLE: Authored[] = [
     id: "pull",
     name: "Pull",
     subtitle: "back, arms",
+    // The rower warms the back and the grip before you pull.
+    cardio: { open: { machine: "row" } },
+    warmup: EVERYDAY_WARMUP,
     exercises: [
       // The pull-up chain first, while you are fresh: from a hang to the whole
       // pull-up, a step at a time (see `chains.ts`). The pulldown builds the
@@ -263,8 +280,8 @@ const FULL_CYCLE: Authored[] = [
       { slot: "Pull-up", pattern: "vertical_pull", options: ["pullup"], scheme: DEFAULT_SCHEME },
       { slot: "Vertical pull", pattern: "vertical_pull", options: ["lat_pulldown"], scheme: DEFAULT_SCHEME },
       { slot: "Row", pattern: "horizontal_pull", options: ["cable_row"], scheme: DEFAULT_SCHEME },
-      { slot: "Rear shoulders", pattern: "shoulders", options: ["face_pull"], scheme: DEFAULT_SCHEME },
-      { slot: "Biceps", pattern: "biceps", options: ["db_curl"], scheme: DEFAULT_SCHEME },
+      // A second row rather than a curl: rows and pulldowns train the biceps already.
+      { slot: "One-arm row", pattern: "horizontal_pull", options: ["db_row"], scheme: DEFAULT_SCHEME },
       { slot: "Abs", pattern: "abs", options: ["plank"], scheme: DEFAULT_SCHEME },
     ],
   },
@@ -272,11 +289,14 @@ const FULL_CYCLE: Authored[] = [
     id: "legs",
     name: "Legs",
     subtitle: "legs, hips",
+    warmup: EVERYDAY_WARMUP,
     exercises: [
       { slot: "Squat", pattern: "squat", options: ["goblet_squat"], scheme: DEFAULT_SCHEME },
       { slot: "Hinge", pattern: "hinge", options: ["db_rdl"], scheme: DEFAULT_SCHEME },
       { slot: "Single leg", pattern: "lunge", options: ["split_squat"], scheme: DEFAULT_SCHEME },
-      { slot: "Hamstrings", pattern: "hamstrings", options: ["leg_curl"], scheme: DEFAULT_SCHEME },
+      // A carry over a leg curl: grip, trunk, legs and posture at once. Timed.
+      { slot: "Carry", pattern: "abs", options: ["farmer_carry"], scheme: DEFAULT_SCHEME },
+      { slot: "Abs", pattern: "abs", options: ["plank"], scheme: DEFAULT_SCHEME },
     ],
   },
 ];
@@ -305,7 +325,7 @@ export const newId = (prefix: string): string =>
 
 /**
  * The scheme a new slot of a movement type starts on. Jumps are speed work —
- * low reps, no ladder — and everything else climbs 6 → 8 → 10 → 12.
+ * low reps, no ladder — and everything else climbs 6 → 8 → 10.
  */
 export const defaultScheme = (pattern: Pattern): Scheme =>
   pattern === "jump" ? "speed" : DEFAULT_SCHEME;

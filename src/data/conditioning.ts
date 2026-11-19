@@ -84,7 +84,7 @@ export type CardioEnd = "open" | "close";
  * `cue` is only ever about how to use it.
  */
 export const EFFORT: Record<CardioEnd, string> = {
-  open: "An easy pace you could talk at. Save your effort for the lifts.",
+  open: "Start easy. Finish at a pace where talking gets a little hard.",
   close: "Steady, then pick it up at the end if you have it left.",
 };
 
@@ -302,6 +302,45 @@ export const DEFAULT_MOBILITY = "everyday";
 export const WARMUP = { push: "warmup_push", pull: "warmup_pull", legs: "warmup_legs" } as const;
 export type WarmupDay = keyof typeof WARMUP;
 
+/**
+ * The PPLPPL plan's routines: drills that get you moving before the lifts,
+ * and one long hold after them. See `data/plans.ts`.
+ */
+export const PPLPPL_ROUTINES = {
+  push: "pplppl_push",
+  pull: "pplppl_pull",
+  legs: "pplppl_legs",
+  pushEnd: "pplppl_push_end",
+  pullEnd: "pplppl_pull_end",
+  legsEnd: "pplppl_legs_end",
+} as const;
+
+/**
+ * A move with no clay picture yet: its name, its count and its cue, and a
+ * placeholder where the picture goes. An id that is also a lift's — the dead
+ * hang — borrows that lift's picture and guide.
+ */
+const drill = (
+  id: string,
+  name: string,
+  dose: Pick<MobilityMove, "seconds" | "perSide" | "reps">,
+  cue: string,
+): MobilityMove => ({ id, name, ...dose, cue });
+
+/** A library stretch done for a count rather than held. */
+const forReps = (id: string, reps: number): MobilityMove => ({
+  ...hold(id),
+  reps,
+  seconds: secondsFor(reps),
+});
+
+/**
+ * The easy plan's warm-up: the same four moves every day, about four
+ * minutes. The spine, the hips and hamstrings, the shoulders, then the squat
+ * with no load. One routine to learn rather than three.
+ */
+export const EVERYDAY_WARMUP = "warmup";
+
 /** Retired for the day warm-ups. Read only by old saves and sessions. */
 export const SHOULDER_WARMUP = "shoulder_warmup";
 
@@ -323,6 +362,18 @@ export const MOBILITY: MobilityRoutine[] = [
       hold("seated_hamstring"),
       hold("chest_opener"),
       hold("childs_pose"),
+    ],
+  },
+  {
+    id: EVERYDAY_WARMUP,
+    name: "Warm-up",
+    subtitle: "spine, hips and shoulders, about four minutes",
+    use: "warmup",
+    moves: [
+      { ...forReps("cat_cow", 8), cue: "Slow, one breath each way. Gets your whole spine moving." },
+      { ...forReps("worlds_greatest", 3), cue: "Hips, hamstrings and upper back in one move." },
+      { ...forReps("arm_circles", 20), cue: "Small circles growing big: 10 forwards, then 10 back." },
+      { ...forReps("bodyweight_squat", 10), cue: "Sit down to a box or bench and stand up. No weight yet." },
     ],
   },
   {
@@ -368,6 +419,60 @@ export const MOBILITY: MobilityRoutine[] = [
       hold("childs_pose"),
       hold("supine_twist"),
     ],
+  },
+  {
+    id: PPLPPL_ROUTINES.push,
+    name: "Push drills",
+    subtitle: "the upper back and shoulders, before you press",
+    use: "warmup",
+    moves: [
+      drill("open_book", "Open book", { seconds: 48, reps: 8, perSide: true }, "Lie on your side, knees bent. Open the top arm to the other side, eyes follow the hand."),
+      forReps("wall_slide", 10),
+      forReps("scapular_pushup", 10),
+      drill("shoulder_cars", "Shoulder circles", { seconds: 36, reps: 6, perSide: true }, "Arm straight, the biggest slow circle you can. Three forwards, three back."),
+    ],
+  },
+  {
+    id: PPLPPL_ROUTINES.pull,
+    name: "Pull drills",
+    subtitle: "the lats and the upper back, before you pull",
+    use: "warmup",
+    moves: [
+      drill("dead_hang", "Dead hang", { seconds: 50 }, "Hang relaxed, twice for about 25 seconds. Rest between."),
+      drill("scap_pullup", "Scapular pull-up", { seconds: 24, reps: 8 }, "Arms straight. Pull the shoulders down away from the ears, then let them rise."),
+      forReps("thread_needle", 6),
+      forReps("cat_cow", 8),
+    ],
+  },
+  {
+    id: PPLPPL_ROUTINES.legs,
+    name: "Leg drills",
+    subtitle: "hips and ankles, before you squat",
+    use: "warmup",
+    moves: [
+      forReps("worlds_greatest", 4),
+      drill("hip_switch", "90/90 hip switches", { seconds: 48, reps: 8, perSide: true }, "Sit with both knees bent to one side. Lift them over to the other side, chest tall."),
+      drill("ankle_rock", "Knee-to-wall ankle rocks", { seconds: 30, reps: 10, perSide: true }, "Foot a hand from the wall. Push the knee to the wall, heel stays down."),
+      drill("goblet_hold", "Goblet squat hold", { seconds: 60 }, "Light bell at the chest. Sit deep, elbows push the knees out. Twice for 30 seconds."),
+    ],
+  },
+  {
+    id: PPLPPL_ROUTINES.pushEnd,
+    name: "Chest stretch",
+    subtitle: "one long hold after pressing",
+    moves: [drill("doorway_chest", "Doorway chest stretch", { seconds: 45, perSide: true }, "Forearm on the door frame, elbow at shoulder height. Step through until the chest opens.")],
+  },
+  {
+    id: PPLPPL_ROUTINES.pullEnd,
+    name: "Child's pose",
+    subtitle: "one long hold after pulling",
+    moves: [{ ...hold("childs_pose"), cue: "Arms reach forward. Breathe into the back of the ribs." }],
+  },
+  {
+    id: PPLPPL_ROUTINES.legsEnd,
+    name: "Couch stretch",
+    subtitle: "one long hold after legs",
+    moves: [hold("couch", { seconds: 45 })],
   },
   {
     id: "kung_fu",
@@ -431,7 +536,7 @@ export const RETIRED_MOBILITY = ["full_body", "hips", "shoulders", "spine", "qui
  * Everything else ships removed and is one tap from coming back.
  */
 export const LEAN_CARDIO: string[] = ["treadmill", "ski_erg", "row"];
-export const LEAN_MOBILITY: string[] = [DEFAULT_MOBILITY, WARMUP.push, WARMUP.pull, WARMUP.legs, "yoga", "kung_fu"];
+export const LEAN_MOBILITY: string[] = [DEFAULT_MOBILITY, EVERYDAY_WARMUP, WARMUP.push, WARMUP.pull, WARMUP.legs, "yoga", "kung_fu"];
 
 /** Built-in machines and routines a new phone starts without — added from the foot of their list. */
 export const leanHiddenConditioning = (): string[] => [

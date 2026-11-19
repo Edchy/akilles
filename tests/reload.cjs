@@ -29,6 +29,8 @@ const voice = load("@/data/voice");
 const DAY = 24 * 60 * 60 * 1000;
 const NOW = Date.now();
 const SCHEME = "6-12";
+/** The range the default plan's slots climb. */
+const PLAN = "6-10";
 const target = (st) => split.ladderFor(SCHEME)[st.rung];
 const record = (exerciseId, weight, extra = {}) => ({ exerciseId, weight, rung: 0, downStreak: 0, deloads: 0, ...extra });
 const hit = (st) => prog.applyResult(st, SCHEME, [target(st), target(st), target(st)], NOW);
@@ -150,33 +152,33 @@ test("a layoff ends a reload; declining one settles it without counting as train
 /** Start Push A with DB bench in a given state, every set logged at its target. */
 const benchDone = (rec) => {
   const base = store.resetToDefault();
-  let state = store.buildWorkout({ ...base, history: { "db_bench:6-12": rec } });
+  let state = store.buildWorkout({ ...base, history: { [`db_bench:${PLAN}`]: rec } });
   const at = state.active.items.findIndex((it) => it.exerciseId === "db_bench");
   assert.ok(at >= 0, "Push A opens with DB bench");
-  const reps = split.ladderFor(SCHEME)[rec.rung];
+  const reps = split.ladderFor(PLAN)[rec.rung];
   const items = state.active.items.map((it, i) => (i === at ? { ...it, logged: it.logged.map(() => reps) } : it));
   return { ...state, active: { ...state.active, items, cursor: at } };
 };
 const last = { weight: 25, reps: [10, 10, 10], target: 10 };
 
 test("topping out into a reload is a hit, and says so before you move on", () => {
-  const state = benchDone(record("db_bench", 25, { rung: 3, climbs: 2, lastPerformed: last, lastTrainedAt: NOW - 3 * DAY }));
+  const state = benchDone(record("db_bench", 25, { rung: 2, climbs: 2, lastPerformed: last, lastTrainedAt: NOW - 3 * DAY }));
   const verdict = store.nextTime(state);
   assert.equal(verdict.outcome, "hit");
   assert.equal(verdict.say, "reload");
-  assert.equal(verdict.fact, "Reload next time: 25 kg ×2 again, from 10 reps.");
+  assert.equal(verdict.fact, "Reload next time: 25 kg ×2 again, from 8 reps.");
   assert.ok(voice.OUTCOME_LINES.reload.length > 0);
   assert.equal(store.sessionTally(state).reload, 1);
 
   const finished = store.finishWorkout(state);
   const entry = finished.log.at(-1).entries.find((e) => e.exerciseId === "db_bench");
   assert.equal(entry.outcome, "hit");
-  assert.equal(finished.history["db_bench:6-12"].reloading, true);
-  assert.equal(finished.history["db_bench:6-12"].weight, 25);
+  assert.equal(finished.history["db_bench:6-10"].reloading, true);
+  assert.equal(finished.history["db_bench:6-10"].weight, 25);
 });
 
 test("finishing a reload is owned, and earns the next step", () => {
-  const state = benchDone(record("db_bench", 25, { rung: 3, reloading: true, climbs: 0, lastPerformed: last, lastTrainedAt: NOW - 3 * DAY }));
+  const state = benchDone(record("db_bench", 25, { rung: 2, reloading: true, climbs: 0, lastPerformed: last, lastTrainedAt: NOW - 3 * DAY }));
   const verdict = store.nextTime(state);
   assert.equal(verdict.say, "owned");
   assert.equal(verdict.fact, "Up to 27.5 kg ×2 next time.");
@@ -187,13 +189,13 @@ test("Today says a lift reloads", () => {
   const state = {
     ...base,
     history: {
-      "db_bench:6-12": record("db_bench", 25, { rung: 2, reloading: true, lastPerformed: { weight: 25, reps: [12, 12, 12], target: 12 }, lastTrainedAt: NOW - 3 * DAY }),
+      "db_bench:6-10": record("db_bench", 25, { rung: 1, reloading: true, lastPerformed: { weight: 25, reps: [10, 10, 10], target: 10 }, lastTrainedAt: NOW - 3 * DAY }),
     },
   };
   const rows = store.workoutPreview(state, store.workoutById(state, "push"));
   const bench = rows.find((r) => r.name === "DB bench press");
   assert.equal(bench.change, "reload");
-  assert.equal(bench.amount, "3 × 10");
+  assert.equal(bench.amount, "3 × 8");
 
   const line = voice.newsLine({ up: [], fresh: [], reload: [{ name: bench.name, weight: bench.weight }], down: [] }, "x");
   assert.match(line, /DB bench press reloads/);
@@ -217,7 +219,7 @@ test("the verdict states the real reduced weight without claiming an exact perce
     i === at ? { ...it, logged: it.logged.map(() => 4) } : it,
   ) } };
   assert.equal(store.nextTime(missed).fact, "Lighter next time: 7.5 kg ×2.");
-  assert.equal(store.finishWorkout(missed).history["db_bench:6-12"].weight, 7.5);
+  assert.equal(store.finishWorkout(missed).history["db_bench:6-10"].weight, 7.5);
 });
 
 test("a trained manual weight carries to the same exercise in another workout and rep range", () => {

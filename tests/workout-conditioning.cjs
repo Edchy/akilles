@@ -54,7 +54,7 @@ test("out of the box, every workout ends on the everyday stretch", () => {
   }
   assert.deepEqual(blocks(state, "legs"), [
     { slot: "Cardio · open", id: "treadmill", course: 1 },
-    { slot: "Warm-up", id: "warmup_legs" },
+    { slot: "Warm-up", id: "warmup" },
     { slot: "Cardio · finish", id: "ski_erg", minutes: 5 },
     { slot: "Mobility", id: "everyday" },
   ]);
@@ -107,7 +107,7 @@ test("blocks come out of a workout and go back in", () => {
   state = store.setCardio(state, "push", "open", null);
   state = store.setMobility(state, "push", null);
   assert.deepEqual(blocks(state, "push"), [
-    { slot: "Warm-up", id: "warmup_push" },
+    { slot: "Warm-up", id: "warmup" },
     { slot: "Cardio · finish", id: "ski_erg", minutes: 5 },
   ]);
   assert.equal(blocks(state, "pull").length, 4);
@@ -249,7 +249,8 @@ test("version 9 saves keep a routine of your own on every workout", () => {
   const restored = storage.fromSaved(JSON.stringify({ version: 9, state: old }));
   for (const w of restored.workouts) {
     assert.equal(w.mobility, "custom_couch");
-    assert.equal(w.cardio, undefined);
+    // Pull opens on its own rower; the rest kept the shared default.
+    if (w.id !== "pull") assert.equal(w.cardio, undefined);
   }
   assert.equal(blocks(restored, "legs")[3].id, "custom_couch");
 });
@@ -307,7 +308,7 @@ test("the button that moves on names what comes next, and nothing after the last
   let state = store.buildWorkout(fresh());
   const at = (cursor) => ({ ...state, active: { ...state.active, cursor } });
   const items = state.active.items;
-  assert.equal(store.nextItemName(at(0)), "Push mobility");
+  assert.equal(store.nextItemName(at(0)), "Warm-up");
   assert.equal(store.nextItemName(at(1)), "DB bench press");
   assert.equal(store.nextItemName(at(items.length - 3)), "Ski-erg");
   assert.equal(store.nextItemName(at(items.length - 2)), "Everyday stretch");
@@ -338,7 +339,7 @@ test("the cardio on screen can run longer today only, or be kept for every time"
   state = store.nudgeTodayLength(state, 1);
   state = store.keepTodayLength(state);
   assert.deepEqual(plain(workout(state, "push").cardio.open), { machine: "treadmill", course: 2 });
-  assert.deepEqual(plain(workout(state, "pull").cardio ?? {}), {});
+  assert.deepEqual(plain(workout(state, "pull").cardio), { open: { machine: "row" } }, "Pull keeps its rower");
 });
 
 test("the finishing block is told apart from the warm-up, and each says how hard to go", () => {
@@ -382,13 +383,14 @@ test("shared targets apply across future workouts and survive saving without cha
   const active = s.active;
   s = store.setCardioTarget(s, "treadmill", { course: 1.5 });
   assert.equal(s.active, active);
-  for (const w of s.workouts) assert.equal(store.cardioPlan(s, w, "open").course, 1.5);
+  // Every treadmill opening; Pull opens on the rower.
+  for (const w of s.workouts) if (w.id !== "pull") assert.equal(store.cardioPlan(s, w, "open").course, 1.5);
   s = storage.fromSaved(storage.toSaved(s));
   assert.equal(s.active.items[0].course, 1);
   assert.equal(store.scoreOf(s.active.items[0]), 300);
   assert.deepEqual(plain(store.cardioTarget(s, "treadmill")), { course: 1.5 });
   s = store.setCardioTarget(s, "treadmill", { minutes: 10 });
-  for (const w of s.workouts) {
+  for (const w of s.workouts.filter((x) => x.id !== "pull")) {
     assert.equal(store.cardioPlan(s, w, "open").minutes, 10);
     assert.equal(store.cardioPlan(s, w, "open").course, undefined);
   }
@@ -457,7 +459,7 @@ test("saved exercise swaps update the plan while leaving the current session alo
   s = store.replacePlannedCardio(s, "push", "open", "outdoor");
   assert.equal(s.active, active);
   assert.equal(s.active.items[0].exerciseId, "treadmill");
-  for (const w of s.workouts) assert.equal(store.cardioPlan(s, w, "open").machine.id, "outdoor");
+  for (const w of s.workouts) assert.equal(store.cardioPlan(s, w, "open").machine.id, w.id === "pull" ? "row" : "outdoor", w.id);
   assert.equal(store.cardioPlan(s, workout(s, "push"), "close").machine.id, "ski_erg");
 });
 

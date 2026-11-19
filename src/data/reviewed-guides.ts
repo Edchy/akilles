@@ -12,7 +12,81 @@ const treadmillSafety = { title: "Life Fitness · Treadmill safety", url: "https
 const reviewed = (steps: string[], avoid: string, sources: NonNullable<Guide["sources"]>, own?: string, stepTitles?: string[], hold?: string): Guide =>
   ({ steps, avoid, sources, demonstration: sources[0], own, stepTitles, hold, reviewedOn: "2026-11-16" });
 
+/** As `reviewed`, for lifts checked on 2026-11-19: the PPLPPL plan's and the easy plan's dips and one-arm row. */
+const reviewedPplppl = (steps: string[], avoid: string, sources: NonNullable<Guide["sources"]>, own: string, stepTitles: string[], hold?: string): Guide =>
+  ({ ...reviewed(steps, avoid, sources, own, stepTitles, hold), reviewedOn: "2026-11-19" });
+const aceKettlebells = { title: "ACE · Advanced kettlebell workout", url: "https://www.acefitness.org/resources/pros/expert-articles/5386/advanced-kettlebell-workout-for-increased-strength-and-conditioning/" };
+
 export const REVIEWED_GUIDES: Record<string, Guide> = {
+  dips: reviewedPplppl([
+    "Hold the middle of the grips and lift yourself to straight arms. Shoulders down and back, away from your ears. On the assisted machine, kneel or stand on the pad first.",
+    "Lean a little forward and bend your elbows to lower yourself slowly, until your upper arms are about level with the bars.",
+    "Push back up to straight arms without arching or rounding your back.",
+  ], "Sinking so deep the shoulders roll forward. Stop where your shoulders still feel good; dips load the shoulder joint, so take more help from the machine if they ache.",
+  [{ title: "ACE · Strength equipment: dip bars", url: "https://www.acefitness.org/continuing-education/certified/june-2018/7010/branch-out-with-strength-equipment/" },
+   { title: "ACE · Triceps exercises and form", url: "https://www.acefitness.org/resources/everyone/blog/4930/tone-up-your-triceps-with-these-three-exercises/" },
+   { title: "ACE · Most effective triceps exercises, and a shoulder caution", url: "https://www.acefitness.org/about-ace/press-room/press-releases/2718/american-council-on-exercise-study-highlights-most-effective-triceps-exercises/" }],
+  "Pause at the bottom, upper arms level, shoulders down.", ["Lock out", "Lower slowly", "Push up"]),
+  db_row: reviewedPplppl([
+    "Put the hand and knee of one side on a bench, hand under the shoulder and knee under the hip. Hold the dumbbell in the other hand, arm long.",
+    "Brace your stomach and keep your back flat. Pull the dumbbell up by driving the elbow back toward your hip.",
+    "Lower it slowly to a straight arm without letting your chest turn. Do all your reps, then the other side.",
+  ], "Twisting the chest open to heave the weight up. Keep the back flat and the shoulders square to the floor.",
+  [{ title: "ACE · Single-arm row", url: "https://www.acefitness.org/resources/everyone/exercise-library/126/single-arm-row/" }],
+  "Hold the dumbbell at your hip for a second.", ["Set up on the bench", "Elbow to the hip", "Lower slowly"]),
+  double_kb_press: reviewedPplppl([
+    "Clean both bells to the rack: they rest on the backs of your forearms, elbows close to your body. Squeeze your glutes, ribs down.",
+    "Press both bells straight up, elbows staying under the bells and turning a little out. Finish with your arms locked and palms forward.",
+    "Pull the bells back down to the rack under control, as if doing a pull-up.",
+  ], "Leaning back to get the bells up. Keep the trunk tight and use lighter bells if you have to arch.",
+  [aceKettlebells, { title: "StrongFirst · Mastering your press, part II", url: "https://www.strongfirst.com/mastering-your-press-part-ii/" }],
+  "Pause in the rack before each press. No dip from the legs.", ["Rack and brace", "Press together", "Pull them down"]),
+  double_kb_front_squat: reviewedPplppl([
+    "Clean both bells to the rack, elbows under the bells and upper arms close to your body. Feet a little wider than your shoulders.",
+    "Keep your back straight and lower your hips straight down between your heels, chest up, until your thighs are level with the floor.",
+    "Push through your feet to stand, keeping the bells still in the rack.",
+  ], "Sitting back so the chest tips forward and the bells pull you out of the rack. Drop the hips down, not back.",
+  [aceKettlebells],
+  "Pause at the bottom with your chest up and the bells still.", ["Rack the bells", "Drop between your heels", "Stand tall"]),
+  turkish_get_up: reviewedPplppl([
+    "Lie on your back with the bell pressed up in one hand, that knee bent. Keep your eyes on the bell.",
+    "Roll to the other elbow, then the hand. Lift the hips, sweep the straight leg under you to a kneel, and stand up. The arm stays straight above you.",
+    "Go back down the same way, one step at a time. Then do the other side.",
+  ], "Letting the arm with the bell drift or bend. Learn the steps with no weight, or a shoe balanced on your fist, first.",
+  [{ title: "ACE · Turkish get-up", url: "https://www.acefitness.org/resources/everyone/exercise-library/388/turkish-get-up/" },
+   { title: "ACE · Do it better: the Turkish get-up", url: "https://www.acefitness.org/continuing-education/certified/march-2025/8824/the-ace-do-it-better-series-the-turkish-get-up/" }],
+  "Pause for a breath at each step, arm straight above you.", ["Press and look", "Up, step by step", "Down the same way"]),
+  db_bent_over_row: reviewedPplppl([
+    "Hold a dumbbell in each hand. Bend your knees a little and lean forward from the hips until your back is nearly level, back flat.",
+    "Pull both dumbbells up toward your hips, elbows close to your sides. Squeeze the shoulder blades together at the top.",
+    "Lower them slowly until your arms are straight. Your back stays still the whole time.",
+  ], "Standing up and swinging the weights. Keep the back still and flat; use lighter dumbbells if it moves.",
+  [{ title: "ACE · Bent-over row", url: "https://www.acefitness.org/resources/everyone/exercise-library/12/bent-over-row/" }],
+  "Hold the dumbbells at your hips for a second.", ["Hinge and set", "Pull to the hips", "Lower slowly"]),
+  kb_high_pull: reviewedPplppl([
+    "Stand over the bell, hinge at the hips and hold it in one hand, back flat.",
+    "Hike it back, then drive your hips forward. As the bell floats up, pull the elbow back and up, keeping the bell close to your body.",
+    "Stop with the bell about chest high, then let it fall back between your legs and hinge again. Switch hands halfway.",
+  ], "Pulling with the arm before the hips have finished. The hips send the bell; the arm only guides it.",
+  [{ title: "StrongFirst · Taming the arc in kettlebell lifts", url: "https://www.strongfirst.com/taming-the-arc-in-kettlebell-lifts/" }],
+  "Hold the top for a moment, the bell close and level.", ["Hinge and grip", "Hips, then elbow", "Let it fall"]),
+  deficit_push_up: reviewedPplppl([
+    "Grip two dumbbells on the floor, slightly wider than your shoulders. Brace so your head, hips and heels are in line.",
+    "Lower slowly until your chest goes past your hands. Only as deep as your shoulders feel good.",
+    "Press back up without letting your hips sag or rise.",
+  ], "Letting the lower back sag or the hips rise. Keep the body in one straight line, all the way down and up.",
+  [{ title: "ACE · Push-up", url: "https://www.acefitness.org/resources/everyone/exercise-library/41/push-up/" }],
+  "Pause at the bottom, chest below your hands.", ["Grip the bells", "Sink past your hands", "Press up straight"],
+  "Pause for {s} at the bottom, chest below your hands."),
+  twisting_knee_raise: reviewedPplppl([
+    "Hang from the bar with straight arms, shoulders gently down.",
+    "Raise your knees up toward one side, turning from your stomach, not swinging.",
+    "Lower slowly to straight legs, then raise them to the other side. Each side is one rep.",
+  ], "Swinging your legs up with momentum. Move slowly and keep the turn in your stomach.",
+  [nasm("reverse-crunch-to-knee-up-with-rotation", "Reverse crunch to knee-up with rotation")],
+  "Hold the knees up for a second. No swing.", ["Hang", "Knees up and across", "Lower and switch"],
+  "Hold the knees up for {s}. No swing."),
+
   treadmill: reviewed([
     "Clip the safety tether to your clothing and locate Stop. Begin at a slow walk, using the rails for balance.",
     "Look ahead, relax your shoulders and let your arms swing naturally as you walk or run.",

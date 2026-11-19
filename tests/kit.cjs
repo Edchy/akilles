@@ -29,7 +29,7 @@ const guides = load("@/data/guides");
 const prog = load("@/lib/progression");
 const store = load("@/store/session");
 
-const SCHEME = "6-12";
+const SCHEME = "6-10";
 // Chains placed at the exercise itself, so these read as they always have:
 // what a chain does is tested on its own (workout-order.cjs).
 const fresh = () => ({ ...store.resetToDefault(), steps: { push_up: 3, pullup: 3 } });
@@ -62,7 +62,7 @@ test("with nothing but you, push day is push-ups, pike push-ups and bench dips",
   assert.equal(got["Horizontal press"], "push_up");
   assert.equal(got["Vertical press"], "pike_push_up");
   assert.ok(got["Bodyweight press"], "the second press has an equipment-free alternative");
-  assert.equal(got["Triceps"], "bench_dip");
+  assert.equal(got["Dips"], "bench_dip");
   for (const id of Object.values(got)) if (id) assert.ok(kit.fits({ id }, kit.BODYWEIGHT), id);
 });
 
@@ -134,19 +134,19 @@ test("too heavy to do well: the slot gives way or sits out", () => {
 });
 
 test("with only some weights, a step up goes to the next one there is", () => {
-  const st = { exerciseId: "kb_goblet_squat", weight: 12, rung: 3, downStreak: 0, deloads: 0 };
-  const top = prog.ladderOf(exercises.byId("kb_goblet_squat"), SCHEME)[3];
+  const st = { exerciseId: "kb_goblet_squat", weight: 12, rung: 2, downStreak: 0, deloads: 0 };
+  const top = prog.ladderOf(exercises.byId("kb_goblet_squat"), SCHEME)[2];
   const after = prog.applyResult(st, SCHEME, [top, top, top], Date.now(), [12, 20]);
   assert.equal(after.weight, 20);
   assert.equal(after.rung, 0);
 });
 
 test("topped out at the heaviest bell, the lift stays at the top and counts as outgrown", () => {
-  const st = { exerciseId: "kb_goblet_squat", weight: 10, rung: 3, downStreak: 0, deloads: 0 };
-  const top = prog.ladderOf(exercises.byId("kb_goblet_squat"), SCHEME)[3];
+  const st = { exerciseId: "kb_goblet_squat", weight: 10, rung: 2, downStreak: 0, deloads: 0 };
+  const top = prog.ladderOf(exercises.byId("kb_goblet_squat"), SCHEME)[2];
   const after = prog.applyResult(st, SCHEME, [top, top, top], Date.now(), [10]);
   assert.equal(after.weight, 10);
-  assert.equal(after.rung, 3);
+  assert.equal(after.rung, 2);
   assert.equal(after.maxed, true);
   // A pair of 8s too: far too light for the 24 kg dumbbell goblet squat, but
   // a split squat has never been done, so it gets its chance.
@@ -161,8 +161,8 @@ test("topped out at the heaviest bell, the lift stays at the top and counts as o
 });
 
 test("with any weight on hand, a step up is one increment as always", () => {
-  const st = { exerciseId: "goblet_squat", weight: 20, rung: 3, downStreak: 0, deloads: 0 };
-  const top = prog.ladderOf(exercises.byId("goblet_squat"), SCHEME)[3];
+  const st = { exerciseId: "goblet_squat", weight: 20, rung: 2, downStreak: 0, deloads: 0 };
+  const top = prog.ladderOf(exercises.byId("goblet_squat"), SCHEME)[2];
   assert.equal(prog.applyResult(st, SCHEME, [top, top, top], Date.now()).weight, 22.5);
 });
 
@@ -195,7 +195,7 @@ test("away with nothing: the same workout comes next, with what can be done anyw
   assert.equal(cardio.map((it) => it.exerciseId).join(), "outdoor");
   assert.equal(cardio[0].minutes, 5);
   const warmup = built.active.items.find((it) => it.slot === store.WARMUP_SLOT);
-  assert.equal(warmup.exerciseId, "warmup_push:away");
+  assert.equal(warmup.exerciseId, "warmup");
   assert.ok(built.active.items.some((it) => it.slot === store.MOBILITY_SLOT));
   // Skipping rope is one swap away; the gym's machines aren't.
   const opening = { ...built, active: { ...built.active, cursor: built.active.items.indexOf(cardio[0]) } };
@@ -250,8 +250,8 @@ test("a swap away offers only what the place has", () => {
 });
 
 // The promise shown after a set must match the result saved at Finish.
-const finishedPress = (weights, extra = {}, reps = 12) => {
-  let state = withRecord(fresh(), "kb_press", 12, { rung: 3, ...extra });
+const finishedPress = (weights, extra = {}, reps = 10) => {
+  let state = withRecord(fresh(), "kb_press", 12, { rung: 2, ...extra });
   state = store.setPlace(state, "away", KB(...weights));
   state = store.buildWorkout(state);
   const at = state.active.items.findIndex((it) => it.exerciseId === "kb_press");

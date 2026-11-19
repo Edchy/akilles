@@ -1693,6 +1693,7 @@ export const LEGS: Record<string, () => Move> = {
   walking_lunge: () => lunge(true),
   step_up: stepUp,
   leg_ext: legExtension,
+  single_leg_ext: legExtension,
   leg_curl: lyingLegCurl,
   seated_leg_curl: seatedLegCurl,
   hip_abduction: () => hipMachine(true),

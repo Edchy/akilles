@@ -82,6 +82,7 @@ import { feelWeight, firstWeight, type Feel, type Lifter } from "@/lib/start-wei
 import { BODYWEIGHT, GYM, fits, nearestWeight, needsOf, TWIN, weightsFor, type Kit } from "@/data/kit";
 import { FALL_BACK, fitOf, pick, STAND_IN, type Candidate } from "@/lib/fill";
 import { avoidFor, EXTRAS, SHAPE_FOR, SHAPES, type Easy, type Shape, type Time } from "@/data/templates";
+import { PLAN_IDS, PLANS, routinesOf, type PlanId } from "@/data/plans";
 import type { Outcome, Say } from "@/data/voice";
 import { familyOf, type Family } from "@/data/families";
 import { chainFor, type Chain } from "@/data/chains";
@@ -1397,6 +1398,53 @@ export const arrangePlan = (state: SessionState, active: string[], paused: strin
 };
 
 /**
+ * The built-in plan your active workouts are, or null for a plan of your own.
+ * Edits inside a workout don't change which plan it is; adding a workout or
+ * pausing one of the plan's does.
+ */
+export const planOf = (state: SessionState): PlanId | null => {
+  const active = state.workouts.map((w) => w.id).sort().join();
+  return PLAN_IDS.find((plan) => PLANS[plan].map((w) => w.id).sort().join() === active) ?? null;
+};
+
+/**
+ * Switch to a built-in plan: its workouts become the active ones, in its
+ * order, and everything else is paused — kept as it was, to come back to.
+ * A workout of the plan that is already here, running or paused, comes back
+ * with your edits; one that isn't arrives fresh. Its lifts and routines join
+ * your lists, so nothing it names is missing. The plan starts at its first
+ * workout. Refused while you are training.
+ */
+export const switchPlan = (state: SessionState, plan: PlanId): SessionState => {
+  if (state.active) return state;
+  const all = planWorkouts(state);
+  const have = new Set(all.map((w) => w.id));
+  const missing = PLANS[plan].filter((w) => !have.has(w.id));
+  const withAll: SessionState = {
+    ...state,
+    removedWorkouts: [
+      ...state.removedWorkouts,
+      ...missing.map((workout, i) => ({ workout, at: all.length + i })),
+    ],
+    planOrder: [...all, ...missing].map((w) => w.id),
+  };
+  const active = PLANS[plan].map((w) => w.id);
+  const paused = [...all, ...missing].map((w) => w.id).filter((id) => !active.includes(id));
+  const arranged = arrangePlan(withAll, active, paused);
+  if (arranged === withAll) return state;
+  const lifts = new Set(PLANS[plan].flatMap((w) => w.exercises.flatMap((e) => e.options)));
+  const routines = routinesOf(plan);
+  return {
+    ...arranged,
+    nextWorkout: active[0],
+    workoutQueue: undefined,
+    postponed: undefined,
+    hidden: arranged.hidden.filter((id) => !lifts.has(id)),
+    hiddenConditioning: arranged.hiddenConditioning.filter((id) => !routines.includes(id)),
+  };
+};
+
+/**
  * Loops are gone: one plan, its workouts active or paused. A save that has
  * other loops keeps every workout in them, paused, under the active ones —
  * nothing is lost, and resuming one brings it into the plan.
@@ -1866,7 +1914,7 @@ export const addablePatterns = (state: SessionState, workoutId: string): Pattern
 /**
  * Add a slot for a movement type at the bottom of a workout, filled with the
  * first exercise of that type the workout is not already using. It opens on
- * 6–12; everything about it can be changed afterwards.
+ * 6–10; everything about it can be changed afterwards.
  */
 export const addEntry = (
   state: SessionState,

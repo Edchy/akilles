@@ -247,6 +247,14 @@ const NEEDS: Record<string, Gear[]> = {
   suspension_row: ["suspension_trainer"],
   farmer_carry: ["dumbbells"],
   suitcase_carry: ["dumbbells"],
+  double_kb_press: ["kettlebell"],
+  deficit_push_up: ["dumbbells"],
+  turkish_get_up: ["kettlebell"],
+  db_bent_over_row: ["dumbbells"],
+  kb_high_pull: ["kettlebell"],
+  twisting_knee_raise: ["pullup_bar"],
+  single_leg_ext: ["machine"],
+  double_kb_front_squat: ["kettlebell"],
 };
 
 /**
@@ -260,6 +268,8 @@ export const TWIN: Record<string, string> = {
   kb_press: "db_shoulder",
   kb_row: "db_row",
   kb_floor_press: "db_bench",
+  double_kb_press: "db_shoulder",
+  double_kb_front_squat: "db_front_squat",
 };
 
 /** Whether a built-in exercise has its needs listed. For the test. */

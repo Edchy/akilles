@@ -6,7 +6,7 @@
  *
  * The reps decide everything; nothing is asked:
  *
- *   every set on target        climb the rep ladder       6 → 8 → 10 → 12
+ *   every set on target        climb the rep ladder       6 → 8 → 10
  *   on target, top of ladder   weight += increment, back to the bottom rung
  *     ...after two steps up    RELOAD instead: same weight, back two rungs
  *                              (10 reps), climbed again before the next step
@@ -374,26 +374,36 @@ export const freshState = (ex: Exercise, guess?: number): ExerciseState => ({
 export const HOLD_MAX = 5;
 
 /**
- * Seconds per rep on a timed hold. A plank on the 6–12 ladder holds for 30 →
- * 40 → 50 → 60 seconds, not six to twelve.
+ * Seconds per rep on a timed hold. A plank on the 6–10 ladder holds for 30 →
+ * 40 → 50 seconds, not six to ten.
  */
 export const TIMED_SECONDS = 5;
 
+/**
+ * The reps a lift keeps to whatever its slot says, if it has such a range:
+ * its own `range`, else 10–14 for a small muscle or isolation work. Most
+ * lifts have none and go where the slot says, within `REPS_RANGE`.
+ */
+export const ownRange = (exercise: Exercise | undefined): RepBounds | undefined =>
+  exercise?.range ?? (exercise && highReps(exercise) ? HIGH_REPS_RANGE : undefined);
+
 /** The fewest and most reps an exercise's range can be set to. */
 export const repBounds = (exercise: Exercise | undefined): RepBounds =>
-  exercise && highReps(exercise) ? HIGH_REPS_RANGE : REPS_RANGE;
+  ownRange(exercise) ?? REPS_RANGE;
 
 /**
  * The range an exercise actually climbs in a slot. The slot's own, unless
- * that reaches outside what the exercise allows: a pushdown in a 6–12 slot
- * climbs 10–14. The slot keeps its range — and the lift its record under it —
- * so swapping dips back in gives dips their 6 again.
+ * that reaches outside what the exercise allows: a pushdown in a 6–10 slot
+ * climbs 10–14, a deadlift 4–8. The slot keeps its range — and the lift its
+ * record under it — so swapping dips back in gives dips their 6 again.
  */
 export const schemeOf = (exercise: Exercise | undefined, scheme: Scheme): Scheme => {
-  if (!exercise || !highReps(exercise)) return scheme;
+  const own = ownRange(exercise);
+  if (!own) return scheme;
   const ladder = ladderFor(scheme);
-  const fits = ladder[0] >= HIGH_REPS_RANGE.min && ladder[ladder.length - 1] <= HIGH_REPS_RANGE.max;
-  return fits ? scheme : HIGH_REPS_SCHEME;
+  const fits = ladder[0] >= own.min && ladder[ladder.length - 1] <= own.max;
+  if (fits) return scheme;
+  return own === HIGH_REPS_RANGE ? HIGH_REPS_SCHEME : `${own.min}-${own.max}`;
 };
 
 /** The ladder an exercise actually climbs: the scheme's, in seconds for a timed hold. */
@@ -460,11 +470,11 @@ export const prescribe = (
 export const RELOAD_AFTER = 2;
 
 /**
- * Where a reload starts: two rungs below the top, so 10 reps on 6–12 and on
- * 8–12, then 12 again. Not the bottom. Six reps at a weight just done for
- * twelve is a wasted session, and a whole second climb would keep one weight
- * for eight. Ten is a lighter day that is still work, and twelve again proves
- * it. On a ladder of two rungs or fewer, that is the whole ladder.
+ * Where a reload starts: one rung below the top, so 8 reps on 6–10 and 10
+ * on 8–12, then the top again. Not the bottom. Six reps at a weight just
+ * done for ten is a wasted session, and a whole second climb would keep one
+ * weight too long. Eight is a lighter day that is still work, and ten again
+ * proves it. On a ladder of two rungs or fewer, that is the whole ladder.
  */
 export const reloadRung = (ladder: readonly number[]): number => Math.max(0, ladder.length - 2);
 

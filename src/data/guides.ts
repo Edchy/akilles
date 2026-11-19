@@ -473,6 +473,14 @@ const LIFTS: Record<string, Guide> = {
     ],
     "Stepping back so short that the front heel lifts.",
   ),
+  single_leg_ext: g(
+    [
+      "Knee in line with the machine's pivot. One leg on the pad.",
+      "Straighten the leg and squeeze for a moment.",
+      "Lower slowly. Do all your reps, then the other leg.",
+    ],
+    "Kicking the weight up and letting it drop.",
+  ),
   leg_ext: g(
     [
       "Knees in line with the machine's pivot.",
@@ -1275,6 +1283,7 @@ const OWN: Record<string, string> = {
   step_up: "Stand tall on the box for a second. No push from the back foot.",
   reverse_lunge: "Pause with the back knee just off the floor.",
   leg_ext: "Hold the legs straight for a second.",
+  single_leg_ext: "Hold the leg straight for a second.",
   hip_abduction: "Hold the knees wide for a second.",
   hip_adduction: "Hold the knees together for a second.",
   cable_kickback: "Hold the leg back for a second, glute squeezed.",

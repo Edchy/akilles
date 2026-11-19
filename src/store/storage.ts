@@ -15,6 +15,8 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
   CARDIO_DEFAULT,
   DEFAULT_MOBILITY,
+  EVERYDAY_WARMUP,
+  PPLPPL_ROUTINES,
   RETIRED_MOBILITY,
   mobilityById,
   setCustomConditioning,
@@ -26,11 +28,13 @@ import {
   LEAN,
   MOVEMENT_EXPANSION_IDS,
   PULLUP_STEP_IDS,
+  PPLPPL_IDS,
   byId,
   leanHiddenExercises,
   setCustomExercises,
   setExerciseEdits,
   type Exercise,
+  type Pattern,
 } from "@/data/exercises";
 import {
   DEFAULT_SCHEME,
@@ -211,7 +215,9 @@ export const keepAside = async (state: SessionState): Promise<void> => {
 // 17: correct treadmill time-trial targets to 1 km, including resumed sessions.
 // 18: add hollow hold to the optional exercise library.
 // 19: restore warm-up and cool-down defaults omitted by the first Bodyweight template.
-const VERSION = 21;
+// 22: every 6–12 slot climbs 6–10; lifts with a range of their own keep to it; the PPLPPL
+//     plan's lifts start in the library — see `toShorterRange` and `PPLPPL_IDS`.
+const VERSION = 22;
 
 /**
  * Version 14: lifts for training away from a gym. They start in the library
@@ -514,6 +520,67 @@ const toHighReps = (state: SessionState): SessionState => ({
   ),
 });
 
+/** Version 22: the range slots climbed before, and what they climb now. */
+const OLD_DEFAULT: Scheme = "6-12";
+/** Before version 22, only these kept to 10–14 in any slot. Frozen. */
+const OLD_HIGH_REPS: Pattern[] = ["triceps", "biceps", "shoulders", "calves", "abs"];
+
+/** The ladder a lift climbed in a slot before version 22. */
+const oldLadder = (ex: Exercise, scheme: Scheme): number[] => {
+  const ladder = ladderFor(scheme);
+  const high = !ex.timed && !ex.unloaded && OLD_HIGH_REPS.includes(ex.patterns[0]);
+  return high && !(ladder[0] >= 10 && ladder[ladder.length - 1] <= 14) ? ladderFor("10-14") : ladder;
+};
+
+/**
+ * Version 22: every slot on 6–12 moves to 6–10, and every lift's records go
+ * with it. Lifts given a range of their own — isolation work and swings on
+ * 10–14, a deadlift on 4–8 — move onto it in every slot.
+ *
+ * A record keeps its weight and keeps aiming at the reps it was on, as near
+ * as the new ladder has: 8 stays 8, and 12 on 6–12 becomes the new top, 10,
+ * so the next clean session adds weight. A leg curl on 10 reps of 6–12 starts
+ * 10–14 at 10. Where the old and the new key meet, the more recent record
+ * wins. Must run after the custom list is registered, so your own lifts count.
+ */
+const toShorterRange = (state: SessionState): SessionState => {
+  const moved = (scheme: Scheme): Scheme => (scheme === OLD_DEFAULT ? DEFAULT_SCHEME : scheme);
+  const retune = <T extends Entry>(e: T): T => (e.scheme === OLD_DEFAULT ? { ...e, scheme: DEFAULT_SCHEME } : e);
+  const retuneItem = (it: Item): Item => ({
+    ...retune(it),
+    ...(it.supersetEntry ? { supersetEntry: retuneItem(it.supersetEntry) } : {}),
+  });
+  const retuneWorkout = (w: Workout): Workout => ({ ...w, exercises: w.exercises.map(retune) });
+
+  const history: SessionState["history"] = {};
+  for (const [k, record] of Object.entries(state.history)) {
+    const at = k.lastIndexOf(":");
+    const scheme = k.slice(at + 1) as Scheme;
+    const ex = byId(record.exerciseId);
+    if (at < 0 || !ex || ex.seconds || scheme === "speed") {
+      history[k] = record;
+      continue;
+    }
+    const next = moved(scheme);
+    const before = oldLadder(ex, scheme);
+    const after = ladderFor(schemeOf(ex, next));
+    const target = before[Math.min(record.rung, before.length - 1)];
+    const rung = Math.max(0, after.filter((reps) => reps <= target).length - 1);
+    const nextKey = `${k.slice(0, at)}:${next}`;
+    const there = history[nextKey];
+    if (there && (there.lastTrainedAt ?? 0) >= (record.lastTrainedAt ?? 0)) continue;
+    history[nextKey] = { ...record, rung };
+  }
+
+  return {
+    ...state,
+    workouts: state.workouts.map(retuneWorkout),
+    removedWorkouts: state.removedWorkouts.map((r) => ({ ...r, workout: retuneWorkout(r.workout) })),
+    history,
+    active: state.active && { ...state.active, items: state.active.items.map(retuneItem) },
+  };
+};
+
 /**
  * Why a saved blob could not be read: not ours at all, or written by a newer
  * version of the app than this one understands.
@@ -677,6 +744,18 @@ export const fromSaved = (raw: string): SessionState | Unreadable => {
     // saved plan and any current card that will genuinely be resumed.
     // Not a version step: any save with loops, old or new, folds them in.
     migrated = foldLoops(migrated);
+    if (saved.version < 22) {
+      migrated = toShorterRange(migrated);
+      migrated.hidden = [
+        ...migrated.hidden,
+        ...PPLPPL_IDS.filter((id) => !LEAN.includes(id) && !migrated.hidden.includes(id)),
+      ];
+      const routines = [...(Object.values(PPLPPL_ROUTINES) as string[]), EVERYDAY_WARMUP];
+      migrated.hiddenConditioning = [
+        ...migrated.hiddenConditioning,
+        ...routines.filter((id) => !migrated.hiddenConditioning.includes(id)),
+      ];
+    }
     return correctTreadmillTarget(saved.version < 17 ? { ...migrated, treadmillTargetRevision: undefined } : migrated);
   } catch {
     return "invalid";

@@ -1,7 +1,7 @@
 /**
  * Where a lift starts the first time, as a share of your body weight.
  *
- * Each number is a working weight — lifted 6 to 12 times slowly, with two to
+ * Each number is a working weight — lifted 6 to 10 times slowly, with two to
  * spare — for a man who has lifted a bit, as a share of what he weighs. They
  * come from published strength tables (one-rep maxes for a "beginner", taken
  * down to about two thirds for a working weight) and are rounded towards
@@ -60,6 +60,8 @@ export const START_RATIO: Record<string, StartRatio> = {
   chest_supported_row: r(0.35),
   machine_row: r(0.5),
   db_row: r(0.2),
+  // Both arms at once, bent over: a little under the one-arm row, braced on a bench.
+  db_bent_over_row: r(0.15),
   kb_row: r(0.2),
   tbar_row: r(0.4),
   // ---------- squat ----------
@@ -92,6 +94,8 @@ export const START_RATIO: Record<string, StartRatio> = {
   split_squat: r(0.1),
   // ---------- quads and hamstrings ----------
   leg_ext: r(0.4),
+  // One leg: about half of both.
+  single_leg_ext: r(0.2),
   leg_curl: r(0.35),
   seated_leg_curl: r(0.4),
   hip_abduction: r(0.5),

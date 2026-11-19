@@ -30,16 +30,28 @@ const fresh = () => store.resetToDefault();
 const plain = (value) => JSON.parse(JSON.stringify(value));
 const started = (state, id) => store.buildWorkout(store.setNextWorkout(state, id)).active.items;
 const warmupOf = (state, id) => started(state, id).find((it) => it.slot === store.WARMUP_SLOT);
+/** The workouts with no warm-up of their own, so each takes its day's. */
+const byDay = (state) => ({ ...state, workouts: state.workouts.map(({ warmup: _own, ...w }) => w) });
 
-test("every day opens with its own warm-up, straight after the cardio", () => {
+test("the easy plan opens every day on the same warm-up, straight after the cardio", () => {
   const items = started(fresh(), "push");
   assert.equal(items[1].slot, "Warm-up");
-  assert.equal(items[1].exerciseId, "warmup_push");
+  assert.equal(items[1].exerciseId, "warmup");
   assert.equal(items[2].exerciseId, "db_bench");
-  assert.equal(warmupOf(fresh(), "pull").exerciseId, "warmup_pull");
-  assert.equal(warmupOf(fresh(), "legs").exerciseId, "warmup_legs");
+  assert.equal(warmupOf(fresh(), "pull").exerciseId, "warmup");
+  assert.equal(warmupOf(fresh(), "legs").exerciseId, "warmup");
   const preview = store.workoutPreview(fresh(), store.workoutById(fresh(), "push"));
-  assert.deepEqual(plain(preview.slice(0, 2).map((r) => r.name)), ["Treadmill", "Push mobility"]);
+  assert.deepEqual(plain(preview.slice(0, 2).map((r) => r.name)), ["Treadmill", "Warm-up"]);
+  const moves = conditioning.mobilityById("warmup").moves;
+  assert.deepEqual(plain(moves.map((m) => [m.stretch, m.reps])), [["cat_cow", 8], ["worlds_greatest", 3], ["arm_circles", 20], ["bodyweight_squat", 10]]);
+  assert.ok(store.routineMinutes(conditioning.mobilityById("warmup")) <= 5);
+});
+
+test("a workout with no warm-up of its own opens with its day's", () => {
+  const state = byDay(fresh());
+  assert.equal(warmupOf(state, "push").exerciseId, "warmup_push");
+  assert.equal(warmupOf(state, "pull").exerciseId, "warmup_pull");
+  assert.equal(warmupOf(state, "legs").exerciseId, "warmup_legs");
 });
 
 test("each opens on the wide stance and the side stance, then the day's own moves", () => {
@@ -56,7 +68,7 @@ test("each opens on the wide stance and the side stance, then the day's own move
 
 test("the day is what its lifts mostly are", () => {
   // Legs with two presses added is still mostly legs.
-  let state = store.addExerciseToWorkout(fresh(), "legs", "db_shoulder");
+  let state = store.addExerciseToWorkout(byDay(fresh()), "legs", "db_shoulder");
   assert.equal(warmupOf(state, "legs").exerciseId, "warmup_legs");
   state = store.addExerciseToWorkout(state, "legs", "db_bench");
   state = store.addExerciseToWorkout(state, "legs", "dips");

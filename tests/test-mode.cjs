@@ -120,8 +120,8 @@ test("short workouts run, and show, only the first two exercises", () => {
   assert.equal(lifts({ ...s, shortWorkouts: true }).length, 2);
   assert.equal(store.exercisesToRun({ ...s, shortWorkouts: true }, push).length, 2);
   const named = (state) => store.workoutPreview(state, push).map((r) => r.name);
-  assert.ok(!named({ ...s, shortWorkouts: true }).includes("Triceps pushdown"));
-  assert.ok(named(s).includes("Triceps pushdown"));
+  assert.ok(!named({ ...s, shortWorkouts: true }).includes("Dips"));
+  assert.ok(named(s).includes("Dips"));
 });
 
 test("a save with loops keeps every workout: the other loop's are paused", () => {

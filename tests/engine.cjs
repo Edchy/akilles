@@ -277,13 +277,13 @@ test("a slot keeps its id through a swap, and the swap stays with the slot when 
 test("removed and added back, an exercise opens at the weight it had", () => {
   let s = fresh();
   s = train(s, random(2), now0, { shortChance: 0, skipChance: 0 });
-  const curl = slot(s, "pull", "Biceps");
-  const w = store.nextWeight(s, "db_curl");
-  s = store.removeEntry(s, "pull", curl.id);
-  assert.ok(!store.workoutById(s, "pull").exercises.some((e) => e.id === curl.id));
-  assert.ok(!(store.slotKey("pull", curl.id) in s.choices), "its choice goes with it");
-  s = store.addExerciseToWorkout(s, "pull", "db_curl", "s_back");
-  assert.equal(store.nextWeight(s, "db_curl"), w);
+  const row = slot(s, "pull", "One-arm row");
+  const w = store.nextWeight(s, "db_row");
+  s = store.removeEntry(s, "pull", row.id);
+  assert.ok(!store.workoutById(s, "pull").exercises.some((e) => e.id === row.id));
+  assert.ok(!(store.slotKey("pull", row.id) in s.choices), "its choice goes with it");
+  s = store.addExerciseToWorkout(s, "pull", "db_row", "s_back");
+  assert.equal(store.nextWeight(s, "db_row"), w);
 });
 
 test("the same exercise can't be added to a workout twice", () => {
@@ -396,7 +396,7 @@ test("started and left with nothing done: nothing is recorded and the same worko
 
 test("a skipped lift keeps its weight and its place on the ladder", () => {
   let s = train(fresh(), random(4), now0, { shortChance: 0, skipChance: 0 });
-  const before = { ...s.history[store.key("db_bench", "6-12")] };
+  const before = { ...s.history[store.key("db_bench", "6-10")] };
   s = store.setNextWorkout(s, "push");
   s = store.buildWorkout(s, now0 + DAY);
   while (!store.isComplete(s)) {
@@ -407,7 +407,7 @@ test("a skipped lift keeps its weight and its place on the ladder", () => {
     } else s = store.skipExercise(s);
   }
   s = store.finishWorkout(s, now0 + DAY);
-  const after = s.history[store.key("db_bench", "6-12")];
+  const after = s.history[store.key("db_bench", "6-10")];
   assert.equal(after.weight, before.weight);
   assert.equal(after.rung, before.rung);
 });
@@ -489,6 +489,7 @@ test("holiday: a Bodyweight loop of its own, and the gym loop waits where you le
   assert.equal(store.loopInUse(s), store.FIRST_LOOP, "the new loop waits until you use it");
   assert.equal(store.upNext(s).id, "pull");
   s = store.switchLoop(s, "away");
+  const logged = s.log.length;
   assert.equal(store.upNext(s).id, "bw");
   assert.equal(s.workouts.map((w) => w.id).join(), "bw", "only Bodyweight in the loop: nothing paused, nothing cluttered");
   s = train(s, random(9), now0 + DAY, { shortChance: 0, skipChance: 0 });
@@ -496,7 +497,12 @@ test("holiday: a Bodyweight loop of its own, and the gym loop waits where you le
   s = store.switchLoop(s, store.FIRST_LOOP);
   assert.equal(store.upNext(s).id, "pull", "home again: Pull, where the gym loop stopped");
   assert.equal(s.workouts.map((w) => w.id).join(), "push,pull,legs");
-  for (const [k, r] of Object.entries(JSON.parse(weights))) assert.equal(s.history[k].weight, r.weight, `${k} untouched by the holiday`);
+  // A lift both loops share climbs once, wherever it is trained — see the next test.
+  const away = new Set(s.log.slice(logged).flatMap((l) => l.entries.map((e) => e.exerciseId)));
+  for (const [k, r] of Object.entries(JSON.parse(weights))) {
+    if (away.has(r.exerciseId)) continue;
+    assert.equal(s.history[k].weight, r.weight, `${k} untouched by the holiday`);
+  }
 });
 
 test("one exercise, one climb: a weight is the same in every loop", () => {
@@ -549,7 +555,7 @@ test("a copy in another loop is its own workout", () => {
   const away = store.viewLoop(s, "away");
   assert.equal(away.workouts.map((w) => w.name).join(), "Bodyweight,Legs");
   s = store.inLoop(s, "away", (v) => store.removeEntry(v, "legs_away", store.workoutById(v, "legs_away").exercises[0].id));
-  assert.equal(store.workoutById(s, "legs").exercises.length, 4, "the original is untouched");
+  assert.equal(store.workoutById(s, "legs").exercises.length, 5, "the original is untouched");
 });
 
 test("the workout being trained, and a loop's last workout, can't be moved away", () => {

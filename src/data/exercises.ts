@@ -1,5 +1,6 @@
 import type { Gear } from "@/data/kit";
 import type { Movement, Muscle } from "@/data/exercise-tags";
+import type { RepBounds } from "@/data/split";
 
 /**
  * The exercise pool.
@@ -127,7 +128,19 @@ export type Exercise = {
   startWeight?: number;
   /** Shown once, on the first screen of the exercise. Keep it short. */
   cue?: string;
+  /**
+   * The reps this lift does its best work in, when that isn't the usual
+   * 6–10: more for isolation work and swings, fewer for a heavy pull from the
+   * floor. It climbs this range in any slot whose range doesn't fit — see
+   * `ownRange` and `schemeOf`.
+   */
+  range?: RepBounds;
 };
+
+/** Isolation work and swings: 10 → 12 → 14, like the small muscles. */
+const HIGH: RepBounds = { min: 10, max: 14 };
+/** A heavy pull from the floor: 4 → 6 → 8. Its form goes before its lungs do. */
+const LOW: RepBounds = { min: 4, max: 8 };
 
 export const EXERCISES: Exercise[] = [
   // ---------- horizontal push ----------
@@ -214,7 +227,7 @@ export const EXERCISES: Exercise[] = [
     aliases: ["close grip pulldown", "v-bar pulldown", "v bar pulldown", "neutral grip pulldown"] },
   { id: "machine_pulldown", name: "Machine pulldown", patterns: ["vertical_pull"], increment: 5,
     aliases: ["pulldown machine", "iso-lateral pulldown", "plate loaded pulldown"] },
-  { id: "straight_arm_pulldown", name: "Straight-arm pulldown", patterns: ["vertical_pull"], increment: 2.5,
+  { id: "straight_arm_pulldown", name: "Straight-arm pulldown", patterns: ["vertical_pull"], range: HIGH, increment: 2.5,
     cue: "Arms stay straight. Lats, not triceps.",
     aliases: ["straight arm pulldown", "lat pushdown", "cable pullover", "straight arm lat pulldown"] },
   { id: "db_pullover", name: "DB pullover", patterns: ["vertical_pull"], increment: 2.5,
@@ -260,7 +273,7 @@ export const EXERCISES: Exercise[] = [
     aliases: ["smith squat", "smith machine squats"] },
 
   // ---------- hinge ----------
-  { id: "deadlift", name: "Deadlift", patterns: ["hinge"], increment: 2.5, cue: "Bar close, push the floor away.",
+  { id: "deadlift", name: "Deadlift", patterns: ["hinge"], range: LOW, increment: 2.5, cue: "Bar close, push the floor away.",
     aliases: ["conventional deadlift", "barbell deadlift", "deadlifts", "dl"] },
   { id: "rdl", name: "Romanian deadlift", patterns: ["hinge"], increment: 2.5, cue: "Hips back, slight knee bend.",
     aliases: ["rdl", "romanian dl", "barbell rdl", "stiff leg deadlift", "stiff-legged deadlift", "sldl"] },
@@ -276,9 +289,9 @@ export const EXERCISES: Exercise[] = [
     aliases: ["kettlebell romanian deadlift", "kb rdl", "kettlebell rdl"] },
   { id: "nordic_curl", name: "Nordic curl", patterns: ["hamstrings"], increment: 1, bodyweight: true, holds: true,
     aliases: ["nordic hamstring curl", "nordics", "nordic"] },
-  { id: "kb_swing", name: "KB swing", patterns: ["hinge"], autoSelect: false, increment: 4, cue: "Snap the hips, arms just guide the bell.",
+  { id: "kb_swing", name: "KB swing", patterns: ["hinge"], range: HIGH, autoSelect: false, increment: 4, cue: "Snap the hips, arms just guide the bell.",
     aliases: ["kettlebell swing", "russian swing", "kettlebell swings"] },
-  { id: "sumo_deadlift", name: "Sumo deadlift", patterns: ["hinge"], increment: 2.5,
+  { id: "sumo_deadlift", name: "Sumo deadlift", patterns: ["hinge"], range: LOW, increment: 2.5,
     aliases: ["sumo", "sumo dl", "sumo deadlifts"] },
   { id: "trap_bar_deadlift", name: "Trap bar deadlift", patterns: ["hinge"], increment: 2.5,
     aliases: ["hex bar deadlift", "trap bar", "hex bar", "trap bar dl"] },
@@ -308,18 +321,18 @@ export const EXERCISES: Exercise[] = [
   // ---------- quads / hams isolation ----------
   { id: "leg_ext", name: "Leg extension", patterns: ["quads"], increment: 5,
     aliases: ["leg extension machine", "leg extensions", "quad extension"] },
-  { id: "leg_curl", name: "Leg curl", patterns: ["hamstrings"], increment: 5,
+  { id: "leg_curl", name: "Leg curl", patterns: ["hamstrings"], range: HIGH, increment: 5,
     aliases: ["lying leg curl", "leg curl machine", "hamstring curl", "prone leg curl"] },
-  { id: "seated_leg_curl", name: "Seated leg curl", patterns: ["hamstrings"], increment: 5,
+  { id: "seated_leg_curl", name: "Seated leg curl", patterns: ["hamstrings"], range: HIGH, increment: 5,
     aliases: ["seated hamstring curl", "leg curl machine", "seated leg curls"] },
   // The hip machines and the glute kickback. There is no glute or adductor
   // type, so they sit with the other hip work under Hamstrings, beside the hip
   // thrust and the leg curl, rather than turning up as a swap for a squat.
-  { id: "hip_abduction", name: "Hip abduction", patterns: ["hamstrings"], increment: 5,
+  { id: "hip_abduction", name: "Hip abduction", patterns: ["hamstrings"], range: HIGH, increment: 5,
     aliases: ["abductor machine", "abduction machine", "hip abductor", "outer thigh machine", "abductors"] },
-  { id: "hip_adduction", name: "Hip adduction", patterns: ["hamstrings"], increment: 5,
+  { id: "hip_adduction", name: "Hip adduction", patterns: ["hamstrings"], range: HIGH, increment: 5,
     aliases: ["adductor machine", "adduction machine", "hip adductor", "inner thigh machine", "adductors"] },
-  { id: "cable_kickback", name: "Cable glute kickback", patterns: ["hamstrings"], increment: 2.5,
+  { id: "cable_kickback", name: "Cable glute kickback", patterns: ["hamstrings"], range: HIGH, increment: 2.5,
     cue: "Ankle strap, low pulley. One leg at a time.",
     aliases: ["glute kickback", "cable kickback", "glute kickback machine"] },
 
@@ -443,7 +456,7 @@ export const EXERCISES: Exercise[] = [
   // its place next to the crunches rather than duplicating one.
   { id: "ab_machine", name: "Rotary torso machine", patterns: ["abs"], increment: 5, cue: "Turn from the ribs, hips still. Both directions.",
     aliases: ["torso rotation machine", "rotation machine", "oblique machine", "torso twist"] },
-  { id: "hollow_hold", name: "Hollow hold", patterns: ["abs"], increment: 0, bodyweight: true, timed: true, cue: "Lower back stays against the floor.",
+  { id: "hollow_hold", name: "Hollow hold", patterns: ["abs"], range: { min: 4, max: 8 }, increment: 0, bodyweight: true, timed: true, cue: "Lower back stays against the floor.",
     aliases: ["hollow body hold", "hollow body", "hollow holds"] },
   { id: "plank", name: "Plank", patterns: ["abs"], increment: 0, bodyweight: true, timed: true,
     aliases: ["front plank", "forearm plank", "planks"] },
@@ -501,6 +514,29 @@ export const EXERCISES: Exercise[] = [
     aliases: ["farmers walk", "farmer carry", "dumbbell loaded carry", "farmer's carry"] },
   { id: "suitcase_carry", name: "DB suitcase carry", patterns: ["abs"], movements: ["carry", "lateral_stability"], muscles: ["forearms", "obliques"],
     autoSelect: false, increment: 2.5, timed: true, startWeight: 7.5, aliases: ["suitcase walk", "single arm loaded carry", "dumbbell suitcase carry"] },
+  // The PPLPPL plan's kettlebell and dumbbell lifts — see `data/plans.ts`.
+  { id: "double_kb_press", name: "Double KB press", patterns: ["vertical_push"], autoSelect: false, increment: 4, perHand: true, startWeight: 8,
+    cue: "Both bells in the rack. Ribs down, press straight up.", aliases: ["double kettlebell press", "double kettlebell overhead press", "double kettlebell military press"] },
+  { id: "deficit_push_up", name: "Deficit push-up", patterns: ["horizontal_push"], autoSelect: false, increment: 1, bodyweight: true, holds: true,
+    cue: "Hands on two dumbbells. Chest sinks below your hands.", aliases: ["deficit pushup", "push-up on dumbbells", "dumbbell push up"] },
+  { id: "turkish_get_up", name: "Turkish get-up", patterns: ["vertical_push"], range: { min: 1, max: 2 }, autoSelect: false, increment: 4, startWeight: 8,
+    cue: "Eyes on the bell, arm straight, all the way up and back down.", aliases: ["tgu", "get up", "get-up", "kettlebell get up"] },
+  { id: "db_bent_over_row", name: "DB bent-over row", patterns: ["horizontal_pull"], autoSelect: false, increment: 2.5, perHand: true,
+    cue: "Both arms at once. Flat back, pull to the hips.", aliases: ["two arm dumbbell row", "dumbbell bent over row", "bent over dumbbell row"] },
+  { id: "kb_high_pull", name: "KB high pull", patterns: ["horizontal_pull"], autoSelect: false, increment: 4, startWeight: 12,
+    cue: "Hips drive the bell; the elbow pulls it back, high and close.", aliases: ["kettlebell high pull", "kettlebell sumo high pull"] },
+  { id: "twisting_knee_raise", name: "Hanging knee raise with a twist", patterns: ["abs"], autoSelect: false, increment: 1, bodyweight: true, holds: true,
+    cue: "Knees up toward one side, then the other.", aliases: ["twisting hanging knee raise", "oblique hanging knee raise", "hanging oblique raise"] },
+  { id: "single_leg_ext", name: "Single-leg extension", patterns: ["quads"], autoSelect: false, increment: 5,
+    cue: "One leg at a time, same weight both sides.", aliases: ["single leg extension", "one leg extension", "single leg knee extension"] },
+  { id: "double_kb_front_squat", name: "Double KB front squat", patterns: ["squat"], autoSelect: false, increment: 4, perHand: true, startWeight: 12,
+    cue: "Both bells in the rack, elbows under them. Hips drop straight down.", aliases: ["double kettlebell front squat", "kettlebell front squat"] },
+];
+
+/** Frozen batch: the PPLPPL plan's lifts, new in save version 22. */
+export const PPLPPL_IDS = [
+  "double_kb_press", "deficit_push_up", "turkish_get_up", "db_bent_over_row", "kb_high_pull",
+  "twisting_knee_raise", "single_leg_ext", "double_kb_front_squat",
 ];
 
 /** Frozen batch: the steps to a pull-up, new in save version 21. */
@@ -586,6 +622,7 @@ export const LEAN: string[] = [
   "cable_crunch",
   "plank",
   "dead_bug",
+  "farmer_carry",
   "crunch",
   "ab_wheel",
 ];
@@ -767,10 +804,12 @@ export const PATTERN_ORDER: Pattern[] = [
  * Small muscles do their best work on ten reps or more: six heavy reps on a
  * pushdown or a crunch is all strain and little growth. An exercise counts by
  * its main movement type, so dips and close-grip bench — presses first,
- * triceps second — can still go down to six, and so can chin-ups. Planks and
- * other timed holds keep their seconds.
+ * triceps second — can still go down to six, and so can chin-ups. Chest
+ * flies and leg extensions are the same kind of work for bigger muscles, so
+ * they count too. Planks and other timed holds keep their seconds. A lift
+ * with a `range` of its own uses that instead.
  */
-const HIGH_REP_PATTERNS: Pattern[] = ["triceps", "biceps", "shoulders", "calves", "abs"];
+const HIGH_REP_PATTERNS: Pattern[] = ["triceps", "biceps", "shoulders", "calves", "abs", "chest_iso", "quads"];
 
 export const highReps = (ex: Exercise): boolean =>
   !ex.timed && !ex.unloaded && HIGH_REP_PATTERNS.includes(ex.patterns[0]);

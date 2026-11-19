@@ -86,7 +86,7 @@ test("balance is a word, never a rule", () => {
   // Past eight lifts, any kind gets the gentle word, and can still be trained.
   for (const id of ["leg_ext", "seated_leg_curl", "calf_raise", "hip_thrust", "bulgarian"]) state = store.addExerciseToWorkout(state, "legs", id);
   const legs = state.workouts.find((w) => w.id === "legs");
-  assert.match(store.balanceNotes(state, legs).at(-1), /^That's a long one: 9 exercises/);
+  assert.match(store.balanceNotes(state, legs).at(-1), /^That's a long one: 10 exercises/);
   assert.ok(store.buildWorkout(store.setNextWorkout(state, "legs")).active);
 });
 

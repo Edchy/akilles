@@ -9,11 +9,12 @@ import { Icon } from "@/components/icon";
 import { useOpenIntro } from "@/components/intro";
 import { kitSummary, PlaceSheet, usualName } from "@/components/place";
 import { COLUMN } from "@/components/screen";
-import { BigButton, OpenRow, SectionLabel, Sheet } from "@/components/sheet";
+import { BigButton, OpenRow, SectionLabel, Sheet, TextButton } from "@/components/sheet";
 import { TestMode } from "@/components/test-mode";
 import { Text } from "@/components/text";
 import { colors, fonts } from "@/constants/theme";
-import { forgetBody, kitAt, placeOf, useSession } from "@/store/session";
+import { PLAN_ABOUT, PLAN_IDS, PLAN_NAME, type PlanId } from "@/data/plans";
+import { forgetBody, kitAt, placeOf, planOf, switchPlan, useSession } from "@/store/session";
 
 /**
  * Everything you set once and rarely touch, in one place, so the screens you
@@ -26,7 +27,14 @@ export default function SettingsScreen() {
   const router = useRouter();
   const { state, setState } = useSession();
   const openIntro = useOpenIntro();
-  const [sheet, setSheet] = useState<"place" | "backup" | "test" | "body" | null>(null);
+  const [sheet, setSheet] = useState<"place" | "plan" | "backup" | "test" | "body" | null>(null);
+  // The plan tapped in the plan sheet, waiting for a yes.
+  const [picked, setPicked] = useState<PlanId | null>(null);
+  const plan = planOf(state);
+  const closePlan = () => {
+    setSheet(null);
+    setPicked(null);
+  };
 
   const away = placeOf(state) === "away";
   // Said at the start, for first weights only: shown so it can be taken back.
@@ -80,6 +88,14 @@ export default function SettingsScreen() {
       />
 
       <View style={{ height: 14 }} />
+      <SectionLabel>Your plan</SectionLabel>
+      <OpenRow
+        title={plan ? PLAN_NAME[plan] : "Your own workouts"}
+        detail="Change to another plan"
+        onPress={() => setSheet("plan")}
+      />
+
+      <View style={{ height: 14 }} />
       <SectionLabel>Help</SectionLabel>
       <OpenRow title="Why Klay, and how it works" detail="A one-minute film" onPress={openIntro} />
 
@@ -104,6 +120,44 @@ export default function SettingsScreen() {
       ) : null}
 
       {sheet === "place" ? <PlaceSheet onClose={() => setSheet(null)} /> : null}
+      <Sheet visible={sheet === "plan"} title="Your plan" closeLabel="Done" onClose={closePlan}>
+        {picked ? (
+          <View style={{ gap: 20, paddingTop: 8 }}>
+            <Text style={{ color: colors.text, fontFamily: fonts.display, fontSize: 28 }}>
+              {PLAN_NAME[picked]}
+            </Text>
+            <Text style={{ color: colors.text, fontFamily: fonts.regular, fontSize: 19, lineHeight: 27 }}>
+              Its workouts take over from yours. Yours are paused, not deleted: they wait in
+              Plan, and you can come back to them. Your weights and your history stay as they are.
+            </Text>
+            <BigButton
+              label="Use this plan"
+              onPress={() => {
+                setState((s) => switchPlan(s, picked));
+                closePlan();
+              }}
+            />
+            <TextButton label="Cancel" onPress={() => setPicked(null)} />
+          </View>
+        ) : (
+          <View style={{ gap: 12, paddingTop: 8 }}>
+            {PLAN_IDS.map((id) => (
+              <OpenRow
+                key={id}
+                title={PLAN_NAME[id]}
+                detail={PLAN_ABOUT[id]}
+                tag={id === plan ? "In use" : undefined}
+                onPress={() => (id === plan || state.active ? undefined : setPicked(id))}
+              />
+            ))}
+            {state.active ? (
+              <Text style={{ color: colors.faint, fontSize: 15, lineHeight: 21 }}>
+                Finish today&apos;s workout first, then you can change plan.
+              </Text>
+            ) : null}
+          </View>
+        )}
+      </Sheet>
       <Sheet
         visible={sheet === "backup"}
         title="Backup"

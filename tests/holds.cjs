@@ -115,7 +115,7 @@ test("a dead hang starts at 10 seconds and climbs five at a time, to a minute", 
 /** Push's abs, done: every set at its target, with the slot holding `rec`. */
 const absDone = (rec, reps) => {
   const base = store.resetToDefault();
-  let state = store.buildWorkout({ ...base, history: { [`${rec.exerciseId}:6-12`]: rec } });
+  let state = store.buildWorkout({ ...base, history: { [`${rec.exerciseId}:6-10`]: rec } });
   const at = state.active.items.findIndex(
     (it) => it.exerciseId && exercises.byId(it.exerciseId)?.patterns.includes("abs"),
   );
@@ -140,7 +140,7 @@ test("what next time says, in seconds and holds", () => {
   assert.equal(fact(record("hanging_leg_raise", 3, { rung: 0, downStreak: 1 }), 6), "Back to a 2 s hold next time.");
   assert.equal(fact(record("hanging_leg_raise", 0, { rung: 1, downStreak: 1 }), 6), "Back to 10 reps next time.");
   assert.equal(fact(record("plank", 0, { rung: 0 })), "40 s next time.");
-  assert.equal(fact(record("plank", 0, { rung: 3 })), "60 s again next time. That's the top.");
+  assert.equal(fact(record("plank", 0, { rung: 2 })), "50 s again next time. That's the top.");
   assert.equal(fact(record("plank", 0, { rung: 2 }), 45), "The same again next time.");
 });
 
@@ -206,9 +206,9 @@ test("a version 11 save turns kilograms on a holds lift into seconds, and leaves
   };
   const state = storage.fromSaved(JSON.stringify({ version: 11, state: old }));
 
-  assert.equal(state.history["hanging_leg_raise:6-12"].weight, 1);
-  assert.equal(state.history["custom_l_sit:6-12"].weight, prog.HOLD_MAX);
-  assert.equal(state.history["dips:6-12"].weight, 10);
+  assert.equal(state.history["hanging_leg_raise:6-10"].weight, 1);
+  assert.equal(state.history["custom_l_sit:6-10"].weight, prog.HOLD_MAX);
+  assert.equal(state.history["dips:6-10"].weight, 10);
   assert.deepEqual([...state.log[0].entries.map((e) => e.weight)], [1, 10]);
   assert.deepEqual({ ...state.exerciseEdits.hanging_leg_raise }, { name: "HLR" });
   assert.deepEqual({ ...state.exerciseEdits.dips }, { increment: 5 });
@@ -221,5 +221,5 @@ test("a version 11 save turns kilograms on a holds lift into seconds, and leaves
 
   // And a save already in seconds is left as it is.
   const again = storage.fromSaved(storage.toSaved(state));
-  assert.equal(again.history["hanging_leg_raise:6-12"].weight, 1);
+  assert.equal(again.history["hanging_leg_raise:6-10"].weight, 1);
 });

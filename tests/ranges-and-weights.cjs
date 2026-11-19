@@ -43,7 +43,7 @@ test("every rep target is 6, 8, 10 or 12, and abs are two sets", () => {
   assert.equal(split.setsFor(state.workouts.find((w) => w.id === "legs").exercises.at(-1)), 2);
 });
 
-test("an old save moves to 6–12 and keeps each lift's weight", () => {
+test("an old save moves to 6–10 and keeps each lift's weight", () => {
   const now = Date.now();
   const base = store.resetToDefault();
   const record = (exerciseId, weight, rung, lastTrainedAt) => ({ exerciseId, weight, rung, downStreak: 0, deloads: 0, lastTrainedAt });
@@ -68,17 +68,17 @@ test("an old save moves to 6–12 and keeps each lift's weight", () => {
 
   for (const w of restored.workouts) {
     for (const e of w.exercises) {
-      assert.equal(e.scheme, "6-12");
+      assert.equal(e.scheme, "6-10");
       if (e.pattern === "abs") assert.equal(e.sets, 2);
     }
   }
-  assert.deepEqual(Object.keys(restored.history).sort(), ["db_bench:6-12", "dips:6-12", "rdl:6-12"]);
-  assert.equal(restored.history["db_bench:6-12"].weight, 22);
-  assert.equal(restored.history["db_bench:6-12"].rung, 1);
-  assert.equal(restored.history["db_bench:6-12"].lastTrainedAt, now - 1 * DAY);
-  assert.equal(restored.history["dips:6-12"].rung, 1);
-  assert.equal(restored.history["rdl:6-12"].weight, 70);
-  assert.equal(restored.history["rdl:6-12"].rung, 2);
+  assert.deepEqual(Object.keys(restored.history).sort(), ["db_bench:6-10", "dips:6-10", "rdl:6-10"]);
+  assert.equal(restored.history["db_bench:6-10"].weight, 22);
+  assert.equal(restored.history["db_bench:6-10"].rung, 1);
+  assert.equal(restored.history["db_bench:6-10"].lastTrainedAt, now - 1 * DAY);
+  assert.equal(restored.history["dips:6-10"].rung, 1);
+  assert.equal(restored.history["rdl:6-10"].weight, 70);
+  assert.equal(restored.history["rdl:6-10"].rung, 2);
   // Already on the new shape: a second load changes nothing.
   const plain = (value) => JSON.parse(JSON.stringify(value));
   assert.deepEqual(plain(storage.fromSaved(storage.toSaved(restored)).history), plain(restored.history));
