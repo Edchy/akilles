@@ -28,8 +28,9 @@ export const hasIllustration = (id: string): boolean =>
 /**
  * The picture of a movement — a lift, a machine or a stretch — by its id.
  *
- * A stretch with the clay figure's pictures (see `components/clay.tsx`) shows
- * those, before anything below.
+ * A stretch or lift with the clay figure's pictures (see `components/clay.tsx`)
+ * shows those, before anything below: a stretch with its breath, a lift at
+ * lifting pace.
  *
  * Klay's own drawing where one has passed (`DRAWN`): the figure moving at the pace
  * of a rep, the part that works in the accent. Otherwise a film where there
@@ -61,7 +62,7 @@ export function Illustration({
   const drawn = !always && DRAWN.has(id) && id in ART;
   const film = always || (!drawn && id in MOVES && !RESHOOT.has(id));
 
-  // A stretch in the clay figure's pictures, breathing by itself; still as a thumbnail or at rest.
+  // The clay figure: a stretch breathing, a lift lifting, by itself; still as a thumbnail or at rest.
   if (hasClay(id)) {
     return <ClayStretch key={id} id={id} style={style} still={compact || !active || plays === 0} />;
   }

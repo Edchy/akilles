@@ -46,9 +46,9 @@ test("a lift never done is new, and its opening guess is marked as a guess", () 
 
 test("a weight above last time is up, below is down, the same is no news", () => {
   const rows = legs({
-    "goblet_squat:6-12": done("goblet_squat", 20, 18),
-    "db_rdl:6-12": done("db_rdl", 16, 18),
-    "leg_press:6-12": done("leg_press", 60, 60),
+    "goblet_squat:6-10": done("goblet_squat", 20, 18),
+    "db_rdl:6-10": done("db_rdl", 16, 18),
+    "leg_press:6-10": done("leg_press", 60, 60),
   });
   const squat = row(rows, "Goblet squat");
   assert.equal(squat.change, "up");
@@ -84,23 +84,23 @@ test("one kind of news is voiced; several are said plainly; none says nothing", 
 
 test("Today explains actual heavier and lighter weights beside their exercises", () => {
   const rows = legs({
-    "goblet_squat:6-12": done("goblet_squat", 20, 18),
-    "db_rdl:6-12": done("db_rdl", 16, 18),
+    "goblet_squat:6-10": done("goblet_squat", 20, 18),
+    "db_rdl:6-10": done("db_rdl", 16, 18),
   });
   assert.equal(row(rows, "Goblet squat").adjustment, "Heavier this time — up from 18 kg.");
   assert.equal(row(rows, "DB Romanian deadlift").adjustment, "Lighter this time — down from 18 kg ×2.");
 });
 
 test("Today distinguishes fewer reps, more reps and consolidating the same weight", () => {
-  const preview = (extra) => row(legs({ "goblet_squat:6-12": { ...done("goblet_squat", 20, 20), ...extra } }), "Goblet squat");
+  const preview = (extra) => row(legs({ "goblet_squat:6-10": { ...done("goblet_squat", 20, 20), ...extra } }), "Goblet squat");
   assert.equal(preview({ rung: 0, deloads: 1 }).adjustment, "Same weight, fewer reps this time: 6. Build back up.");
   assert.equal(preview({ rung: 2 }).adjustment, "Same weight, up to 10 reps this time.");
-  assert.match(preview({ rung: 2, reloading: true, lastPerformed: { weight: 20, target: 12, reps: [12, 12, 12] } }).adjustment, /back to 10 reps to practise control/);
+  assert.match(preview({ rung: 1, reloading: true, lastPerformed: { weight: 20, target: 10, reps: [10, 10, 10] } }).adjustment, /back to 8 reps to practise control/);
   assert.equal(preview({ rung: 1 }).adjustment, undefined);
 });
 
 test("an older accepted adjustment is explained as today's number, without claiming time away", () => {
-  const r = row(legs({ "goblet_squat:6-12": {
+  const r = row(legs({ "goblet_squat:6-10": {
     ...done("goblet_squat", 18, 20), pendingDecay: { kind: "layoff", fraction: 0.05, days: 21 },
   } }), "Goblet squat");
   assert.equal(r.change, "down");
@@ -109,8 +109,8 @@ test("an older accepted adjustment is explained as today's number, without claim
 
 test("Today renders per-exercise changes, includes them in accessibility labels, and never applies calendar cuts", () => {
   let state = { ...store.resetToDefault(), nextWorkout: "legs", history: {
-    "goblet_squat:6-12": { ...done("goblet_squat", 20, 18), lastTrainedAt: Date.now() - 30 * 864e5 },
-    "db_rdl:6-12": { ...done("db_rdl", 16, 18), pendingDecay: { kind: "layoff", fraction: 0.05, days: 21 } },
+    "goblet_squat:6-10": { ...done("goblet_squat", 20, 18), lastTrainedAt: Date.now() - 30 * 864e5 },
+    "db_rdl:6-10": { ...done("db_rdl", 16, 18), pendingDecay: { kind: "layoff", fraction: 0.05, days: 21 } },
   } };
   const fakeReact = { ...require("react"), useState: (initial) => [initial, () => {}], useLayoutEffect: () => {} };
   const uiRequire = (name) => {
@@ -131,6 +131,7 @@ test("Today renders per-exercise changes, includes them in accessibility labels,
     if (name === "@/components/text") return { Text: "Text" };
     if (name === "@/components/buttons") return { Button: "Button", LinkButton: "LinkButton", Chip: "Chip" };
     if (name === "@/components/mark") return { Mark: "Mark" };
+    if (name === "@/components/dusk") return { DuskGround: "DuskGround" };
     if (name === "@/components/place") return { PlaceLine: "PlaceLine" };
     if (name === "@/components/growth-offer") return { GrowthOffer: "GrowthOffer" };
     if (name === "@/lib/use-reduce-motion") return { useReduceMotion: () => true };
@@ -194,8 +195,8 @@ test("assisted lifts and timed holds explain the actual kind of change", () => {
   const pull = store.workoutById(base, "pull");
   const choices = { ...base.choices, "pull/Vertical pull": "pullup" };
   const state = { ...base, choices, history: {
-    "pullup:6-12": done("pullup", -25, -20),
-    "plank:6-12": { ...done("plank", 0, 0), rung: 1, lastPerformed: { weight: 0, target: 50, reps: [50, 50] } },
+    "pullup:6-10": done("pullup", -25, -20),
+    "plank:6-10": { ...done("plank", 0, 0), rung: 1, lastPerformed: { weight: 0, target: 50, reps: [50, 50] } },
   } };
   const rows = store.workoutPreview(state, pull);
   assert.match(rows.find((r) => r.name === "Pull-up").adjustment, /^More assistance this time/);

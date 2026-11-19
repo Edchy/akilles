@@ -1,6 +1,6 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { Button, Chip, Chips } from "@/components/buttons";
-import { Pressable, View } from "react-native";
+import { Image, Pressable, View } from "react-native";
 import Animated, { useAnimatedProps, useAnimatedStyle, useSharedValue, withSpring, withTiming } from "react-native-reanimated";
 import { duration, PRESS_SCALE, spring } from "@/constants/motion";
 import Svg, { Path } from "react-native-svg";
@@ -17,9 +17,11 @@ import { WorkoutGoals } from "@/components/goals";
 import { GOALS_ON } from "@/data/goals";
 import { Icon } from "@/components/icon";
 import { Mark } from "@/components/mark";
+import { DuskGround } from "@/components/dusk";
 import { Segments } from "@/components/segments";
 import { Swipe, swipedRecently } from "@/components/swipe";
-import { InlineTip } from "@/components/tips";
+import { HINT_LABELS, InlineTip, playedHint } from "@/components/tips";
+import { GestureHint } from "@/components/hint";
 import {
   BigButton,
   OpenRow,
@@ -28,13 +30,14 @@ import {
   TextButton,
 } from "@/components/sheet";
 import { WeightField } from "@/components/weight-field";
-import { FAMILY, colors, familyWash, fonts, radii } from "@/constants/theme";
+import { grain } from "@/constants/grain";
+import { DUSK, DUSK_CARDS, LETTERPRESS, cardOf, mix, colors, familyWash, fonts, radii } from "@/constants/theme";
 import {
   cardioPool,
   mobilityPool,
   routineUse,
 } from "@/data/conditioning";
-import { byId, highReps, isPattern } from "@/data/exercises";
+import { byId, isPattern } from "@/data/exercises";
 import { familyOf, type Family } from "@/data/families";
 import { KIND_NAME, KIND_ORDER, KIND_SUBTITLE, type WorkoutKind } from "@/data/kinds";
 import {
@@ -48,7 +51,7 @@ import {
   type EntryPart,
   type Workout,
 } from "@/data/split";
-import { repBounds, schemeOf } from "@/lib/progression";
+import { ownRange, repBounds, schemeOf } from "@/lib/progression";
 import {
   SETS_RANGE,
   arrangePlan,
@@ -88,6 +91,8 @@ import {
   workoutFamily,
   workoutsUsing,
   type SessionState,
+  seeTip,
+  seenTip,
 } from "@/store/session";
 
 /** Screen-reader stand-ins for dragging: step a row up or down one place. */
@@ -143,17 +148,22 @@ export function Modules({ onDragChange }: { onDragChange: (dragging: boolean) =>
         : "Something has to be active. Add or resume another workout first, then pause this one.",
     });
 
+  // Swiping a row, shown once with a finger: only on a later visit than the
+  // one where the Plan tip was read, so the two never pile up.
+  const [planReadBefore] = useState(() => seenTip(state, "plan"));
+  const [rowHintGone, setRowHintGone] = useState(false);
+  const rowHint = planReadBefore && !rowHintGone && !seenTip(state, "rows");
   const pause = (w: Workout) => {
     if (training === w.id || !canPauseWorkout(state)) return refuse(w.id);
     // Not destructive, and you see it move: nothing to say, nothing to undo.
     setNotice(null);
-    setState(pauseWorkout(state, w.id));
+    setState(seeTip(pauseWorkout(state, w.id), "rows"));
   };
   const resume = (w: Workout) => {
     setNotice(null);
     setState(resumeWorkout(state, w.id));
   };
-  const remove = (w: Workout) => change(deleteWorkout(state, w.id), `${w.name || "Untitled"} deleted.`);
+  const remove = (w: Workout) => change(seeTip(deleteWorkout(state, w.id), "rows"), `${w.name || "Untitled"} deleted.`);
   const open = (w: Workout) => router.push({ pathname: "/plan-editor", params: { id: w.id } });
 
   const drop = (from: number, to: number) => {
@@ -169,7 +179,7 @@ export function Modules({ onDragChange }: { onDragChange: (dragging: boolean) =>
   };
 
   return (
-    <View style={{ gap: 16 }}>
+    <View style={{ gap: 16 }} onTouchStart={() => rowHint && setRowHintGone(true)}>
       {/* What the list is and how to handle it, said once (see `components/tips.tsx`). */}
       <InlineTip id="plan" />
       <Round count={state.workouts.length} rowHeight={rowHeight}>
@@ -195,6 +205,14 @@ export function Modules({ onDragChange }: { onDragChange: (dragging: boolean) =>
                   drag={drag}
                   onOpen={() => open(item.workout!)}
                 />
+                {rowHint && item === items[0] && !item.paused ? (
+                  <RowHint
+                    onPlayed={() => {
+                      setRowHintGone(true);
+                      setState((s) => playedHint(s, "rows"));
+                    }}
+                  />
+                ) : null}
               </View>
             ) : (
               // Always laid out, so rows can be dropped on either side of it;
@@ -413,8 +431,8 @@ function WorkoutRow({
   // Active: the day's colour at full strength, with white words on the dark
   // ones and ink on the light ones (legs, mobility), as on the Start button.
   // Paused: grey, stepped back.
-  const fill = FAMILY[family];
-  const ink = paused ? colors.text : fill.mark;
+  const fill = cardOf(family);
+  const ink = paused ? colors.text : fill.ink;
   return (
     <Swipe
       actions={[
@@ -443,23 +461,24 @@ function WorkoutRow({
           alignItems: "center",
           gap: 14,
           minHeight: 84,
-          paddingLeft: 18,
+          paddingLeft: 24,
           paddingRight: 20,
           paddingVertical: 16,
           borderRadius: radii.card,
           borderCurve: "continuous",
-          backgroundColor: paused ? colors.surface : fill.field,
+          backgroundColor: paused ? colors.surface : fill.bg,
           borderWidth: 1.5,
           borderColor: drag.active ? colors.text : "transparent",
+          overflow: "hidden",
           opacity: pressed && !drag.active ? 0.7 : 1,
         })}
       >
+        {DUSK_CARDS && !paused ? <DuskGround family={family} /> : null}
+        <Watermark id={workout.id} family={family} ground={paused ? colors.surface : fill.bg} ink={ink} faint={paused} />
+        {LETTERPRESS && !DUSK_CARDS && !paused ? <Grain /> : null}
         {/* Paused: the shape goes grey and the words step back, so it reads
             as out of the loop at a glance; "Paused" says it in words too, and
             it comes back with a swipe left, Resume. */}
-        <View style={{ width: 26, alignItems: "center" }}>
-          <Mark family={family} size={24} color={paused ? colors.faint : ink} />
-        </View>
         <View style={{ flex: 1, gap: 2, opacity: paused ? 0.5 : 1 }}>
           <Text
             numberOfLines={1}
@@ -793,8 +812,8 @@ function Row({
   a11y?: object;
 }) {
   const lifted = !!drag?.active;
-  const fill = FAMILY[family];
-  const ink = fill.mark;
+  const fill = cardOf(family);
+  const ink = fill.ink;
   return (
     <Swipe actions={[{ label: "Remove", onPress: onRemove, destructive: true }]} disabled={lifted} radius={radii.card}>
       <Pressable
@@ -817,12 +836,14 @@ function Row({
           paddingVertical: 10,
           borderRadius: radii.card,
           borderCurve: "continuous",
-          backgroundColor: fill.field,
+          backgroundColor: fill.bg,
           borderWidth: 1.5,
           borderColor: lifted ? colors.text : "transparent",
+          overflow: "hidden",
           opacity: pressed && !lifted ? 0.6 : 1,
         })}
       >
+        {DUSK_CARDS ? <DuskGround family={family} /> : LETTERPRESS ? <Grain /> : null}
         {drag ? <Icon name="grip" size={16} color={ink} /> : null}
         <View style={{ width: 18, alignItems: "center" }}><Mark family={family} size={16} color={ink} /></View>
         <View style={{ flex: 1, gap: 2 }}>
@@ -1042,10 +1063,11 @@ export function SlotSheet({
   const fixedRange = entry.scheme === "speed" || !!entry.derive;
   const sets = setsFor(entry);
   const exercise = byId(exerciseId);
-  // A small muscle climbs its own range in any slot — 10 to 14 — and the
-  // buttons stay inside it. See `schemeOf`.
+  // A lift with a range of its own — 10 to 14 for a small muscle — climbs it
+  // in any slot, and the buttons stay inside it. See `schemeOf`.
   const reps = repRange(schemeOf(exercise, entry.scheme));
   const bounds = repBounds(exercise);
+  const own = ownRange(exercise);
   const range = (min: number, max: number) => update({ scheme: rangeScheme(min, max, bounds) });
   const update = (patch: Parameters<typeof updateEntry>[3]) =>
     setState((s) => updateEntry(s, workoutId, entry.id, patch));
@@ -1163,9 +1185,7 @@ export function SlotSheet({
           {fixedRange ? null : (
             <Text style={{ color: colors.faint, fontSize: 13, lineHeight: 19 }}>
               Reps climb two at a time from the fewest to the most, then the weight goes up.
-              {exercise && highReps(exercise)
-                ? " Small muscles like this one do best with more reps, so it never goes below 10."
-                : ""}
+              {own ? ` This one does its best work at ${own.min} to ${own.max} reps, so it stays there.` : ""}
             </Text>
           )}
         </View>
@@ -1326,5 +1346,99 @@ function Field({
         fontWeight: size ? "700" : "600",
       }}
     />
+  );
+}
+
+/** How big a workout row's shape is drawn, behind its words, on average. */
+const WATERMARK = 108;
+
+/** A whole number from a workout's id, the same every time: its shape's own placement. */
+function hash(id: string): number {
+  let h = 2166136261;
+  for (let i = 0; i < id.length; i++) h = Math.imul(h ^ id.charCodeAt(i), 16777619);
+  return h >>> 0;
+}
+
+/**
+ * The family's shape, big, behind a workout row's words: run off the right
+ * edge and cut by it, and pressed into the card — a shade of the card, with a
+ * shadow along its top-left edge and a catch of light along its bottom-right,
+ * as a blind stamp in card stock. Each workout sets its own a little
+ * differently — size, tilt, how far it runs off, how high — from its id, so
+ * the list looks set by hand and a workout keeps its look.
+ */
+function Watermark({ id, family, ground, ink, faint }: { id: string; family: Family; ground: string; ink: string; faint: boolean }) {
+  const h = hash(id);
+  const pick = (shift: number, from: number, to: number) => from + (((h >>> shift) & 255) / 255) * (to - from);
+  const size = Math.round(pick(0, WATERMARK * 0.88, WATERMARK * 1.12));
+  const lean = pick(8, 5, 16) * ((h >>> 16) & 1 ? 1 : -1);
+  const off = pick(17, 0.18, 0.4);
+  const rise = pick(24, -12, 12);
+  // The pressed face: just off the card, toward its words.
+  const face = mix(ground, ink, faint ? 0.06 : 0.12);
+  const edge = faint ? 1 : 1.5;
+  const layer = (dx: number, dy: number, color: string) => (
+    <View style={{ position: "absolute", left: dx, top: dy }}>
+      <Mark family={family} size={size} color={color} plain />
+    </View>
+  );
+  // At dusk the shape glows faintly in its family's light instead.
+  const glow = DUSK_CARDS && !faint;
+  return (
+    <View
+      style={{
+        position: "absolute",
+        opacity: glow ? 0.26 : 1,
+        right: -size * off,
+        top: "50%",
+        marginTop: -size / 2 + rise,
+        width: size,
+        height: size,
+        transform: [{ rotate: `${lean}deg` }],
+        pointerEvents: "none",
+      }}
+    >
+      {glow ? (
+        layer(0, 0, DUSK[family].glow)
+      ) : (
+        <>
+          {layer(edge, edge, faint ? "rgba(255, 255, 255, 0.25)" : "rgba(255, 255, 255, 0.14)")}
+          {layer(-edge, -edge, faint ? "rgba(0, 0, 0, 0.08)" : "rgba(0, 0, 0, 0.3)")}
+          {layer(0, 0, face)}
+        </>
+      )}
+    </View>
+  );
+}
+
+/** The letterpress card stock's grain, laid over a row. */
+function Grain() {
+  return (
+    <View pointerEvents="none" style={{ position: "absolute", top: 0, right: 0, bottom: 0, left: 0 }}>
+      <Image source={grain()} resizeMode="repeat" style={{ width: "100%", height: "100%", opacity: 0.14 }} />
+    </View>
+  );
+}
+
+/** A finger swiping the first workout to the left, over it: Pause and Delete are there. */
+function RowHint({ onPlayed }: { onPlayed: () => void }) {
+  const [size, setSize] = useState({ width: 0, height: 0 });
+  const y = size.height / 2;
+  return (
+    <View
+      pointerEvents="none"
+      onLayout={(e) => setSize({ width: e.nativeEvent.layout.width, height: e.nativeEvent.layout.height })}
+      style={{ position: "absolute", top: 0, right: 0, bottom: 0, left: 0 }}
+    >
+      {size.width > 0 ? (
+        <GestureHint
+          from={{ x: size.width * 0.72, y }}
+          to={{ x: size.width * 0.28, y }}
+          label={HINT_LABELS.rows}
+          labelAt={{ x: 0, y: -20 }}
+          onPlayed={onPlayed}
+        />
+      ) : null}
+    </View>
   );
 }

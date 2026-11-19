@@ -8,6 +8,9 @@ import { createAudioPlayer, setAudioModeAsync, type AudioPlayer } from "expo-aud
  * - `end`: two notes rising — the hold is over; change side, or the move is done.
  * - `finish`: three notes rising — the whole routine is done.
  *
+ * Calm, low, soft-edged notes like a small singing bowl, made by
+ * scripts/sounds.mjs: a nudge, never a fright.
+ *
  * They play on a phone set to silent, as a timer should, and only lower
  * music for their moment rather than stopping it. Never throws: a sound that
  * cannot play is simply not heard, and the buzz that goes with it still says

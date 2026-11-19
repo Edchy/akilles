@@ -1,0 +1,1828 @@
+{
+ "bench": {
+  "what": "The barbell bench press.",
+  "view": "Seen at three-quarters, from beside the bench and towards its foot, a little above: the bench runs diagonally into the picture, the head at the far end. The barbell is seen in true perspective from this same angle, crossing over the chest at a slant, the near plates bigger than the far ones — the bar and the body are seen from one and the same camera.",
+  "frames": [
+   "lying on the flat bench, both feet flat on the floor beside the bench, one on each side, knees bent about 90 degrees (not hanging off the end of the bench), shoulder blades squeezed together, a small natural arch in the low back, the head and bottom on the bench; both hands gripping the barbell a little wider than the shoulders, arms straight, the bar held directly above the shoulders. Wrists straight over the elbows.",
+   "the barbell lowered under control until it touches the LOWER chest, at the bottom of the breastbone, well below the collarbones and far from the neck and face; the elbows bent about 45 degrees out from the body, below the bar, forearms vertical; feet, back, head and bench exactly as before, only the arms and bar move."
+  ],
+  "props": "the flat bench and the barbell, both from the equipment sheet; the bar is in the figure's hands, no rack",
+  "effort": "to0",
+  "common": 5
+ },
+ "lat_pulldown": {
+  "what": "The lat pulldown.",
+  "view": "Seen exactly from the side, the figure facing to the left, so it is plain that the bar comes down IN FRONT of the face, between the face and the cable machine's front, and the torso stays nearly upright.",
+  "frames": [
+   "seated at the lat pulldown station, thighs under the pad, feet flat; both hands gripping the long bar a little wider than the shoulders, arms straight up overhead, the cable taut; torso tall, leaning back only very slightly.",
+   "the bar pulled down in front of the face to the top of the chest, just under the chin; the face is behind the bar, the head tilted back only slightly; the elbows driven down beside the ribs, chest up; seat, machine, legs and camera exactly as before, only the arms, bar and cable move."
+  ],
+  "props": "the lat pulldown station from the equipment sheet",
+  "effort": "to1",
+  "common": 5
+ },
+ "goblet_squat": {
+  "what": "The goblet squat.",
+  "view": "Seen from the side, at a slight three-quarter angle from the front, the figure facing to the right, so the depth, the straight back and the knees over the toes show.",
+  "frames": [
+   "standing tall, feet a little wider than the hips, toes turned out a little; one dumbbell held vertically against the chest with both hands cupping its top end, elbows pointing down.",
+   "squatting deep: hips down below the knees, the chest up and the back straight, the knees pushed out over the toes, heels flat on the floor; the elbows between the knees; the dumbbell still held against the chest exactly as before. The camera, the zoom and the figure's size are exactly as in the standing picture: the figure only gets lower, it does not get smaller or move sideways; the feet stay on exactly the same spot."
+  ],
+  "props": "one dumbbell from the equipment sheet",
+  "effort": "to0",
+  "common": 5
+ },
+ "db_bench": {
+  "what": "The dumbbell bench press.",
+  "view": "Seen at three-quarters, from beside the bench and towards its foot, a little above: the bench runs diagonally into the picture, the head at the far end; the dumbbells and the body seen from one and the same camera.",
+  "frames": [
+   "lying on the flat bench, both feet flat on the floor beside the bench, shoulder blades squeezed together; a dumbbell in each hand pressed straight up above the shoulders, arms straight, the dumbbells close to each other but not touching.",
+   "the dumbbells lowered under control to beside the chest, the elbows bent below the dumbbells and about 45 degrees out from the body, forearms vertical, a deep but comfortable stretch across the chest; feet, back and head exactly as before."
+  ],
+  "props": "the flat bench and the pair of dumbbells from the equipment sheet",
+  "effort": "to0",
+  "common": 5
+ },
+ "db_shoulder": {
+  "what": "The seated dumbbell shoulder press.",
+  "view": "Seen from the front at a slight three-quarter angle, the figure facing the camera.",
+  "frames": [
+   "sitting tall on the flat bench, feet flat on the floor, back straight; a dumbbell in each hand at shoulder height just outside the shoulders, palms facing forward, elbows under the wrists and slightly in front of the body.",
+   "the dumbbells pressed straight up overhead until the arms are straight, the dumbbells above the shoulders and close together but not touching; the back still straight, not leaning back; everything else exactly as before."
+  ],
+  "props": "the flat bench and the pair of dumbbells from the equipment sheet",
+  "effort": "to1",
+  "common": 5
+ },
+ "pushdown": {
+  "what": "The cable triceps pushdown.",
+  "view": "Seen exactly from the side, the figure facing left towards the cable column, so the upper arms staying still at the sides shows.",
+  "frames": [
+   "standing tall facing the cable column, feet hip-width, a slight forward lean from the hips; both hands on the short straight bar attached to the high pulley, the elbows bent and tucked tight against the sides, the forearms up so the bar is at chest height.",
+   "the bar pushed down until the arms are straight, the bar in front of the thighs; the upper arms and elbows still exactly tucked at the sides, only the forearms moved; everything else exactly as before."
+  ],
+  "props": "the cable column from the equipment sheet, with the short straight bar on its high pulley",
+  "gear": 2,
+  "effort": "to1",
+  "common": 5
+ },
+ "dead_bug": {
+  "what": "The dead bug core exercise.",
+  "view": "Seen from the side and a little above, the figure lying on its back, head to the left.",
+  "frames": [
+   "lying on the back on the exercise mat, the low back pressed flat into the mat; both arms pointing straight up at the ceiling, both knees bent at 90 degrees with the shins level, lifted above the hips like a table top.",
+   "the near arm lowered back overhead and the opposite (far) leg straightened out long, both hovering just above the mat; the other arm and leg still up exactly as before; the low back still pressed flat into the mat."
+  ],
+  "props": "the exercise mat from the equipment sheet",
+  "gear": 2,
+  "effort": "to0",
+  "common": 5
+ },
+ "dead_hang": {
+  "what": "The dead hang: hanging from a pull-up bar.",
+  "view": "Seen from the front at a slight three-quarter angle, the whole figure and the bar in frame.",
+  "single": 0,
+  "frames": [
+   "hanging from the pull-up bar with straight arms, hands a little wider than the shoulders, palms facing away; the shoulders gently engaged, not shrugged up to the ears; legs together and relaxed, feet off the floor, a calm face."
+  ],
+  "props": "the pull-up station from the equipment sheet",
+  "gear": 2,
+  "common": 5
+ },
+ "scap_pullup": {
+  "what": "The scapular pull-up: the first move of a pull-up, with straight arms.",
+  "view": "Seen from the side at a slight angle from behind, so the shoulders moving shows.",
+  "frames": [
+   "hanging from the pull-up bar with straight arms, hands a little wider than the shoulders, the shoulders relaxed up towards the ears, the body long.",
+   "still with straight arms, the shoulders pulled down and back away from the ears so the whole body rises a little, the chest slightly lifted; the elbows not bending at all."
+  ],
+  "props": "the pull-up station from the equipment sheet",
+  "gear": 2,
+  "effort": "to1",
+  "common": 5
+ },
+ "pullup_negative": {
+  "what": "The pull-up negative: lowering slowly from the top of a pull-up.",
+  "view": "Seen from the side at a slight angle from in front, the figure and the bar in frame.",
+  "frames": [
+   "at the top of a pull-up: hands on the bar a little wider than the shoulders, the chin just above the bar, elbows bent and pulled down to the sides, legs together.",
+   "lowered slowly all the way down to a hang with straight arms, legs together, feet still off the floor."
+  ],
+  "props": "the pull-up station from the equipment sheet",
+  "gear": 2,
+  "effort": "to0",
+  "common": 5
+ },
+ "pullup": {
+  "what": "The pull-up.",
+  "view": "Seen from the side at a slight angle from in front, the figure and the bar in frame.",
+  "frames": [
+   "hanging from the pull-up bar with straight arms, hands a little wider than the shoulders, palms facing away, legs together and slightly in front, the shoulders engaged.",
+   "pulled up until the chin is over the bar, the chest close to the bar, the elbows bent and driven down to the sides; legs still together; no swinging."
+  ],
+  "props": "the pull-up station from the equipment sheet",
+  "gear": 2,
+  "effort": "to1",
+  "common": 5
+ },
+ "wall_push_up": {
+  "what": "The wall push-up.",
+  "view": "Seen exactly from the side, the figure facing right towards a plain wall.",
+  "frames": [
+   "standing about an arm's length from a plain light wall, hands flat on the wall at shoulder height and shoulder-width, arms straight, the body in one straight line from head to heels, leaning slightly forward.",
+   "the elbows bent so the chest comes close to the wall, the body still one straight plank from head to heels, heels lifting a little; the hands not moving."
+  ],
+  "props": "a plain light wall on the right of the picture, in the same clay",
+  "effort": "to0",
+  "common": 5
+ },
+ "incline_push_up": {
+  "what": "The incline push-up, hands on a bench.",
+  "view": "Seen exactly from the side, the figure facing right.",
+  "frames": [
+   "hands on the edge of the flat bench a little wider than the shoulders, arms straight, feet on the floor behind, the body in one straight line from head to heels.",
+   "the elbows bent about 45 degrees from the body so the chest comes down close to the bench edge, the body still one straight line, hips not sagging."
+  ],
+  "props": "the flat bench from the equipment sheet",
+  "effort": "to0",
+  "common": 5
+ },
+ "knee_push_up": {
+  "what": "The knee push-up.",
+  "view": "Seen exactly from the side, the figure facing right.",
+  "frames": [
+   "on the exercise mat, hands under the shoulders, arms straight, knees on the mat with the feet lifted, the body in one straight line from the head to the knees.",
+   "the elbows bent about 45 degrees from the body, the chest lowered close to the mat, the body still one straight line from head to knees."
+  ],
+  "props": "the exercise mat from the equipment sheet",
+  "gear": 2,
+  "effort": "to0",
+  "common": 5
+ },
+ "push_up": {
+  "what": "The push-up.",
+  "view": "Seen exactly from the side, the figure facing right.",
+  "frames": [
+   "in a high plank on the exercise mat: hands under the shoulders, arms straight, up on the toes, the body in one straight line from head to heels.",
+   "the elbows bent about 45 degrees from the body, the chest lowered to just above the mat, the body still one straight line, hips not sagging or piking."
+  ],
+  "props": "the exercise mat from the equipment sheet",
+  "gear": 2,
+  "effort": "to0",
+  "common": 5
+ },
+ "decline_push_up": {
+  "what": "The decline push-up, feet on a bench.",
+  "view": "Seen exactly from the side, the figure facing right, head towards the right.",
+  "frames": [
+   "hands on the floor under the shoulders, arms straight, the feet up on the flat bench behind, the body in one straight line from head to heels.",
+   "the elbows bent about 45 degrees from the body, the chest lowered close to the floor, the body still one straight line, feet still on the bench."
+  ],
+  "props": "the flat bench from the equipment sheet",
+  "effort": "to0",
+  "common": 4
+ },
+ "cable_row": {
+  "what": "The seated cable row.",
+  "view": "Seen exactly from the side, the figure facing left towards the pulley.",
+  "frames": [
+   "sitting on the seat of the cable row station, feet on the foot plate with the knees slightly bent; both hands on the V-shaped handle, arms straight out in front, the back straight and tall, leaning forward only very slightly.",
+   "the handle pulled in to the lower ribs, the elbows driven back close to the sides, the shoulder blades squeezed together, the chest up; the torso tall and upright, not leaning back."
+  ],
+  "props": "the seated cable row station from the equipment sheet",
+  "gear": 2,
+  "effort": "to1",
+  "common": 5
+ },
+ "face_pull": {
+  "what": "The cable face pull.",
+  "view": "Seen from the side at three-quarters from behind, the figure facing the cable column on the left, so the elbows going high and wide shows.",
+  "frames": [
+   "standing tall facing the cable column, the rope attached to the pulley set at face height; one end of the rope in each hand, arms straight out in front at face height.",
+   "the rope pulled towards the face, the hands apart beside the ears, the elbows high and out to the sides above the hands, the shoulder blades squeezed together; standing tall, not leaning back."
+  ],
+  "props": "the cable column from the equipment sheet, with the rope on its pulley at face height",
+  "gear": 2,
+  "effort": "to1",
+  "common": 5
+ },
+ "db_curl": {
+  "what": "The dumbbell curl.",
+  "view": "Seen from the front at a slight three-quarter angle, the figure facing the camera.",
+  "frames": [
+   "standing tall, feet hip-width; a dumbbell in each hand, arms straight down at the sides, palms facing forward, elbows close to the sides.",
+   "both dumbbells curled up to the shoulders, palms facing the shoulders, the elbows still pinned at the sides, not swinging forward; standing tall, not leaning back."
+  ],
+  "props": "the pair of dumbbells from the equipment sheet",
+  "effort": "to1",
+  "common": 5
+ },
+ "plank": {
+  "what": "The plank on the forearms.",
+  "view": "Seen exactly from the side, the figure facing right.",
+  "single": 0,
+  "frames": [
+   "on the exercise mat on the forearms and toes, the elbows under the shoulders, the body in one straight line from head to heels, belly and bottom tight, hips neither sagging nor up; looking at the floor just ahead."
+  ],
+  "props": "the exercise mat from the equipment sheet",
+  "gear": 2,
+  "common": 5
+ },
+ "db_rdl": {
+  "what": "The dumbbell Romanian deadlift.",
+  "view": "Seen exactly from the side, the figure facing right, so the flat back and the hips going back show.",
+  "frames": [
+   "standing tall, feet hip-width, knees soft; a dumbbell in each hand in front of the thighs, arms straight.",
+   "hinged at the hips: the hips pushed far back, the back flat and straight from head to tailbone, the chest forward, the knees only slightly bent; the dumbbells slid down close along the front of the legs to just below the knees."
+  ],
+  "props": "the pair of dumbbells from the equipment sheet",
+  "effort": "to0",
+  "common": 5
+ },
+ "split_squat": {
+  "what": "The dumbbell split squat.",
+  "view": "Seen exactly from the side, the figure facing right.",
+  "frames": [
+   "standing in a long split stance, the right foot forward flat on the floor, the left foot back up on its toes; the torso upright; a dumbbell in each hand hanging at the sides.",
+   "lowered straight down until the back knee nearly touches the floor, the front knee bent about 90 degrees over the front foot, the front shin near vertical, the torso still upright; the dumbbells still hanging at the sides; the feet not moved."
+  ],
+  "props": "the pair of dumbbells from the equipment sheet",
+  "effort": "to0",
+  "common": 5
+ },
+ "leg_curl": {
+  "what": "The seated leg curl machine.",
+  "view": "Seen exactly from the side, the figure facing left.",
+  "frames": [
+   "sitting in the seated leg curl machine, the back against the pad, the thigh pad over the knees, the legs straight out in front with the padded roller behind the ankles; hands on the handles.",
+   "the legs curled down and back so the knees are bent past 90 degrees and the roller is under the seat; the back still against the pad; everything else exactly as before."
+  ],
+  "props": "the seated leg curl machine from the equipment sheet",
+  "gear": 2,
+  "effort": "to1",
+  "common": 5
+ },
+ "db_floor_press": {
+  "what": "The dumbbell floor press.",
+  "view": "Seen at three-quarters from the figure's feet, a little above, the figure lying on the floor.",
+  "frames": [
+   "lying on the back on the exercise mat, knees bent and feet flat; a dumbbell in each hand pressed straight up over the chest, arms straight.",
+   "the dumbbells lowered until the backs of the upper arms rest on the mat, elbows about 45 degrees from the body, forearms vertical."
+  ],
+  "props": "the exercise mat from the equipment sheet and the pair of dumbbells from the equipment sheet",
+  "gear": 2,
+  "effort": "to0",
+  "common": 2
+ },
+ "kb_floor_press": {
+  "what": "The kettlebell floor press.",
+  "view": "Seen at three-quarters from the figure's feet, a little above, the figure lying on the floor.",
+  "frames": [
+   "lying on the back on the exercise mat, knees bent and feet flat; one kettlebell held by its handle in the near hand, pressed straight up over the shoulder, the bell resting on the back of the forearm; the other arm on the mat.",
+   "the kettlebell lowered until the back of the upper arm rests on the mat, elbow about 45 degrees from the body, forearm vertical."
+  ],
+  "props": "the exercise mat from the equipment sheet and the kettlebell from the equipment sheet",
+  "gear": 2,
+  "effort": "to0",
+  "common": 1
+ },
+ "incline_bench": {
+  "what": "The incline barbell bench press.",
+  "view": "Seen at three-quarters, from beside the bench and towards its foot, a little above: the incline bench runs diagonally into the picture, the head at the far end; the weights and the body seen from one and the same camera.",
+  "frames": [
+   "lying on the incline bench, feet flat on the floor beside it, shoulder blades squeezed; the barbell held a little wider than shoulders, arms straight, the bar above the upper chest.",
+   "the barbell lowered under control to touch the upper chest just below the collarbones, elbows about 45 degrees from the body, forearms vertical."
+  ],
+  "props": "the adjustable incline bench from the equipment sheet and the barbell",
+  "gear": 4,
+  "effort": "to0",
+  "common": 4
+ },
+ "machine_chest": {
+  "what": "The seated chest press machine.",
+  "view": "Seen exactly from the side, the figure facing left.",
+  "frames": [
+   "sitting in the chest press machine, back flat against the pad, feet flat; hands on the handles beside the chest, elbows bent and back.",
+   "the handles pressed forward until the arms are straight in front of the chest, the back still against the pad."
+  ],
+  "props": "the seated chest press machine from the equipment sheet",
+  "gear": 3,
+  "effort": "to1",
+  "common": 4
+ },
+ "incline_db_press": {
+  "what": "The incline dumbbell press.",
+  "view": "Seen at three-quarters, from beside the bench and towards its foot, a little above: the incline bench runs diagonally into the picture, the head at the far end; the weights and the body seen from one and the same camera.",
+  "frames": [
+   "lying back on the incline bench, feet flat on the floor; a dumbbell in each hand pressed straight up above the upper chest, arms straight.",
+   "the dumbbells lowered under control to beside the upper chest, elbows below the dumbbells and about 45 degrees from the body."
+  ],
+  "props": "the adjustable incline bench from the equipment sheet and the pair of dumbbells from the equipment sheet",
+  "gear": 4,
+  "effort": "to0",
+  "common": 5
+ },
+ "dips": {
+  "what": "The parallel-bar dip.",
+  "view": "Seen exactly from the side, the figure facing right.",
+  "frames": [
+   "supported on the dip station with straight arms, hands on the two bars, body upright, legs together with the knees slightly bent, feet off the floor.",
+   "lowered until the upper arms are about level with the floor, the elbows bent and pointing back, the torso leaning only slightly forward; feet still off the floor."
+  ],
+  "props": "the dip station from the equipment sheet",
+  "gear": 4,
+  "effort": "to0",
+  "common": 4
+ },
+ "decline_bench": {
+  "what": "The decline barbell bench press.",
+  "view": "Seen at three-quarters, from beside the bench and towards its foot, a little above: the bench runs diagonally into the picture, the head at the far end; the weights and the body seen from one and the same camera.",
+  "frames": [
+   "lying on the decline bench, head lower than the hips, the ankles hooked under the rollers; the barbell held a little wider than shoulders, arms straight, above the lower chest.",
+   "the barbell lowered under control to touch the lower chest, elbows about 45 degrees from the body."
+  ],
+  "props": "the decline sit-up bench from the equipment sheet and the barbell",
+  "gear": 5,
+  "effort": "to0",
+  "common": 2
+ },
+ "close_grip_bench": {
+  "what": "The close-grip barbell bench press.",
+  "view": "Seen at three-quarters, from beside the bench and towards its foot, a little above: the bench runs diagonally into the picture, the head at the far end; the weights and the body seen from one and the same camera.",
+  "frames": [
+   "lying on the flat bench, feet flat on the floor beside it; hands on the barbell at shoulder width, arms straight, the bar above the lower chest.",
+   "the barbell lowered to the lower chest, the elbows tucked close to the sides, forearms vertical."
+  ],
+  "props": "the flat bench from the equipment sheet and the barbell",
+  "effort": "to0",
+  "common": 3
+ },
+ "smith_bench": {
+  "what": "The Smith machine bench press.",
+  "view": "Seen at three-quarters, from beside the bench and towards its foot, a little above: the bench runs diagonally into the picture, the head at the far end; the weights and the body seen from one and the same camera.",
+  "frames": [
+   "lying on the flat bench set under the Smith machine bar, feet flat; hands on the bar a little wider than shoulders, arms straight.",
+   "the bar lowered along its rails to touch the lower chest, elbows about 45 degrees from the body."
+  ],
+  "props": "the Smith machine from the equipment sheet, with a flat bench under it",
+  "gear": 3,
+  "effort": "to0",
+  "common": 3
+ },
+ "smith_incline_press": {
+  "what": "The Smith machine incline press.",
+  "view": "Seen at three-quarters, from beside the bench and towards its foot, a little above: the bench runs diagonally into the picture, the head at the far end; the weights and the body seen from one and the same camera.",
+  "frames": [
+   "lying back on an incline bench under the Smith machine bar, feet flat; hands on the bar a little wider than shoulders, arms straight.",
+   "the bar lowered along its rails to the upper chest just below the collarbones, elbows about 45 degrees from the body."
+  ],
+  "props": "the Smith machine from the equipment sheet, with an incline bench under it",
+  "gear": 3,
+  "effort": "to0",
+  "common": 2
+ },
+ "incline_machine_press": {
+  "what": "The incline chest press machine.",
+  "view": "Seen exactly from the side, the figure facing left.",
+  "frames": [
+   "sitting reclined in the chest press machine, back flat against the pad; hands on the handles beside the upper chest, elbows bent.",
+   "the handles pressed forward and up until the arms are straight, the back still against the pad."
+  ],
+  "props": "the seated chest press machine from the equipment sheet, its back pad reclined",
+  "gear": 3,
+  "effort": "to1",
+  "common": 2
+ },
+ "cable_fly": {
+  "what": "The cable incline fly: arms sweeping up and together.",
+  "view": "Seen from the front at a slight three-quarter angle, the figure facing the camera.",
+  "frames": [
+   "standing between two low cable pulleys, one handle in each hand, arms out low to the sides with a slight bend in the elbows, one foot a half step forward, chest up.",
+   "the hands swept up and together in front of the upper chest, the arms still with the same slight bend, as if hugging a big tree."
+  ],
+  "props": "two cable columns from the equipment sheet, one on each side, pulleys set low, with D-handles",
+  "gear": 2,
+  "effort": "to1",
+  "common": 4
+ },
+ "cable_crossover": {
+  "what": "The cable crossover.",
+  "view": "Seen from the front at a slight three-quarter angle, the figure facing the camera.",
+  "frames": [
+   "standing between two high cable pulleys, one handle in each hand, arms out wide and high with a slight bend in the elbows, a slight forward lean, one foot a half step forward.",
+   "the hands swept down and together in front of the belly, the arms still with the same slight bend."
+  ],
+  "props": "two cable columns from the equipment sheet, one on each side, pulleys set high, with D-handles",
+  "gear": 2,
+  "effort": "to1",
+  "common": 3
+ },
+ "pec_deck": {
+  "what": "The pec deck.",
+  "view": "Seen from the front at a slight three-quarter angle, the figure facing the camera.",
+  "frames": [
+   "sitting in the pec deck, back against the pad; the forearms against the padded arms, which are open out to the sides at shoulder height.",
+   "the padded arms brought together in front of the chest, the back still against the pad."
+  ],
+  "props": "the pec deck machine from the equipment sheet",
+  "gear": 3,
+  "effort": "to1",
+  "common": 4
+ },
+ "db_fly": {
+  "what": "The dumbbell fly.",
+  "view": "Seen at three-quarters, from beside the bench and towards its foot, a little above: the bench runs diagonally into the picture, the head at the far end; the weights and the body seen from one and the same camera.",
+  "frames": [
+   "lying on the flat bench, feet flat on the floor; a dumbbell in each hand held up over the chest, palms facing each other, elbows slightly bent.",
+   "the arms opened wide out to the sides in an arc, elbows still slightly bent, the dumbbells level with the chest, a stretch across the chest."
+  ],
+  "props": "the flat bench from the equipment sheet and the pair of dumbbells from the equipment sheet",
+  "effort": "to0",
+  "common": 3
+ },
+ "incline_db_fly": {
+  "what": "The incline dumbbell fly.",
+  "view": "Seen at three-quarters, from beside the bench and towards its foot, a little above: the bench runs diagonally into the picture, the head at the far end; the weights and the body seen from one and the same camera.",
+  "frames": [
+   "lying back on the incline bench; a dumbbell in each hand held up over the upper chest, palms facing each other, elbows slightly bent.",
+   "the arms opened wide out to the sides in an arc, elbows still slightly bent, the dumbbells level with the chest."
+  ],
+  "props": "the adjustable incline bench from the equipment sheet and the pair of dumbbells from the equipment sheet",
+  "gear": 4,
+  "effort": "to0",
+  "common": 3
+ },
+ "ohp": {
+  "what": "The standing barbell overhead press.",
+  "view": "Seen exactly from the side, the figure facing right.",
+  "frames": [
+   "standing tall, feet hip-width; the barbell resting on the front of the shoulders, hands just outside the shoulders, elbows slightly in front of the bar, belly and bottom tight.",
+   "the bar pressed straight up overhead, arms straight, the bar over the middle of the feet, the head through the arms; the body straight, not leaning back."
+  ],
+  "props": "the barbell from the equipment sheet",
+  "effort": "to1",
+  "common": 5
+ },
+ "machine_shoulder": {
+  "what": "The shoulder press machine.",
+  "view": "Seen from the front at a slight three-quarter angle, the figure facing the camera.",
+  "frames": [
+   "sitting in the shoulder press machine, back against the pad; hands on the handles at shoulder height.",
+   "the handles pressed straight up until the arms are straight, the back still against the pad."
+  ],
+  "props": "the seated shoulder press machine from the equipment sheet",
+  "gear": 3,
+  "effort": "to1",
+  "common": 4
+ },
+ "kb_press": {
+  "what": "The kettlebell overhead press.",
+  "view": "Seen from the front at a slight three-quarter angle, the figure facing the camera.",
+  "frames": [
+   "standing tall; one kettlebell held in the racked position at the near shoulder, the bell resting on the back of the forearm, elbow tucked in; the other arm relaxed at the side.",
+   "the kettlebell pressed straight up overhead until the arm is straight, the bell behind the forearm, the body straight, not leaning."
+  ],
+  "props": "the kettlebell from the equipment sheet",
+  "effort": "to1",
+  "common": 2
+ },
+ "arnold_press": {
+  "what": "The Arnold press.",
+  "view": "Seen from the front at a slight three-quarter angle, the figure facing the camera.",
+  "frames": [
+   "sitting tall on the flat bench; a dumbbell in each hand in front of the shoulders, palms facing the body, elbows in front.",
+   "the dumbbells pressed up overhead while the palms turn to face forward, arms straight overhead."
+  ],
+  "props": "the flat bench from the equipment sheet and the pair of dumbbells from the equipment sheet",
+  "effort": "to1",
+  "common": 3
+ },
+ "smith_shoulder_press": {
+  "what": "The Smith machine seated shoulder press.",
+  "view": "Seen exactly from the side, the figure facing right.",
+  "frames": [
+   "sitting tall on a bench under the Smith machine bar; hands on the bar just outside the shoulders, the bar at chin height.",
+   "the bar pressed straight up along its rails until the arms are straight."
+  ],
+  "props": "the Smith machine from the equipment sheet, with a bench under it",
+  "gear": 3,
+  "effort": "to1",
+  "common": 2
+ },
+ "pike_push_up": {
+  "what": "The pike push-up.",
+  "view": "Seen exactly from the side, the figure facing right.",
+  "frames": [
+   "on the exercise mat, hands and feet on the floor, hips raised high so the body is an upside-down V, arms straight, head between the arms.",
+   "the elbows bent so the top of the head comes down towards the mat in front of the hands, hips still high."
+  ],
+  "props": "the exercise mat from the equipment sheet",
+  "gear": 2,
+  "effort": "to0",
+  "common": 2
+ },
+ "chinup": {
+  "what": "The chin-up: palms facing you.",
+  "view": "Seen from the side at a slight angle from in front, the figure and the bar in frame.",
+  "frames": [
+   "hanging from the pull-up bar with straight arms, hands shoulder-width, palms facing the figure, legs together.",
+   "pulled up until the chin is over the bar, the elbows bent and down at the sides, the chest near the bar; no swinging."
+  ],
+  "props": "the pull-up station from the equipment sheet",
+  "gear": 2,
+  "effort": "to1",
+  "common": 4
+ },
+ "close_grip_pulldown": {
+  "what": "The close-grip pulldown.",
+  "view": "Seen exactly from the side, the figure facing left.",
+  "frames": [
+   "seated at the lat pulldown station, thighs under the pad; both hands on a V-handle on the cable, arms straight up overhead.",
+   "the handle pulled down in front of the face to the top of the chest, the elbows driven down beside the ribs, chest up."
+  ],
+  "props": "the lat pulldown station from the equipment sheet, with a V-handle on its cable",
+  "effort": "to1",
+  "common": 4
+ },
+ "machine_pulldown": {
+  "what": "The machine pulldown.",
+  "view": "Seen exactly from the side, the figure facing left.",
+  "frames": [
+   "seated in the pulldown station, thighs under the pad; hands on the bar, arms straight up overhead.",
+   "the bar pulled down in front of the face to the upper chest, the elbows driven down beside the ribs."
+  ],
+  "props": "the lat pulldown station from the equipment sheet",
+  "effort": "to1",
+  "common": 3
+ },
+ "straight_arm_pulldown": {
+  "what": "The straight-arm pulldown.",
+  "view": "Seen exactly from the side, the figure facing left.",
+  "frames": [
+   "standing facing the cable column with the short straight bar on the high pulley, hinged slightly forward, arms straight up and out in front at about eye height.",
+   "the bar swept down in an arc to the thighs with the arms still straight, the shoulders pulled down."
+  ],
+  "props": "the cable column from the equipment sheet with the short straight bar on its high pulley",
+  "gear": 2,
+  "effort": "to1",
+  "common": 3
+ },
+ "db_pullover": {
+  "what": "The dumbbell pullover.",
+  "view": "Seen at three-quarters, from beside the bench and towards its foot, a little above: the bench runs diagonally into the picture, the head at the far end; the weights and the body seen from one and the same camera.",
+  "frames": [
+   "lying on the flat bench, feet flat; one dumbbell held in both hands straight up over the chest, elbows slightly bent.",
+   "the dumbbell lowered back in an arc behind the head, arms still slightly bent, a stretch along the sides."
+  ],
+  "props": "the flat bench from the equipment sheet and one dumbbell from the equipment sheet",
+  "effort": "to0",
+  "common": 2
+ },
+ "bb_row": {
+  "what": "The bent-over barbell row.",
+  "view": "Seen exactly from the side, the figure facing right.",
+  "frames": [
+   "hinged forward at the hips about 45 degrees, back flat, knees soft; the barbell hanging at arm's length below the shoulders, hands just wider than the shoulders.",
+   "the barbell pulled up to the lower ribs, the elbows driven back past the body, the back still flat and at the same angle."
+  ],
+  "props": "the barbell from the equipment sheet",
+  "effort": "to1",
+  "common": 5
+ },
+ "chest_supported_row": {
+  "what": "The chest-supported dumbbell row.",
+  "view": "Seen exactly from the side, the figure facing right.",
+  "frames": [
+   "lying face down on the incline bench, chest on the pad, feet on the floor; a dumbbell in each hand hanging straight down.",
+   "the dumbbells pulled up beside the ribs, the elbows driven back, the shoulder blades squeezed; the chest still on the pad."
+  ],
+  "props": "the adjustable incline bench from the equipment sheet and the pair of dumbbells from the equipment sheet",
+  "gear": 4,
+  "effort": "to1",
+  "common": 4
+ },
+ "machine_row": {
+  "what": "The seated row machine.",
+  "view": "Seen exactly from the side, the figure facing left.",
+  "frames": [
+   "sitting in the seated row machine, chest against the pad; arms straight forward holding the handles.",
+   "the handles pulled back to the sides of the ribs, the elbows back, the shoulder blades squeezed; the chest still on the pad."
+  ],
+  "props": "the seated row machine from the equipment sheet",
+  "gear": 3,
+  "effort": "to1",
+  "common": 4
+ },
+ "db_row": {
+  "what": "The one-arm dumbbell row.",
+  "view": "Seen exactly from the side, the figure facing right.",
+  "frames": [
+   "one knee and the same-side hand on the flat bench, the back flat and level, the other foot on the floor; a dumbbell hanging straight down in the free hand.",
+   "the dumbbell pulled up to the hip, the elbow driven back close to the body; the back still flat and level, not twisting."
+  ],
+  "props": "the flat bench from the equipment sheet and one dumbbell from the equipment sheet",
+  "effort": "to1",
+  "common": 5
+ },
+ "kb_row": {
+  "what": "The one-arm kettlebell row.",
+  "view": "Seen exactly from the side, the figure facing right.",
+  "frames": [
+   "one knee and the same-side hand on the flat bench, the back flat and level; a kettlebell hanging straight down in the free hand.",
+   "the kettlebell pulled up to the hip, the elbow back close to the body; the back still flat and level."
+  ],
+  "props": "the flat bench from the equipment sheet and the kettlebell from the equipment sheet",
+  "effort": "to1",
+  "common": 2
+ },
+ "tbar_row": {
+  "what": "The T-bar row.",
+  "view": "Seen exactly from the side, the figure facing right.",
+  "frames": [
+   "standing astride the landmine bar, hinged forward at the hips about 45 degrees, back flat, knees soft; both hands on the V-handle, arms straight.",
+   "the plates pulled up towards the chest, the elbows driven back, the back still flat at the same angle."
+  ],
+  "props": "the landmine T-bar row from the equipment sheet",
+  "gear": 5,
+  "effort": "to1",
+  "common": 3
+ },
+ "inverted_row": {
+  "what": "The inverted row.",
+  "view": "Seen exactly from the side, the figure facing right.",
+  "frames": [
+   "hanging under a bar set at hip height in the Smith machine, hands on the bar shoulder-width, arms straight, heels on the floor, the body one straight line.",
+   "the chest pulled up to the bar, the elbows back, the body still one straight line from head to heels."
+  ],
+  "props": "the Smith machine from the equipment sheet, its bar set at hip height",
+  "gear": 3,
+  "effort": "to1",
+  "common": 3
+ },
+ "back_squat": {
+  "what": "The barbell back squat.",
+  "view": "Seen exactly from the side, the figure facing right.",
+  "frames": [
+   "standing tall with the barbell across the upper back, hands gripping it outside the shoulders, feet shoulder-width, toes slightly out.",
+   "squatting down until the hips are just below the knees, the back flat and the chest up, the knees pushed out over the toes, heels flat; the bar over the middle of the feet."
+  ],
+  "props": "the barbell from the equipment sheet",
+  "effort": "to0",
+  "common": 5
+ },
+ "front_squat": {
+  "what": "The barbell front squat.",
+  "view": "Seen exactly from the side, the figure facing right.",
+  "frames": [
+   "standing tall with the barbell resting on the front of the shoulders, elbows high and pointing forward, feet shoulder-width.",
+   "squatting down until the hips are below the knees, the torso upright, elbows still high, knees out, heels flat."
+  ],
+  "props": "the barbell from the equipment sheet",
+  "effort": "to0",
+  "common": 4
+ },
+ "kb_goblet_squat": {
+  "what": "The kettlebell goblet squat.",
+  "view": "Seen from the side at a slight three-quarter angle from the front, the figure facing right.",
+  "frames": [
+   "standing tall, feet a little wider than the hips, toes slightly out; a kettlebell held by the horns of its handle against the chest, elbows down.",
+   "squatting deep, hips below the knees, chest up, back straight, knees out over the toes, heels flat; the kettlebell still against the chest, elbows between the knees."
+  ],
+  "props": "the kettlebell from the equipment sheet",
+  "effort": "to0",
+  "common": 3
+ },
+ "bw_squat": {
+  "what": "The bodyweight squat.",
+  "view": "Seen from the side at a slight three-quarter angle from the front, the figure facing right.",
+  "frames": [
+   "standing tall, feet shoulder-width, toes slightly out, arms relaxed.",
+   "squatting down until the hips are at or below the knees, the arms reaching forward for balance, chest up, back straight, heels flat."
+  ],
+  "props": "none",
+  "effort": "to0",
+  "common": 4
+ },
+ "hack_squat": {
+  "what": "The hack squat machine.",
+  "view": "Seen exactly from the side, the figure facing right.",
+  "frames": [
+   "standing on the footplate of the hack squat, back against the pad and shoulders under the pads, legs nearly straight.",
+   "lowered down until the knees are bent past 90 degrees, back still flat against the pad, heels down."
+  ],
+  "props": "the hack squat machine from the equipment sheet",
+  "gear": 3,
+  "effort": "to0",
+  "common": 4
+ },
+ "leg_press": {
+  "what": "The 45-degree leg press.",
+  "view": "Seen exactly from the side, the figure facing right.",
+  "frames": [
+   "seated in the leg press, back flat against the pad, feet flat on the footplate hip-width, legs nearly straight.",
+   "the footplate lowered under control until the knees are bent about 90 degrees, the low back still flat against the pad."
+  ],
+  "props": "the 45-degree leg press from the equipment sheet",
+  "gear": 3,
+  "effort": "to0",
+  "common": 5
+ },
+ "smith_squat": {
+  "what": "The Smith machine squat.",
+  "view": "Seen exactly from the side, the figure facing right.",
+  "frames": [
+   "standing tall under the Smith machine bar, the bar across the upper back, feet a little in front of the body.",
+   "squatting down along the rails until the hips are level with the knees, back straight, heels flat."
+  ],
+  "props": "the Smith machine from the equipment sheet",
+  "gear": 3,
+  "effort": "to0",
+  "common": 4
+ },
+ "deadlift": {
+  "what": "The barbell deadlift.",
+  "view": "Seen exactly from the side, the figure facing right.",
+  "frames": [
+   "standing with the barbell on the floor over the middle of the feet; hips back and down, back flat, shins touching the bar, hands gripping it just outside the legs, arms straight.",
+   "standing tall with the bar at the hips, arms straight, shoulders back, hips and knees fully straight, the bar touching the thighs."
+  ],
+  "props": "the barbell from the equipment sheet",
+  "effort": "to1",
+  "common": 5
+ },
+ "rdl": {
+  "what": "The barbell Romanian deadlift.",
+  "view": "Seen exactly from the side, the figure facing right.",
+  "frames": [
+   "standing tall, knees soft, the barbell held at the hips with straight arms.",
+   "hinged at the hips, the hips pushed far back, the back flat, knees only slightly bent; the bar slid down close along the legs to just below the knees."
+  ],
+  "props": "the barbell from the equipment sheet",
+  "effort": "to0",
+  "common": 5
+ },
+ "good_morning": {
+  "what": "The barbell good morning.",
+  "view": "Seen exactly from the side, the figure facing right.",
+  "frames": [
+   "standing tall with the barbell across the upper back, feet hip-width, knees soft.",
+   "hinged at the hips until the torso is nearly level with the floor, the back flat, the hips pushed back, knees slightly bent."
+  ],
+  "props": "the barbell from the equipment sheet",
+  "effort": "to0",
+  "common": 2
+ },
+ "hip_thrust": {
+  "what": "The barbell hip thrust.",
+  "view": "Seen exactly from the side, the figure facing right.",
+  "frames": [
+   "sitting on the floor with the upper back against the side of the flat bench, knees bent and feet flat; the barbell across the hips, hands holding it.",
+   "the hips driven up until the body is a straight table from knees to shoulders, the shins vertical, the chin tucked; the upper back still on the bench."
+  ],
+  "props": "the flat bench from the equipment sheet and the barbell",
+  "effort": "to1",
+  "common": 5
+ },
+ "back_ext": {
+  "what": "The 45-degree back extension.",
+  "view": "Seen exactly from the side, the figure facing right.",
+  "frames": [
+   "in the back extension bench, the hips on the pad, ankles under the rollers; hinged down at the hips, back flat, arms crossed on the chest.",
+   "raised up until the body is one straight line from head to heels, not arching past straight."
+  ],
+  "props": "the 45-degree back extension bench from the equipment sheet",
+  "gear": 4,
+  "effort": "to1",
+  "common": 4
+ },
+ "kb_rdl": {
+  "what": "The kettlebell Romanian deadlift.",
+  "view": "Seen exactly from the side, the figure facing right.",
+  "frames": [
+   "standing tall, knees soft, one kettlebell held in both hands in front of the hips.",
+   "hinged at the hips, the hips far back, the back flat; the kettlebell lowered close to the legs to just below the knees."
+  ],
+  "props": "the kettlebell from the equipment sheet",
+  "effort": "to0",
+  "common": 2
+ },
+ "nordic_curl": {
+  "what": "The Nordic hamstring curl.",
+  "view": "Seen exactly from the side, the figure facing right.",
+  "frames": [
+   "kneeling upright on the exercise mat, the ankles held down by a padded roller behind, the body straight from knees to head, arms crossed.",
+   "leaning forward slowly with the body still straight from knees to head, about halfway down to the floor, hands ready in front."
+  ],
+  "props": "the exercise mat from the equipment sheet",
+  "gear": 2,
+  "effort": "to0",
+  "common": 1
+ },
+ "kb_swing": {
+  "what": "The kettlebell swing.",
+  "view": "Seen exactly from the side, the figure facing right.",
+  "frames": [
+   "hinged at the hips, back flat, knees slightly bent; the kettlebell swung back between the legs, held in both hands with straight arms.",
+   "standing tall, the hips snapped forward and the bottom squeezed; the kettlebell floated up to chest height in front with straight arms."
+  ],
+  "props": "the kettlebell from the equipment sheet",
+  "effort": "to1",
+  "common": 4
+ },
+ "sumo_deadlift": {
+  "what": "The sumo deadlift.",
+  "view": "Seen from the front at a slight three-quarter angle, the figure facing the camera.",
+  "frames": [
+   "a wide stance with toes turned out, the barbell on the floor; hips down, chest up, back flat, hands gripping the bar inside the knees.",
+   "standing tall with the bar at the hips, knees pushed out, hips fully straight."
+  ],
+  "props": "the barbell from the equipment sheet",
+  "effort": "to1",
+  "common": 3
+ },
+ "trap_bar_deadlift": {
+  "what": "The trap bar deadlift.",
+  "view": "Seen exactly from the side, the figure facing right.",
+  "frames": [
+   "standing inside the trap bar; hips back and down, back flat, chest up, hands on the side handles, arms straight.",
+   "standing tall, the trap bar at arm's length beside the hips, hips and knees fully straight."
+  ],
+  "props": "the trap bar from the equipment sheet",
+  "gear": 5,
+  "effort": "to1",
+  "common": 3
+ },
+ "glute_bridge": {
+  "what": "The glute bridge.",
+  "view": "Seen exactly from the side, the figure facing right.",
+  "frames": [
+   "lying on the back on the exercise mat, knees bent and feet flat, arms by the sides.",
+   "the hips lifted until the body is a straight line from knees to shoulders, the bottom squeezed."
+  ],
+  "props": "the exercise mat from the equipment sheet",
+  "gear": 2,
+  "effort": "to1",
+  "common": 4
+ },
+ "cable_pull_through": {
+  "what": "The cable pull-through.",
+  "view": "Seen exactly from the side, the figure facing right.",
+  "frames": [
+   "standing facing away from the cable column, the rope on the low pulley running between the legs; hinged far forward at the hips, back flat, hands holding the rope between the legs.",
+   "standing tall with the hips driven forward and the bottom squeezed, the rope in front of the hips, arms straight."
+  ],
+  "props": "the cable column from the equipment sheet with the rope on its low pulley",
+  "gear": 2,
+  "effort": "to1",
+  "common": 3
+ },
+ "single_leg_rdl": {
+  "what": "The single-leg Romanian deadlift.",
+  "view": "Seen exactly from the side, the figure facing right.",
+  "frames": [
+   "standing tall on the left leg, the right foot just off the floor, a dumbbell in the right hand.",
+   "hinged forward on the standing leg until the torso and the lifted right leg make one level line, the back flat, the hips square; the dumbbell lowered towards the floor."
+  ],
+  "props": "one dumbbell from the equipment sheet",
+  "effort": "to0",
+  "common": 3
+ },
+ "bulgarian": {
+  "what": "The Bulgarian split squat.",
+  "view": "Seen exactly from the side, the figure facing right.",
+  "frames": [
+   "standing in a long split stance, the back foot's toes up on the flat bench behind, the front foot flat on the floor; a dumbbell in each hand at the sides, torso upright.",
+   "lowered straight down until the front thigh is level with the floor and the back knee is near the floor, the front shin near vertical."
+  ],
+  "props": "the flat bench from the equipment sheet and the pair of dumbbells from the equipment sheet",
+  "effort": "to0",
+  "common": 4
+ },
+ "walking_lunge": {
+  "what": "The walking lunge.",
+  "view": "Seen exactly from the side, the figure facing right.",
+  "frames": [
+   "standing tall with feet together, a dumbbell in each hand at the sides.",
+   "a long step forward with the right foot and lowered until both knees are bent about 90 degrees, the back knee just above the floor, torso upright."
+  ],
+  "props": "the pair of dumbbells from the equipment sheet",
+  "effort": "to0",
+  "common": 4
+ },
+ "step_up": {
+  "what": "The step-up.",
+  "view": "Seen exactly from the side, the figure facing right.",
+  "frames": [
+   "standing in front of the flat bench, the right foot flat up on the bench, the left foot on the floor; a dumbbell in each hand.",
+   "stepped up onto the bench, standing tall on the right leg, the left foot beside it."
+  ],
+  "props": "the flat bench from the equipment sheet and the pair of dumbbells from the equipment sheet",
+  "effort": "to1",
+  "common": 4
+ },
+ "reverse_lunge": {
+  "what": "The reverse lunge.",
+  "view": "Seen exactly from the side, the figure facing right.",
+  "frames": [
+   "standing tall with feet together, a dumbbell in each hand at the sides.",
+   "a long step back with the left foot and lowered until both knees are bent about 90 degrees, the back knee just above the floor, torso upright."
+  ],
+  "props": "the pair of dumbbells from the equipment sheet",
+  "effort": "to0",
+  "common": 4
+ },
+ "bw_split_squat": {
+  "what": "The bodyweight split squat.",
+  "view": "Seen exactly from the side, the figure facing right.",
+  "frames": [
+   "standing in a long split stance, the right foot forward, the left foot back up on its toes, hands on the hips, torso upright.",
+   "lowered straight down until the back knee nearly touches the floor, the front knee bent about 90 degrees."
+  ],
+  "props": "none",
+  "effort": "to0",
+  "common": 3
+ },
+ "leg_ext": {
+  "what": "The leg extension.",
+  "view": "Seen exactly from the side, the figure facing left.",
+  "frames": [
+   "sitting in the leg extension, back against the pad, knees bent at 90 degrees, the roller in front of the lower shins.",
+   "the legs straightened out in front until the knees are straight, the back still against the pad."
+  ],
+  "props": "the leg extension machine from the equipment sheet",
+  "gear": 4,
+  "effort": "to1",
+  "common": 5
+ },
+ "seated_leg_curl": {
+  "what": "The seated leg curl.",
+  "view": "Seen exactly from the side, the figure facing left.",
+  "frames": [
+   "sitting in the seated leg curl, back against the pad, the thigh pad over the knees, legs straight out in front, the roller behind the ankles.",
+   "the legs curled down and back until the knees are bent past 90 degrees."
+  ],
+  "props": "the seated leg curl machine from the equipment sheet",
+  "gear": 2,
+  "effort": "to1",
+  "common": 4
+ },
+ "hip_abduction": {
+  "what": "The seated hip abduction machine.",
+  "view": "Seen from the front at a slight three-quarter angle, the figure facing the camera.",
+  "frames": [
+   "sitting in the hip abduction machine, knees together, the pads on the outsides of the knees.",
+   "the knees pushed apart as wide as comfortable, back against the pad."
+  ],
+  "props": "the seated hip abduction machine from the equipment sheet",
+  "gear": 4,
+  "effort": "to1",
+  "common": 4
+ },
+ "hip_adduction": {
+  "what": "The seated hip adduction machine.",
+  "view": "Seen from the front at a slight three-quarter angle, the figure facing the camera.",
+  "frames": [
+   "sitting in the hip machine, the legs spread wide, the pads on the insides of the knees.",
+   "the knees squeezed together, back against the pad."
+  ],
+  "props": "the seated hip abduction machine from the equipment sheet, its pads on the inside of the knees",
+  "gear": 4,
+  "effort": "to1",
+  "common": 4
+ },
+ "cable_kickback": {
+  "what": "The cable glute kickback.",
+  "view": "Seen exactly from the side, the figure facing right.",
+  "frames": [
+   "standing facing the cable column, the D-handle strapped to the left ankle from the low pulley, hands on the column, a slight forward lean, back flat.",
+   "the left leg kicked straight back and up behind, the bottom squeezed, the back still flat, not arching."
+  ],
+  "props": "the cable column from the equipment sheet with a D-handle on its low pulley",
+  "gear": 2,
+  "effort": "to1",
+  "common": 3
+ },
+ "lateral_raise": {
+  "what": "The dumbbell lateral raise.",
+  "view": "Seen from the front at a slight three-quarter angle, the figure facing the camera.",
+  "frames": [
+   "standing tall, a dumbbell in each hand at the sides, elbows very slightly bent.",
+   "both arms raised out to the sides to shoulder height, elbows slightly bent, the little fingers level with the thumbs."
+  ],
+  "props": "the pair of dumbbells from the equipment sheet",
+  "effort": "to1",
+  "common": 5
+ },
+ "rear_delt_fly": {
+  "what": "The bent-over rear delt fly.",
+  "view": "Seen exactly from the side, the figure facing right.",
+  "frames": [
+   "hinged forward at the hips until the torso is nearly level, back flat; a dumbbell in each hand hanging below the chest, elbows slightly bent.",
+   "both arms raised out to the sides to shoulder height, elbows slightly bent, the shoulder blades squeezed; the torso still level."
+  ],
+  "props": "the pair of dumbbells from the equipment sheet",
+  "effort": "to1",
+  "common": 4
+ },
+ "cable_lateral_raise": {
+  "what": "The cable lateral raise.",
+  "view": "Seen from the front at a slight three-quarter angle, the figure facing the camera.",
+  "frames": [
+   "standing side-on to the cable column, the D-handle from the low pulley in the far hand across the front of the body.",
+   "the arm raised out to the side to shoulder height, elbow slightly bent."
+  ],
+  "props": "the cable column from the equipment sheet with a D-handle on its low pulley",
+  "gear": 2,
+  "effort": "to1",
+  "common": 4
+ },
+ "machine_lateral_raise": {
+  "what": "The lateral raise machine.",
+  "view": "Seen from the front at a slight three-quarter angle, the figure facing the camera.",
+  "frames": [
+   "sitting in a lateral raise machine, the pads against the outsides of the upper arms, arms down at the sides.",
+   "the arms raised out to the sides to shoulder height, the pads lifted with them."
+  ],
+  "props": "the seated shoulder press machine from the equipment sheet, set up with side pads for the upper arms",
+  "gear": 3,
+  "effort": "to1",
+  "common": 2
+ },
+ "front_raise": {
+  "what": "The dumbbell front raise.",
+  "view": "Seen exactly from the side, the figure facing right.",
+  "frames": [
+   "standing tall, a dumbbell in each hand in front of the thighs, palms facing the thighs.",
+   "both arms raised straight forward to shoulder height, elbows slightly bent, not leaning back."
+  ],
+  "props": "the pair of dumbbells from the equipment sheet",
+  "effort": "to1",
+  "common": 3
+ },
+ "upright_row": {
+  "what": "The dumbbell upright row.",
+  "view": "Seen from the front at a slight three-quarter angle, the figure facing the camera.",
+  "frames": [
+   "standing tall, a dumbbell in each hand in front of the thighs.",
+   "the dumbbells pulled up close to the body to the lower chest, the elbows leading, going out and up to shoulder height but no higher."
+  ],
+  "props": "the pair of dumbbells from the equipment sheet",
+  "effort": "to1",
+  "common": 3
+ },
+ "reverse_fly_machine": {
+  "what": "The reverse fly on the pec deck.",
+  "view": "Seen exactly from the side, the figure facing right.",
+  "frames": [
+   "sitting facing the pec deck's pad, chest against it; arms straight forward holding the handles.",
+   "the arms swept out and back to the sides in a wide arc, the shoulder blades squeezed."
+  ],
+  "props": "the pec deck machine from the equipment sheet, sat in facing the pad",
+  "gear": 3,
+  "effort": "to1",
+  "common": 3
+ },
+ "cable_rear_delt_fly": {
+  "what": "The cable rear delt fly.",
+  "view": "Seen from the front at a slight three-quarter angle, the figure facing the camera.",
+  "frames": [
+   "standing between two cable columns, pulleys at shoulder height, the cables crossed in front: the left hand holding the right cable and the right hand the left, arms straight in front.",
+   "the arms pulled out and back wide to the sides at shoulder height, the shoulder blades squeezed."
+  ],
+  "props": "two cable columns from the equipment sheet",
+  "gear": 2,
+  "effort": "to1",
+  "common": 3
+ },
+ "db_shrug": {
+  "what": "The dumbbell shrug.",
+  "view": "Seen from the front at a slight three-quarter angle, the figure facing the camera.",
+  "frames": [
+   "standing tall, a dumbbell in each hand at the sides, shoulders relaxed down.",
+   "the shoulders lifted straight up towards the ears, arms still straight."
+  ],
+  "props": "the pair of dumbbells from the equipment sheet",
+  "effort": "to1",
+  "common": 4
+ },
+ "bb_shrug": {
+  "what": "The barbell shrug.",
+  "view": "Seen from the front at a slight three-quarter angle, the figure facing the camera.",
+  "frames": [
+   "standing tall, the barbell held in front of the thighs with straight arms, shoulders relaxed down.",
+   "the shoulders lifted straight up towards the ears, arms still straight."
+  ],
+  "props": "the barbell from the equipment sheet",
+  "effort": "to1",
+  "common": 3
+ },
+ "kb_curl": {
+  "what": "The kettlebell curl.",
+  "view": "Seen from the front at a slight three-quarter angle, the figure facing the camera.",
+  "frames": [
+   "standing tall, a kettlebell held by its handle in each hand, arms straight down, elbows at the sides.",
+   "the kettlebells curled up to the shoulders, the elbows still at the sides."
+  ],
+  "props": "two kettlebells like the one on the equipment sheet",
+  "effort": "to1",
+  "common": 2
+ },
+ "bb_curl": {
+  "what": "The barbell curl.",
+  "view": "Seen exactly from the side, the figure facing right.",
+  "frames": [
+   "standing tall, the barbell held at arm's length in front of the thighs, palms forward, elbows at the sides.",
+   "the bar curled up to the shoulders, the elbows still at the sides, not leaning back."
+  ],
+  "props": "the barbell from the equipment sheet",
+  "effort": "to1",
+  "common": 4
+ },
+ "hammer_curl": {
+  "what": "The hammer curl.",
+  "view": "Seen from the front at a slight three-quarter angle, the figure facing the camera.",
+  "frames": [
+   "standing tall, a dumbbell in each hand at the sides, palms facing the body.",
+   "both dumbbells curled up with the palms still facing each other, the elbows at the sides."
+  ],
+  "props": "the pair of dumbbells from the equipment sheet",
+  "effort": "to1",
+  "common": 5
+ },
+ "cable_curl": {
+  "what": "The cable curl.",
+  "view": "Seen exactly from the side, the figure facing right.",
+  "frames": [
+   "standing facing the cable column, the short straight bar on the low pulley held in front of the thighs, palms up.",
+   "the bar curled up to the shoulders, elbows at the sides."
+  ],
+  "props": "the cable column from the equipment sheet with the short straight bar on its low pulley",
+  "gear": 2,
+  "effort": "to1",
+  "common": 4
+ },
+ "spider_curl": {
+  "what": "The spider curl.",
+  "view": "Seen exactly from the side, the figure facing right.",
+  "frames": [
+   "lying face down on the incline bench, chest on the pad, arms hanging straight down holding a dumbbell in each hand.",
+   "the dumbbells curled up, the upper arms still hanging straight down."
+  ],
+  "props": "the adjustable incline bench from the equipment sheet and the pair of dumbbells from the equipment sheet",
+  "gear": 4,
+  "effort": "to1",
+  "common": 2
+ },
+ "preacher_curl": {
+  "what": "The preacher curl.",
+  "view": "Seen exactly from the side, the figure facing left.",
+  "frames": [
+   "sitting at the preacher bench, the backs of the upper arms on the sloped pad, holding an EZ bar with the arms nearly straight.",
+   "the bar curled up towards the shoulders, the upper arms still on the pad."
+  ],
+  "props": "the preacher curl bench from the equipment sheet and the EZ bar",
+  "gear": 4,
+  "effort": "to1",
+  "common": 4
+ },
+ "ez_bar_curl": {
+  "what": "The EZ-bar curl.",
+  "view": "Seen exactly from the side, the figure facing right.",
+  "frames": [
+   "standing tall, the EZ bar held at arm's length in front of the thighs on its angled grips, elbows at the sides.",
+   "the bar curled up to the shoulders, elbows at the sides."
+  ],
+  "props": "the EZ curl bar from the equipment sheet",
+  "gear": 5,
+  "effort": "to1",
+  "common": 4
+ },
+ "incline_db_curl": {
+  "what": "The incline dumbbell curl.",
+  "view": "Seen exactly from the side, the figure facing right.",
+  "frames": [
+   "sitting back on the incline bench, the arms hanging straight down behind the body, a dumbbell in each hand, palms forward.",
+   "the dumbbells curled up, the upper arms still hanging straight down."
+  ],
+  "props": "the adjustable incline bench from the equipment sheet and the pair of dumbbells from the equipment sheet",
+  "gear": 4,
+  "effort": "to1",
+  "common": 3
+ },
+ "concentration_curl": {
+  "what": "The concentration curl.",
+  "view": "Seen from the front at a slight three-quarter angle, the figure facing the camera.",
+  "frames": [
+   "sitting on the end of the flat bench, leaning forward, the back of the right upper arm against the inside of the right thigh, a dumbbell hanging in the right hand.",
+   "the dumbbell curled up towards the shoulder, the upper arm still against the thigh."
+  ],
+  "props": "the flat bench from the equipment sheet and one dumbbell from the equipment sheet",
+  "effort": "to1",
+  "common": 3
+ },
+ "machine_curl": {
+  "what": "The biceps curl machine.",
+  "view": "Seen exactly from the side, the figure facing left.",
+  "frames": [
+   "sitting at a curl machine, the upper arms on its pad, arms nearly straight holding the handles.",
+   "the handles curled up towards the shoulders, the upper arms still on the pad."
+  ],
+  "props": "the preacher curl bench from the equipment sheet, with handles on a lever",
+  "gear": 4,
+  "effort": "to1",
+  "common": 2
+ },
+ "cable_hammer_curl": {
+  "what": "The cable rope hammer curl.",
+  "view": "Seen exactly from the side, the figure facing right.",
+  "frames": [
+   "standing facing the cable column, the rope on the low pulley, one end in each hand, palms facing each other, arms straight.",
+   "the rope curled up to the shoulders, palms still facing each other, elbows at the sides."
+  ],
+  "props": "the cable column from the equipment sheet with the rope on its low pulley",
+  "gear": 2,
+  "effort": "to1",
+  "common": 2
+ },
+ "reverse_curl": {
+  "what": "The reverse-grip barbell curl.",
+  "view": "Seen exactly from the side, the figure facing right.",
+  "frames": [
+   "standing tall, the barbell held at arm's length palms facing down, elbows at the sides.",
+   "the bar curled up to the shoulders with the palms still facing down."
+  ],
+  "props": "the barbell from the equipment sheet",
+  "effort": "to1",
+  "common": 2
+ },
+ "overhead_ext": {
+  "what": "The dumbbell overhead triceps extension.",
+  "view": "Seen exactly from the side, the figure facing right.",
+  "frames": [
+   "sitting tall on the flat bench, one dumbbell held in both hands straight overhead.",
+   "the dumbbell lowered behind the head, the elbows bent and pointing up, the upper arms still next to the head."
+  ],
+  "props": "the flat bench from the equipment sheet and one dumbbell from the equipment sheet",
+  "effort": "to0",
+  "common": 4
+ },
+ "skullcrusher": {
+  "what": "The EZ-bar skullcrusher.",
+  "view": "Seen at three-quarters, from beside the bench and towards its foot, a little above: the bench runs diagonally into the picture, the head at the far end; the weights and the body seen from one and the same camera.",
+  "frames": [
+   "lying on the flat bench, the EZ bar held straight up over the shoulders.",
+   "the bar lowered to just above the forehead by bending only the elbows, the upper arms still pointing up."
+  ],
+  "props": "the flat bench from the equipment sheet and the EZ curl bar",
+  "effort": "to0",
+  "common": 4
+ },
+ "kickback": {
+  "what": "The dumbbell triceps kickback.",
+  "view": "Seen exactly from the side, the figure facing right.",
+  "frames": [
+   "one knee and hand on the flat bench, back flat; the other upper arm held level along the side, elbow bent at 90 degrees, a dumbbell hanging.",
+   "the forearm straightened back until the whole arm is straight and level, the upper arm not moving."
+  ],
+  "props": "the flat bench from the equipment sheet and one dumbbell from the equipment sheet",
+  "effort": "to1",
+  "common": 3
+ },
+ "rope_pushdown": {
+  "what": "The cable rope pushdown.",
+  "view": "Seen exactly from the side, the figure facing left.",
+  "frames": [
+   "standing tall facing the cable column, the rope on the high pulley, elbows tucked at the sides, forearms up at chest height.",
+   "the rope pushed down and the ends pulled apart beside the thighs, arms straight, the elbows still at the sides."
+  ],
+  "props": "the cable column from the equipment sheet with the rope on its high pulley",
+  "gear": 2,
+  "effort": "to1",
+  "common": 4
+ },
+ "cable_overhead_ext": {
+  "what": "The cable overhead triceps extension.",
+  "view": "Seen exactly from the side, the figure facing right.",
+  "frames": [
+   "facing away from the cable column in a split stance, the rope from the high pulley held behind the head, elbows bent pointing forward beside the head.",
+   "the arms straightened forward and up overhead, the upper arms still beside the head."
+  ],
+  "props": "the cable column from the equipment sheet with the rope on its high pulley",
+  "gear": 2,
+  "effort": "to1",
+  "common": 3
+ },
+ "seated_dip": {
+  "what": "The seated dip machine.",
+  "view": "Seen exactly from the side, the figure facing left.",
+  "frames": [
+   "sitting in a seated dip machine, holding the handles beside the chest, elbows bent and back.",
+   "the handles pressed straight down beside the hips until the arms are straight."
+  ],
+  "props": "the seated chest press machine from the equipment sheet, with handles beside the seat pressing down",
+  "gear": 3,
+  "effort": "to1",
+  "common": 2
+ },
+ "bench_dip": {
+  "what": "The bench dip.",
+  "view": "Seen exactly from the side, the figure facing right.",
+  "frames": [
+   "hands on the edge of the flat bench behind, fingers forward, arms straight; legs out in front, heels on the floor, the bottom just in front of the bench.",
+   "the elbows bent straight back until the upper arms are level, the bottom lowered close to the bench."
+  ],
+  "props": "the flat bench from the equipment sheet",
+  "effort": "to0",
+  "common": 3
+ },
+ "calf_raise": {
+  "what": "The standing calf raise machine.",
+  "view": "Seen exactly from the side, the figure facing right.",
+  "frames": [
+   "standing in the calf raise machine, shoulders under the pads, the balls of the feet on the step, the heels dropped low below it.",
+   "up on the toes as high as possible, the legs straight."
+  ],
+  "props": "the standing calf raise machine from the equipment sheet",
+  "gear": 4,
+  "effort": "to1",
+  "common": 5
+ },
+ "seated_calf": {
+  "what": "The seated calf raise.",
+  "view": "Seen exactly from the side, the figure facing right.",
+  "frames": [
+   "sitting in the seated calf raise, the thigh pad on the knees, the balls of the feet on the platform, heels low.",
+   "the heels raised as high as possible, the pad lifted with the knees."
+  ],
+  "props": "the seated calf raise machine from the equipment sheet",
+  "gear": 4,
+  "effort": "to1",
+  "common": 4
+ },
+ "leg_press_calf": {
+  "what": "The calf raise on the leg press.",
+  "view": "Seen exactly from the side, the figure facing right.",
+  "frames": [
+   "seated in the leg press, legs straight, only the balls of the feet on the bottom edge of the footplate, the toes pulled back towards the shins.",
+   "the footplate pushed away by pointing the toes, the legs still straight."
+  ],
+  "props": "the 45-degree leg press from the equipment sheet",
+  "gear": 3,
+  "effort": "to1",
+  "common": 2
+ },
+ "single_leg_calf_raise": {
+  "what": "The single-leg calf raise.",
+  "view": "Seen exactly from the side, the figure facing right.",
+  "frames": [
+   "standing on the ball of the right foot on the edge of the plyo box, the left foot tucked behind, one hand on a wall for balance, the heel dropped low.",
+   "up on the toes of the right foot as high as possible."
+  ],
+  "props": "the plyometric box from the equipment sheet",
+  "gear": 5,
+  "effort": "to1",
+  "common": 3
+ },
+ "box_jump": {
+  "what": "The box jump.",
+  "view": "Seen exactly from the side, the figure facing right.",
+  "frames": [
+   "standing in front of the plyo box, hips back and knees bent, arms swung back, ready to jump.",
+   "landed softly on top of the box in a half squat, knees over the toes, arms forward."
+  ],
+  "props": "the plyometric box from the equipment sheet",
+  "gear": 5,
+  "effort": "to1",
+  "common": 3
+ },
+ "broad_jump": {
+  "what": "The broad jump.",
+  "view": "Seen exactly from the side, the figure facing right.",
+  "frames": [
+   "crouched with hips back and knees bent, arms swung back, ready to jump forward.",
+   "landed softly a long way forward in a half squat, arms forward, knees over the toes."
+  ],
+  "props": "none",
+  "effort": "to1",
+  "common": 1
+ },
+ "depth_jump": {
+  "what": "The depth jump.",
+  "view": "Seen exactly from the side, the figure facing right.",
+  "frames": [
+   "standing on the edge of the plyo box, about to step off.",
+   "landed on the floor in front of the box in a quarter squat, already springing up, arms swinging up."
+  ],
+  "props": "the plyometric box from the equipment sheet",
+  "gear": 5,
+  "effort": "to1",
+  "common": 1
+ },
+ "jump_squat": {
+  "what": "The jump squat.",
+  "view": "Seen exactly from the side, the figure facing right.",
+  "frames": [
+   "squatting down, hips back, chest up, arms swung back.",
+   "jumping straight up, the body fully straight, the feet off the floor, arms up."
+  ],
+  "props": "none",
+  "effort": "to1",
+  "common": 2
+ },
+ "med_ball_slam": {
+  "what": "The medicine ball slam.",
+  "view": "Seen exactly from the side, the figure facing right.",
+  "frames": [
+   "standing tall on the toes, the medicine ball held high overhead with straight arms.",
+   "hinged and squatted down hard, the ball slammed into the floor in front of the feet, arms following through."
+  ],
+  "props": "the medicine ball from the equipment sheet",
+  "gear": 5,
+  "effort": "to1",
+  "common": 2
+ },
+ "speed_squat": {
+  "what": "The speed squat with a light barbell.",
+  "view": "Seen exactly from the side, the figure facing right.",
+  "frames": [
+   "standing tall with a light barbell across the upper back.",
+   "squatted down to just below parallel, chest up, ready to drive up fast."
+  ],
+  "props": "the barbell from the equipment sheet",
+  "effort": "to0",
+  "common": 1
+ },
+ "speed_deadlift": {
+  "what": "The speed deadlift with a light barbell.",
+  "view": "Seen exactly from the side, the figure facing right.",
+  "frames": [
+   "set up over the bar on the floor, hips back and down, back flat, arms straight.",
+   "standing tall with the bar at the hips, hips fully straight."
+  ],
+  "props": "the barbell from the equipment sheet",
+  "effort": "to1",
+  "common": 1
+ },
+ "hanging_leg_raise": {
+  "what": "The hanging leg raise.",
+  "view": "Seen exactly from the side, the figure facing right.",
+  "frames": [
+   "hanging from the pull-up bar with straight arms, legs straight down together.",
+   "both legs raised straight up in front until level with the hips, the body not swinging."
+  ],
+  "props": "the pull-up station from the equipment sheet",
+  "gear": 2,
+  "effort": "to1",
+  "common": 4
+ },
+ "rotation_machine": {
+  "what": "The seated rotation machine.",
+  "view": "Seen from the front at a slight three-quarter angle, the figure facing the camera.",
+  "frames": [
+   "sitting in a rotary torso machine, chest against its pad, facing forward.",
+   "the torso turned to one side as far as is comfortable, the hips still facing forward."
+  ],
+  "props": "the ab crunch machine from the equipment sheet, set up as a rotary torso machine",
+  "gear": 4,
+  "effort": "to1",
+  "common": 2
+ },
+ "cable_crunch": {
+  "what": "The kneeling cable crunch.",
+  "view": "Seen exactly from the side, the figure facing left.",
+  "frames": [
+   "kneeling facing the cable column, the rope from the high pulley held beside the head, the hips high, the back straight.",
+   "crunched down, the spine rounding so the elbows come towards the knees, the hips not moving."
+  ],
+  "props": "the cable column from the equipment sheet with the rope on its high pulley",
+  "gear": 2,
+  "effort": "to1",
+  "common": 4
+ },
+ "ab_machine": {
+  "what": "The rotary torso machine.",
+  "view": "Seen from the front at a slight three-quarter angle, the figure facing the camera.",
+  "frames": [
+   "sitting in a rotary torso machine, facing forward.",
+   "the torso turned to one side, the hips still."
+  ],
+  "props": "the ab crunch machine from the equipment sheet, set up as a rotary torso machine",
+  "gear": 4,
+  "effort": "to1",
+  "common": 2
+ },
+ "hollow_hold": {
+  "what": "The hollow body hold.",
+  "view": "Seen exactly from the side, the figure facing right.",
+  "frames": [
+   "lying on the back on the exercise mat, the low back pressed into the mat; the shoulders and legs lifted just off the mat, legs straight together, arms reaching back past the head, the body a long shallow banana curve."
+  ],
+  "props": "the exercise mat from the equipment sheet",
+  "gear": 2,
+  "single": 0,
+  "common": 3
+ },
+ "crunch": {
+  "what": "The crunch.",
+  "view": "Seen exactly from the side, the figure facing right.",
+  "frames": [
+   "lying on the back on the exercise mat, knees bent and feet flat, fingertips lightly behind the ears.",
+   "the shoulders curled up off the mat towards the knees, the low back staying down."
+  ],
+  "props": "the exercise mat from the equipment sheet",
+  "gear": 2,
+  "effort": "to1",
+  "common": 4
+ },
+ "machine_crunch": {
+  "what": "The ab crunch machine.",
+  "view": "Seen exactly from the side, the figure facing left.",
+  "frames": [
+   "sitting in the ab crunch machine, hands on the handles over the shoulders, sitting upright.",
+   "crunched forward, the spine rounding, the chest moving towards the knees."
+  ],
+  "props": "the ab crunch machine from the equipment sheet",
+  "gear": 4,
+  "effort": "to1",
+  "common": 3
+ },
+ "decline_situp": {
+  "what": "The decline sit-up.",
+  "view": "Seen exactly from the side, the figure facing right.",
+  "frames": [
+   "lying back on the decline bench, the ankles hooked under the rollers, arms crossed on the chest.",
+   "sat up until the torso is upright."
+  ],
+  "props": "the decline sit-up bench from the equipment sheet",
+  "gear": 5,
+  "effort": "to1",
+  "common": 2
+ },
+ "ab_wheel": {
+  "what": "The ab wheel rollout.",
+  "view": "Seen exactly from the side, the figure facing right.",
+  "frames": [
+   "kneeling on the exercise mat, hands on the ab wheel under the shoulders, arms straight.",
+   "rolled out forward until the body is long and nearly level, the arms out in front, the back flat, not sagging."
+  ],
+  "props": "the exercise mat from the equipment sheet and the ab wheel",
+  "gear": 5,
+  "effort": "to0",
+  "common": 3
+ },
+ "lying_leg_raise": {
+  "what": "The lying leg raise.",
+  "view": "Seen exactly from the side, the figure facing right.",
+  "frames": [
+   "lying on the back on the exercise mat, legs straight up at the ceiling, hands by the hips.",
+   "the straight legs lowered slowly until just above the mat, the low back still pressed down."
+  ],
+  "props": "the exercise mat from the equipment sheet",
+  "gear": 2,
+  "effort": "to0",
+  "common": 3
+ },
+ "captains_chair": {
+  "what": "The captain's chair knee raise.",
+  "view": "Seen exactly from the side, the figure facing right.",
+  "frames": [
+   "in the captain's chair, back against the pad, forearms on the rests, legs hanging straight down.",
+   "the knees raised up to the chest."
+  ],
+  "props": "the captain's chair from the equipment sheet",
+  "gear": 4,
+  "effort": "to1",
+  "common": 3
+ },
+ "russian_twist": {
+  "what": "The Russian twist.",
+  "view": "Seen from the front at a slight three-quarter angle, the figure facing the camera.",
+  "frames": [
+   "sitting on the exercise mat leaning back a little, knees bent, heels on the mat, hands clasped in front of the chest.",
+   "the torso turned to the left, the hands beside the left hip, the knees still."
+  ],
+  "props": "the exercise mat from the equipment sheet",
+  "gear": 2,
+  "effort": "to1",
+  "common": 4
+ },
+ "side_plank": {
+  "what": "The side plank.",
+  "view": "Seen from the front at a slight three-quarter angle, the figure facing the camera.",
+  "frames": [
+   "on the left forearm and the side of the left foot on the exercise mat, the elbow under the shoulder, the body in one straight line from head to heels, the hips lifted, the right hand on the hip."
+  ],
+  "props": "the exercise mat from the equipment sheet",
+  "gear": 2,
+  "single": 0,
+  "common": 4
+ },
+ "pallof_press": {
+  "what": "The Pallof press.",
+  "view": "Seen from the front at a slight three-quarter angle, the figure facing the camera.",
+  "frames": [
+   "standing side-on to the cable column, the D-handle from the chest-height pulley held in both hands at the chest.",
+   "the handle pressed straight out in front of the chest, arms straight, the body not turning towards the column."
+  ],
+  "props": "the cable column from the equipment sheet with a D-handle at chest height",
+  "gear": 2,
+  "effort": "to1",
+  "common": 3
+ },
+ "woodchop": {
+  "what": "The cable woodchop.",
+  "view": "Seen from the front at a slight three-quarter angle, the figure facing the camera.",
+  "frames": [
+   "standing side-on to the cable column, the D-handle from the high pulley held in both hands up by the near shoulder.",
+   "the handle pulled diagonally down across the body to beside the far hip, the torso turning, arms straight."
+  ],
+  "props": "the cable column from the equipment sheet with a D-handle on its high pulley",
+  "gear": 2,
+  "effort": "to1",
+  "common": 3
+ },
+ "sit_to_stand": {
+  "what": "The sit-to-stand from a bench.",
+  "view": "Seen exactly from the side, the figure facing right.",
+  "frames": [
+   "sitting on the edge of the flat bench, feet flat, arms crossed on the chest, leaning slightly forward.",
+   "standing tall in front of the bench."
+  ],
+  "props": "the flat bench from the equipment sheet",
+  "effort": "to1",
+  "common": 2
+ },
+ "supported_squat": {
+  "what": "The supported mini-squat.",
+  "view": "Seen exactly from the side, the figure facing right.",
+  "frames": [
+   "standing tall holding the back of a sturdy bench in front for support, feet hip-width.",
+   "a small squat, the hips back and knees bent only a little, still holding on."
+  ],
+  "props": "the flat bench from the equipment sheet, stood on its end as a support",
+  "effort": "to0",
+  "common": 2
+ },
+ "bird_dog": {
+  "what": "The bird dog.",
+  "view": "Seen exactly from the side, the figure facing right.",
+  "frames": [
+   "on hands and knees on the exercise mat, back flat like a table.",
+   "the right arm reaching straight forward and the left leg straight back, both level with the back, the back still flat."
+  ],
+  "props": "the exercise mat from the equipment sheet",
+  "gear": 2,
+  "effort": "to1",
+  "common": 4
+ },
+ "db_front_squat": {
+  "what": "The dumbbell front squat.",
+  "view": "Seen exactly from the side, the figure facing right.",
+  "frames": [
+   "standing tall, a dumbbell in each hand resting on the front of the shoulders, elbows forward.",
+   "squatting down until the hips are below the knees, the torso upright, heels flat."
+  ],
+  "props": "the pair of dumbbells from the equipment sheet",
+  "effort": "to0",
+  "common": 3
+ },
+ "kb_deadlift": {
+  "what": "The kettlebell deadlift.",
+  "view": "Seen exactly from the side, the figure facing right.",
+  "frames": [
+   "standing over the kettlebell on the floor between the feet, hips back and down, back flat, both hands on the handle.",
+   "standing tall, the kettlebell at the hips, hips fully straight."
+  ],
+  "props": "the kettlebell from the equipment sheet",
+  "effort": "to1",
+  "common": 3
+ },
+ "ball_hamstring_curl": {
+  "what": "The stability ball hamstring curl.",
+  "view": "Seen exactly from the side, the figure facing right.",
+  "frames": [
+   "lying on the back on the mat, heels on the stability ball, hips lifted so the body is straight from shoulders to heels.",
+   "the heels pulling the ball in towards the bottom, the knees bent, the hips still high."
+  ],
+  "props": "the stability ball from the equipment sheet and the exercise mat",
+  "gear": 5,
+  "effort": "to1",
+  "common": 1
+ },
+ "suspension_row": {
+  "what": "The suspension strap row.",
+  "view": "Seen exactly from the side, the figure facing right.",
+  "frames": [
+   "leaning back holding the suspension strap handles, arms straight, the body one straight line, heels on the floor.",
+   "the chest pulled up to the handles, the elbows back, the body still straight."
+  ],
+  "props": "the suspension straps from the equipment sheet",
+  "gear": 5,
+  "effort": "to1",
+  "common": 2
+ },
+ "farmer_carry": {
+  "what": "The farmer's carry.",
+  "view": "Seen exactly from the side, the figure facing right.",
+  "frames": [
+   "walking tall, a heavy dumbbell in each hand at the sides, shoulders back, mid-stride."
+  ],
+  "props": "the pair of dumbbells from the equipment sheet",
+  "single": 0,
+  "common": 4
+ },
+ "suitcase_carry": {
+  "what": "The suitcase carry.",
+  "view": "Seen from the front at a slight three-quarter angle, the figure facing the camera.",
+  "frames": [
+   "walking tall with one heavy dumbbell in the right hand only, the body upright and not leaning to the side, mid-stride."
+  ],
+  "props": "one dumbbell from the equipment sheet",
+  "single": 0,
+  "common": 2
+ },
+ "treadmill": {
+  "what": "Walking briskly on a treadmill.",
+  "view": "Seen exactly from the side, the figure facing right.",
+  "frames": [
+   "walking tall on the treadmill belt, mid-stride, the right foot forward, arms swinging naturally, not holding the rails.",
+   "the next stride: the left foot forward, the arms swung the other way."
+  ],
+  "props": "the treadmill from the equipment sheet",
+  "gear": 6,
+  "effort": "to1",
+  "common": 5
+ },
+ "row": {
+  "what": "Rowing on a rowing machine.",
+  "view": "Seen exactly from the side, the figure facing right.",
+  "frames": [
+   "at the catch: sitting on the seat slid forward, knees bent up to the chest, shins vertical, arms straight forward holding the handle, back straight leaning slightly forward.",
+   "at the finish: legs pushed straight, leaning back slightly, the handle pulled in to the lower ribs, elbows back."
+  ],
+  "props": "the rowing machine from the equipment sheet",
+  "gear": 6,
+  "effort": "to1",
+  "common": 5
+ },
+ "ski_erg": {
+  "what": "The ski erg.",
+  "view": "Seen exactly from the side, the figure facing right.",
+  "frames": [
+   "standing tall facing the ski erg, arms straight up overhead holding both handles.",
+   "hinged at the hips and knees bent, the handles pulled down past the thighs with straight arms."
+  ],
+  "props": "the ski erg from the equipment sheet",
+  "gear": 6,
+  "effort": "to1",
+  "common": 2
+ },
+ "bike": {
+  "what": "Pedalling an upright exercise bike.",
+  "view": "Seen exactly from the side, the figure facing right.",
+  "frames": [
+   "sitting on the bike, hands on the handlebars, back straight, the right pedal at the bottom with the right leg nearly straight.",
+   "half a turn later: the left leg nearly straight at the bottom, the right knee up."
+  ],
+  "props": "the upright exercise bike from the equipment sheet",
+  "gear": 6,
+  "effort": "to1",
+  "common": 5
+ },
+ "assault_bike": {
+  "what": "Riding an air bike.",
+  "view": "Seen exactly from the side, the figure facing right.",
+  "frames": [
+   "sitting on the air bike, the right leg pushing down, the right arm pulled back and the left arm pushed forward on the moving handles.",
+   "the other half: the left leg pushing down, the left arm pulled back and the right arm forward."
+  ],
+  "props": "the air bike from the equipment sheet",
+  "gear": 6,
+  "effort": "to1",
+  "common": 3
+ },
+ "stair": {
+  "what": "Climbing on a stair climber.",
+  "view": "Seen exactly from the side, the figure facing right.",
+  "frames": [
+   "standing tall on the stair climber, the right foot up a step, light hands on the rails.",
+   "the next step: the left foot up a step, standing tall."
+  ],
+  "props": "the stair climber from the equipment sheet",
+  "gear": 6,
+  "effort": "to1",
+  "common": 4
+ },
+ "elliptical": {
+  "what": "The elliptical trainer.",
+  "view": "Seen exactly from the side, the figure facing right.",
+  "frames": [
+   "standing tall on the elliptical's pedals, hands on the moving handles, the right foot forward and the right handle back.",
+   "the other half: the left foot forward and the left handle back."
+  ],
+  "props": "the elliptical trainer from the equipment sheet",
+  "gear": 6,
+  "effort": "to1",
+  "common": 5
+ }
+}

@@ -34,3 +34,7 @@ art/photos/
 art/drawn/*-stick.png
 art/drawn/stick-style.png
 art/STYLE-stick.md
+
+# Local tool settings (Claude Code, Gemini)
+.claude/
+.gemini/

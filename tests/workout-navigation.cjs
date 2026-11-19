@@ -65,7 +65,8 @@ test("the stretch card: one card a move, thrown away to move on, and a tap sets 
 
   let tree = draw();
   // One card a move — a move with two sides is one card, on one clock.
-  assert.ok(findAll(tree, (n) => n.props?.accessibilityLabel === `Move 1 of ${moves.length}`).length, "counted by moves, not sides");
+  // The segments up top are one a move, each a button to that move.
+  assert.ok(findAll(tree, (n) => n.props?.accessibilityLabel?.startsWith(`Move 1 of ${moves.length}`)).length, "counted by moves, not sides");
   assert.ok(card(tree).props.accessibilityLabel.startsWith(moves[0].name));
   // Thrown away before it was held: nothing is recorded for it, and the next is on top.
   throwAway(tree);

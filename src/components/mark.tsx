@@ -20,20 +20,24 @@ export function Mark({
   family,
   size,
   color,
+  plain,
 }: {
   family: Family;
   size: number;
   /** Used by unoutlined palettes; outlined symbols keep their family fill. */
   color?: string;
+  /** Drawn solid in `color` with no edge, whatever the palette: a watermark. */
+  plain?: boolean;
 }) {
   const { mark } = FAMILY[family];
+  const edged = MARK_EDGE && !plain;
   // Strong family fills stay distinct against the softer coloured cards.
-  const c = MARK_EDGE ? mark : (color ?? mark);
+  const c = edged ? mark : (color ?? mark);
   // The edge stays about one point at any size; the shape draws in by half of
   // it, so the edge is never cut off at the frame.
-  const edge = MARK_EDGE ? Math.max(1, size / 24) * (48 / size) : 0;
+  const edge = edged ? Math.max(1, size / 24) * (48 / size) : 0;
   const k = (48 - edge) / 48;
-  const paint = { fill: c, stroke: MARK_EDGE ? mark : undefined, strokeWidth: edge || undefined, strokeLinejoin: "round" as const };
+  const paint = { fill: c, stroke: edged ? mark : undefined, strokeWidth: edge || undefined, strokeLinejoin: "round" as const };
 
   let shape: ReactNode;
   switch (family) {

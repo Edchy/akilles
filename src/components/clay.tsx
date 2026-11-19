@@ -17,15 +17,19 @@ const BREATH_MS: Record<Breath, number> = { inhale: 3000, exhale: 4000 };
 const STEADY_MS = 2500;
 
 /**
- * How long one picture takes to become the other. Much slower than the app's
- * own fades on purpose: it is the body moving through the first part of the breath.
+ * How long one picture takes to become the other: a blink, like a stop-motion
+ * frame. A long crossfade shows two bodies at once, half see-through, and
+ * made people dizzy (18 November 2026); a cut, then stillness, does not.
  */
-const MOVE_MS = 1400;
+const CUT_MS = 90;
 
 /** A moment on the first picture before the first breath. */
 const SETTLE_MS = 800;
 
-/** Whether a stretch has the clay figure's pictures. */
+/** A lift's pace: how long each end of the rep holds before the cut to the other. */
+const REP_END_MS = 1600;
+
+/** Whether a stretch or a lift has the clay figure's pictures. */
 export const hasClay = (id: string) => id in CLAY;
 
 /**
@@ -35,32 +39,59 @@ export const hasClay = (id: string) => id in CLAY;
  * following the picture is breathing right, with nothing to tap. Still (no
  * flipping, no words) when `still`, and with Reduce Motion it rests on the
  * second picture: the stretch itself.
+ *
+ * A lift (`effort` set) cuts between its two pictures at an even pace instead,
+ * with no words; still, it rests on the first picture, where the lift starts.
  */
-export function ClayStretch({ id, style, still }: { id: string; style?: ViewStyle; still?: boolean }) {
+export function ClayStretch({
+  id,
+  style,
+  still,
+  fill,
+  words = true,
+  onBreath,
+}: {
+  id: string;
+  style?: ViewStyle;
+  still?: boolean;
+  /** Fill the box, trimming the picture's empty white sides, so the figure is bigger. */
+  fill?: boolean;
+  /** Say the breath under the picture (default); off where the screen says it itself. */
+  words?: boolean;
+  /** The breath being taken now, as it changes: for a screen that says it itself. */
+  onBreath?: (breath: Breath | null) => void;
+}) {
   const reduce = useReduceMotion();
-  const { frames, breath } = CLAY[id];
+  const { frames, breath, effort } = CLAY[id];
   const pair = frames.length > 1;
   const moving = pair && !still && !reduce;
   // Which picture the body is moving to, or resting on: 0 the first, 1 the second.
-  const [to, setTo] = useState<0 | 1>(pair && !moving ? 1 : 0);
+  // At rest a stretch shows the stretch itself (its second picture); a lift, where it starts.
+  const rest: 0 | 1 = pair && !effort ? 1 : 0;
+  const [to, setTo] = useState<0 | 1>(moving ? 0 : rest);
   const [breathing, setBreathing] = useState(false);
-  const second = useSharedValue(pair && !moving ? 1 : 0);
+  const second = useSharedValue(moving ? 0 : rest);
 
   useEffect(() => {
     if (!moving) {
       setBreathing(false);
-      setTo(pair ? 1 : 0);
-      second.value = pair ? 1 : 0;
+      setTo(rest);
+      second.value = rest;
       return;
     }
     let timer: ReturnType<typeof setTimeout>;
-    // One breath: the body moves to the other picture as it is taken, then
-    // rests there for the rest of the breath.
+    // One breath: the body cuts to the other picture as it is taken, then
+    // rests there for the rest of the breath. A lift cuts from one end of the
+    // rep to the other at an even pace.
     const breathe = (target: 0 | 1) => {
       setTo(target);
       setBreathing(true);
-      second.value = withTiming(target, { duration: MOVE_MS, easing: Easing.inOut(Easing.quad) });
-      const length = breath === "steady" ? STEADY_MS : BREATH_MS[target === 1 ? breath.to1 : breath.to0];
+      second.value = withTiming(target, { duration: CUT_MS, easing: Easing.linear });
+      const length = effort
+        ? REP_END_MS
+        : breath === "steady"
+          ? STEADY_MS
+          : BREATH_MS[target === 1 ? breath.to1 : breath.to0];
       timer = setTimeout(() => breathe(target === 1 ? 0 : 1), length);
     };
     setTo(0);
@@ -69,11 +100,14 @@ export function ClayStretch({ id, style, still }: { id: string; style?: ViewStyl
     // A moment on the first picture before the first breath.
     timer = setTimeout(() => breathe(1), SETTLE_MS);
     return () => clearTimeout(timer);
-  }, [moving, pair, breath, second]);
+  }, [moving, pair, rest, breath, effort, second]);
 
   const secondStyle = useAnimatedStyle(() => ({ opacity: second.value }));
   // The breath being taken now: the one moving the body to the picture it heads for.
-  const now = !breathing || breath === "steady" ? null : to === 1 ? breath.to1 : breath.to0;
+  const now = !moving || !breathing || breath === "steady" ? null : to === 1 ? breath.to1 : breath.to0;
+  useEffect(() => {
+    onBreath?.(now);
+  }, [now]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <View
@@ -81,11 +115,11 @@ export function ClayStretch({ id, style, still }: { id: string; style?: ViewStyl
       importantForAccessibility="no-hide-descendants"
       style={[{ overflow: "hidden", backgroundColor: colors.bg }, style]}
     >
-      <Image source={frames[0]} resizeMode="contain" style={FILL} />
+      <Image source={frames[0]} resizeMode={fill ? "cover" : "contain"} style={FILL} />
       {pair ? (
-        <Animated.Image source={frames[1]} resizeMode="contain" style={[FILL, secondStyle]} />
+        <Animated.Image source={frames[1]} resizeMode={fill ? "cover" : "contain"} style={[FILL, secondStyle]} />
       ) : null}
-      {moving && now ? (
+      {words && now ? (
         <Text
           ui
           style={{

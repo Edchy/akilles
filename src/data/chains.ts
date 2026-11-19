@@ -77,7 +77,7 @@ export const CHAINS: Chain[] = [
       { exerciseId: "decline_push_up", why: "Feet up on a bench: more of you over your hands." },
     ],
     place: {
-      question: "Try push-ups from your toes. How many can you do with good form?",
+      question: "Do push-ups. How many can you do with good form?",
       answers: [
         { label: "None", step: 1 },
         { label: "1 to 5", step: 2 },

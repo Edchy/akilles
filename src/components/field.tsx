@@ -1,6 +1,6 @@
 import { createContext, useContext, useMemo, type PropsWithChildren } from "react";
 
-import { colors, fieldColors, type Palette } from "@/constants/theme";
+import { CLAY_CARD, colors, fieldColors, type Palette } from "@/constants/theme";
 import type { Family } from "@/data/families";
 
 /**
@@ -17,6 +17,13 @@ export const useColors = () => useContext(FieldContext);
 export function Field({ family, children }: PropsWithChildren<{ family: Family }>) {
   const palette = useMemo(() => fieldColors(family), [family]);
   return <FieldContext.Provider value={palette}>{children}</FieldContext.Provider>;
+}
+
+/** The mobility card: ink on the clay pictures' white (see `CLAY_CARD`). */
+// No ground of its own: the card's white-to-grey shows through (see `ClayGround`).
+const CLAY_PALETTE: Palette = { ...colors, bg: CLAY_CARD.top, ground: "transparent" };
+export function ClayField({ children }: PropsWithChildren) {
+  return <FieldContext.Provider value={CLAY_PALETTE}>{children}</FieldContext.Provider>;
 }
 
 /** Back to white: a sheet slides up over a coloured field, but is white itself. */

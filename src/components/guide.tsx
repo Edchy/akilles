@@ -127,10 +127,11 @@ export function GuideInstructions({ id }: { id: string }) {
   if (!guide) return null;
   return (
     <View style={{ gap: 24 }}>
-      <View>
+      {/* Each step a card of its own, like Own it below: one look for the whole guide. */}
+      <View style={{ gap: 10 }}>
         {guide.steps.map((step, i) => (
-          <View key={i} style={{ flexDirection: "row", gap: 16, alignItems: "flex-start", paddingVertical: 18,
-            borderBottomWidth: i < guide.steps.length - 1 ? 1 : 0, borderBottomColor: colors.line }}>
+          <View key={i} style={{ flexDirection: "row", gap: 16, alignItems: "flex-start", padding: 20,
+            borderRadius: 20, borderCurve: "continuous", backgroundColor: colors.surface }}>
             <Text accessibilityElementsHidden importantForAccessibility="no" style={{ width: 30, color: colors.text, fontFamily: fonts.bold, fontSize: 32, lineHeight: 34 }}>{i + 1}</Text>
             <View style={{ flex: 1, gap: 5 }}>
               {guide.stepTitles?.[i] ? <Text ui style={{ color: colors.text, fontSize: 17, lineHeight: 23, fontWeight: "700" }}>{guide.stepTitles[i]}</Text> : null}
@@ -140,7 +141,7 @@ export function GuideInstructions({ id }: { id: string }) {
         ))}
       </View>
       {guide.own ? (
-        <View style={{ gap: 8, padding: 20, borderRadius: 20, backgroundColor: colors.surface }}>
+        <View style={{ gap: 8, padding: 20, borderRadius: 20, borderCurve: "continuous", backgroundColor: colors.surface }}>
           <Text ui accessibilityRole="header" style={{ color: colors.text, fontSize: 17, fontWeight: "700" }}>Own it</Text>
           <Text style={{ color: colors.text, fontSize: 18, lineHeight: 25 }}>{guide.own}</Text>
         </View>

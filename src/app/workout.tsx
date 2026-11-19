@@ -18,6 +18,7 @@ import {
 import {
   Animated,
   Easing,
+  Image,
   Keyboard,
   Pressable,
   ScrollView,
@@ -52,18 +53,22 @@ import { CardioChoices } from "@/components/cardio-target";
 import { Column, COLUMN } from "@/components/screen";
 import { useHideBar } from "@/components/bar-actions";
 import { useBarSpace } from "@/components/bottom-bar";
-import { Field, useColors } from "@/components/field";
+import { ClayField, Field, useColors } from "@/components/field";
 import { Icon, type IconName } from "@/components/icon";
 import { Mark } from "@/components/mark";
 import { NoteLine, NoteSheet } from "@/components/note";
 import { GuideButton, GuideSheet } from "@/components/guide";
 import { CardActiveContext, useCardActive, CardContext, useOnCard } from "@/components/card-context";
 import { Illustration } from "@/components/illustration";
-import { FloatingTip, firstUnseen } from "@/components/tips";
+import { FloatingTip, HINT_LABELS, firstUnseen, isHint, playedHint, type HintId } from "@/components/tips";
+import { GestureHint } from "@/components/hint";
 import { ClayStretch, hasClay } from "@/components/clay";
 import { GoalSheet, Pips, hasTutorial, openTutorial } from "@/components/goals";
 import { BigButton, Sheet, TextButton } from "@/components/sheet";
-import { colors, colors as paper, FAMILY, fieldColors, fieldIsDark, fonts, PAPER, radii } from "@/constants/theme";
+import { CLAY_CARD, colors, colors as paper, FAMILY, fieldColors, fieldIsDark, fonts, DUSK, DUSK_CARDS, LETTERPRESS, mix, PAPER, radii } from "@/constants/theme";
+import { ClayGround, DuskGround } from "@/components/dusk";
+import { Fit } from "@/components/fit";
+import { grain } from "@/constants/grain";
 import { byId, inSentence, type Exercise } from "@/data/exercises";
 import { ownCue } from "@/data/guides";
 import type { Family } from "@/data/families";
@@ -100,6 +105,7 @@ import {
   currentTaken,
   currentWarmup,
   currentWorkout,
+  workoutFamily,
   exerciseCount,
   editWeight,
   finishWorkout,
@@ -138,6 +144,7 @@ import {
   finishRoutine,
   cardName,
   goToCard,
+  seeTip,
   SessionContext,
   useSession,
   type CardMark,
@@ -313,6 +320,14 @@ function StepsSheet({ visible, chain, at, onClose, onStep }: {
  * shrinking it. A superset folds a second lift in, so the same blocks are
  * drawn tighter to fit both above the bar.
  */
+/**
+ * The unit under the weight rather than after it, so the figures stand alone
+ * in the middle of the card (18 November 2026, to try). `UNIT_ROOM` is the
+ * height it adds under the number. `false` puts it back on the baseline.
+ */
+const UNIT_BELOW = true;
+const UNIT_ROOM = 40;
+
 const LAYOUT = {
   solo: { name: 36, weight: 52, number: 96, sets: 48, under: 84, underGap: 28 },
   // On its own, with more under the circles — the feel question and its
@@ -429,18 +444,27 @@ function Deck() {
   const onCard = top < cards - 1 ? active.items[top] : undefined;
   const lifting = !!onCard && !isCardio(onCard) && !isMobility(onCard);
   const target = lifting ? currentPrescription(state)?.reps : undefined;
+  const cardDone = !!onCard && cardMark(state, top) === "done";
   const tip = firstUnseen(state, [
     lifting && target !== undefined && onCard.logged.some((r) => r !== null && r < target) && "short",
+    // The very first card says in words what a card is for: do it, fill it
+    // in, swipe on — and that the same swipe skips it.
+    top === 0 && !!onCard && !cardDone && "begin",
     lifting && currentWarmup(state).length > 0 && !onCard.logged.some((r) => r !== null) && "warmup",
-    "swipe",
+    // The finger shows the swipe once a card is done, when moving on is
+    // what comes next — never first thing, where it reads as "throw this away".
+    cardDone && "swipe",
     lifting && "menu",
     top >= 2 && "overview",
   ]);
 
   const land = (on: number) => {
     Haptics.selectionAsync();
-    setState((s) => goToCard(s, on));
+    // Turned by a swipe: the swipe is learned, its hint never comes again.
+    setState((s) => seeTip(seeTip(goToCard(s, on), "swipe"), "begin"));
   };
+  // A tip closed for now by a touch: it stays away until the workout is opened again.
+  const [dismissed, setDismissed] = useState<string | null>(null);
   const last = cards - 1;
 
   /**
@@ -451,7 +475,12 @@ function Deck() {
    */
   const opened = useSharedValue(0);
   const openedFrom = useSharedValue(0);
-  const [open, setOpenState] = useState(false);
+  const [open, setOpenRaw] = useState(false);
+  // Opened by the thumb or a tap: the pull is learned, its hint never comes again.
+  const setOpenState = (on: boolean) => {
+    setOpenRaw(on);
+    if (on) setState((s) => seeTip(s, "overview"));
+  };
   const setOpen = (on: boolean) => {
     setOpenState(on);
     opened.value = still ? (on ? 1 : 0) : withSpring(on ? 1 : 0, SETTLE);
@@ -550,9 +579,51 @@ function Deck() {
 
   const lowered = useAnimatedStyle(() => ({ transform: [{ translateY: opened.value * shift }] }));
 
+  // The tip showing now, if any: none while the list is open or typing.
+  const showing = tip && tip !== dismissed && !open && !keyboardOpen && shut > 0 ? tip : undefined;
+  // A finger hint moves the real deck a little as it goes: a swipe turns it a
+  // touch toward the next card, a pull lowers it a touch. `hintDrive` is how
+  // far the finger is through its motion; `hintKind` which thing it moves.
+  // The kind is kept after the hint goes, so its last word — back to 0 —
+  // still puts the deck back.
+  const hintDrive = useSharedValue(0);
+  const hintKind = useSharedValue(0);
+  useEffect(() => {
+    if (showing === "swipe") hintKind.value = 1;
+    else if (showing === "overview") hintKind.value = 2;
+  }, [showing, hintKind]);
+  useAnimatedReaction(
+    () => hintDrive.value,
+    (k, before) => {
+      if (before === null || k === before) return;
+      if (hintKind.value === 1) turned.value = k === 0 ? withSpring(aim.value, SETTLE) : aim.value + 0.14 * k;
+      else if (hintKind.value === 2) opened.value = k === 0 ? withSpring(0, SETTLE) : 0.1 * k;
+    },
+  );
+  /** Where each finger hint plays, on this screen: the card's middle, the workout card's handle, the name. */
+  const hintAt = (id: HintId) => {
+    if (id === "swipe") {
+      const y = deckTop + cardHeight * 0.56;
+      return { from: { x: width * 0.72, y }, to: { x: width * 0.3, y }, labelAt: { x: 0, y: deckTop + cardHeight * 0.38 } };
+    }
+    if (id === "overview") {
+      const y = shut - 12;
+      return { from: { x: width / 2, y }, to: { x: width / 2, y: y + 110 }, labelAt: { x: 0, y: y + 170 } };
+    }
+    return { from: { x: width / 2, y: deckTop + 62 }, labelAt: { x: 0, y: deckTop + 112 } };
+  };
+
   return (
     // On paper the deck lies on a slightly darker ground, so paper cards stand off it.
-    <View style={{ flex: 1, overflow: "hidden", backgroundColor: PAPER ? colors.surface : colors.bg, paddingTop: insets.top + 4 }}>
+    <View
+      // Any touch puts a tip away: a hint for now, a callout for good.
+      onTouchStart={() => {
+        if (!showing) return;
+        setDismissed(showing);
+        if (!isHint(showing)) setState((s) => seeTip(s, showing));
+      }}
+      style={{ flex: 1, overflow: "hidden", backgroundColor: PAPER ? colors.surface : colors.bg, paddingTop: insets.top + 4 }}
+    >
       <StatusBar style="dark" />
       <GestureDetector gesture={Gesture.Race(pan, pull)}>
         <View
@@ -605,7 +676,19 @@ function Deck() {
             onLeave={() => router.replace("/")}
           />
 
-          <FloatingTip id={open || keyboardOpen || shut === 0 ? undefined : tip} frame={{ side: DECK.side, height: shut, corner: DECK.corner }} />
+          {showing && isHint(showing) && width > 0 ? (
+            <GestureHint
+              key={showing}
+              {...hintAt(showing)}
+              label={HINT_LABELS[showing]}
+              drive={showing === "menu" ? undefined : hintDrive}
+              onPlayed={() => {
+                setDismissed(showing);
+                setState((s) => playedHint(s, showing));
+              }}
+            />
+          ) : null}
+          <FloatingTip id={showing === "short" || showing === "warmup" || showing === "begin" ? showing : undefined} top={deckTop + 14} side={DECK.side} />
 
           {open ? (
             // The strip of the deck at the foot: a tap brings it back up.
@@ -654,6 +737,13 @@ function DeckCard({
   const { state } = useSession();
   const item = state.active?.items[index];
   const edge = item ? fieldColors(itemFamily(item)).text : paper.text;
+  // Letterpress: the card is its own colour all the way to the edge, so the
+  // smoothed pixels of a rounded or tilted edge never show white through.
+  // The last card, the end, is in the workout's own colour.
+  const family = item ? itemFamily(item) : state.active ? workoutFamily(state, currentWorkout(state)) : null;
+  // The mobility card is white, the clay pictures' own, not dusk (see `CLAY_CARD`).
+  const clay = family === "mobility";
+  const ground = clay ? CLAY_CARD.top : family && DUSK_CARDS ? DUSK[family].foot : LETTERPRESS && family ? fieldColors(family).bg : null;
   const style = useAnimatedStyle(() => {
     // How far down the deck, from −1 (gone off to the left) up to the bottom.
     const place = index - turned.value;
@@ -699,18 +789,28 @@ function DeckCard({
           overflow: "hidden",
           borderRadius: DECK.corner,
           borderCurve: "continuous",
-          backgroundColor: PAPER ? colors.bg : colors.surface,
+          backgroundColor: ground ?? (PAPER ? colors.bg : colors.surface),
           pointerEvents: onTop ? "auto" : "none",
           // Each card's edge, so the deck reads as cards and the feet of the
           // ones underneath show: an ink line on paper, or a line of the
           // ground between coloured cards.
-          borderWidth: PAPER ? 2 : 1.5,
-          borderColor: edge,
+          // Letterpress: no ink line, just the card stock's own darker edge.
+          borderWidth: LETTERPRESS ? 1 : PAPER ? 2 : 1.5,
+          // Solid, a shade under the card: a see-through edge picks up whatever is behind it.
+          borderColor: clay ? mix(CLAY_CARD.foot, "#000000", 0.12) : family && DUSK_CARDS ? mix(DUSK[family].top, "#000000", 0.35) : ground ? mix(ground, "#000000", 0.28) : edge,
         },
         style,
       ]}
     >
+      {clay ? <ClayGround /> : family && DUSK_CARDS ? <DuskGround family={family} /> : null}
       {children}
+      {/* The paper's grain, over everything, so the words look pressed into it. */}
+      {LETTERPRESS && !DUSK_CARDS ? (
+        // Never takes a touch: it lies over the whole card.
+        <View pointerEvents="none" style={StyleSheet.absoluteFill}>
+          <Image source={grain()} resizeMode="repeat" style={{ width: "100%", height: "100%", opacity: 0.14 }} />
+        </View>
+      ) : null}
     </Reanimated.View>
   );
 }
@@ -1212,7 +1312,10 @@ function StepBody() {
   if (isMobility(item)) {
     return (
       <OnField family="mobility" sendOff={sendOff}>
-        <Mobility key={item.slot} item={item} />
+        {/* Ink on white, not the dusk card's cream: see `CLAY_CARD`. */}
+        <ClayField>
+          <Mobility key={item.slot} item={item} />
+        </ClayField>
       </OnField>
     );
   }
@@ -1289,10 +1392,13 @@ function StepBody() {
     .join(" · ");
 
   // Opens the ⋯ menu under its button, in this screen's coordinates.
-  const openMenu = (button: View) =>
+  const openMenu = (button: View) => {
+    // Opened by a tap on the name: learned, its hint never comes again.
+    setState((s) => seeTip(s, "menu"));
     button.measureInWindow((x, y, width, height) =>
       root.current?.measureInWindow((rx, ry) => setMenu({ x: x - rx, y: y - ry, width, height })),
     );
+  };
   const tools: Tool[] = [
     { icon: "info", label: "How to do it", onPress: () => setGuiding(true) },
     canSwap ? { icon: "swap", label: "Swap for today", onPress: () => setSwapping(true) } : null,
@@ -1323,20 +1429,16 @@ function StepBody() {
         }
         return false;
       }}
-      style={{ flex: 1, backgroundColor: colors.bg }}
+      style={{ flex: 1, backgroundColor: colors.ground }}
     >
       <Header showRest />
 
-      <ScrollView
+      <Fit
         // On a card it never moves: a pull down opens the workout's track.
-        // It fits instead — see `LAYOUT.tight`.
-        scrollEnabled={false}
-        bounces={false}
-        overScrollMode="never"
+        // It fits instead — `LAYOUT.tight` first, then `Fit` draws it smaller.
         // With the number pad up, a tap on a circle or − and + still counts.
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={{
-          flexGrow: 1,
           paddingHorizontal: 22,
           paddingBottom: 8,
           width: "100%",
@@ -1422,7 +1524,7 @@ function StepBody() {
           <View onLayout={(e) => setFill(e.nativeEvent.layout.height)}>
         <View
           style={{
-            height: L.number,
+            height: L.number + (UNIT_BELOW ? UNIT_ROOM : 0),
             marginTop: note || myNote || rampLine ? Math.max(10, L.weight - under) : L.weight,
             justifyContent: "center",
           }}
@@ -1498,7 +1600,7 @@ function StepBody() {
         </View>
         </>
         )}
-      </ScrollView>
+      </Fit>
 
       {/* The way on is a swipe — the next card's edge shows at the right —
           and once every circle is filled the card says so. Always laid out,
@@ -1923,6 +2025,32 @@ function Weight({
   // A five-character weight (102.5) is set a size down, so it and its unit
   // still fit between the steppers.
   const fit = text.length > 4 ? Math.round(size * 0.84) : size;
+  if (UNIT_BELOW) {
+    // Spelled out, now it has a line of its own: "kg per hand", "seconds".
+    const said = unit === "s hold" ? "seconds" : unit.replace("/ hand", "per hand");
+    return (
+      <View style={{ alignItems: "center" }}>
+        <Underline size={fit} line={line} caret={caret}>
+          <Text
+            style={{
+              color: colors.text,
+              opacity: faint ? 0.4 : 1,
+              fontFamily: fonts.semibold,
+              fontSize: fit,
+              lineHeight: fit,
+              letterSpacing: -fit * 0.02,
+              fontVariant: ["lining-nums", "tabular-nums"],
+            }}
+          >
+            {text}
+          </Text>
+        </Underline>
+        <Text ui style={{ marginTop: Math.round(fit * 0.14), color: colors.text, opacity: 0.8, fontSize: 16, lineHeight: 20 }}>
+          {said}
+        </Text>
+      </View>
+    );
+  }
   return (
     <View style={{ flexDirection: "row", alignItems: "baseline", gap: 10 }}>
       <Underline size={fit} line={line} caret={caret}>
@@ -2054,7 +2182,7 @@ function Conditioning({ item }: { item: Item }) {
   ];
 
   return (
-    <View ref={root} style={{ flex: 1, backgroundColor: colors.bg }}>
+    <View ref={root} style={{ flex: 1, backgroundColor: colors.ground }}>
       <Header />
       <View style={{ flex: 1, paddingHorizontal: 22, width: "100%", maxWidth: COLUMN, alignSelf: "center" }}>
         <CardioKeyboardArea>
@@ -2127,7 +2255,7 @@ function Mobility({ item }: { item: Item }) {
   const count = routine.moves.length;
 
   return (
-    <View ref={root} style={{ flex: 1, backgroundColor: colors.bg }}>
+    <View ref={root} style={{ flex: 1, backgroundColor: colors.ground }}>
       <Header />
 
       {/* Not a big title: the moves are the thing here. The routine is a
@@ -2252,7 +2380,7 @@ function GoalBlock({
   if (!found) {
     // Deleted in Plan while the session ran: nothing left to do here.
     return (
-      <View style={{ flex: 1, backgroundColor: colors.bg }}>
+      <View style={{ flex: 1, backgroundColor: colors.ground }}>
         <Header />
         <View style={{ flex: 1, justifyContent: "center", paddingHorizontal: 22 }}>
           <Text style={{ textAlign: "center", color: colors.text, fontFamily: fonts.italic, fontSize: 22 }}>
@@ -2290,15 +2418,11 @@ function GoalBlock({
   ].filter((t): t is Tool => t !== null);
 
   return (
-    <View ref={root} style={{ flex: 1, backgroundColor: colors.bg }}>
+    <View ref={root} style={{ flex: 1, backgroundColor: colors.ground }}>
       <Header showRest />
 
-      <ScrollView
-        scrollEnabled={false}
-        bounces={false}
-        overScrollMode="never"
+      <Fit
         contentContainerStyle={{
-          flexGrow: 1,
           paddingHorizontal: 22,
           paddingBottom: 8,
           width: "100%",
@@ -2390,7 +2514,7 @@ function GoalBlock({
             glow={motion?.big ? motion.id : null}
           />
         </View>
-      </ScrollView>
+      </Fit>
 
       <View style={{ paddingHorizontal: 22, paddingBottom: barSpace + 14 }}>
         <Column>
@@ -2754,6 +2878,8 @@ function MobilityDeck({
   const [turned, setTurned] = useState(false);
   // Finished, and asked to go round again.
   const [again, setAgain] = useState(false);
+  // Paused by a tap: it stays paused until the next tap.
+  const [held, setHeld] = useState(false);
 
   const move = moves[page];
   const here = at[page];
@@ -2770,6 +2896,12 @@ function MobilityDeck({
     setFlowing(false);
     setRunning(null);
   }, [cardActive]);
+
+  // No button to start it: on top, the routine starts by itself — a moment to
+  // get into position, then the clock — unless it was paused by a tap.
+  useEffect(() => {
+    if (cardActive && !held && !flowing && !done) setFlowing(true);
+  }, [cardActive, held, flowing, done, page]);
 
   // A phone that locks would stop the clock, and the routine with it.
   useEffect(() => {
@@ -2837,6 +2969,7 @@ function MobilityDeck({
   }, [turned]);
 
   const pause = () => {
+    setHeld(true);
     setFlowing(false);
     if (!running) return;
     setHere({ left: Math.max(0, (running.endAt - Date.now()) / 1000) });
@@ -2846,6 +2979,9 @@ function MobilityDeck({
   // The card in the air, thrown up and off.
   const [size, setSize] = useState({ width: 0, height: 0 });
   const lift = useSharedValue(0);
+  // Which move is on top, on the UI thread: a throw hands the top to the next
+  // card in the same frame it ends, so nothing is redrawn and nothing blinks.
+  const topAt = useSharedValue(page);
 
   /**
    * Done with this card: the next comes up, or the routine is finished. A
@@ -2864,8 +3000,10 @@ function MobilityDeck({
     }
     setPage(page + 1);
   };
-  // Back in place once the next card is drawn there, so nothing flashes.
+  // In step with the page however it changed: thrown (already there), Reduce
+  // Motion, or Do it again.
   useLayoutEffect(() => {
+    topAt.value = page;
     lift.value = 0;
   }, [page]); // eslint-disable-line react-hooks/exhaustive-deps
   const advanceRef = useRef(advance);
@@ -2875,10 +3013,20 @@ function MobilityDeck({
   const advanceLatest = (automatic: boolean) => advanceRef.current(automatic);
   const height = size.height;
 
+  /** Thrown off: on the UI thread, the card underneath becomes the top at once. */
+  const handOn = (automatic: boolean, isLast: boolean) => {
+    "worklet";
+    if (!isLast) {
+      topAt.value = topAt.value + 1;
+      lift.value = 0;
+    }
+    scheduleOnRN(advanceLatest, automatic);
+  };
+
   const throwAway = (automatic = false) => {
     if (still) return advanceRef.current(automatic);
     lift.value = withTiming(-height - 60, { duration: 260 }, (finished) => {
-      if (finished) scheduleOnRN(advanceLatest, automatic);
+      if (finished) handOn(automatic, last);
     });
   };
 
@@ -2891,22 +3039,13 @@ function MobilityDeck({
     .onEnd((e) => {
       if (e.translationY < -THROW || e.velocityY < -900) {
         lift.value = withTiming(-height - 60, { duration: 200 }, (finished) => {
-          if (finished) scheduleOnRN(advanceLatest, false);
+          if (finished) handOn(false, last);
         });
       } else {
         lift.value = withSpring(0, { damping: 20, stiffness: 260 });
       }
     });
 
-  const top = useAnimatedStyle(() => ({
-    transform: [{ translateY: lift.value }, { rotate: `${lift.value / 60}deg` }],
-  }));
-  // The next move comes in as this one goes: unseen at rest, so nothing
-  // shows through, and in place by the time this one is off.
-  const under = useAnimatedStyle(() => {
-    const t = height ? Math.min(1, -lift.value / height) : 0;
-    return { transform: [{ translateY: 24 * (1 - t) }, { scale: 0.96 + 0.04 * t }], opacity: t };
-  });
 
   // Done: the routine is over, so the stack is too. Back on this card later,
   // it says so — and offers another round.
@@ -2930,6 +3069,7 @@ function MobilityDeck({
                 setRunning(null);
                 setFlowing(false);
                 setTurned(false);
+                setHeld(false);
                 lift.value = 0;
                 setAgain(true);
               }}
@@ -2942,7 +3082,24 @@ function MobilityDeck({
 
   if (!moves.length) return <View style={{ flex: 1, justifyContent: "center", padding: 22 }}><Text style={{ color: colors.text, fontSize: 22 }}>No movements in this routine.</Text><Action label="Continue" fill onPress={onFinish} /></View>;
 
+  /**
+   * Straight to another move, back or ahead, from the segments. The move left
+   * counts as skipped if it was started and not finished; the one arrived at
+   * gets its whole clock again and starts after a moment to get in position.
+   */
+  const goTo = (i: number) => {
+    if (i === page) return;
+    if (!done && here.left < holdOf(move)) onStep(first[page] + here.side, "skipped");
+    setRunning(null);
+    setTurned(false);
+    setHeld(false);
+    setAt((all) => all.map((a, k) => (k === i ? { side: 0, left: holdOf(moves[i]) } : a)));
+    Haptics.selectionAsync();
+    setPage(i);
+  };
+
   const start = () => {
+    setHeld(false);
     setFlowing(true);
     begin(here.left);
   };
@@ -2952,24 +3109,15 @@ function MobilityDeck({
     ? { hint: `Tap to pause · ${away.toLowerCase()}`, onPress: pause }
     : done
       ? { hint: away, onPress: () => throwAway() }
-        : { hint: here.left < holdOf(move) ? "Tap to carry on" : `Tap to start · ${away.toLowerCase()}`, onPress: start };
-  // Before the clock runs, the photo itself says how to start it.
-  const prompt = running || waiting || done ? null : here.left < holdOf(move) ? "Tap to carry on" : "Tap to start";
-  // Over the way on: what is happening now, when there is something to say.
-  const status = turned ? "Now your right side" : waiting ? "Get into position" : running ? "Tap to pause" : "";
-  const skip = last ? "Swipe up to finish" : "Swipe up to skip to the next";
+        : { hint: `Tap to carry on · ${away.toLowerCase()}`, onPress: start };
+  // Under the clock: what is happening now, when there is something to say;
+  // otherwise the breath, where the picture keeps one.
+  const status = turned ? "Now your right side" : waiting ? "Get into position" : held && !done ? "Paused. Tap to carry on" : "";
 
-  const cardFor = (i: number) => (
-    <MobilityCard
-      move={moves[i]}
-      side={moves[i].perSide ? (at[i].side === 0 ? "Left side" : "Right side") : null}
-      turned={i === page && turned}
-      left={at[i].left}
-      number={i + 1}
-      count={moves.length}
-      prompt={i === page ? prompt : null}
-    />
-  );
+  // The moves as a stack: the one on top, the next under it, and the one
+  // after, ready. Each keeps its key as it rises, so its picture is never
+  // drawn twice.
+  const shown = [page, page + 1, page + 2].filter((i) => i < moves.length);
 
   return (
     <>
@@ -2979,72 +3127,127 @@ function MobilityDeck({
         <Column>
           {/* The whole routine, one segment a move: done ones fill in its
               colour, the one on screen in ink. */}
-          <View accessible accessibilityLabel={`Move ${page + 1} of ${moves.length}`} style={{ flexDirection: "row", gap: 4 }}>
-            {moves.map((_, i) => (
-              <View
+          {/* Each segment is a way to that move: tap it to go back, or ahead.
+              Drawn a little thicker than a line, with a finger's room to hit. */}
+          <View style={{ flexDirection: "row", gap: 4 }}>
+            {moves.map((m, i) => (
+              <Pressable
                 key={i}
-                style={{
-                  flex: 1,
-                  height: 5,
-                  borderRadius: 3,
-                  // In the card's own ink: the routine's yellow would vanish on its yellow.
-                  backgroundColor: i <= page ? colors.text : colors.line,
-                  opacity: i === page && !done ? 0.55 : 1,
-                }}
-              />
+                accessibilityRole="button"
+                accessibilityLabel={`Move ${i + 1} of ${moves.length}, ${m.name}`}
+                accessibilityState={{ selected: i === page }}
+                onPress={() => goTo(i)}
+                hitSlop={{ top: 12, bottom: 12 }}
+                style={{ flex: 1, height: 24, justifyContent: "center" }}
+              >
+                <View
+                  style={{
+                    height: 7,
+                    borderRadius: 4,
+                    // In the card's own ink: the routine's yellow would vanish on its yellow.
+                    backgroundColor: i <= page ? colors.text : colors.line,
+                    opacity: i === page && !done ? 0.55 : 1,
+                  }}
+                />
+              </Pressable>
             ))}
           </View>
         </Column>
       </View>
       <View
-        style={{ flex: 1, paddingHorizontal: 22, paddingBottom: 8 }}
+        // Edge to edge: the picture runs to the card's sides; the words keep their own margin.
+        style={{ flex: 1, paddingBottom: 8 }}
         onLayout={(e) => setSize({ width: e.nativeEvent.layout.width, height: e.nativeEvent.layout.height })}
       >
-        <Column style={{ flex: 1 }}>
-          {!last ? (
-            <Reanimated.View pointerEvents="none" style={[StyleSheet.absoluteFill, under]}>
-              {cardFor(page + 1)}
-            </Reanimated.View>
-          ) : null}
-          <GestureDetector gesture={swipe}>
-            <Reanimated.View key={page} style={[{ flex: 1 }, top]}>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={`${move.name}${move.perSide ? `, ${here.side === 0 ? "left side" : "right side"}` : ""}`}
-                accessibilityHint={tap.hint}
-                accessibilityActions={[{ name: "activate" }, { name: "next", label: last ? "Finish" : "Next move" }]}
-                onAccessibilityAction={(e) => (e.nativeEvent.actionName === "next" ? throwAway() : tap.onPress())}
-                onPress={tap.onPress}
-                style={{ flex: 1 }}
-              >
-                {cardFor(page)}
-              </Pressable>
-            </Reanimated.View>
-          </GestureDetector>
-        </Column>
-      </View>
-
-      <View style={{ paddingHorizontal: 22, paddingTop: 2, paddingBottom: barSpace + 14 }}>
-        <Column style={{ gap: 4 }}>
-          {/* Both always laid out, so the words changing move nothing: what
-              is happening now, then — always — how to move on. */}
-          <Text
-            accessibilityLiveRegion="polite"
-            style={{ height: 24, textAlign: "center", color: colors.text, fontFamily: turned ? fonts.medium : fonts.italic, fontSize: 18 }}
-          >
-            {status}
-          </Text>
-          <View style={{ height: 26, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8 }}>
-            <Icon name="collapse" size={18} color={colors.text} />
-            <Text style={{ color: colors.text, fontFamily: fonts.regular, fontSize: 18 }}>{skip}</Text>
+        <GestureDetector gesture={swipe}>
+          <View style={{ flex: 1 }}>
+            {shown.map((i) => (
+              <MoveSheet key={i} index={i} topAt={topAt} lift={lift} height={height} onTop={i === page}>
+                <Pressable
+                  disabled={i !== page}
+                  accessibilityRole="button"
+                  accessibilityLabel={`${moves[i].name}${moves[i].perSide ? `, ${at[i].side === 0 ? "left side" : "right side"}` : ""}`}
+                  accessibilityHint={i === page ? tap.hint : undefined}
+                  accessibilityActions={[{ name: "activate" }, { name: "next", label: last ? "Finish" : "Next move" }]}
+                  onAccessibilityAction={(e) => (e.nativeEvent.actionName === "next" ? throwAway() : tap.onPress())}
+                  onPress={tap.onPress}
+                  style={{ flex: 1, paddingBottom: barSpace + 14 }}
+                >
+                  <MobilityCard
+                    move={moves[i]}
+                    side={moves[i].perSide ? (at[i].side === 0 ? "Left side" : "Right side") : null}
+                    turned={i === page && turned}
+                    left={at[i].left}
+                    number={i + 1}
+                    count={moves.length}
+                    // Only the top move moves: the one underneath holds still until it is up.
+                    paused={i !== page || held}
+                    status={i === page ? status : ""}
+                    away={i === moves.length - 1 ? "Swipe up to finish" : "Swipe up for the next"}
+                  />
+                </Pressable>
+              </MoveSheet>
+            ))}
           </View>
-        </Column>
+        </GestureDetector>
       </View>
     </>
   );
 }
 
-function MobilityCard({ move, side, turned, left, number, count, prompt }: {
+/**
+ * One move's card in the routine's stack: solid, the card's own white running
+ * to grey, so the one under it never shows through. On top it follows the
+ * thumb up and off; the next lies just under it, a little smaller, and rises
+ * into place as the top one goes. Which is which is `topAt`, on the UI thread.
+ */
+function MoveSheet({
+  index,
+  topAt,
+  lift,
+  height,
+  onTop,
+  children,
+}: PropsWithChildren<{ index: number; topAt: SharedValue<number>; lift: SharedValue<number>; height: number; onTop: boolean }>) {
+  const style = useAnimatedStyle(() => {
+    const d = index - topAt.value;
+    if (d === 0) {
+      return {
+        zIndex: 3,
+        opacity: 1,
+        shadowOpacity: Math.min(0.16, -lift.value / 400),
+        transform: [{ translateY: lift.value }, { rotate: `${lift.value / 60}deg` }, { scale: 1 }],
+      };
+    }
+    if (d === 1) {
+      const t = height ? Math.min(1, -lift.value / height) : 0;
+      return {
+        zIndex: 2,
+        opacity: 1,
+        shadowOpacity: 0,
+        transform: [{ translateY: 24 * (1 - t) }, { rotate: "0deg" }, { scale: 0.96 + 0.04 * t }],
+      };
+    }
+    return { zIndex: 1, opacity: 0, shadowOpacity: 0, transform: [{ translateY: 24 }, { rotate: "0deg" }, { scale: 0.96 }] };
+  });
+  return (
+    <Reanimated.View
+      pointerEvents={onTop ? "auto" : "none"}
+      accessibilityElementsHidden={!onTop}
+      importantForAccessibility={onTop ? "auto" : "no-hide-descendants"}
+      style={[
+        StyleSheet.absoluteFill,
+        { shadowColor: "#000", shadowRadius: 18, shadowOffset: { width: 0, height: 10 } },
+        style,
+      ]}
+    >
+      <ClayGround corner={DECK.corner} from={0.55} />
+      {children}
+    </Reanimated.View>
+  );
+}
+
+function MobilityCard({ move, side, turned, left, number, count, paused, status, away }: {
   move: MobilityMove;
   side: "Left side" | "Right side" | null;
   /** The other side has just begun. */
@@ -3053,115 +3256,89 @@ function MobilityCard({ move, side, turned, left, number, count, prompt }: {
   /** Which move this is, of how many: said big, so it reads as a series. */
   number: number;
   count: number;
-  /** Before its clock runs: how to start it, over the photo. */
-  prompt?: string | null;
+  /** Paused by a tap: the picture holds still. */
+  paused?: boolean;
+  /** What is happening now, under the clock; empty for nothing to say. */
+  status: string;
+  /** How to move on, always at the foot. */
+  away: string;
 }) {
+  // The breath, said under the clock rather than over the picture.
+  const [breath, setBreath] = useState<"inhale" | "exhale" | null>(null);
   const colors = useColors();
   const done = left <= 0 && side !== "Left side";
-  const progress = 1 - left / holdOf(move);
   const active = useCardActive();
   // The clay figure where the stretch has it (see `components/clay.tsx`):
   // breathing by itself while the clock runs, still before it starts.
   const clay = hasClay(pictureOf(move)) ? pictureOf(move) : null;
 
-  // The picture is the card: what the position looks like, as big as the
-  // words leave room for. Under it the move's name with its clock beside it,
-  // and how to do it. The full guide is under the card's ⋯.
+  // The picture is the card: the clay figure, whole, as big as the words
+  // leave room for, straight on the card's own white so it has no box round
+  // it. Under it, quietly: the move, its clock, how to do it. Which move of
+  // how many is the segments above; the full guide is under the card's ⋯.
   return (
     // No frame of its own: the move is drawn straight on the routine's card,
-    // and thrown off it whole. The photo in an ink frame, like a card's;
-    // under it everything centred and spread down the room that is left.
-    <View style={{ flex: 1, gap: 8 }}>
+    // and thrown off it whole.
+    <View style={{ flex: 1, gap: 4 }}>
       <View
-        style={{
-          width: "100%",
-          aspectRatio: 3 / 2,
-          flexShrink: 1,
-          overflow: "hidden",
-          borderRadius: radii.card,
-          borderCurve: "continuous",
-          borderWidth: 1.5,
-          borderColor: colors.text,
-          backgroundColor: paper.bg,
-        }}
+        accessible
+        accessibilityLabel={`Move ${number} of ${count}${side ? `, ${side.toLowerCase()}` : ""}`}
+        style={{ flex: 1, minHeight: 160 }}
       >
         {clay ? (
-          <ClayStretch id={clay} still={!active || !!prompt || done} style={{ width: "100%", height: "100%" }} />
+          <ClayStretch
+            id={clay}
+            words={false}
+            onBreath={setBreath}
+            still={!active || !!paused || done}
+            style={{ flex: 1, backgroundColor: "transparent" }}
+          />
         ) : (
           <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
             <Mark family="mobility" size={72} />
           </View>
         )}
-        {/* How to start, on the photo itself, until the clock runs: paper
-            and ink, like every button in the app. */}
-        {prompt ? (
-          <View pointerEvents="none" style={[StyleSheet.absoluteFill, { alignItems: "center", justifyContent: "center" }]}>
-            <View
-              style={{
-                flexDirection: "row",
-                alignItems: "center",
-                gap: 10,
-                paddingHorizontal: 24,
-                height: 56,
-                borderRadius: 999,
-                borderWidth: 1.5,
-                borderColor: paper.text,
-                backgroundColor: paper.bg,
-              }}
-            >
-              <Icon name="play" size={20} color={paper.text} />
-              <Text style={{ color: paper.text, fontFamily: fonts.medium, fontSize: 20 }}>{prompt}</Text>
-            </View>
-          </View>
-        ) : null}
-        {/* The hold, filling along the picture's foot once the clock runs. */}
-        <View style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: 6, backgroundColor: progress > 0 ? "rgba(0,0,0,0.15)" : "transparent" }}>
-          <View style={{ width: `${Math.min(1, Math.max(0, progress)) * 100}%`, height: 6, backgroundColor: colors.text }} />
-        </View>
       </View>
 
-      {/* Which of how many, the move, its clock, how to do it — centred, and
-          spread evenly down what is left, so no corner sits empty. */}
-      <View style={{ flex: 1, minHeight: 0, alignItems: "center", justifyContent: "space-evenly", paddingHorizontal: 8 }}>
-        <Text
-          accessibilityLabel={`Move ${number} of ${count}${side ? `, ${side.toLowerCase()}` : ""}`}
-          style={{ textAlign: "center", color: colors.text, fontFamily: fonts.display, fontSize: 30, lineHeight: 36, fontVariant: ["lining-nums"] }}
-        >
-          {number}
-          <Text style={{ opacity: 0.55 }}> / {count}</Text>
-          {side ? (
-            <Text style={{ fontFamily: turned ? fonts.medium : fonts.italic, fontSize: 20, opacity: turned ? 1 : 0.75 }}>
-              {"   "}{side}
-            </Text>
-          ) : null}
+      <View style={{ alignItems: "center", gap: 2, paddingHorizontal: 30 }}>
+        <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7} style={{ textAlign: "center", color: colors.text, fontFamily: fonts.medium, fontSize: 28, lineHeight: 34 }}>
+          {move.name}
         </Text>
-        <View style={{ alignItems: "center" }}>
-          <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7} style={{ textAlign: "center", color: colors.text, fontFamily: fonts.medium, fontSize: 30, lineHeight: 36 }}>
-            {move.name}
+        {side ? (
+          <Text style={{ color: colors.text, fontFamily: turned ? fonts.medium : fonts.italic, fontSize: 18, opacity: turned ? 1 : 0.75 }}>
+            {side}
           </Text>
-          <Text
-            style={{
-              textAlign: "center",
-              color: colors.text,
-              fontFamily: fonts.semibold,
-              fontSize: 76,
-              lineHeight: 84,
-              fontVariant: ["lining-nums", "tabular-nums"],
-            }}
-          >
-            {done ? "Done" : timeLabel(Math.ceil(left))}
-          </Text>
-          {/* Every move runs on a clock; for one done for reps, the reps are
-              a pace to keep, not a count to keep track of. */}
-          {move.reps ? (
-            <Text style={{ textAlign: "center", color: colors.text, fontFamily: fonts.italic, fontSize: 19 }}>
-              About {move.reps} slow reps{side ? " each side" : ""}
-            </Text>
-          ) : null}
-        </View>
-        <Text numberOfLines={3} style={{ textAlign: "center", color: colors.text, opacity: 0.8, fontFamily: fonts.regular, fontSize: 18, lineHeight: 24 }}>
+        ) : null}
+        <Text
+          style={{
+            textAlign: "center",
+            color: colors.text,
+            fontFamily: fonts.medium,
+            fontSize: 48,
+            lineHeight: 56,
+            fontVariant: ["lining-nums", "tabular-nums"],
+          }}
+        >
+          {done ? "Done" : timeLabel(Math.ceil(left))}
+        </Text>
+        {/* What is happening now, else the breath: always laid out, so the
+            words changing move nothing. */}
+        <Text
+          accessibilityLiveRegion="polite"
+          style={{ height: 26, textAlign: "center", color: colors.text, fontFamily: status && turned ? fonts.medium : fonts.italic, fontSize: 19 }}
+        >
+          {status || (breath === "inhale" ? "Breathe in" : breath === "exhale" ? "Breathe out" : "")}
+        </Text>
+        <Text numberOfLines={2} style={{ marginTop: 4, textAlign: "center", color: colors.muted, fontFamily: fonts.regular, fontSize: 17, lineHeight: 23 }}>
+          {/* Every move runs on a clock; for one done for reps, the reps are a pace, not a count. */}
+          {move.reps ? `About ${move.reps} slow reps${side ? " each side" : ""}. ` : ""}
           {move.cue ?? "Ease in, breathe slowly, and stop when the tension fades."}
         </Text>
+      </View>
+      {/* How to move on, always: the card says it, so it never needs a tip. */}
+      <View style={{ height: 30, marginTop: 6, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8 }}>
+        <Icon name="collapse" size={18} color={colors.text} />
+        <Text style={{ color: colors.text, fontFamily: fonts.regular, fontSize: 18 }}>{away}</Text>
       </View>
     </View>
   );
@@ -3405,6 +3582,7 @@ function Sets({
               filled={filled}
               zero={zero}
               short={short}
+              level={filled && target > 0 ? reps / target : 0}
               wash={colors.wash}
               ink={colors.text}
               ringWidth={role === "partner" ? 2 : 3}
@@ -3435,14 +3613,19 @@ function Sets({
                   // Garamond's figures sit a touch low in a circle: lift them
                   // to its optical centre.
                   marginTop: -Math.round(fontSize * 0.08),
-                  color: filled && !zero && !short ? colors.ink : colors.text,
+                  // On a stamp the number is knocked out in the card's colour;
+                  // a set well short still has most of it on the bare card.
+                  color: LETTERPRESS
+                    ? filled && !zero && reps / target >= 0.55 ? colors.ink : colors.text
+                    : filled && !zero && !short ? colors.ink : colors.text,
                   fontFamily: fonts.semibold,
-                  fontSize: short && !zero ? Math.round(fontSize * 0.78) : seconds ? Math.round(fontSize * 0.92) : fontSize,
+                  fontSize: short && !zero && !LETTERPRESS ? Math.round(fontSize * 0.78) : seconds ? Math.round(fontSize * 0.92) : fontSize,
                   fontVariant: ["lining-nums", "tabular-nums"],
                 }}
               >
                 {shown}
-                {short && !zero ? <Text style={{ fontFamily: fonts.semibold, fontSize: Math.round(fontSize * 0.4) }}>/{target}</Text> : null}
+                {/* Letterpress says a short set by how full the circle is, so just the reps. */}
+                {short && !zero && !LETTERPRESS ? <Text style={{ fontFamily: fonts.semibold, fontSize: Math.round(fontSize * 0.4) }}>/{target}</Text> : null}
                 {seconds ? (
                   <Text style={{ fontFamily: fonts.semibold, fontSize: Math.round(fontSize * 0.4) }}>
                     {" s"}
@@ -3626,7 +3809,7 @@ function WeightControl({
   const half = Math.round(size * 0.5);
 
   return (
-    <View style={{ height: size, alignItems: "center", justifyContent: "center" }}>
+    <View style={{ height: size + (UNIT_BELOW ? UNIT_ROOM : 0), alignItems: "center", justifyContent: "center" }}>
       <View onStartShouldSetResponderCapture={mine}>
         <Pressable
           accessibilityRole="adjustable"
@@ -3701,7 +3884,8 @@ function WeightControl({
           importantForAccessibility={editing ? "auto" : "no-hide-descendants"}
           style={{
             position: "absolute",
-            top: (size - 48) / 2,
+            // Level with the figures, whatever hangs under them.
+            top: (size - 48) / 2 + (UNIT_BELOW ? 4 : 0),
             [direction < 0 ? "left" : "right"]: 0,
             opacity: shown,
             pointerEvents: editing ? "auto" : "none",
@@ -3714,26 +3898,48 @@ function WeightControl({
   );
 }
 
-/** − or +: a soft circle in a tint of the field. */
+/**
+ * − or +: a soft circle in a tint of the field. Letterpress keeps them quiet —
+ * a faint pressed ring, smaller, the glyph stepped back — so the number
+ * between them stays the thing; the touch area is still a full 48.
+ */
 function Step({ label, onPress }: { label: "−" | "+"; onPress: () => void }) {
   const colors = useColors();
+  const quiet = LETTERPRESS;
+  const size = quiet ? 38 : 48;
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={label === "+" ? "More" : "Less"}
-      onPress={onPress}
-      hitSlop={4}
+      onPress={() => {
+        Haptics.selectionAsync();
+        onPress();
+      }}
+      hitSlop={quiet ? 9 : 4}
       style={({ pressed }) => ({
         width: 48,
         height: 48,
         alignItems: "center",
         justifyContent: "center",
-        borderRadius: 999,
-        backgroundColor: colors.surface,
         opacity: pressed ? 0.6 : 1,
       })}
     >
-      <Icon name={label === "+" ? "plus" : "minus"} size={22} color={colors.text} />
+      <View
+        style={{
+          width: size,
+          height: size,
+          alignItems: "center",
+          justifyContent: "center",
+          borderRadius: 999,
+          backgroundColor: quiet ? "transparent" : colors.surface,
+          borderWidth: quiet ? 1.5 : 0,
+          borderColor: colors.line,
+        }}
+      >
+        <View style={{ opacity: quiet ? 0.7 : 1 }}>
+          <Icon name={label === "+" ? "plus" : "minus"} size={quiet ? 16 : 22} color={colors.text} />
+        </View>
+      </View>
     </Pressable>
   );
 }
@@ -4389,6 +4595,117 @@ function Glint() {
   );
 }
 
+/**
+ * The deck's last card, in the workout's own colours. Laid out like every
+ * other card — a small label, a big headline on the left, then what it
+ * means — rather than a block of centred text. What is not done is the
+ * headline, said plainly and never scolded: each is named on its own row, a
+ * tap goes back to it, and finishing as it is is always fine. How it went is
+ * a short list of facts, one to a line. Nothing about tomorrow here.
+ */
+function EndCard({ left, nothing, quip, facts, onFinish }: {
+  /** The cards not done, by index. */
+  left: number[];
+  /** Not one card done. */
+  nothing: boolean;
+  quip: string;
+  facts: string[];
+  onFinish: () => void;
+}) {
+  const { state, setState } = useSession();
+  const colors = useColors();
+  const items = state.active?.items ?? [];
+  const headline = nothing ? "Nothing done yet" : left.length > 0 ? `${left.length} not done` : "Done";
+  return (
+    <View style={{ flex: 1, backgroundColor: colors.ground, paddingHorizontal: 24, paddingTop: 28, paddingBottom: 22 }}>
+      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ gap: 22, paddingBottom: 12 }} showsVerticalScrollIndicator={false}>
+        <View style={{ gap: 6 }}>
+          <Text ui style={{ color: colors.text, opacity: 0.75, fontSize: 14, fontWeight: "600", letterSpacing: 0.8, textTransform: "uppercase" }}>
+            End of workout
+          </Text>
+          <Text accessibilityRole="header" style={{ color: colors.text, fontFamily: fonts.medium, fontSize: 52, lineHeight: 58 }}>
+            {headline}
+          </Text>
+          {nothing ? (
+            <Text style={{ color: colors.text, opacity: 0.85, fontFamily: fonts.regular, fontSize: 20, lineHeight: 27 }}>
+              Swipe back to start, or end it here. It won't count, and {currentWorkout(state).name || "this workout"} stays next.
+            </Text>
+          ) : (
+            <Text style={{ color: colors.text, fontFamily: fonts.italic, fontSize: 24, lineHeight: 30 }}>{quip}</Text>
+          )}
+        </View>
+
+        {!nothing && facts.length > 0 ? (
+          <View style={{ borderTopWidth: 1, borderTopColor: colors.line }}>
+            {facts.map((fact) => (
+              <View key={fact} style={{ paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: colors.line }}>
+                <Text style={{ color: colors.text, fontFamily: fonts.regular, fontSize: 19, lineHeight: 25 }}>{fact}</Text>
+              </View>
+            ))}
+          </View>
+        ) : null}
+
+        {left.length > 0 && !nothing ? (
+          <View style={{ gap: 6 }}>
+            <Text style={{ color: colors.text, opacity: 0.85, fontFamily: fonts.regular, fontSize: 19, lineHeight: 25 }}>
+              Swipe back to {left.length === 1 ? "it" : "them"}, or finish as it is.
+            </Text>
+            <View style={{ gap: 6, marginTop: 4 }}>
+              {left.slice(0, 5).map((i) => (
+                <Pressable
+                  key={i}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Back to ${cardName(state, i)}`}
+                  onPress={() => setState((s) => goToCard(s, i))}
+                  style={({ pressed }) => ({
+                    flexDirection: "row",
+                    alignItems: "center",
+                    gap: 14,
+                    minHeight: 52,
+                    paddingHorizontal: 14,
+                    borderRadius: radii.button,
+                    borderCurve: "continuous",
+                    backgroundColor: pressed ? colors.raised : colors.surface,
+                  })}
+                >
+                  <Mark family={itemFamily(items[i])} size={18} color={DUSK_CARDS ? DUSK[itemFamily(items[i])].glow : colors.text} plain={DUSK_CARDS} />
+                  <Text numberOfLines={1} style={{ flex: 1, color: colors.text, fontFamily: fonts.regular, fontSize: 20 }}>
+                    {cardName(state, i)}
+                  </Text>
+                  <Icon name="previous" size={15} color={colors.text} />
+                </Pressable>
+              ))}
+              {left.length > 5 ? (
+                <Text style={{ color: colors.text, opacity: 0.75, fontFamily: fonts.italic, fontSize: 17, paddingLeft: 14 }}>
+                  and {left.length - 5} more
+                </Text>
+              ) : null}
+            </View>
+          </View>
+        ) : null}
+      </ScrollView>
+
+      <Pressable
+        accessibilityRole="button"
+        onPress={onFinish}
+        style={({ pressed }) => ({
+          minHeight: 60,
+          alignItems: "center",
+          justifyContent: "center",
+          borderRadius: radii.button,
+          borderCurve: "continuous",
+          backgroundColor: colors.cloud,
+          opacity: pressed ? 0.8 : 1,
+        })}
+      >
+        <Text style={{ color: colors.ink, fontFamily: fonts.semibold, fontSize: 21 }}>
+          {nothing ? "End without training" : left.length > 0 ? "Finish as it is" : "Finish workout"}
+        </Text>
+      </Pressable>
+    </View>
+  );
+}
+
 function Finished({
   hasSession,
   onCard,
@@ -4434,86 +4751,17 @@ function Finished({
   };
 
   if (onCard) {
-    // The deck's last card. What is not done is the headline, said plainly
-    // and never scolded: the cards are named, a tap goes back to one, and
-    // finishing as it is is always fine. Nothing about tomorrow here.
     const items = state.active?.items ?? [];
-    const nothing = items.length > 0 && left.length === items.length;
     return (
-      <View style={{ flex: 1, backgroundColor: colors.surface, paddingHorizontal: 28, paddingBottom: 24 }}>
-        <View style={{ flex: 1, justifyContent: "center", alignItems: "center", gap: 14 }}>
-          <Text style={{ textAlign: "center", color: colors.text, fontFamily: fonts.medium, fontSize: 52, lineHeight: 58 }}>
-            {nothing ? "Nothing done yet." : left.length > 0 ? `${left.length} not done.` : "Done."}
-          </Text>
-          {nothing ? (
-            <Text style={{ textAlign: "center", color: colors.text, fontFamily: fonts.regular, fontSize: 19, lineHeight: 26 }}>
-              Swipe back to start, or end it here. It won't count, and {currentWorkout(state).name || "this workout"} stays next.
-            </Text>
-          ) : (
-            <>
-              <Text style={{ textAlign: "center", color: colors.text, fontFamily: fonts.italic, fontSize: 24, lineHeight: 30 }}>
-                {quip}
-              </Text>
-              {facts.length > 0 ? (
-                <Text style={{ textAlign: "center", color: colors.muted, fontFamily: fonts.regular, fontSize: 19, lineHeight: 26 }}>
-                  {facts.join(" ")}
-                </Text>
-              ) : null}
-            </>
-          )}
-          {left.length > 0 && !nothing ? (
-            <View style={{ alignSelf: "stretch", gap: 4, marginTop: 8 }}>
-              <Text style={{ textAlign: "center", color: colors.text, fontFamily: fonts.regular, fontSize: 19, lineHeight: 26, marginBottom: 4 }}>
-                Swipe back to {left.length === 1 ? "it" : "them"}, or finish as it is.
-              </Text>
-              {left.slice(0, 4).map((i) => (
-                <Pressable
-                  key={i}
-                  accessibilityRole="button"
-                  accessibilityLabel={`Back to ${cardName(state, i)}`}
-                  onPress={() => setState((s) => goToCard(s, i))}
-                  style={({ pressed }) => ({
-                    flexDirection: "row",
-                    alignItems: "center",
-                    gap: 12,
-                    minHeight: 44,
-                    paddingHorizontal: 14,
-                    borderRadius: radii.button,
-                    backgroundColor: pressed ? colors.raised : "transparent",
-                  })}
-                >
-                  <CardDot mark="todo" color={FAMILY[itemFamily(items[i])].mark} size={16} />
-                  <Text numberOfLines={1} style={{ flex: 1, color: colors.text, fontFamily: fonts.regular, fontSize: 19 }}>
-                    {cardName(state, i)}
-                  </Text>
-                  <Icon name="previous" size={15} color={colors.muted} />
-                </Pressable>
-              ))}
-              {left.length > 4 ? (
-                <Text style={{ textAlign: "center", color: colors.muted, fontFamily: fonts.italic, fontSize: 17 }}>
-                  and {left.length - 4} more
-                </Text>
-              ) : null}
-            </View>
-          ) : null}
-        </View>
-        <Pressable
-          accessibilityRole="button"
-          onPress={close}
-          style={({ pressed }) => ({
-            minHeight: 60,
-            alignItems: "center",
-            justifyContent: "center",
-            borderRadius: radii.button,
-            backgroundColor: colors.text,
-            opacity: pressed ? 0.8 : 1,
-          })}
-        >
-          <Text style={{ color: colors.bg, fontFamily: fonts.semibold, fontSize: 21 }}>
-            {nothing ? "End without training" : left.length > 0 ? "Finish as it is" : "Finish workout"}
-          </Text>
-        </Pressable>
-      </View>
+      <Field family={workoutFamily(state, currentWorkout(state))}>
+        <EndCard
+          left={left}
+          nothing={items.length > 0 && left.length === items.length}
+          quip={quip}
+          facts={facts as string[]}
+          onFinish={close}
+        />
+      </Field>
     );
   }
 

@@ -14,7 +14,9 @@ import { Mark } from "@/components/mark";
 import { PlaceLine } from "@/components/place";
 import { Column, COLUMN } from "@/components/screen";
 import { Sheet, OpenRow } from "@/components/sheet";
-import { colors, FAMILY, fonts, radii } from "@/constants/theme";
+import { colors, DUSK, DUSK_INK, DUSK_TODAY, FAMILY, fonts, mix, radii } from "@/constants/theme";
+import { DuskGround } from "@/components/dusk";
+import Svg, { Defs, LinearGradient, Rect, Stop } from "react-native-svg";
 import type { Family } from "@/data/families";
 import { TODAY_LINES, fillLine, pickLine, type TodayMood } from "@/data/voice";
 import type { PreviewRow, SessionState } from "@/store/session";
@@ -176,9 +178,9 @@ export default function TodayScreen() {
                   right: 10 * depth,
                   borderRadius: radii.card,
                   borderCurve: "continuous",
-                  borderWidth: 1.5,
-                  borderColor: colors.text,
-                  backgroundColor: FAMILY[workoutFamily(state, w)].field,
+                  borderWidth: DUSK_TODAY ? 1 : 1.5,
+                  borderColor: DUSK_TODAY ? mix(DUSK[workoutFamily(state, w)].top, "#000000", 0.35) : colors.text,
+                  backgroundColor: DUSK_TODAY ? DUSK[workoutFamily(state, w)].top : FAMILY[workoutFamily(state, w)].field,
                 }}
               />
             );
@@ -278,22 +280,30 @@ function DayCard({ state, workout, inProgress = false }: { state: SessionState; 
   const rows = inProgress ? [] : workoutPreview(state, workout);
   // Slots with nothing here to do them with, said rather than hidden.
   const missing = inProgress ? [] : sittingOut(state, workout);
+  const dusk = DUSK_TODAY ? DUSK[family] : null;
+  // Whether the list runs past the card, and whether it has been scrolled to its end.
+  const [box, setBox] = useState(0);
+  const [content, setContent] = useState(0);
+  const [atFoot, setAtFoot] = useState(false);
+  const overflows = box > 0 && content > box + 1;
+  const body = dusk ? DUSK_CARD : PAPER;
   return (
     <View
       style={{
         flex: 1,
         borderRadius: radii.card,
         borderCurve: "continuous",
-        borderWidth: 1.5,
-        borderColor: colors.text,
-        backgroundColor: colors.bg,
+        borderWidth: dusk ? 1 : 1.5,
+        borderColor: dusk ? mix(dusk.top, "#000000", 0.35) : colors.text,
+        backgroundColor: dusk ? dusk.foot : colors.bg,
         overflow: "hidden",
       }}
     >
-      <View style={{ backgroundColor: card.field, paddingHorizontal: 16, paddingTop: 14, paddingBottom: 14 }}>
+      {dusk ? <DuskGround family={family} shape={160} /> : null}
+      <View style={{ backgroundColor: dusk ? "transparent" : card.field, paddingHorizontal: 16, paddingTop: 14, paddingBottom: 14 }}>
         <View style={{ flexDirection: "row", alignItems: "center", gap: GAP }}>
           <View style={{ width: MARKS, alignItems: "center" }}>
-            <Mark family={family} size={MARKS - 4} color={card.ink} />
+            <Mark family={family} size={MARKS - 4} color={card.ink} plain={DUSK_TODAY} />
           </View>
           <Text
             accessibilityRole="header"
@@ -307,14 +317,44 @@ function DayCard({ state, workout, inProgress = false }: { state: SessionState; 
           {[workout.subtitle, `about ${minutes} min`].filter(Boolean).join(" · ")}
         </Text>
       </View>
-      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 10, paddingBottom: 14, gap: 12 }}>
-        {inProgress ? <Progress ink={PAPER} /> : <Preview rows={rows} ink={PAPER} />}
+      <ScrollView
+        style={{ flex: 1 }}
+        onLayout={(e) => setBox(e.nativeEvent.layout.height)}
+        onContentSizeChange={(_, h) => setContent(h)}
+        onScroll={(e) => setAtFoot(e.nativeEvent.contentOffset.y + e.nativeEvent.layoutMeasurement.height >= e.nativeEvent.contentSize.height - 4)}
+        scrollEventThrottle={32}
+        // Room under the last row, so it can be scrolled clear of the fade.
+        contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 10, paddingBottom: overflows ? FADE : 14, gap: 12 }}
+      >
+        {inProgress ? <Progress ink={body} /> : <Preview rows={rows} ink={body} />}
         {missing.length > 0 ? (
-          <Text style={{ marginLeft: INDENT, color: colors.muted, fontSize: 16, lineHeight: 22 }}>
+          <Text style={{ marginLeft: INDENT, color: dusk ? DUSK_INK.soft : colors.muted, fontSize: 16, lineHeight: 22 }}>
             {missingLine(missing.map((e) => e.slot))}
           </Text>
         ) : null}
       </ScrollView>
+      {/* More below: the list fades into the card's foot, rather than being cut by its edge. */}
+      {overflows && !atFoot ? <FootFade color={dusk ? dusk.foot : colors.bg} /> : null}
+    </View>
+  );
+}
+
+/** How tall the fade at the foot of a long list is. */
+const FADE = 44;
+
+/** A list's foot, fading out into the card's colour. Never takes a touch. */
+function FootFade({ color }: { color: string }) {
+  return (
+    <View pointerEvents="none" style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: FADE }}>
+      <Svg width="100%" height="100%">
+        <Defs>
+          <LinearGradient id="foot-fade" x1="0" y1="0" x2="0" y2="1">
+            <Stop offset="0" stopColor={color} stopOpacity={0} />
+            <Stop offset="0.85" stopColor={color} stopOpacity={1} />
+          </LinearGradient>
+        </Defs>
+        <Rect x="0" y="0" width="100%" height="100%" fill="url(#foot-fade)" />
+      </Svg>
     </View>
   );
 }
@@ -332,12 +372,22 @@ function missingLine(slots: string[]): string {
  * white or navy, and a softer one — with every shape in it too; on paper,
  * ink, and each shape in its own colour (`marks`).
  */
-type CardInk = { field: string; ink: string; soft: string; marks?: boolean };
+type CardInk = { field: string; ink: string; soft: string; marks?: boolean; glow?: boolean };
 const cardInk = (family: Family): CardInk => {
+  if (DUSK_TODAY) return { field: "transparent", ink: DUSK_INK.ink, soft: DUSK_INK.soft };
   const { field, mark: ink } = FAMILY[family];
   return { field, ink, soft: `${ink}CC` };
 };
 const PAPER: CardInk = { field: colors.bg, ink: colors.text, soft: colors.muted, marks: true };
+/** The list on a dusk card: cream words, each shape in its own family's glow. */
+const DUSK_CARD: CardInk = { field: "transparent", ink: DUSK_INK.ink, soft: DUSK_INK.soft, glow: true };
+
+/** A shape in a list: its own colours on paper, its family's glow at dusk, else the card's ink. */
+function RowMark({ family, size, ink }: { family: Family; size: number; ink: CardInk }) {
+  if (ink.glow) return <Mark family={family} size={size} color={DUSK[family].glow} plain />;
+  return <Mark family={family} size={size} color={ink.marks ? undefined : ink.ink} />;
+}
+
 
 /** The left column every shape sits in, and the edge every word starts on. */
 const MARKS = 30;
@@ -363,7 +413,7 @@ function Preview({ rows, rowHeight = ROWS.most, ink }: { rows: PreviewRow[]; row
             style={{ flexDirection: "row", alignItems: "center", gap: GAP, minHeight: rowHeight }}
           >
             <View style={{ width: MARKS, alignItems: "center" }}>
-              <Mark family={r.family} size={22} color={ink.marks ? undefined : ink.ink} />
+              <RowMark family={r.family} size={22} ink={ink} />
             </View>
             <Text style={{ flex: 1, color: ink.ink, fontFamily: fonts.regular, fontSize: 20 }}>
               {r.name}
@@ -413,7 +463,7 @@ function Progress({ ink }: { ink: CardInk }) {
     <View accessibilityRole="list">
       {active.items.map((it, i) => {
         const done = cardMark(state, i) === "done";
-        const color = ink.marks ? FAMILY[itemFamily(it)].mark : ink.ink;
+        const color = ink.glow ? DUSK[itemFamily(it)].glow : ink.marks ? FAMILY[itemFamily(it)].mark : ink.ink;
         return (
           <View
             key={i}

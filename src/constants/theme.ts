@@ -114,6 +114,11 @@ export const colors = {
   /** Text and glyphs on a filled button. */
   ink: "#FFFFFF",
   white: "#FFFFFF",
+  /**
+   * What a screen paints behind itself: the page, or nothing at all on a dusk
+   * card, where the card's own gradient is drawn under it (see `DuskGround`).
+   */
+  ground: base.bg as string,
 };
 
 /** The palette a screen draws with — the white one above, or a family's field. */
@@ -133,6 +138,68 @@ export const FAMILY: Record<Family, FamilyColour> = {
   full: { field: "#E9F056", mark: "#4E541C", dark: false },
 };
 
+/**
+ * Letterpress: the workout's cards and the Plan rows as matte card stock in a
+ * deep, muted family colour, with words in a light tint of the same hue
+ * pressed into it — softer contrast than white on colour, still 4.5:1. A set
+ * done is stamped in a pale ink of the hue and fills like a glass: 9 of 10 is
+ * nine-tenths full (see `components/set-circle.tsx`). Since 18 November 2026;
+ * `false` brings back the pale fields with ink words.
+ */
+export const LETTERPRESS = true;
+
+/** Per family: the card, the words on it, and the stamp a done set leaves. */
+export const PRESS: Record<Family, { card: string; ink: string; stamp: string }> = {
+  push: { card: "#3D5A7C", ink: "#CBDAEB", stamp: "#B7CCE4" },
+  pull: { card: "#4E6446", ink: "#D4DEC6", stamp: "#C2D1AF" },
+  legs: { card: "#5C4B7A", ink: "#DCD2EB", stamp: "#CDBFE3" },
+  core: { card: "#77485C", ink: "#EFD3DE", stamp: "#E3BFCE" },
+  cardio: { card: "#2F6563", ink: "#CBE6E3", stamp: "#B2D8D4" },
+  mobility: { card: "#735B2B", ink: "#F1E2BE", stamp: "#E6D19E" },
+  goal: { card: "#634A6E", ink: "#E6D4EC", stamp: "#D6C0DF" },
+  full: { card: "#585D2C", ink: "#E6E9BF", stamp: "#D6DB9C" },
+};
+
+/**
+ * Dusk: the next workout on Today, as a deep two-tone card — the family's
+ * colour at the top running down to near-black — with cream words and the
+ * family's shape glowing faintly behind it. Each family's `glow` is its
+ * shapes on the card. Since 18 November 2026; `false` brings back the pale
+ * band over paper.
+ */
+export const DUSK_TODAY = true;
+/**
+ * Dusk everywhere a workout is a card: the workout's own cards and the Plan
+ * rows too, so Today, Plan and the workout are one look. The stamp on a set
+ * is the family's glow. `false` leaves them letterpress.
+ */
+export const DUSK_CARDS = true;
+export const DUSK: Record<Family, { top: string; foot: string; glow: string }> = {
+  push: { top: "#2B3F8C", foot: "#141A33", glow: "#6E8CFF" },
+  pull: { top: "#22604A", foot: "#0F1F1A", glow: "#5FD39E" },
+  legs: { top: "#5B2F8C", foot: "#1A1030", glow: "#B987FF" },
+  core: { top: "#8C2F5B", foot: "#2A0F1C", glow: "#FF7FB4" },
+  cardio: { top: "#1F6E73", foot: "#0C2224", glow: "#5FE0D8" },
+  mobility: { top: "#8C5A14", foot: "#2A1A06", glow: "#FFC15E" },
+  goal: { top: "#5E2F7A", foot: "#1C0F26", glow: "#D69BFF" },
+  full: { top: "#5F6A1A", foot: "#1C2008", glow: "#D7E85A" },
+};
+/**
+ * The mobility card: white, exactly the clay pictures' own white (sampled from
+ * assets/clay), so the clay figure stands on the card with no box round it,
+ * and a soft grey at the foot, the way the dusk cards darken downwards.
+ */
+export const CLAY_CARD = { top: "#F9F9F7", foot: "#E3E0D8" };
+
+/** Words on a dusk card: cream, and a softer cream. */
+export const DUSK_INK = { ink: "#F3E9D6", soft: "#F3E9D6CC" };
+
+/** A family's row or card colours: letterpress, or the pale field with its ink. */
+export const cardOf = (family: Family): { bg: string; ink: string } =>
+  DUSK_CARDS
+    ? { bg: mix(DUSK[family].top, DUSK[family].foot, 0.45), ink: DUSK_INK.ink }
+    : LETTERPRESS ? { bg: PRESS[family].card, ink: PRESS[family].ink } : { bg: FAMILY[family].field, ink: FAMILY[family].mark };
+
 /** Outlined geometry uses its family's ink, rather than a second colour. */
 export const MARK_EDGE = true;
 
@@ -150,7 +217,8 @@ export function familyWash(family: Family): string {
 }
 
 /** Whether a family card needs light text. */
-export const fieldIsDark = (family: Family): boolean => (!PAPER || COLOURED_CARDS) && FAMILY[family].dark;
+export const fieldIsDark = (family: Family): boolean =>
+  (!PAPER || COLOURED_CARDS) && (LETTERPRESS || FAMILY[family].dark);
 
 /** Quiet backgrounds for the three connected stages in the workout editor. */
 export const WORKOUT_STAGE = {
@@ -163,6 +231,59 @@ export const WORKOUT_STAGE = {
 export function fieldColors(family: Family): Palette {
   // On paper the screen stays paper; the family's colour is the wash.
   if (PAPER && !COLOURED_CARDS) return { ...colors, wash: FAMILY[family].field };
+  if (DUSK_CARDS) {
+    const { top, foot, glow } = DUSK[family];
+    // One flat colour for what needs one — the knocked-out number on a
+    // stamp, an opaque fill — between the gradient's two ends.
+    const card = mix(top, foot, 0.45);
+    const ink = DUSK_INK.ink;
+    return {
+      bg: card,
+      surface: mix(card, ink, 0.1),
+      raised: mix(card, ink, 0.16),
+      line: mix(card, ink, 0.3),
+      panel: card,
+      panelEdge: ink,
+      text: ink,
+      muted: ink,
+      faint: ink,
+      dim: ink,
+      rise: ink,
+      riseWash: mix(card, ink, 0.1),
+      bend: ink,
+      danger: ink,
+      cloud: ink,
+      ink: foot,
+      white: colors.white,
+      wash: glow,
+      ground: "transparent",
+    };
+  }
+  if (LETTERPRESS) {
+    const { card, ink, stamp } = PRESS[family];
+    return {
+      bg: card,
+      surface: mix(card, ink, 0.1),
+      raised: mix(card, ink, 0.16),
+      line: mix(card, ink, 0.3),
+      panel: card,
+      panelEdge: ink,
+      text: ink,
+      muted: ink,
+      faint: ink,
+      dim: ink,
+      rise: ink,
+      riseWash: mix(card, ink, 0.1),
+      bend: ink,
+      danger: ink,
+      cloud: ink,
+      // The number on a stamped circle: the card's own colour, knocked out.
+      ink: card,
+      white: colors.white,
+      wash: stamp,
+      ground: card,
+    };
+  }
   const { field, mark } = FAMILY[family];
   return {
     bg: field,
@@ -183,11 +304,12 @@ export function fieldColors(family: Family): Palette {
     ink: field,
     white: colors.white,
     wash: mark,
+    ground: field,
   };
 }
 
 /** Mix two shades of the same family without adding a neutral overlay. */
-function mix(from: string, to: string, amount: number): string {
+export function mix(from: string, to: string, amount: number): string {
   return `#${[1, 3, 5].map((at) => {
     const a = parseInt(from.slice(at, at + 2), 16);
     const b = parseInt(to.slice(at, at + 2), 16);
