@@ -3,7 +3,7 @@
 D=FFF8D713-375D-4F99-906F-BB6D379240F6
 V=/Users/eddietovebeppearonelsa/.claude/jobs/a2984155/tmp/v
 C=/Users/eddietovebeppearonelsa/.claude/jobs/a2984155/tmp/capture
-S="$(xcrun simctl get_app_container $D host.exp.Exponent data)/Documents/ExponentExperienceData/@edch/akilles/RCTAsyncLocalStorage"
+S="$(xcrun simctl get_app_container $D host.exp.Exponent data)/Documents/ExponentExperienceData/@edch/klay/RCTAsyncLocalStorage"
 xcrun simctl terminate $D host.exp.Exponent 2>/dev/null
 sleep 1
 cp $V/states/$2.json "$S/d2cf97978994b5d1eba7b5de03ab59c4"

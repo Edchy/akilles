@@ -1,10 +1,10 @@
 {
   "expo": {
     "name": "Klay",
-    "slug": "akilles",
+    "slug": "klay",
     "version": "0.1.0",
     "orientation": "portrait",
-    "scheme": "akilles",
+    "scheme": "klay",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "ios": {
@@ -15,7 +15,13 @@
     },
     "android": {
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": true
+      "predictiveBackGestureEnabled": true,
+      "permissions": [
+        "android.permission.RECORD_AUDIO",
+        "android.permission.MODIFY_AUDIO_SETTINGS",
+        "android.permission.FOREGROUND_SERVICE",
+        "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK"
+      ]
     },
     "web": {
       "bundler": "metro",
@@ -36,12 +42,15 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "af661e39-36c8-42f1-b65d-8a421d220a92"
+        "projectId": "0aa84b42-bebb-4208-9e13-500269cb5593"
       }
     },
     "owner": "edch",
     "updates": {
-      "url": "https://u.expo.dev/af661e39-36c8-42f1-b65d-8a421d220a92"
+      "url": "https://u.expo.dev/0aa84b42-bebb-4208-9e13-500269cb5593"
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
     }
   }
 }
