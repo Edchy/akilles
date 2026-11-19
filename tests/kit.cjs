@@ -169,10 +169,12 @@ test("with any weight on hand, a step up is one increment as always", () => {
 // ---- places ----
 
 const lifts = (state) => state.active.items.filter((it) => !it.kind || it.kind === "lift");
+/** The plan in use, trained with this kit — undefined for a full gym. */
+const trainWith = (state, k) => store.setLoopKit(state, store.loopInUse(state), k);
 
-test("your usual place is a gym, and a workout there is built exactly as before", () => {
+test("a plan is trained at a full gym unless you say otherwise, and is built exactly as written", () => {
   const state = fresh();
-  assert.equal(store.placeOf(state), "usual");
+  assert.equal(store.kitOfLoop(state, store.loopInUse(state)), undefined);
   const built = store.buildWorkout(state);
   const push = workout(state, "push");
   assert.deepEqual(
@@ -183,7 +185,7 @@ test("your usual place is a gym, and a workout there is built exactly as before"
 });
 
 test("away with nothing: the same workout comes next, with what can be done anywhere", () => {
-  const state = store.setPlace(fresh(), "away", kit.BODYWEIGHT);
+  const state = trainWith(fresh(), kit.BODYWEIGHT);
   assert.equal(store.upNext(state).id, "push");
   const built = store.buildWorkout(state);
   const ids = lifts(built).map((it) => it.exerciseId);
@@ -195,7 +197,7 @@ test("away with nothing: the same workout comes next, with what can be done anyw
   assert.equal(cardio.map((it) => it.exerciseId).join(), "outdoor");
   assert.equal(cardio[0].minutes, 5);
   const warmup = built.active.items.find((it) => it.slot === store.WARMUP_SLOT);
-  assert.equal(warmup.exerciseId, "warmup");
+  assert.equal(warmup.exerciseId, "warmup_push:away");
   assert.ok(built.active.items.some((it) => it.slot === store.MOBILITY_SLOT));
   // Skipping rope is one swap away; the gym's machines aren't.
   const opening = { ...built, active: { ...built.active, cursor: built.active.items.indexOf(cardio[0]) } };
@@ -208,7 +210,7 @@ test("away with nothing: the same workout comes next, with what can be done anyw
 });
 
 test("the preview shows what you will actually do here", () => {
-  const state = store.setPlace(fresh(), "away", kit.BODYWEIGHT);
+  const state = trainWith(fresh(), kit.BODYWEIGHT);
   const names = store.workoutPreview(state, workout(state, "push")).map((r) => r.name);
   assert.ok(names.includes(exercises.byId("push_up").name));
   assert.ok(!names.includes(exercises.byId("db_bench").name));
@@ -216,7 +218,7 @@ test("the preview shows what you will actually do here", () => {
 
 test("one 12 kg kettlebell: the weight is the bell, and topping out keeps it there", () => {
   let state = withRecord(fresh(), "db_shoulder", 12);
-  state = store.setPlace(state, "away", KB(12));
+  state = trainWith(state, KB(12));
   const built = store.buildWorkout(state);
   const press = lifts(built).find((it) => it.exerciseId === "kb_press");
   assert.ok(press, "the kettlebell press fills the vertical press");
@@ -226,21 +228,21 @@ test("one 12 kg kettlebell: the weight is the bell, and topping out keeps it the
 
 test("back at the gym, the gym lifts are where you left them", () => {
   let state = withRecord(fresh(), "db_bench", 22.5);
-  state = store.setPlace(state, "away", kit.BODYWEIGHT);
+  state = trainWith(state, kit.BODYWEIGHT);
   state = store.buildWorkout(state);
   state = store.finishWorkout(state);
-  state = store.setPlace(state, "usual");
+  state = trainWith(state, undefined);
   assert.equal(state.history[store.key("db_bench", SCHEME)].weight, 22.5);
-  assert.equal(store.kitAt(state, "away").gear.length, 0, "the away kit is remembered");
 });
 
-test("the place can't change in the middle of a workout", () => {
+test("what the plan in use has can't change in the middle of a workout; another plan's can", () => {
   const state = store.buildWorkout(fresh());
-  assert.equal(store.setPlace(state, "away", kit.BODYWEIGHT), state);
+  assert.equal(trainWith(state, kit.BODYWEIGHT), state);
+  assert.notEqual(store.setLoopKit(state, "pplppl", kit.BODYWEIGHT), state);
 });
 
 test("a swap away offers only what the place has", () => {
-  let state = store.setPlace(fresh(), "away", { gear: ["dumbbells"] });
+  let state = trainWith(fresh(), { gear: ["dumbbells"] });
   state = store.buildWorkout(state);
   const at = state.active.items.findIndex((it) => it.slot === "Horizontal press");
   state = { ...state, active: { ...state.active, cursor: at } };
@@ -252,7 +254,7 @@ test("a swap away offers only what the place has", () => {
 // The promise shown after a set must match the result saved at Finish.
 const finishedPress = (weights, extra = {}, reps = 10) => {
   let state = withRecord(fresh(), "kb_press", 12, { rung: 2, ...extra });
-  state = store.setPlace(state, "away", KB(...weights));
+  state = trainWith(state, KB(...weights));
   state = store.buildWorkout(state);
   const at = state.active.items.findIndex((it) => it.exerciseId === "kb_press");
   assert.ok(at >= 0);
@@ -294,7 +296,7 @@ test("with no lighter bell, the failed weight cannot be prescribed again, even a
   const next = store.buildWorkout(finished);
   assert.ok(!lifts(next).some((it) => it.exerciseId === "kb_press"));
   // Taking a lighter bell next time makes this exercise usable again.
-  const lighterKit = store.setPlace(finished, "away", KB(8, 12));
+  const lighterKit = trainWith(finished, KB(8, 12));
   const available = store.buildWorkout(lighterKit);
   assert.equal(lifts(available).find((it) => it.exerciseId === "kb_press").weight, 8);
 });
@@ -302,7 +304,7 @@ test("with no lighter bell, the failed weight cannot be prescribed again, even a
 test("changing kit before the lighter session cannot round back to the failed weight", () => {
   const failed = finishedPress([10, 12], { rung: 0, downStreak: 1 }, 4);
   const finished = store.finishWorkout(failed);
-  const nextPlace = store.setPlace({ ...finished, nextWorkout: "push" }, "away", KB(12));
+  const nextPlace = trainWith({ ...finished, nextWorkout: "push" }, KB(12));
   const next = store.buildWorkout(nextPlace);
   assert.ok(!lifts(next).some((it) => it.exerciseId === "kb_press"));
 });

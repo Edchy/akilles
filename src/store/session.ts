@@ -82,7 +82,7 @@ import { feelWeight, firstWeight, type Feel, type Lifter } from "@/lib/start-wei
 import { BODYWEIGHT, GYM, fits, nearestWeight, needsOf, TWIN, weightsFor, type Kit } from "@/data/kit";
 import { FALL_BACK, fitOf, pick, STAND_IN, type Candidate } from "@/lib/fill";
 import { avoidFor, EXTRAS, SHAPE_FOR, SHAPES, type Easy, type Shape, type Time } from "@/data/templates";
-import { PLAN_IDS, PLANS, routinesOf, type PlanId } from "@/data/plans";
+import { PLAN_IDS, PLAN_NAME, PLANS, type PlanId } from "@/data/plans";
 import type { Outcome, Say } from "@/data/voice";
 import { familyOf, type Family } from "@/data/families";
 import { chainFor, type Chain } from "@/data/chains";
@@ -124,6 +124,7 @@ import {
   hitTarget,
   ladderOf,
   markSkipped,
+  ownRange,
   prescribe,
   TIMED_SECONDS,
   type Decay,
@@ -311,6 +312,8 @@ export type SessionLog = {
   startedAt: number;
   finishedAt: number;
   entries: LogEntry[];
+  /** Trained in an easy week: lighter, and not counted for progress. */
+  easy?: true;
 };
 
 /**
@@ -334,8 +337,12 @@ export type Growth = {
   added: { workoutId: string; slot: string; at: number }[];
 };
 
-/** A loop of workouts. Only the one in use has no `body`: its body is the state's own. */
-export type Loop = { id: string; name: string; body?: LoopBody };
+/**
+ * A plan of workouts. Only the one in use has no `body`: its body is the
+ * state's own. `kit` is what it is trained with — a home with a pair of
+ * dumbbells, a hotel with nothing — and absent for a full gym.
+ */
+export type Loop = { id: string; name: string; body?: LoopBody; kit?: Kit };
 
 export type SessionState = {
   /**
@@ -376,12 +383,12 @@ export type SessionState = {
   /** Display order in Plan, including paused workouts. */
   planOrder?: string[];
   /**
-   * Your loops, when you have more than one: a gym loop and a holiday one,
-   * say. The loop in use is the one without a `body` — its workouts, what's
-   * next and what's paused are the fields above, so everything that runs the
-   * loop works on it as it always has. The others keep theirs in `body`,
-   * waiting exactly as they were. Absent: one loop, with no name, which is
-   * how everyone starts. See `loopsOf` and `useLoop`.
+   * Your plans — loops, in the code: Push, pull, legs and the bigger one to
+   * start with, and any you add in Settings. The plan in use is the one
+   * without a `body` — its workouts, what's next and what's paused are the
+   * fields above, so everything that runs the plan works on it as it always
+   * has. The others keep theirs in `body`, waiting exactly as they were.
+   * Absent only in a save from before plans. See `loopsOf` and `switchLoop`.
    */
   loops?: Loop[];
   /**
@@ -390,6 +397,11 @@ export type SessionState = {
    * before growth), which is never offered more.
    */
   growth?: Growth;
+  /**
+   * Easy weeks: `from`, when the last one began; `askAfter`, when to ask
+   * again after a "Not now". See `easyWeekOffer`.
+   */
+  recovery?: { from?: number; askAfter?: number };
   /**
    * Your chosen exercise per slot, keyed by `workoutId/entryId`. Absent means
    * the slot's first option. Set from the Plan screen or by swapping
@@ -431,16 +443,12 @@ export type SessionState = {
    */
   tipsSeen?: string[];
   /**
-   * Where you are training: your usual place, or somewhere else for a while —
-   * a week away with one kettlebell. The plan and the loop stay the same;
-   * only what fills each slot changes. Absent means your usual place.
+   * Where you trained, in saves before version 23: your usual place or
+   * somewhere else, and what each had. Each plan has its own kit now (see
+   * `Loop`); `intoLoops` gives them theirs. Never written.
    */
-  place?: Place;
-  /**
-   * What each place has. Your usual place is a gym unless you say otherwise;
-   * somewhere else is just you until you say what is there.
-   */
-  kits?: Partial<Record<Place, Kit>>;
+  place?: "usual" | "away";
+  kits?: Partial<Record<"usual" | "away", Kit>>;
   /**
    * Exercises ruled out when the plan was made — the ones that load a part
    * you asked Klay to go easy on. Never used to fill a slot, anywhere.
@@ -520,6 +528,8 @@ export type SessionState = {
     startedAt: number;
     /** When a lift set was last logged; persists so rest includes time away. */
     lastSetAt?: number;
+    /** Started in an easy week: lighter, fewer sets, and nothing it does moves a lift's record. */
+    easy?: boolean;
     /** Notes edited during this session only. */
     notes?: Record<string, string>;
   } | null;
@@ -932,33 +942,36 @@ export const fillWorkout = (
   return filled;
 };
 
-/** Your usual place, or somewhere else. */
-export type Place = "usual" | "away";
+/** What a plan is trained with: its own kit, or a full gym. */
+export const kitOfLoop = (state: SessionState, id: string): Kit | undefined =>
+  state.loops?.find((l) => l.id === id)?.kit;
 
-export const placeOf = (state: SessionState): Place => state.place ?? "usual";
-
-/** What a place has to train with. */
-export const kitAt = (state: SessionState, place: Place = placeOf(state)): Kit =>
-  state.kits?.[place] ?? (place === "away" ? BODYWEIGHT : GYM);
+/** What the plan in use is trained with. */
+export const kitAt = (state: SessionState): Kit => kitOfLoop(state, loopInUse(state)) ?? GYM;
 
 /** At a full gym, where every slot simply holds what Plan says. */
-const atGym = (state: SessionState): boolean => placeOf(state) === "usual" && !state.kits?.usual;
+export const atGym = (state: SessionState): boolean => !kitOfLoop(state, loopInUse(state));
 
 /** Whether the cardio machines are here — a gym, or somewhere with machines. */
 const hasMachines = (state: SessionState): boolean => kitAt(state).gear.includes("machine");
 
 /**
- * Move to a place, and say what it has. Only on Today: a workout in progress
- * keeps the place it started in.
+ * Say what a plan is trained with — undefined for a full gym. Klay fills
+ * each of its slots with what is there. The plan in use keeps its kit while
+ * a workout is running.
  */
-export const setPlace = (state: SessionState, place: Place, kit?: Kit): SessionState =>
-  state.active
-    ? state
-    : {
-        ...state,
-        place,
-        kits: kit ? { ...state.kits, [place]: kit } : state.kits,
-      };
+export const setLoopKit = (state: SessionState, id: string, kit: Kit | undefined): SessionState => {
+  const loops = withLoops(state);
+  if (!loops.some((l) => l.id === id) || (state.active && id === loopInUse(state))) return state;
+  return {
+    ...state,
+    loops: loops.map((l) => {
+      if (l.id !== id) return l;
+      const { kit: _old, ...rest } = l;
+      return kit ? { ...rest, kit } : rest;
+    }),
+  };
+};
 
 /**
  * The lifts a workout runs here, each with the exercise filling it. A slot
@@ -1088,19 +1101,23 @@ const previewAdjustment = (state: ExerciseState, prescription: Prescription): { 
 export const exercisesToRun = (state: SessionState, workout: Workout): Entry[] =>
   SHORT_WORKOUTS || state.shortWorkouts ? workout.exercises.slice(0, 2) : workout.exercises;
 
-export const workoutPreview = (state: SessionState, workout: Workout): PreviewRow[] => {
+export const workoutPreview = (state: SessionState, workout: Workout, now = Date.now()): PreviewRow[] => {
+  const easy = !!easyWeek(state, now);
   const lifts = liftsToRun(state, workout).map(({ entry, exerciseId }): PreviewRow => {
     const ex = byId(exerciseId)!;
     const known = Object.values(state.history).some((record) => record.exerciseId === ex.id);
     const due = dueRecord(state, ex.id, entry.scheme);
-    const st = { ...due, weight: weightHere(state, ex, due.weight) };
-    const p = prescribe(st, entry.scheme, setsFor(entry));
+    const here = weightHere(state, ex, due.weight);
+    // What Start will give, an easy week's lighter load included.
+    const load = easy ? easyLoad(state, ex, entry, here) : { weight: here, sets: setsFor(entry) };
+    const st = { ...due, weight: load.weight };
+    const p = prescribe(st, entry.scheme, load.sets);
     // Speed work takes its weight from another lift on the day; jumps have none.
     const loaded = !entry.derive && !ex.unloaded;
     const last = st.lastPerformed;
     const change = !last
       ? "new"
-      : !loaded
+      : !loaded || easy
         ? undefined
         : st.weight > last.weight
           ? "up"
@@ -1109,7 +1126,7 @@ export const workoutPreview = (state: SessionState, workout: Workout): PreviewRo
             : p.reload === "start"
               ? "reload"
               : undefined;
-    const adjustment = loaded ? previewAdjustment(st, p) : undefined;
+    const adjustment = loaded && !easy ? previewAdjustment(st, p) : undefined;
     return {
       id: entry.id,
       name: ex.name,
@@ -1166,8 +1183,11 @@ export const itemFamily = (item: Item): Family =>
     ? item.kind
     : familyOf(byId(item.exerciseId));
 
-/** The workout Start will run. Falls back to the first if the id has gone. */
-export const upNext = (state: SessionState): Workout =>
+/**
+ * The workout Start will run. Falls back to the first if the id has gone;
+ * none only in a new plan that has no workouts yet.
+ */
+export const upNext = (state: SessionState): Workout | undefined =>
   workoutById(state, state.nextWorkout) ?? state.workouts[0];
 
 /**
@@ -1187,7 +1207,7 @@ const following = (state: SessionState, id: string): string => {
   const queuedAt = queue?.indexOf(id) ?? -1;
   if (queue && queuedAt >= 0 && queuedAt + 1 < queue.length) return queue[queuedAt + 1];
   const i = state.workouts.findIndex((w) => w.id === id);
-  if (i === -1) return upNext(state).id;
+  if (i === -1) return upNext(state)?.id ?? id;
   return state.workouts[(i + 1) % state.workouts.length].id;
 };
 
@@ -1217,6 +1237,7 @@ export const upcomingWorkouts = (state: SessionState, count: number): Workout[] 
   let s = state;
   for (let i = 0; i < count; i++) {
     const w = upNext(s);
+    if (!w) break;
     out.push(w);
     s = { ...s, ...advanceWorkout(s, w.id) };
   }
@@ -1398,56 +1419,9 @@ export const arrangePlan = (state: SessionState, active: string[], paused: strin
 };
 
 /**
- * The built-in plan your active workouts are, or null for a plan of your own.
- * Edits inside a workout don't change which plan it is; adding a workout or
- * pausing one of the plan's does.
- */
-export const planOf = (state: SessionState): PlanId | null => {
-  const active = state.workouts.map((w) => w.id).sort().join();
-  return PLAN_IDS.find((plan) => PLANS[plan].map((w) => w.id).sort().join() === active) ?? null;
-};
-
-/**
- * Switch to a built-in plan: its workouts become the active ones, in its
- * order, and everything else is paused — kept as it was, to come back to.
- * A workout of the plan that is already here, running or paused, comes back
- * with your edits; one that isn't arrives fresh. Its lifts and routines join
- * your lists, so nothing it names is missing. The plan starts at its first
- * workout. Refused while you are training.
- */
-export const switchPlan = (state: SessionState, plan: PlanId): SessionState => {
-  if (state.active) return state;
-  const all = planWorkouts(state);
-  const have = new Set(all.map((w) => w.id));
-  const missing = PLANS[plan].filter((w) => !have.has(w.id));
-  const withAll: SessionState = {
-    ...state,
-    removedWorkouts: [
-      ...state.removedWorkouts,
-      ...missing.map((workout, i) => ({ workout, at: all.length + i })),
-    ],
-    planOrder: [...all, ...missing].map((w) => w.id),
-  };
-  const active = PLANS[plan].map((w) => w.id);
-  const paused = [...all, ...missing].map((w) => w.id).filter((id) => !active.includes(id));
-  const arranged = arrangePlan(withAll, active, paused);
-  if (arranged === withAll) return state;
-  const lifts = new Set(PLANS[plan].flatMap((w) => w.exercises.flatMap((e) => e.options)));
-  const routines = routinesOf(plan);
-  return {
-    ...arranged,
-    nextWorkout: active[0],
-    workoutQueue: undefined,
-    postponed: undefined,
-    hidden: arranged.hidden.filter((id) => !lifts.has(id)),
-    hiddenConditioning: arranged.hiddenConditioning.filter((id) => !routines.includes(id)),
-  };
-};
-
-/**
- * Loops are gone: one plan, its workouts active or paused. A save that has
- * other loops keeps every workout in them, paused, under the active ones —
- * nothing is lost, and resuming one brings it into the plan.
+ * For a save from the time loops were gone (before version 23): the loops of
+ * an older one fold into one list, every workout in them kept, paused under
+ * the running ones. `intoLoops` then sorts them into plans.
  */
 export const foldLoops = (state: SessionState): SessionState => {
   if (!state.loops) return state;
@@ -1556,8 +1530,9 @@ export const moveWorkout = (state: SessionState, from: number, to: number): Sess
  * none was ever offered. Undo restores the previous next id and temporary queue.
  */
 export const skipWorkout = (state: SessionState): SessionState => {
-  if (state.active) return state;
-  const skipped = { ...state, ...advanceWorkout(state, upNext(state).id) };
+  const next = upNext(state);
+  if (state.active || !next) return state;
+  const skipped = { ...state, ...advanceWorkout(state, next.id) };
   // A workout put off for next time stays put off: skipping the one that
   // came up instead walks on to the next that isn't waiting, as "Do it next
   // time" does, rather than bringing back one you have already said no to.
@@ -1583,7 +1558,7 @@ export const skipWorkout = (state: SessionState): SessionState => {
  */
 export const postponeWorkout = (state: SessionState): SessionState => {
   if (state.active || state.workouts.length < 2) return state;
-  const current = upNext(state).id;
+  const current = upNext(state)!.id;
   const exists = (id: string) => !!workoutById(state, id);
   const waiting = (state.postponed ?? []).filter((id) => id !== current && exists(id));
   const savedQueue = state.workoutQueue?.filter(exists);
@@ -1609,12 +1584,17 @@ export const setNextWorkout = (state: SessionState, id: string): SessionState =>
     ? { ...state, nextWorkout: id, workoutQueue: undefined, postponed: undefined }
     : state;
 
-// ---- loops ----
+// ---- plans ----
+//
+// In the code a plan is a loop: a set of workouts taking turns. Settings
+// calls them plans. Only one is in use; the others wait exactly as they
+// were. History, notes and the log belong to no plan, so a lift's weight is
+// the same whichever plan it is trained in.
 
-/** The first loop's id, before and after it has a name. */
-export const FIRST_LOOP = "main";
+/** The id of the plan in use when there is no list of plans (a save from before plans). */
+export const FIRST_LOOP = "ppl";
 
-/** A loop's own fields, taken from the state while it is the one in use. */
+/** A plan's own fields, taken from the state while it is the one in use. */
 const bodyOf = (state: SessionState): LoopBody => ({
   workouts: state.workouts,
   nextWorkout: state.nextWorkout,
@@ -1624,17 +1604,27 @@ const bodyOf = (state: SessionState): LoopBody => ({
   planOrder: state.planOrder,
 });
 
-/** The id of the loop in use. */
+/** A plan waiting with these workouts, the first of them next. */
+const waitingBody = (workouts: Workout[]): LoopBody => ({
+  workouts,
+  nextWorkout: workouts[0]?.id ?? "",
+  removedWorkouts: [],
+});
+
+/** The plans everyone starts with: Push, pull, legs in use, the bigger one waiting. */
+export const startingLoops = (): Loop[] => [
+  { id: "ppl", name: PLAN_NAME.ppl },
+  { id: "pplppl", name: PLAN_NAME.pplppl, body: waitingBody(PLANS.pplppl) },
+];
+
+/** The id of the plan in use. */
 export const loopInUse = (state: SessionState): string =>
   state.loops?.find((l) => !l.body)?.id ?? FIRST_LOOP;
 
-/** Whether there is more than one loop: only then do loops have names, and a choice. */
-export const hasLoops = (state: SessionState): boolean => (state.loops?.length ?? 0) > 1;
-
 /**
- * The state with this loop in place of the one in use: every function that
- * works on the loop then works on it. A workout in progress is untouched.
- * The same state for the loop already in use, or one that isn't there.
+ * The state with this plan in place of the one in use: every function that
+ * works on the plan then works on it. A workout in progress is untouched.
+ * The same state for the plan already in use, or one that isn't there.
  */
 export const viewLoop = (state: SessionState, id: string): SessionState => {
   const target = state.loops?.find((l) => l.id === id);
@@ -1643,7 +1633,7 @@ export const viewLoop = (state: SessionState, id: string): SessionState => {
   const b = target.body;
   return {
     ...state,
-    // Each one set, so nothing of the loop being put away is left behind.
+    // Each one set, so nothing of the plan being put away is left behind.
     workouts: b.workouts,
     nextWorkout: b.nextWorkout,
     workoutQueue: b.workoutQueue,
@@ -1656,7 +1646,7 @@ export const viewLoop = (state: SessionState, id: string): SessionState => {
   };
 };
 
-/** Do something to one loop, in use or not; the loop in use stays the one in use. */
+/** Do something to one plan, in use or not; the plan in use stays the one in use. */
 export const inLoop = (
   state: SessionState,
   id: string,
@@ -1671,15 +1661,28 @@ export const inLoop = (
 };
 
 /**
- * Train from another loop: Today's next comes from it from now on, and the
- * one it replaces waits exactly where it was. Not while a workout is running.
+ * Train from another plan: Today's next comes from it from now on, where it
+ * left off, and the one it replaces waits exactly where it was. Its lifts
+ * and routines join your lists, so nothing it names is missing. Not while a
+ * workout is running.
  */
-export const switchLoop = (state: SessionState, id: string): SessionState =>
-  state.active ? state : viewLoop(state, id);
+export const switchLoop = (state: SessionState, id: string): SessionState => {
+  if (state.active || id === loopInUse(state)) return state;
+  const s = viewLoop(state, id);
+  if (s === state) return state;
+  const workouts = planWorkouts(s);
+  const lifts = new Set(workouts.flatMap((w) => w.exercises.flatMap((e) => e.options)));
+  const routines = new Set(workouts.flatMap((w) => [w.warmup, w.mobility].filter((r): r is string => !!r)));
+  return {
+    ...s,
+    hidden: s.hidden.filter((x) => !lifts.has(x)),
+    hiddenConditioning: s.hiddenConditioning.filter((x) => !routines.has(x)),
+  };
+};
 
 export type LoopSummary = { id: string; name: string; inUse: boolean; workouts: Workout[] };
 
-/** Every loop with its workouts as Plan lists them, paused ones too. One loop has no name. */
+/** Every plan with its workouts as Plan lists them, paused ones too. */
 export const loopsOf = (state: SessionState): LoopSummary[] =>
   state.loops
     ? state.loops.map((l) => ({
@@ -1688,216 +1691,103 @@ export const loopsOf = (state: SessionState): LoopSummary[] =>
         inUse: !l.body,
         workouts: planWorkouts(viewLoop(state, l.id)),
       }))
-    : [{ id: FIRST_LOOP, name: "", inUse: true, workouts: planWorkouts(state) }];
+    : [{ id: FIRST_LOOP, name: PLAN_NAME.ppl, inUse: true, workouts: planWorkouts(state) }];
 
-/** A loop's name, or "" for the only one. */
+/** The plan's name. */
 export const loopName = (state: SessionState, id: string): string =>
-  state.loops?.find((l) => l.id === id)?.name ?? "";
+  loopsOf(state).find((l) => l.id === id)?.name ?? "";
 
-/** A name no other loop has: "Bodyweight", else "Bodyweight 2". */
+/** A name no other plan has: "Travel", else "Travel 2". */
 const freeLoopName = (state: SessionState, name: string, except?: string): string => {
-  const base = name.trim() || "Loop";
-  const taken = new Set((state.loops ?? []).filter((l) => l.id !== except).map((l) => l.name));
+  const base = name.trim() || "New plan";
+  const taken = new Set(loopsOf(state).filter((l) => l.id !== except).map((l) => l.name));
   let free = base;
   for (let n = 2; taken.has(free); n++) free = `${base} ${n}`;
   return free;
 };
 
-/**
- * What a workout needs to be done: "none" when every exercise in it needs
- * nothing at all, "kit" when anything needs equipment — and undefined with
- * nothing in it to tell by. Loops are told apart by this, and nothing else.
- */
-export type Equipment = "none" | "kit";
+/** The list of plans, made explicit for a save that only has the one in use. */
+const withLoops = (state: SessionState): Loop[] =>
+  state.loops ?? [{ id: FIRST_LOOP, name: PLAN_NAME.ppl }];
 
-export const equipmentOf = (state: SessionState, workout: Workout): Equipment | undefined => {
-  const ids = workout.exercises.map((e) => state.choices[slotKey(workout.id, e.id)] ?? e.options[0]);
-  if (ids.length === 0) return undefined;
-  return ids.every((id) => needsOf(lookup(state, id) ?? { id }).length === 0) ? "none" : "kit";
-};
-
-/** What a loop's running workouts need: "kit" if any needs equipment, "none" if none does. */
-export const loopEquipment = (state: SessionState, id: string, except?: string): Equipment | undefined => {
-  const kinds = viewLoop(state, id)
-    .workouts.filter((w) => w.id !== except)
-    .map((w) => equipmentOf(state, w))
-    .filter((e): e is Equipment => e !== undefined);
-  if (kinds.length === 0) return undefined;
-  return kinds.includes("kit") ? "kit" : "none";
-};
-
-/**
- * Whether a workout belongs with a loop, by equipment: one needing nothing
- * doesn't belong with gym workouts, and a gym one doesn't belong in a loop
- * where nothing needs anything. Anything else does — a loop is yours to fill.
- */
-export const fitsLoop = (state: SessionState, workout: Workout, id: string): boolean => {
-  const own = equipmentOf(state, workout);
-  const loop = loopEquipment(state, id, workout.id);
-  return own === undefined || loop === undefined || own === loop;
-};
-
-/** The other loops a workout fits, for offering instead of the one it doesn't. */
-export const loopsFitting = (state: SessionState, workout: Workout, except: string): LoopSummary[] =>
-  loopsOf(state).filter(
-    (l) => l.id !== except && loopEquipment(state, l.id) === equipmentOf(state, workout),
-  );
-
-/**
- * A new loop holding these workouts, waiting until you use it. The first new
- * loop gives the one you had a name too — Gym, or Bodyweight if nothing in
- * it needs equipment — which you can change.
- */
-export const newLoop = (
-  state: SessionState,
-  id: string,
-  name: string,
-  workouts: Workout[],
-): SessionState => {
-  if (workouts.length === 0 || state.loops?.some((l) => l.id === id)) return state;
-  const loops = state.loops ?? [
-    { id: FIRST_LOOP, name: loopEquipment(state, FIRST_LOOP) === "none" ? "Bodyweight" : "Gym" },
-  ];
+/** A new, empty plan, waiting until you use it. Its workouts are added on Plan. */
+export const newLoop = (state: SessionState, id: string, name: string): SessionState => {
+  const loops = withLoops(state);
+  if (loops.some((l) => l.id === id)) return state;
   const named = freeLoopName({ ...state, loops }, name);
-  const body: LoopBody = { workouts, nextWorkout: workouts[0].id, removedWorkouts: [] };
-  return { ...state, loops: [...loops, { id, name: named, body }] };
+  return { ...state, loops: [...loops, { id, name: named, body: waitingBody([]) }] };
 };
 
-/** Rename a loop. A blank name is ignored; one another loop has gets a number. */
+/** Rename a plan. A blank name is ignored; one another plan has gets a number. */
 export const renameLoop = (state: SessionState, id: string, name: string): SessionState => {
-  if (!name.trim() || !state.loops?.some((l) => l.id === id)) return state;
-  const free = freeLoopName(state, name, id);
-  return { ...state, loops: state.loops.map((l) => (l.id === id ? { ...l, name: free } : l)) };
+  const loops = withLoops(state);
+  if (!name.trim() || !loops.some((l) => l.id === id)) return state;
+  const free = freeLoopName({ ...state, loops }, name, id);
+  return { ...state, loops: loops.map((l) => (l.id === id ? { ...l, name: free } : l)) };
 };
 
 /**
- * Delete a loop that isn't in use, with its workouts — or first move them
- * to another loop. Down to one loop, it loses its name again.
+ * Delete a plan that isn't in use, and its workouts. What you lifted in them
+ * stays: history and the log belong to no plan.
  */
-export const deleteLoop = (
-  state: SessionState,
-  id: string,
-  moveTo?: string,
-): SessionState => {
+export const deleteLoop = (state: SessionState, id: string): SessionState => {
   const loop = state.loops?.find((l) => l.id === id);
-  if (!loop?.body || moveTo === id) return state;
-  let s = state;
-  if (moveTo && s.loops?.some((l) => l.id === moveTo)) {
-    for (const w of planWorkouts(viewLoop(s, id))) s = attachTo(s, moveTo, { ...w });
-  } else {
-    const gone = new Set(planWorkouts(viewLoop(s, id)).map((w) => w.id));
-    s = {
-      ...s,
-      choices: Object.fromEntries(Object.entries(s.choices).filter(([k]) => !gone.has(k.split("/")[0]))),
-      goals: s.goals.map((g) => ({ ...g, workouts: g.workouts.filter((w) => !gone.has(w)) })),
-    };
-  }
-  const loops = s.loops!.filter((l) => l.id !== id);
-  return { ...s, loops: loops.length > 1 ? loops : undefined };
+  if (!loop?.body) return state;
+  const gone = new Set(planWorkouts(viewLoop(state, id)).map((w) => w.id));
+  return {
+    ...state,
+    loops: state.loops!.filter((l) => l.id !== id),
+    choices: Object.fromEntries(Object.entries(state.choices).filter(([k]) => !gone.has(k.split("/")[0]))),
+    goals: state.goals.map((g) => ({ ...g, workouts: g.workouts.filter((w) => !gone.has(w)) })),
+  };
 };
 
-/** Take a workout out of the loop in use, its swaps kept, to go to another. */
-const detach = (state: SessionState, id: string): [SessionState, Workout | undefined] => {
-  const running = state.workouts.find((w) => w.id === id);
-  const workout = running ?? state.removedWorkouts.find((r) => r.workout.id === id)?.workout;
-  // The workout being trained stays, and so does the last one in a loop.
-  if (!workout || state.active?.workoutId === id || (running && state.workouts.length === 1)) {
-    return [state, undefined];
-  }
-  return [
-    {
-      ...state,
-      workouts: state.workouts.filter((w) => w.id !== id),
-      planOrder: planWorkouts(state).map((w) => w.id).filter((w) => w !== id),
-      nextWorkout: state.nextWorkout === id ? following(state, id) : state.nextWorkout,
-      workoutQueue: state.workoutQueue?.filter((w) => w !== id),
-      postponed: state.postponed?.filter((w) => w !== id),
-      removedWorkouts: state.removedWorkouts.filter((r) => r.workout.id !== id),
-    },
-    workout,
-  ];
-};
-
-/** Put a workout at the bottom of a loop, running, its name made its own there. */
-const attachTo = (state: SessionState, loopId: string, workout: Workout): SessionState =>
-  inLoop(state, loopId, (s) => {
-    const taken = new Set(planWorkouts(s).map((w) => w.name));
-    const base = workout.name || "Workout";
-    let name = base;
-    for (let n = 2; taken.has(name); n++) name = `${base} ${n}`;
-    return {
-      ...s,
-      workouts: [...s.workouts, { ...workout, name, kind: kindOf(workout) }],
-      planOrder: s.planOrder ? [...s.planOrder, workout.id] : undefined,
-    };
-  });
-
-/**
- * Move a workout to another loop, with its swaps, to the bottom of it. Not
- * the one being trained, and not the last one running in its loop.
- */
-export const moveToLoop = (
-  state: SessionState,
-  workoutId: string,
-  from: string,
-  to: string,
-): SessionState => {
-  if (from === to || !state.loops?.some((l) => l.id === to)) return state;
-  let moved: Workout | undefined;
-  const taken = inLoop(state, from, (s) => {
-    const [next, workout] = detach(s, workoutId);
-    moved = workout;
-    return next;
-  });
-  return moved ? attachTo(taken, to, moved) : state;
-};
-
-/** Copy a workout into another loop, swaps and all, under a new id. */
-export const copyToLoop = (
-  state: SessionState,
-  workoutId: string,
-  from: string,
-  to: string,
-  id: string,
-): SessionState => {
-  const source = planWorkouts(viewLoop(state, from)).find((w) => w.id === workoutId);
-  if (!source || !state.loops?.some((l) => l.id === to)) return state;
-  const choices = { ...state.choices };
-  for (const [k, exerciseId] of Object.entries(state.choices)) {
-    if (k.startsWith(`${workoutId}/`)) choices[`${id}/${k.slice(workoutId.length + 1)}`] = exerciseId;
-  }
-  return attachTo({ ...state, choices }, to, { ...source, id });
-};
-
-/**
- * Start a new loop with a workout from the loop in use — the one just made,
- * usually: Bodyweight, kept apart from the gym. The new loop waits for you.
- */
-export const startLoopWith = (
-  state: SessionState,
-  workoutId: string,
-  from: string,
-  loopId: string,
-): SessionState => {
-  let moved: Workout | undefined;
-  const taken = inLoop(state, from, (s) => {
-    const [next, workout] = detach(s, workoutId);
-    moved = workout;
-    return next;
-  });
-  if (!moved) return state;
-  // Named for what it is — "Bodyweight" — rather than "Bodyweight 2".
-  const kind = kindOf(moved);
-  return newLoop(taken, loopId, kind === "free" ? moved.name : KIND_NAME[kind], [moved]);
-};
-
-/** The loop a workout is in, running or paused. */
+/** The plan a workout is in, running or paused. */
 export const loopOfWorkout = (state: SessionState, workoutId: string): string | undefined =>
   loopsOf(state).find((l) => l.workouts.some((w) => w.id === workoutId))?.id;
 
-/** Every running workout in every loop: for what reaches across them all. */
+/** Every running workout in every plan: for what reaches across them all. */
 export const everyLoopWorkout = (state: SessionState): Workout[] =>
   state.loops ? state.loops.flatMap((l) => viewLoop(state, l.id).workouts) : state.workouts;
+
+/**
+ * Plans came back on 2026-11-19, after a time with one list of workouts
+ * that switching between the built-in plans paused and resumed. Such a save
+ * becomes two plans: the built-in one its running workouts are, and the
+ * other, made from that plan's paused workouts — or fresh, if it had none.
+ * Workouts of your own stay with the plan in use, running or paused. Where
+ * you trained becomes each plan's kit: the one in use gets where you are
+ * now, the other your usual place.
+ */
+export const intoLoops = (state: SessionState): SessionState => {
+  if (state.loops) return state;
+  const of = (plan: PlanId) => new Set(PLANS[plan].map((w) => w.id));
+  const running = state.workouts.map((w) => w.id);
+  const current: PlanId = running.length > 0 && running.every((id) => of("pplppl").has(id)) ? "pplppl" : "ppl";
+  const other: PlanId = current === "ppl" ? "pplppl" : "ppl";
+  const theirs = of(other);
+  const waiting = state.removedWorkouts.map((r) => r.workout).filter((w) => theirs.has(w.id));
+  const order = planWorkouts(state).map((w) => w.id);
+  waiting.sort((a, b) => order.indexOf(a.id) - order.indexOf(b.id));
+  const fresh = other === "ppl" ? DEFAULT_WORKOUTS.map(startSmall) : PLANS.pplppl;
+  const body = waitingBody(waiting.length > 0 ? waiting : fresh);
+  // Each plan where you trained it: the one in use where you are now, the
+  // other at your usual place.
+  const usual = state.kits?.usual;
+  const here = state.place === "away" ? (state.kits?.away ?? BODYWEIGHT) : usual;
+  const kitted = (loop: Loop, kit: Kit | undefined): Loop => (kit ? { ...loop, kit } : loop);
+  const loops: Loop[] = [
+    kitted({ id: current, name: PLAN_NAME[current] }, here),
+    kitted({ id: other, name: PLAN_NAME[other], body }, usual),
+  ];
+  const { place: _place, kits: _kits, ...rest } = state;
+  return {
+    ...rest,
+    removedWorkouts: state.removedWorkouts.filter((r) => !theirs.has(r.workout.id)),
+    planOrder: state.planOrder?.filter((id) => !theirs.has(id)),
+    loops: PLAN_IDS.map((id) => loops.find((l) => l.id === id)!),
+  };
+};
 
 /**
  * Movement types a workout could add a slot for: anything with an exercise
@@ -2055,6 +1945,7 @@ export const initialState: SessionState = {
   workouts: DEFAULT_WORKOUTS,
   nextWorkout: DEFAULT_WORKOUTS[0].id,
   removedWorkouts: [],
+  loops: startingLoops(),
   choices: {},
   custom: [],
   exerciseEdits: {},
@@ -2250,6 +2141,8 @@ export const buildWorkout = (
   _now: number = Date.now(),
 ): SessionState => {
   const workout = upNext(state);
+  if (!workout) return state;
+  const easy = !!easyWeek(state, _now);
   // Weight cuts are NOT applied here. They are offered on the Today screen
   // and written only if accepted — see `decayOffers` and `acceptDecay`.
   return {
@@ -2289,13 +2182,15 @@ export const buildWorkout = (
                 ex.increment || 2.5,
               )
             : weightHere(state, ex, own.weight);
+          const { weight: easyWeight, sets } = easy ? easyLoad(state, ex, e, weight) : { weight, sets: setsFor(e) };
 
           return {
             ...e,
             exerciseId,
             ...(chain ? { chain: chain.id, ...(at === undefined ? { placing: true } : {}) } : {}),
-            weight,
-            logged: Array<number | null>(setsFor(e)).fill(null),
+            ...(easy ? { sets } : {}),
+            weight: easy ? easyWeight : weight,
+            logged: Array<number | null>(sets).fill(null),
             // Arms and core are small and already warm by the time they
             // come round — a ramp there is just more to tap through.
             warmup: first && group !== "arms" && group !== "core",
@@ -2327,12 +2222,32 @@ export const buildWorkout = (
       })(),
       cursor: 0,
       startedAt: Date.now(),
+      ...(easy ? { easy: true } : {}),
     },
   };
 };
 
+/** The workout being trained, or next. Only asked for with a workout to give. */
 export const currentWorkout = (state: SessionState): Workout =>
-  (state.active && workoutById(state, state.active.workoutId)) || upNext(state);
+  ((state.active && workoutById(state, state.active.workoutId)) || upNext(state))!;
+
+/**
+ * Rest between sets, in seconds: long enough to do the next set as well as
+ * the last. The first lift of the day — the biggest — gets two and a half
+ * minutes; small muscles and the core a minute; the rest a minute and a half.
+ */
+export const REST = { first: 150, main: 90, small: 60 } as const;
+
+/** The rest before the next set of the lift on screen, or null off a lift. */
+export const restSeconds = (state: SessionState): number | null => {
+  const active = state.active;
+  const item = active?.items[active.cursor];
+  if (!active || !item || !isLift(item)) return null;
+  if (active.items.findIndex(isLift) === active.cursor) return REST.first;
+  const ex = lookup(state, item.exerciseId);
+  const own = ownRange(ex);
+  return (own && own.min >= 10) || ex?.patterns[0] === "abs" ? REST.small : REST.main;
+};
 
 /** The prescription for the exercise currently on screen. */
 export const currentPrescription = (state: SessionState): Prescription | null => {
@@ -2749,8 +2664,8 @@ export const swapForSession = (state: SessionState, exerciseId: string): Session
   // Allowed after sets are logged too — the sheet says first that they go.
   if (!item || !isLift(item) || item.exerciseId === exerciseId) return state;
   if (currentTaken(state).has(exerciseId)) return state;
-  const ex = byId(exerciseId);
-  if (!ex) return state;
+  const ex = lookup(state, exerciseId);
+  if (!ex || (ex.restricted && !item.options.includes(exerciseId))) return state;
   // Seeded from that exercise's own history, so it opens at the right weight.
   return patchItem(state, (it) => ({
     ...it,
@@ -3088,6 +3003,15 @@ export const finishWorkout = (
   ) => {
     const k = key(exerciseId, scheme);
     const prior = dueRecord({ ...state, history }, exerciseId, scheme);
+    // An easy week moves no record, up or down, and a skip isn't held
+    // against you either: only the log says what you did — and the record
+    // that you trained, so the week never reads as time away.
+    if (state.active?.easy) {
+      if (!performed) return;
+      if (history[k]) history[k] = { ...history[k], lastTrainedAt: now };
+      entries.push({ kind: "lift", exerciseId, scheme, weight, reps: logged, outcome: null });
+      return;
+    }
     // Trained: the session's weight is what you actually lifted, so it carries
     // over. Skipped: nothing was lifted, so the record keeps the weight it
     // already had — a weight nudged up and then skipped was never trained at.
@@ -3211,6 +3135,7 @@ export const finishWorkout = (
     startedAt: typeof active.startedAt === "number" ? active.startedAt : now,
     finishedAt: now,
     entries,
+    ...(active.easy ? { easy: true as const } : {}),
   };
 
   return {
@@ -3463,9 +3388,33 @@ export const swapInPlan = (
   entryId: string,
   exerciseId: string,
 ): SessionState => {
-  const shown = { ...state, hidden: state.hidden.filter((h) => h !== exerciseId) };
+  const entry = workoutById(state, workoutId)?.exercises.find((e) => e.id === entryId);
+  const ex = lookup(state, exerciseId);
+  if (!entry || !ex || ex.restricted) return state;
+  if (takenElsewhere(state, workoutId, entry).has(exerciseId)) return state;
+  let shown: SessionState = { ...state, hidden: state.hidden.filter((h) => h !== exerciseId) };
+  // From "Any exercise": the slot becomes the new exercise's kind, so the
+  // next swap offers its relatives. Its sets and reps stay as you set them.
+  if (!isPattern(ex, entry.pattern)) {
+    const pattern = ex.patterns[0];
+    shown = patchWorkout(shown, workoutId, (w) => ({
+      ...w,
+      exercises: w.exercises.map((e) =>
+        e.id === entryId ? { ...e, pattern, slot: PATTERN_LABEL[pattern], options: [exerciseId] } : e,
+      ),
+    }));
+  }
   const next = chooseExercise(shown, workoutId, entryId, exerciseId);
   return next === shown ? state : next;
+};
+
+/**
+ * Everything a swap for today could reach from "Any exercise": the whole
+ * library, or away from a full gym only what this place has.
+ */
+export const swapAnywhere = (state: SessionState): Exercise[] => {
+  const all = everyExercise(state);
+  return atGym(state) ? all : all.filter((e) => fits({ id: e.id }, kitAt(state)));
 };
 
 /** A routine's length, to the nearest minute. */
@@ -3521,14 +3470,22 @@ const warmupHere = (state: SessionState, workout: Workout): MobilityRoutine | nu
   return plan && (kindOf(workout) === "bodyweight" || !hasMachines(state)) ? awayVersion(plan) : plan;
 };
 
-/** The workouts that open or end on a routine, so an edit can say who else it reaches. */
-export const workoutsUsing = (state: SessionState, routineId: string): Workout[] =>
-  everyLoopWorkout(state).filter(
+/**
+ * The workouts that open or end on a routine, so an edit can say who else it
+ * reaches: in the plan in use, as they run; in the others, the ones that
+ * name it. (A waiting plan's own routines may still be in the library, and
+ * only come out of it when you switch to that plan.)
+ */
+export const workoutsUsing = (state: SessionState, routineId: string): Workout[] => {
+  const here = new Set(state.workouts.map((w) => w.id));
+  return everyLoopWorkout(state).filter(
     (w) =>
-      mobilityPlan(state, w)?.id === routineId ||
-      warmupPlan(state, w)?.id === routineId ||
+      (here.has(w.id)
+        ? mobilityPlan(state, w)?.id === routineId || warmupPlan(state, w)?.id === routineId
+        : w.mobility === routineId || w.warmup === routineId) ||
       !!w.extras?.some((x) => x.routine === routineId),
   );
+};
 
 /** A cardio block for one end of the session, or null if the workout has none there. */
 const cardioBlock = (state: SessionState, workout: Workout, where: CardioWhere): Item | null => {
@@ -4619,8 +4576,7 @@ export const applyPlan = (
     choices: {},
     // What the plan uses is in your catalogue, so Plan shows it as yours.
     hidden: state.hidden.filter((id) => !used.has(id)),
-    place: "usual",
-    kits: { ...state.kits, usual: answers.home ?? undefined },
+    loops: setLoopKit(state, loopInUse(state), answers.home ?? undefined).loops,
     avoid: avoidFor(answers.easy),
     lifter: answers.lifter,
     onboarded: now,
@@ -4738,8 +4694,71 @@ export const acceptGrowth = (state: SessionState, track: Track, now = Date.now()
 export const declineGrowth = (state: SessionState, now = Date.now()): SessionState =>
   state.growth ? { ...state, growth: { ...state.growth, since: now } } : state;
 
+// ---- easy weeks ----
+
 /**
- * Forget your weight and sex, keeping how much you have lifted: guesses for
+ * Every three months or so of steady training, a week to recover: the same
+ * workouts at about 60% of your weights and a set fewer, offered on Today
+ * and only taken with a yes. Counted by training, not the calendar — at
+ * least twelve weeks, and three dozen workouts, since the last one began
+ * (or since you started). Nothing in it moves a record, so the week after,
+ * every lift is where you left it.
+ */
+const EASY_EVERY_DAYS = 84;
+const EASY_SESSIONS = 36;
+const EASY_DAYS = 7;
+const EASY_ASK_AGAIN_DAYS = 21;
+export const EASY_WEIGHT = 0.6;
+
+/** Where the count to the next easy week starts: the end of the last, or your start. */
+const easyBase = (state: SessionState): number | undefined => {
+  const from = state.recovery?.from;
+  return from !== undefined ? from + EASY_DAYS * DAY_MS : (state.onboarded ?? state.log[0]?.startedAt);
+};
+
+/** The easy week you are in, as its day — 1 to 7 — or null. */
+export const easyWeek = (state: SessionState, now = Date.now()): { day: number } | null => {
+  const from = state.recovery?.from;
+  if (from === undefined || now < from || now - from >= EASY_DAYS * DAY_MS) return null;
+  return { day: Math.floor((now - from) / DAY_MS) + 1 };
+};
+
+/**
+ * A lift in an easy week: about 60% of the weight and a set fewer. Seconds
+ * held and assistance stay as they are; the reps are the same.
+ */
+export const easyLoad = (state: SessionState, ex: Exercise, entry: Entry, weight: number): { weight: number; sets: number } => {
+  const sets = Math.max(1, setsFor(entry) - 1);
+  const loaded = !ex.holds && !ex.assistable && !entry.derive && weight > 0;
+  const step = ex.increment || 2.5;
+  return { weight: loaded ? weightHere(state, ex, Math.max(step, roundTo(weight * EASY_WEIGHT, step))) : weight, sets };
+};
+
+/** Whether Today should offer an easy week. */
+export const easyWeekOffer = (state: SessionState, now = Date.now()): boolean => {
+  if (state.active || easyWeek(state, now)) return false;
+  const base = easyBase(state);
+  if (base === undefined || now - base < EASY_EVERY_DAYS * DAY_MS) return false;
+  if (now < (state.recovery?.askAfter ?? 0)) return false;
+  return state.log.filter((l) => l.finishedAt > base).length >= EASY_SESSIONS;
+};
+
+/** Yes: the week starts today. */
+export const startEasyWeek = (state: SessionState, now = Date.now()): SessionState =>
+  state.active ? state : { ...state, recovery: { from: now } };
+
+/** Not now: ask again in three weeks. */
+export const declineEasyWeek = (state: SessionState, now = Date.now()): SessionState => ({
+  ...state,
+  recovery: { ...state.recovery, askAfter: now + EASY_ASK_AGAIN_DAYS * DAY_MS },
+});
+
+/** Back to full weights before the week is out; the count to the next starts now. */
+export const endEasyWeek = (state: SessionState, now = Date.now()): SessionState =>
+  easyWeek(state, now) && !state.active ? { ...state, recovery: { from: now - EASY_DAYS * DAY_MS } } : state;
+
+/**
+ * Forget your weight, sex and push-ups, keeping how much you have lifted: guesses for
  * lifts you have not done fall back to the light, unsaid ones.
  */
 export const forgetBody = (state: SessionState): SessionState =>

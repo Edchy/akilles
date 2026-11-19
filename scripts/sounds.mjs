@@ -7,6 +7,7 @@
 //   hold-start.wav     one note: hold now
 //   hold-done.wav      two notes rising: the hold is over
 //   routine-done.wav   three notes, slowly: the routine is done
+//   rest-done.wav      two notes, a fifth up and a little brighter: rest is over, next set
 //
 // Writes assets/sounds/*.wav (mono, 44.1 kHz, 16-bit).
 
@@ -24,6 +25,7 @@ const A3 = 220;
 const CS4 = 277.18;
 const D4 = 293.66;
 const E4 = 329.63;
+const A4 = 440;
 
 /**
  * One struck note of a small bowl: the note itself, a soft octave, and a
@@ -82,4 +84,9 @@ write("routine-done.wav", 3.2, [
   { at: 0, freq: A3, length: 3.2 },
   { at: 0.55, freq: CS4, length: 2.65 },
   { at: 1.1, freq: E4, length: 2.1 },
+]);
+// Higher than the hold sounds, so "next set" is never mistaken for "hold over".
+write("rest-done.wav", 2.2, [
+  { at: 0, freq: E4, length: 2.2 },
+  { at: 0.3, freq: A4, length: 1.9 },
 ]);

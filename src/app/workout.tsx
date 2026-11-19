@@ -54,6 +54,8 @@ import { Column, COLUMN } from "@/components/screen";
 import { useHideBar } from "@/components/bar-actions";
 import { useBarSpace } from "@/components/bottom-bar";
 import { ClayField, Field, useColors } from "@/components/field";
+import { RestClock } from "@/components/rest-clock";
+import { AnyExerciseRow, SwapBrowser } from "@/components/add-exercise";
 import { Icon, type IconName } from "@/components/icon";
 import { Mark } from "@/components/mark";
 import { NoteLine, NoteSheet } from "@/components/note";
@@ -129,6 +131,10 @@ import {
   partnerPrescription,
   removeSuperset,
   skipGoalSet,
+  REST,
+  restSeconds,
+  swapAnywhere,
+  atGym,
   skipSet,
   scoreOf,
   setGot,
@@ -1236,6 +1242,7 @@ function StepBody() {
   const { state, setState } = useSession();
   const barSpace = useBarSpace();
   const [swapping, setSwapping] = useState(false);
+  const [anywhere, setAnywhere] = useState(false);
   const [guiding, setGuiding] = useState(false);
   // How to warm up, opened from the line under the name.
   const [warming, setWarming] = useState(false);
@@ -1341,7 +1348,8 @@ function StepBody() {
   // Always offered — the library is in reach, so there is something to swap
   // to. After sets are logged the sheet says first that they won't be kept.
   const pool = currentPool(state);
-  const canSwap = pool.length > 1;
+  // With "Any exercise" at the foot of the list, there is always something.
+  const canSwap = true;
   const setsIn = item.logged.filter((r) => r !== null).length;
   // A step on the way to a pull-up or a push-up: which, and whether it is owned.
   const step = stepHere(state);
@@ -1565,6 +1573,14 @@ function StepBody() {
           />
         </View>
 
+        {/* The rest between sets: from the first set until the last. Its room
+            is always there, so the clock arriving moves nothing. */}
+        <View style={{ height: 28, marginTop: 8 }}>
+          {item.logged.some((r) => r !== null) && item.logged.some((r) => r === null) ? (
+            <RestClock since={state.active?.lastSetAt} target={restSeconds(state) ?? REST.main} />
+          ) : null}
+        </View>
+
         {/* At least this tall, so a line arriving moves nothing — but never
             capped: a two-line remark and the next-time line under it must
             both show in full, never clipped. */}
@@ -1635,22 +1651,39 @@ function StepBody() {
           }}
         />
       ) : null}
-      <Sheet visible={swapping} title="Swap for today" onClose={() => setSwapping(false)}>
+      <Sheet visible={swapping} title="Swap for today" onClose={() => { setSwapping(false); setAnywhere(false); }}>
         {setsIn > 0 ? (
           // On the sheet's white, so the app's own navy, not this field's.
           <Text style={{ color: paper.text, fontSize: 17, lineHeight: 24, paddingBottom: 14 }}>
             {`You've done ${setsIn} ${setsIn === 1 ? "set" : "sets"} of ${p.exercise.name}. The new one starts from set 1, and ${setsIn === 1 ? "that set won't" : "those sets won't"} be saved.`}
           </Text>
         ) : null}
-        <SwapList
-          options={pool}
-          taken={currentTaken(state)}
-          current={item.exerciseId}
-          onPick={(id) => {
-            setSwapping(false);
-            setState((s) => swapForSession(s, id));
-          }}
-        />
+        {anywhere ? (
+          <SwapBrowser
+            exercises={swapAnywhere(state).filter((e) => e.id !== item.exerciseId)}
+            inIt={currentTaken(state)}
+            note={atGym(state) ? undefined : "Only what you have where you train with this plan. Change that in Settings, Your plans."}
+            onPick={(id) => {
+              setSwapping(false);
+              setAnywhere(false);
+              setState((s) => swapForSession(s, id));
+            }}
+            onBack={() => setAnywhere(false)}
+          />
+        ) : (
+          <View style={{ gap: 12 }}>
+            <SwapList
+              options={pool}
+              taken={currentTaken(state)}
+              current={item.exerciseId}
+              onPick={(id) => {
+                setSwapping(false);
+                setState((s) => swapForSession(s, id));
+              }}
+            />
+            <AnyExerciseRow onPress={() => setAnywhere(true)} />
+          </View>
+        )}
       </Sheet>
       {noteSheet}
       <WarmupSheet

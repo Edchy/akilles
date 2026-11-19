@@ -6,7 +6,8 @@ import { Icon } from "@/components/icon";
 import { Mark } from "@/components/mark";
 import { SectionLabel, Sheet, TextButton } from "@/components/sheet";
 import { Text, TextInput } from "@/components/text";
-import { colors, radii } from "@/constants/theme";
+import { DUSK_CARDS, DUSK_INK, colors, radii } from "@/constants/theme";
+import { DuskGround } from "@/components/dusk";
 import type { Exercise, Pattern } from "@/data/exercises";
 import { familyOf, type Family } from "@/data/families";
 import { newId, type EntryPart, type Workout } from "@/data/split";
@@ -132,6 +133,70 @@ export function AddExerciseSheet({
   );
 }
 
+/** What a tap on an exercise does: add it, open it to edit, or swap it in. */
+type Mode = "add" | "edit" | "swap";
+
+/**
+ * "Any exercise…": the last row of a swap list, for when the same kind of
+ * exercise isn't what you want. Opens `SwapBrowser`.
+ */
+export function AnyExerciseRow({ onPress }: { onPress: () => void }) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel="Any exercise: search the whole library"
+      onPress={onPress}
+      style={({ pressed }) => ({
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 12,
+        minHeight: 58,
+        paddingHorizontal: 16,
+        borderRadius: 16,
+        borderCurve: "continuous",
+        borderWidth: 1.5,
+        borderStyle: "dashed",
+        borderColor: colors.line,
+        opacity: pressed ? 0.6 : 1,
+      })}
+    >
+      <Icon name="search" size={18} color={colors.text} />
+      <View style={{ flex: 1, gap: 2, paddingVertical: 8 }}>
+        <Text style={{ color: colors.text, fontSize: 18, fontWeight: "600" }}>Any exercise…</Text>
+        <Text style={{ color: colors.muted, fontSize: 15, lineHeight: 20 }}>Search the whole library</Text>
+      </View>
+      <Icon name="forward" size={16} color={colors.muted} />
+    </Pressable>
+  );
+}
+
+/**
+ * The whole library to swap from, the same browser as Add: search, then the
+ * body by area. `note` says anything that narrows it — away from a full
+ * gym, only what is there. Back returns to the list it came from.
+ */
+export function SwapBrowser({
+  exercises,
+  inIt,
+  note,
+  onPick,
+  onBack,
+}: {
+  exercises: Exercise[];
+  inIt: Set<string>;
+  note?: string;
+  onPick: (id: string) => void;
+  onBack: () => void;
+}) {
+  return (
+    <View style={{ gap: 4, paddingTop: 8 }}>
+      <BackRow label="Similar exercises" onPress={onBack} />
+      {note ? <Text style={{ color: colors.text, fontSize: 17, lineHeight: 24, paddingTop: 8 }}>{note}</Text> : null}
+      <LibraryBrowser mode="swap" exercises={exercises} blocks={[]} onBlock={() => {}} inIt={inIt} onPick={onPick} />
+    </View>
+  );
+}
+
 /** The body, in seven places to look: by an exercise's main movement. */
 type AreaId = "chest" | "shoulders" | "back" | "arms" | "legs" | "hips" | "core";
 const AREAS: { id: AreaId; label: string; family: Family; patterns: Pattern[] }[] = [
@@ -189,7 +254,7 @@ export function LibraryBrowser({
   moves = [],
   onMove,
 }: {
-  mode: "add" | "edit";
+  mode: Mode;
   exercises: Exercise[];
   blocks: { id: string; label: string; detail: string; family: Family }[];
   onBlock: (id: string) => void;
@@ -197,8 +262,8 @@ export function LibraryBrowser({
   suggestedLabel?: string;
   inIt?: Set<string>;
   onPick: (id: string) => void;
-  /** With what was typed in the search, if anything, and the area it was made from. */
-  onCreate: (name: string, area?: Pattern) => void;
+  /** With what was typed in the search, if anything, and the area it was made from. None: no Create. */
+  onCreate?: (name: string, area?: Pattern) => void;
   /** Stretches and mobility moves, found by the same search; a tap opens one. */
   moves?: { id: string; name: string }[];
   onMove?: (id: string) => void;
@@ -219,10 +284,10 @@ export function LibraryBrowser({
           <Text style={{ flex: 1, color: colors.text, fontSize: 30, fontWeight: "600" }}>{opened.label}</Text>
         </View>
         <Text style={{ color: colors.muted, fontSize: 18, fontStyle: "italic" }}>
-          {mode === "add" ? "Tap one to add it." : "Tap one to change it."}
+          {mode === "add" ? "Tap one to add it." : mode === "swap" ? "Tap one to use it instead." : "Tap one to change it."}
         </Text>
         <Rows list={list} mode={mode} inIt={inIt} onPick={onPick} />
-        <CreateButton label="Create your own" onPress={() => onCreate("", opened.patterns[0])} />
+        {onCreate ? <CreateButton label="Create your own" onPress={() => onCreate("", opened.patterns[0])} /> : null}
       </View>
     );
   }
@@ -231,7 +296,7 @@ export function LibraryBrowser({
     <View style={{ gap: 26, paddingTop: 8 }}>
       {/* What to do here, in one line. */}
       <Text style={{ color: colors.muted, fontSize: 18, lineHeight: 24, fontStyle: "italic" }}>
-        {mode === "add"
+        {mode !== "edit"
           ? "Search, or tap a group to see what is in it."
           : "Change something here and it changes in every workout that uses it."}
       </Text>
@@ -285,7 +350,7 @@ export function LibraryBrowser({
               </>
             );
           })()}
-          {hasName(exercises, typed) ? null : <CreateButton label={`Create “${typed}”`} onPress={() => onCreate(typed)} />}
+          {!onCreate || hasName(exercises, typed) ? null : <CreateButton label={`Create “${typed}”`} onPress={() => onCreate(typed)} />}
         </View>
       ) : (
         <>
@@ -319,7 +384,7 @@ export function LibraryBrowser({
               ))}
             </View>
           </View>
-          <CreateButton label="Create your own" onPress={() => onCreate("")} />
+          {onCreate ? <CreateButton label="Create your own" onPress={() => onCreate("")} /> : null}
         </>
       )}
     </View>
@@ -378,11 +443,13 @@ function BackRow({ label, onPress }: { label: string; onPress: () => void }) {
 }
 
 /**
- * A big square to tap: an area of the body, or cardio. Its shape, then its
- * name on a line of its own so a long one wraps cleanly, then how many — and
- * an arrow, saying it opens.
+ * A big square to tap: an area of the body, or cardio. A dusk card in its
+ * family's colour, like the workouts on Plan, so the groups can be told
+ * apart at a glance: its shape, then its name on a line of its own so a long
+ * one wraps cleanly, then how many — and an arrow, saying it opens.
  */
 function Tile({ label, detail, family, onPress }: { label: string; detail: string; family: Family; onPress: () => void }) {
+  const ink = DUSK_CARDS ? DUSK_INK.ink : colors.text;
   return (
     <Pressable
       accessibilityRole="button"
@@ -394,19 +461,21 @@ function Tile({ label, detail, family, onPress }: { label: string; detail: strin
         minHeight: 108,
         gap: 6,
         padding: 14,
+        overflow: "hidden",
         borderRadius: radii.card,
         borderCurve: "continuous",
-        borderWidth: 1.5,
-        borderColor: colors.line,
-        backgroundColor: pressed ? colors.surface : colors.bg,
+        ...(DUSK_CARDS
+          ? { opacity: pressed ? 0.75 : 1 }
+          : { borderWidth: 1.5, borderColor: colors.line, backgroundColor: pressed ? colors.surface : colors.bg }),
       })}
     >
+      {DUSK_CARDS ? <DuskGround family={family} shape={72} /> : null}
       <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
-        <Mark family={family} size={22} />
-        <Icon name="forward" size={16} color={colors.muted} />
+        <Mark family={family} size={22} color={ink} />
+        <Icon name="forward" size={16} color={ink} />
       </View>
-      <Text numberOfLines={2} style={{ color: colors.text, fontSize: 21, lineHeight: 25, fontWeight: "600" }}>{label}</Text>
-      <Text style={{ marginTop: "auto", color: colors.muted, fontSize: 16, fontStyle: "italic" }}>{detail}</Text>
+      <Text numberOfLines={2} style={{ color: ink, fontSize: 21, lineHeight: 25, fontWeight: "600" }}>{label}</Text>
+      <Text style={{ marginTop: "auto", color: ink, opacity: DUSK_CARDS ? 0.85 : 1, fontSize: 16, fontStyle: "italic" }}>{detail}</Text>
     </Pressable>
   );
 }
@@ -423,19 +492,19 @@ function Rows({
   onPick,
 }: {
   list: Exercise[];
-  mode: "add" | "edit";
+  mode: Mode;
   inIt: Set<string>;
   onPick: (id: string) => void;
 }) {
   return (
     <View>
       {list.map((e, i) => {
-        const used = mode === "add" && inIt.has(e.id);
+        const used = mode !== "edit" && inIt.has(e.id);
         return (
           <Pressable
             key={e.id}
             accessibilityRole="button"
-            accessibilityLabel={used ? `${e.name}, already in this workout` : mode === "add" ? `Add ${e.name}` : e.name}
+            accessibilityLabel={used ? `${e.name}, already in this workout` : mode === "add" ? `Add ${e.name}` : mode === "swap" ? `Use ${e.name} instead` : e.name}
             accessibilityState={{ disabled: used }}
             disabled={used}
             onPress={() => onPick(e.id)}
@@ -474,7 +543,7 @@ function Rows({
                   <Icon name="check" size={16} color={colors.muted} />
                   <Text style={{ color: colors.muted, fontSize: 16, fontStyle: "italic" }}>In it</Text>
                 </View>
-              ) : mode === "add" ? (
+              ) : mode !== "edit" ? (
                 <View
                   style={{
                     width: 34,
@@ -486,7 +555,7 @@ function Rows({
                     justifyContent: "center",
                   }}
                 >
-                  <Icon name="plus" size={16} color={colors.text} />
+                  <Icon name={mode === "swap" ? "swap" : "plus"} size={16} color={colors.text} />
                 </View>
               ) : (
                 <Icon name="forward" size={16} color={colors.muted} />

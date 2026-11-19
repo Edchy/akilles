@@ -40,7 +40,6 @@ const random = (seed) => () => {
 function check(state, step) {
   const at = (msg) => `${step}: ${msg}`;
   if (state.loops) {
-    assert.ok(state.loops.length >= 2, at("loops have names only when there are two or more"));
     assert.equal(state.loops.filter((l) => !l.body).length, 1, at("exactly one loop is in use"));
     const names = state.loops.map((l) => l.name);
     assert.ok(names.every((n) => n.trim()), at("every loop has a name"));
@@ -68,9 +67,10 @@ function checkLoop(state, step, inUse) {
   const all = [...running, ...paused];
 
   // The loop
-  assert.ok(running.length >= 1, at("the loop is never empty"));
+  // Only a new plan is empty: once it has a workout, one always runs.
+  assert.ok(running.length >= 1 || paused.length === 0, at("the loop is never empty once it has a workout"));
   assert.equal(new Set(all).size, all.length, at("no workout is both running and paused, or there twice"));
-  assert.ok(running.includes(store.upNext(state).id), at("what's next is in the loop"));
+  if (running.length) assert.ok(running.includes(store.upNext(state).id), at("what's next is in the loop"));
   for (const id of state.workoutQueue ?? []) assert.ok(running.includes(id), at(`queued ${id} is in the loop`));
   for (const id of state.postponed ?? []) assert.ok(running.includes(id), at(`put-off ${id} is in the loop`));
   const plan = store.planWorkouts(state).map((w) => w.id);
@@ -82,7 +82,9 @@ function checkLoop(state, step, inUse) {
     assert.equal(new Set(ids).size, ids.length, at(`${w.name}: slot ids are unique`));
     for (const e of w.exercises) assert.ok(setsFor(e) >= 1, at(`${w.name}/${e.slot}: has sets`));
   }
-  for (const w of state.workouts) {
+  // What runs, in the plan in use: a waiting plan's lifts may still be in the
+  // library, and come out of it when you switch to it.
+  for (const w of inUse ? state.workouts : []) {
     const lifts = store.liftsToRun(state, w).map((l) => l.exerciseId);
     for (const id of lifts) assert.ok(store.lookup(state, id), at(`${w.name}: ${id} exists`));
     assert.equal(new Set(lifts).size, lifts.length, at(`${w.name}: no exercise twice (${lifts.join(", ")})`));
@@ -137,7 +139,9 @@ const pick = (rnd, list) => list[Math.floor(rnd() * list.length)];
 
 /** One thing a person might do in Plan, or during a workout. */
 function act(state, rnd, now, planOnly = false) {
-  const w = pick(rnd, state.workouts);
+  // A new plan has no workouts yet: only filling it, or the plans, then.
+  const empty = state.workouts.length === 0;
+  const w = pick(rnd, state.workouts) ?? { id: "none", exercises: [] };
   const entry = w.exercises.length ? pick(rnd, w.exercises) : undefined;
   const moves = [
     ["train", () => train(state, rnd, now)],
@@ -195,20 +199,9 @@ function act(state, rnd, now, planOnly = false) {
   const other = pick(rnd, loops).id;
   const id = () => `${Math.floor(rnd() * 1e9)}`;
   moves.push(
-    ["new loop", () => {
-      const made = store.addWorkoutOfKind(state, `b_${id()}`, pick(rnd, ["bodyweight", "full", "push"]));
-      return store.startLoopWith(made, made.workouts.at(-1).id, inUse, `l_${id()}`);
-    }],
+    ["new plan", () => store.newLoop(state, `p_${id()}`, pick(rnd, ["Travel", "Home", ""]))],
     ["switch loop", () => store.switchLoop(state, other)],
-    ["move to loop", () => {
-      const from = pick(rnd, loops);
-      return from.workouts.length ? store.moveToLoop(state, pick(rnd, from.workouts).id, from.id, other) : state;
-    }],
-    ["copy to loop", () => {
-      const from = pick(rnd, loops);
-      return from.workouts.length ? store.copyToLoop(state, pick(rnd, from.workouts).id, from.id, other, `k_${id()}`) : state;
-    }],
-    ["delete loop", () => store.deleteLoop(state, other, rnd() < 0.5 ? inUse : undefined)],
+    ["delete loop", () => store.deleteLoop(state, other)],
     ["rename loop", () => store.renameLoop(state, other, pick(rnd, ["Gym", "Holiday", "Home", " "]))],
     ["edit another loop", () => store.inLoop(state, other, (s) => {
       // Anything but training, done to a loop that may not be the one in use.
@@ -216,7 +209,9 @@ function act(state, rnd, now, planOnly = false) {
       return next;
     })],
   );
-  const usable = planOnly ? moves.filter(([n]) => !["train", "mid-session", "switch loop", "new loop", "move to loop", "copy to loop", "delete loop", "rename loop", "edit another loop"].includes(n)) : moves;
+  const plans = ["new workout", "new plan", "switch loop", "delete loop", "rename loop", "edit another loop"];
+  const possible = empty ? moves.filter(([n]) => plans.includes(n)) : moves;
+  const usable = planOnly ? possible.filter(([n]) => !["train", "mid-session", "switch loop", "new plan", "delete loop", "rename loop", "edit another loop"].includes(n)) : possible;
   const [name, run] = pick(rnd, usable);
   return [name, run()];
 }
@@ -446,58 +441,30 @@ test("sets that keep falling short: the weight never goes up, and in time it com
   assert.ok(last < start, `came down from ${start} to ${last}`);
 });
 
-// ---- loops ----
+// ---- plans ----
+// More in tests/plans.cjs.
 
-/** A Bodyweight workout made in the loop in use, then given a loop of its own. */
-const holiday = (s) => {
-  s = store.addWorkoutOfKind(s, "bw", "bodyweight");
-  return store.startLoopWith(s, "bw", store.loopInUse(s), "away");
-};
+/** A plan of its own with one Bodyweight workout, waiting. */
+const holiday = (s) =>
+  store.inLoop(store.newLoop(s, "away", "Travel"), "away", (v) => store.addWorkoutOfKind(v, "bw", "bodyweight"));
 
-test("everyone starts with one loop, with no name", () => {
-  const s = fresh();
-  assert.equal(s.loops, undefined);
-  assert.equal(store.hasLoops(s), false);
-  const loops = store.loopsOf(s);
-  assert.equal(loops.length, 1);
-  assert.equal(loops[0].name, "");
-  assert.equal(loops[0].workouts.map((w) => w.id).join(), "push,pull,legs");
-});
-
-test("which loop a new workout belongs in: by equipment, and nothing else", () => {
-  let s = fresh();
-  for (const kind of ["bodyweight", "full", "free", "push"]) s = store.addWorkoutOfKind(s, `n_${kind}`, kind);
-  const made = (kind) => store.workoutById(s, `n_${kind}`);
-  const loop = store.loopInUse(s);
-  assert.equal(store.fitsLoop(s, made("bodyweight"), loop), false, "no equipment, in a gym loop: ask");
-  assert.equal(store.fitsLoop(s, made("full"), loop), true, "full body with Push, Pull, Legs: just add it");
-  assert.equal(store.fitsLoop(s, made("free"), loop), true, "nothing in it yet: nothing to judge");
-  s = holiday(fresh());
-  s = store.addWorkoutOfKind(store.switchLoop(s, "away"), "gym_push", "push");
-  assert.equal(store.fitsLoop(s, store.workoutById(s, "gym_push"), "away"), false, "gym kit, in a no-equipment loop: ask");
-  const offered = store.loopsFitting(s, store.workoutById(s, "gym_push"), "away").map((l) => l.name);
-  assert.equal(offered.join(), "Gym", "and the loop it does fit is offered first");
-});
-
-test("holiday: a Bodyweight loop of its own, and the gym loop waits where you left it", () => {
+test("holiday: a plan of its own, and the gym plan waits where you left it", () => {
   let s = fresh();
   s = train(s, random(8), now0, { shortChance: 0, skipChance: 0 });
   assert.equal(store.upNext(s).id, "pull");
   const weights = JSON.stringify(s.history);
   s = holiday(s);
-  assert.equal(s.loops.map((l) => l.name).join(), "Gym,Bodyweight", "the first loop gets a name");
-  assert.equal(store.loopInUse(s), store.FIRST_LOOP, "the new loop waits until you use it");
+  assert.equal(store.loopInUse(s), store.FIRST_LOOP, "the new plan waits until you use it");
   assert.equal(store.upNext(s).id, "pull");
   s = store.switchLoop(s, "away");
   const logged = s.log.length;
   assert.equal(store.upNext(s).id, "bw");
-  assert.equal(s.workouts.map((w) => w.id).join(), "bw", "only Bodyweight in the loop: nothing paused, nothing cluttered");
+  assert.equal(s.workouts.map((w) => w.id).join(), "bw", "only Bodyweight in the plan: nothing paused, nothing cluttered");
   s = train(s, random(9), now0 + DAY, { shortChance: 0, skipChance: 0 });
   s = train(s, random(10), now0 + 2 * DAY, { shortChance: 0, skipChance: 0 });
   s = store.switchLoop(s, store.FIRST_LOOP);
-  assert.equal(store.upNext(s).id, "pull", "home again: Pull, where the gym loop stopped");
+  assert.equal(store.upNext(s).id, "pull", "home again: Pull, where the gym plan stopped");
   assert.equal(s.workouts.map((w) => w.id).join(), "push,pull,legs");
-  // A lift both loops share climbs once, wherever it is trained — see the next test.
   const away = new Set(s.log.slice(logged).flatMap((l) => l.entries.map((e) => e.exerciseId)));
   for (const [k, r] of Object.entries(JSON.parse(weights))) {
     if (away.has(r.exerciseId)) continue;
@@ -505,10 +472,10 @@ test("holiday: a Bodyweight loop of its own, and the gym loop waits where you le
   }
 });
 
-test("one exercise, one climb: a weight is the same in every loop", () => {
+test("one exercise, one climb: a weight is the same in every plan", () => {
   let s = holiday(fresh());
   s = store.inLoop(s, "away", (v) => store.addExerciseToWorkout(v, "bw", "goblet_squat", "s_goblet"));
-  s = train(s, random(11), now0, { shortChance: 0, skipChance: 0 }); // Push, in the gym loop
+  s = train(s, random(11), now0, { shortChance: 0, skipChance: 0 }); // Push, in the gym plan
   s = store.setNextWorkout(s, "legs");
   s = train(s, random(12), now0 + DAY, { shortChance: 0, skipChance: 0 });
   const w = store.nextWeight(s, "goblet_squat");
@@ -518,12 +485,12 @@ test("one exercise, one climb: a weight is the same in every loop", () => {
   assert.equal(item.weight, w);
 });
 
-test("no switching loops in the middle of a workout", () => {
+test("no switching plans in the middle of a workout", () => {
   let s = store.buildWorkout(holiday(fresh()), now0);
   assert.equal(store.switchLoop(s, "away"), s);
 });
 
-test("editing a loop that isn't in use leaves the one in use exactly as it was", () => {
+test("editing a plan that isn't in use leaves the one in use exactly as it was", () => {
   let s = holiday(fresh());
   const before = JSON.stringify(store.viewLoop(s, store.FIRST_LOOP).workouts) + store.upNext(s).id;
   s = store.inLoop(s, "away", (v) => store.addWorkoutOfKind(v, "bw2", "bodyweight"));
@@ -536,41 +503,10 @@ test("editing a loop that isn't in use leaves the one in use exactly as it was",
   assert.equal(store.workoutById(s, "bw").exercises.length, 4);
 });
 
-test("moving a workout to another loop keeps its swaps, and it says where it went", () => {
-  let s = holiday(fresh());
-  const fly = third(s);
-  const other = store.poolFor(s, "push", fly).find((id) => !store.liftsToRun(s, push(s)).some((l) => l.exerciseId === id));
-  s = store.swapInPlan(s, "push", fly.id, other);
-  s = store.moveToLoop(s, "push", store.FIRST_LOOP, "away");
-  assert.ok(!s.workouts.some((w) => w.id === "push"));
-  assert.equal(store.upNext(s).id, "pull", "Push was next; the one after it is now");
-  const away = store.viewLoop(s, "away");
-  assert.equal(away.workouts.map((w) => w.id).join(), "bw,push");
-  assert.equal(store.chosen(away, "push", fly), other);
-});
-
-test("a copy in another loop is its own workout", () => {
-  let s = holiday(fresh());
-  s = store.copyToLoop(s, "legs", store.FIRST_LOOP, "away", "legs_away");
-  const away = store.viewLoop(s, "away");
-  assert.equal(away.workouts.map((w) => w.name).join(), "Bodyweight,Legs");
-  s = store.inLoop(s, "away", (v) => store.removeEntry(v, "legs_away", store.workoutById(v, "legs_away").exercises[0].id));
-  assert.equal(store.workoutById(s, "legs").exercises.length, 5, "the original is untouched");
-});
-
-test("the workout being trained, and a loop's last workout, can't be moved away", () => {
-  let s = holiday(fresh());
-  assert.equal(store.moveToLoop(s, "bw", "away", store.FIRST_LOOP), s, "the last one in its loop");
-  s = store.buildWorkout(s, now0);
-  assert.equal(store.moveToLoop(s, "push", store.FIRST_LOOP, "away"), s, "the one being trained");
-});
-
-test("deleting a loop: its workouts go with it, or move; down to one, the name goes", () => {
+test("deleting a plan takes its workouts and their swaps, and never the one in use", () => {
   let s = holiday(fresh());
   const gone = store.deleteLoop(s, "away");
-  assert.equal(gone.loops, undefined);
-  assert.equal(store.loopsOf(gone)[0].name, "");
-  const kept = store.deleteLoop(s, "away", store.FIRST_LOOP);
-  assert.equal(kept.workouts.map((w) => w.id).join(), "push,pull,legs,bw");
-  assert.equal(store.deleteLoop(s, store.FIRST_LOOP), s, "not the loop in use");
+  assert.ok(!store.loopsOf(gone).some((l) => l.id === "away"));
+  assert.ok(!Object.keys(gone.choices).some((k) => k.startsWith("bw/")));
+  assert.equal(store.deleteLoop(s, store.FIRST_LOOP), s, "not the plan in use");
 });

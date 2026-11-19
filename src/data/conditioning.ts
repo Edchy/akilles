@@ -295,25 +295,26 @@ export const DEFAULT_MOBILITY = "everyday";
 
 /**
  * The warm-ups, one for each kind of day, each readying what that day works:
- * the shoulders first and then the chest on a push day, the upper back and
- * the lats on a pull day, the legs and hips on a leg day. A workout opens
- * with its day's, straight after the cardio, unless you choose another.
+ * the upper back and shoulders on a push day, the lats and upper back on a
+ * pull day, the hips and ankles on a leg day. A workout opens with its
+ * day's, straight after the cardio, unless it has one of its own.
  */
 export const WARMUP = { push: "warmup_push", pull: "warmup_pull", legs: "warmup_legs" } as const;
 export type WarmupDay = keyof typeof WARMUP;
 
 /**
- * The PPLPPL plan's routines: drills that get you moving before the lifts,
- * and one long hold after them. See `data/plans.ts`.
+ * Routines the PPLPPL plan had of its own for a day, folded on 2026-11-19
+ * into the day warm-ups and the everyday stretch — each id and the one that
+ * took its place. Read only by the save migration.
  */
-export const PPLPPL_ROUTINES = {
-  push: "pplppl_push",
-  pull: "pplppl_pull",
-  legs: "pplppl_legs",
-  pushEnd: "pplppl_push_end",
-  pullEnd: "pplppl_pull_end",
-  legsEnd: "pplppl_legs_end",
-} as const;
+export const RETIRED_PPLPPL: Record<string, string> = {
+  pplppl_push: "warmup_push",
+  pplppl_pull: "warmup_pull",
+  pplppl_legs: "warmup_legs",
+  pplppl_push_end: "everyday",
+  pplppl_pull_end: "everyday",
+  pplppl_legs_end: "everyday",
+};
 
 /**
  * A move with no clay picture yet: its name, its count and its cue, and a
@@ -335,9 +336,9 @@ const forReps = (id: string, reps: number): MobilityMove => ({
 });
 
 /**
- * The easy plan's warm-up: the same four moves every day, about four
- * minutes. The spine, the hips and hamstrings, the shoulders, then the squat
- * with no load. One routine to learn rather than three.
+ * A general warm-up: the same four moves for any day, about four minutes.
+ * The spine, the hips and hamstrings, the shoulders, then the squat with no
+ * load. In the library to pick; the built-in days open with their own.
  */
 export const EVERYDAY_WARMUP = "warmup";
 
@@ -379,32 +380,37 @@ export const MOBILITY: MobilityRoutine[] = [
   {
     id: WARMUP.push,
     name: "Push mobility",
-    subtitle: "shoulders first, then the chest",
+    subtitle: "the shoulders, thoroughly, before you press",
     moves: [
       hold("arm_circles"),
-      hold("band_external_rotation"),
       hold("band_pull_apart"),
-      hold("scapular_pushup"),
-      hold("chest_opener", { seconds: 30 }),
+      hold("band_external_rotation"),
+      forReps("wall_slide", 10),
+      forReps("scapular_pushup", 10),
+      drill("open_book", "Open book", { seconds: 48, reps: 8, perSide: true }, "Lie on your side, knees bent. Open the top arm to the other side, eyes follow the hand."),
     ],
   },
   {
     id: WARMUP.pull,
     name: "Pull mobility",
-    subtitle: "the upper back and the lats",
+    subtitle: "the lats and the upper back, before you pull",
     moves: [
-      hold("arm_circles"),
-      hold("cat_cow", { seconds: 30 }),
-      hold("thread_needle"),
-      hold("lat_wall"),
-      hold("band_pull_apart"),
+      drill("dead_hang", "Dead hang", { seconds: 50 }, "Hang relaxed, twice for about 25 seconds. Rest between."),
+      drill("scap_pullup", "Scapular pull-up", { seconds: 24, reps: 8 }, "Arms straight. Pull the shoulders down away from the ears, then let them rise."),
+      forReps("thread_needle", 6),
+      forReps("cat_cow", 8),
     ],
   },
   {
     id: WARMUP.legs,
     name: "Leg mobility",
-    subtitle: "legs and hips, a bit more",
-    moves: [hold("wide_stance"), hold("side_stance"), hold("leg_swing"), hold("bodyweight_squat"), hold("worlds_greatest")],
+    subtitle: "hips and ankles, before you squat",
+    moves: [
+      forReps("worlds_greatest", 4),
+      drill("hip_switch", "90/90 hip switches", { seconds: 48, reps: 8, perSide: true }, "Sit with both knees bent to one side. Lift them over to the other side, chest tall."),
+      drill("ankle_rock", "Knee-to-wall ankle rocks", { seconds: 30, reps: 10, perSide: true }, "Foot a hand from the wall. Push the knee to the wall, heel stays down."),
+      drill("goblet_hold", "Goblet squat hold", { seconds: 60 }, "Light bell at the chest. Sit deep, elbows push the knees out. Twice for 30 seconds."),
+    ],
   },
   {
     id: "yoga",
@@ -421,60 +427,6 @@ export const MOBILITY: MobilityRoutine[] = [
     ],
   },
   {
-    id: PPLPPL_ROUTINES.push,
-    name: "Push drills",
-    subtitle: "the upper back and shoulders, before you press",
-    use: "warmup",
-    moves: [
-      drill("open_book", "Open book", { seconds: 48, reps: 8, perSide: true }, "Lie on your side, knees bent. Open the top arm to the other side, eyes follow the hand."),
-      forReps("wall_slide", 10),
-      forReps("scapular_pushup", 10),
-      drill("shoulder_cars", "Shoulder circles", { seconds: 36, reps: 6, perSide: true }, "Arm straight, the biggest slow circle you can. Three forwards, three back."),
-    ],
-  },
-  {
-    id: PPLPPL_ROUTINES.pull,
-    name: "Pull drills",
-    subtitle: "the lats and the upper back, before you pull",
-    use: "warmup",
-    moves: [
-      drill("dead_hang", "Dead hang", { seconds: 50 }, "Hang relaxed, twice for about 25 seconds. Rest between."),
-      drill("scap_pullup", "Scapular pull-up", { seconds: 24, reps: 8 }, "Arms straight. Pull the shoulders down away from the ears, then let them rise."),
-      forReps("thread_needle", 6),
-      forReps("cat_cow", 8),
-    ],
-  },
-  {
-    id: PPLPPL_ROUTINES.legs,
-    name: "Leg drills",
-    subtitle: "hips and ankles, before you squat",
-    use: "warmup",
-    moves: [
-      forReps("worlds_greatest", 4),
-      drill("hip_switch", "90/90 hip switches", { seconds: 48, reps: 8, perSide: true }, "Sit with both knees bent to one side. Lift them over to the other side, chest tall."),
-      drill("ankle_rock", "Knee-to-wall ankle rocks", { seconds: 30, reps: 10, perSide: true }, "Foot a hand from the wall. Push the knee to the wall, heel stays down."),
-      drill("goblet_hold", "Goblet squat hold", { seconds: 60 }, "Light bell at the chest. Sit deep, elbows push the knees out. Twice for 30 seconds."),
-    ],
-  },
-  {
-    id: PPLPPL_ROUTINES.pushEnd,
-    name: "Chest stretch",
-    subtitle: "one long hold after pressing",
-    moves: [drill("doorway_chest", "Doorway chest stretch", { seconds: 45, perSide: true }, "Forearm on the door frame, elbow at shoulder height. Step through until the chest opens.")],
-  },
-  {
-    id: PPLPPL_ROUTINES.pullEnd,
-    name: "Child's pose",
-    subtitle: "one long hold after pulling",
-    moves: [{ ...hold("childs_pose"), cue: "Arms reach forward. Breathe into the back of the ribs." }],
-  },
-  {
-    id: PPLPPL_ROUTINES.legsEnd,
-    name: "Couch stretch",
-    subtitle: "one long hold after legs",
-    moves: [hold("couch", { seconds: 45 })],
-  },
-  {
     id: "kung_fu",
     name: "Kung fu mobility",
     subtitle: "legs and hips, the way a kung fu class starts",
@@ -484,25 +436,31 @@ export const MOBILITY: MobilityRoutine[] = [
 ];
 
 /**
- * Away from a gym there is no band: each band move becomes one that needs
- * nothing and does the same job.
+ * Away from a gym there is no band, bar or kettlebell: each move that needs
+ * one becomes one that needs nothing and does the same job.
  */
 const AWAY = ":away";
 const AWAY_SWAP: Record<string, string> = {
   band_pull_apart: "prone_y_raise",
   band_external_rotation: "wall_slide",
+  dead_hang: "lat_wall",
+  scap_pullup: "prone_y_raise",
+  goblet_hold: "bodyweight_squat",
 };
 
 /** The version of a routine that needs nothing, or the routine itself if it already doesn't. */
 export const awayVersion = (routine: MobilityRoutine): MobilityRoutine => {
-  if (!routine.moves.some((m) => m.stretch && AWAY_SWAP[m.stretch])) return routine;
+  const needs = (m: MobilityMove) => AWAY_SWAP[m.stretch ?? m.id];
+  if (!routine.moves.some(needs)) return routine;
   return {
     ...routine,
     id: `${routine.id}${AWAY}`,
     moves: routine.moves.map((m) => {
-      const swap = m.stretch ? AWAY_SWAP[m.stretch] : undefined;
+      const swap = needs(m);
       return swap ? hold(swap) : m;
-    }),
+    })
+      // A swap for a move already there is not done twice.
+      .filter((m, i, all) => all.findIndex((o) => o.id === m.id) === i),
   };
 };
 

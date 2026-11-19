@@ -28,7 +28,7 @@ export function TabButtons() {
           active={
             pathname === tab.href ||
             (tab.href === "/" && pathname === "/workout") ||
-            (tab.href === "/profile" && ["/settings", "/history"].includes(pathname))
+            (tab.href === "/profile" && ["/settings", "/history", "/about"].includes(pathname))
           }
           onPress={() => {
             if (pathname !== tab.href) router.replace(tab.href as never);

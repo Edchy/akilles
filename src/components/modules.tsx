@@ -9,7 +9,7 @@ import { Text, TextInput } from "@/components/text";
 import { router } from "expo-router";
 
 import { CardioChoices, CardioTarget } from "@/components/cardio-target";
-import { AddExerciseSheet, type AddBlock } from "@/components/add-exercise";
+import { AddExerciseSheet, AnyExerciseRow, SwapBrowser, type AddBlock } from "@/components/add-exercise";
 import { Count, Setting, Step } from "@/components/controls";
 import { DragList, type Drag } from "@/components/drag-list";
 import { useDraft } from "@/components/draft-scope";
@@ -29,6 +29,7 @@ import {
   Sheet,
   TextButton,
 } from "@/components/sheet";
+import { NoteField } from "@/components/note";
 import { WeightField } from "@/components/weight-field";
 import { grain } from "@/constants/grain";
 import { DUSK, DUSK_CARDS, LETTERPRESS, cardOf, mix, colors, familyWash, fonts, radii } from "@/constants/theme";
@@ -82,6 +83,7 @@ import {
   setCardio,
   balanceNotes,
   workoutMinutes,
+  everyExercise,
   swapInPlan,
   hiddenExercises,
   takenElsewhere,
@@ -123,7 +125,7 @@ export function Modules({ onDragChange }: { onDragChange: (dragging: boolean) =>
   const [dragging, setDragging] = useState(false);
   // One active row's height: the line and arrows are drawn from it.
   const [rowHeight, setRowHeight] = useState(0);
-  const next = upNext(state).id;
+  const next = upNext(state)?.id;
   const paused = state.removedWorkouts.map((r) => r.workout);
   const training = state.active?.workoutId;
   // One list, so a workout can be dragged across: the active ones, the line
@@ -182,6 +184,12 @@ export function Modules({ onDragChange }: { onDragChange: (dragging: boolean) =>
     <View style={{ gap: 16 }} onTouchStart={() => rowHint && setRowHintGone(true)}>
       {/* What the list is and how to handle it, said once (see `components/tips.tsx`). */}
       <InlineTip id="plan" />
+      {/* A plan just made in Settings: nothing in it yet. */}
+      {items.length === 1 ? (
+        <Text style={{ color: colors.text, fontSize: 19, lineHeight: 27 }}>
+          No workouts in this plan yet. Add your first with the + button.
+        </Text>
+      ) : null}
       <Round count={state.workouts.length} rowHeight={rowHeight}>
         <DragList
           data={items}
@@ -1045,10 +1053,13 @@ export function SlotSheet({
   const { state, setState } = useSession();
   const [confirming, setConfirming] = useState(false);
   const [choosing, setChoosing] = useState(false);
+  // "Any exercise": the whole library, not only this kind.
+  const [anywhere, setAnywhere] = useState(false);
 
   const close = () => {
     setConfirming(false);
     setChoosing(false);
+    setAnywhere(false);
     onClose();
   };
 
@@ -1075,12 +1086,27 @@ export function SlotSheet({
   const preview = (id: string) => router.push({ pathname: "/plan-editor/guide", params: { id } });
 
   if (choosing || replacements) {
-    const cancel = () => replacements ? onClose() : setChoosing(false);
-    const pick = (id: string) => {
-      setState((s) => swapInPlan(s, workoutId, entry.id, id));
+    const cancel = () => {
+      setAnywhere(false);
       if (replacements) onClose();
       else setChoosing(false);
     };
+    const pick = (id: string) => {
+      setState((s) => swapInPlan(s, workoutId, entry.id, id));
+      cancel();
+    };
+    if (anywhere) {
+      return (
+        <Sheet embedded={embedded} visible onBack={() => setAnywhere(false)} scrollKey="anywhere" title={`Replace ${exercise?.name ?? "exercise"}`} onClose={cancel}>
+          <SwapBrowser
+            exercises={everyExercise(state).filter((e) => e.id !== exerciseId)}
+            inIt={taken}
+            onPick={pick}
+            onBack={() => setAnywhere(false)}
+          />
+        </Sheet>
+      );
+    }
     return (
       <Sheet embedded={embedded} visible onBack={cancel} scrollKey="replacements" title={`Replace ${exercise?.name ?? "exercise"}`} onClose={cancel}>
         <View style={{ gap: 6, paddingTop: 12 }}>
@@ -1097,6 +1123,9 @@ export function SlotSheet({
               onPreview={() => preview(id)}
             />
           ))}
+          <View style={{ marginTop: 12 }}>
+            <AnyExerciseRow onPress={() => setAnywhere(true)} />
+          </View>
         </View>
       </Sheet>
     );
@@ -1188,6 +1217,13 @@ export function SlotSheet({
               {own ? ` This one does its best work at ${own.min} to ${own.max} reps, so it stays there.` : ""}
             </Text>
           )}
+        </View>
+
+        {/* The exercise's own note: the one the Library edits and the
+            workout shows under the name. */}
+        <View style={{ gap: 12 }}>
+          <SectionLabel>Note</SectionLabel>
+          <NoteField key={exerciseId} id={exerciseId} hint="Shows under the name whenever you do this exercise, in any workout." />
         </View>
         <View style={{ gap: 4 }}>
           {confirming ? (

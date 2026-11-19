@@ -132,7 +132,7 @@ test("Today renders per-exercise changes, includes them in accessibility labels,
     if (name === "@/components/buttons") return { Button: "Button", LinkButton: "LinkButton", Chip: "Chip" };
     if (name === "@/components/mark") return { Mark: "Mark" };
     if (name === "@/components/dusk") return { DuskGround: "DuskGround" };
-    if (name === "@/components/place") return { PlaceLine: "PlaceLine" };
+    if (name === "@/components/easy-week") return { EasyWeek: "EasyWeek", easyWeekShowing: () => false };
     if (name === "@/components/growth-offer") return { GrowthOffer: "GrowthOffer" };
     if (name === "@/lib/use-reduce-motion") return { useReduceMotion: () => true };
     if (name === "react-native-reanimated") return { __esModule: true, default: { View: "AnimatedView" }, useSharedValue: (v) => ({ value: v }), useAnimatedStyle: () => ({}), withSpring: (v) => v, withTiming: (v) => v };

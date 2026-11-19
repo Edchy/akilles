@@ -16,7 +16,8 @@ import {
   CARDIO_DEFAULT,
   DEFAULT_MOBILITY,
   EVERYDAY_WARMUP,
-  PPLPPL_ROUTINES,
+  WARMUP,
+  RETIRED_PPLPPL,
   RETIRED_MOBILITY,
   mobilityById,
   setCustomConditioning,
@@ -49,6 +50,7 @@ import {
   CARDIO_SLOTS,
   correctTreadmillTarget,
   foldLoops,
+  intoLoops,
   cardioKey,
   courseKey,
   CONDITIONING_ID,
@@ -217,7 +219,9 @@ export const keepAside = async (state: SessionState): Promise<void> => {
 // 19: restore warm-up and cool-down defaults omitted by the first Bodyweight template.
 // 22: every 6–12 slot climbs 6–10; lifts with a range of their own keep to it; the PPLPPL
 //     plan's lifts start in the library — see `toShorterRange` and `PPLPPL_IDS`.
-const VERSION = 22;
+// 23: plans: Push, pull, legs, PPLPPL and any you add, each with its own workouts —
+//     see `intoLoops`. Saves from 23 on keep their plans as they are.
+const VERSION = 23;
 
 /**
  * Version 14: lifts for training away from a gym. They start in the library
@@ -619,6 +623,8 @@ export const fromSaved = (raw: string): SessionState | Unreadable => {
     // Pre-4 blobs carry a cycle position; the new program starts at the top.
     const { cycleIndex: _position, ...stored } = saved.state;
     const restored: SessionState = { ...initialState, ...stored };
+    // Plans are made from what an older save has (`intoLoops`), never filled in.
+    if (saved.version < 23) restored.loops = stored.loops;
     if (saved.version < 5) {
       restored.workouts = DEFAULT_WORKOUTS;
       restored.nextWorkout = DEFAULT_WORKOUTS[0].id;
@@ -742,24 +748,52 @@ export const fromSaved = (raw: string): SessionState | Unreadable => {
     }
     // Close older sessions at the target actually trained, then correct the
     // saved plan and any current card that will genuinely be resumed.
-    // Not a version step: any save with loops, old or new, folds them in.
-    migrated = foldLoops(migrated);
+    // Loops from before they were folded away, sorted into plans below.
+    if (saved.version < 23) migrated = foldLoops(migrated);
     if (saved.version < 22) {
       migrated = toShorterRange(migrated);
       migrated.hidden = [
         ...migrated.hidden,
         ...PPLPPL_IDS.filter((id) => !LEAN.includes(id) && !migrated.hidden.includes(id)),
       ];
-      const routines = [...(Object.values(PPLPPL_ROUTINES) as string[]), EVERYDAY_WARMUP];
+      const routines = [EVERYDAY_WARMUP];
       migrated.hiddenConditioning = [
         ...migrated.hiddenConditioning,
         ...routines.filter((id) => !migrated.hiddenConditioning.includes(id)),
       ];
     }
+    if (saved.version < 23) migrated = intoLoops(retirePplpplRoutines(migrated));
     return correctTreadmillTarget(saved.version < 17 ? { ...migrated, treadmillTargetRevision: undefined } : migrated);
   } catch {
     return "invalid";
   }
+};
+
+/**
+ * Version 23: the PPLPPL plan's own routines are gone, folded into the day
+ * warm-ups and the everyday stretch. A workout that named one names what
+ * took its place; edits to them go, and they leave the library. And Push,
+ * Pull and Legs open on their own day's warm-up again.
+ */
+const retirePplpplRoutines = (state: SessionState): SessionState => {
+  const to = (id: string | null | undefined) => (id && RETIRED_PPLPPL[id]) || id;
+  const fix = (w: Workout): Workout => ({
+    ...w,
+    ...(w.warmup ? { warmup: to(w.warmup) } : {}),
+    ...(w.mobility ? { mobility: to(w.mobility) } : {}),
+    ...(w.extras ? { extras: w.extras.map((x) => (x.routine ? { ...x, routine: to(x.routine)! } : x)) } : {}),
+  });
+  const gone = (id: string) => id in RETIRED_PPLPPL;
+  // Push, Pull and Legs opened on the general warm-up for a day; they open on their own day's now.
+  const own = (w: Workout): Workout =>
+    w.id in WARMUP && w.warmup === EVERYDAY_WARMUP ? { ...w, warmup: WARMUP[w.id as keyof typeof WARMUP] } : fix(w);
+  return {
+    ...state,
+    workouts: state.workouts.map(own),
+    removedWorkouts: state.removedWorkouts.map((r) => ({ ...r, workout: own(r.workout) })),
+    hiddenConditioning: state.hiddenConditioning.filter((id) => !gone(id)),
+    mobilityEdits: Object.fromEntries(Object.entries(state.mobilityEdits).filter(([id]) => !gone(id))),
+  };
 };
 
 /** State as the text that goes to disk — or into a backup file. */

@@ -1,4 +1,4 @@
-import { PPLPPL_ROUTINES } from "@/data/conditioning";
+import { DEFAULT_MOBILITY, WARMUP } from "@/data/conditioning";
 import type { Pattern } from "@/data/exercises";
 import { DEFAULT_WORKOUTS, type Entry, type Scheme, type Workout } from "@/data/split";
 
@@ -6,13 +6,14 @@ import { DEFAULT_WORKOUTS, type Entry, type Scheme, type Workout } from "@/data/
  * The plans Klay comes with. Everyone starts on Push, pull, legs — three
  * workouts that start small and grow. PPLPPL is the bigger one for someone
  * who already trains: six workouts, a first and a second version of each
- * day, done in turn. Switching between them is in Settings, and pauses the
- * workouts of the other plan rather than deleting them — see `switchPlan` in
- * the store.
+ * day, done in turn. Both are there from the start, with any plans you add,
+ * and Settings switches between them; the one you leave waits as it was —
+ * see `switchLoop` in the store. These are only where they start: once
+ * there, a plan is yours to change.
  *
  * PPLPPL is built for dumbbells and kettlebells, with a pull-up bar, dip bars
- * and a leg extension. Each day opens with five minutes of cardio and its
- * drills, and ends on one long stretch.
+ * and a leg extension. Each day opens with five minutes of cardio and the
+ * day's mobility, and ends on the everyday stretch.
  */
 
 export type PlanId = "ppl" | "pplppl";
@@ -48,9 +49,9 @@ const slot = (
 /** Five easy minutes to open, nothing to finish. */
 const warmup = (machine: string) => ({ open: { machine, minutes: 5 }, close: null });
 
-const PUSH = { kind: "push" as const, cardio: warmup("ski_erg"), warmup: PPLPPL_ROUTINES.push, mobility: PPLPPL_ROUTINES.pushEnd };
-const PULL = { kind: "pull" as const, cardio: warmup("row"), warmup: PPLPPL_ROUTINES.pull, mobility: PPLPPL_ROUTINES.pullEnd };
-const LEGS = { kind: "legs" as const, cardio: warmup("treadmill"), warmup: PPLPPL_ROUTINES.legs, mobility: PPLPPL_ROUTINES.legsEnd };
+const PUSH = { kind: "push" as const, cardio: warmup("ski_erg"), warmup: WARMUP.push, mobility: DEFAULT_MOBILITY };
+const PULL = { kind: "pull" as const, cardio: warmup("row"), warmup: WARMUP.pull, mobility: DEFAULT_MOBILITY };
+const LEGS = { kind: "legs" as const, cardio: warmup("treadmill"), warmup: WARMUP.legs, mobility: DEFAULT_MOBILITY };
 
 /**
  * The first lift of each day gets four sets; everything else three — core
@@ -147,8 +148,3 @@ export const PLANS: Record<PlanId, Workout[]> = {
   ppl: DEFAULT_WORKOUTS,
   pplppl: PPLPPL,
 };
-
-/** The routines a plan's workouts use, so switching to it can bring them into the library. */
-export const routinesOf = (plan: PlanId): string[] => [
-  ...new Set(PLANS[plan].flatMap((w) => [w.warmup, w.mobility].filter((r): r is string => !!r))),
-];

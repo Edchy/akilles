@@ -4,12 +4,8 @@ import { Pressable, ScrollView, View } from "react-native";
 import { Text } from "@/components/text";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { TrainingWeek } from "@/components/training-week";
 import { Icon } from "@/components/icon";
-import { GoalProgress } from "@/components/goal-progress";
-import { GOALS_ON } from "@/data/goals";
 import { useBarSpace } from "@/components/bottom-bar";
-import { Results } from "@/components/results";
 import { COLUMN } from "@/components/screen";
 import { Segments } from "@/components/segments";
 import { FAMILY, colors, fonts, radii } from "@/constants/theme";
@@ -26,14 +22,13 @@ import {
   type SessionState,
 } from "@/store/session";
 
-type Segment = "results" | "sessions" | "lifts";
+type Segment = "sessions" | "lifts";
 
 /**
- * Progress: what you have done, three ways round. Results is the good news —
- * what the work has bought you. Sessions is the diary: each workout as it
- * happened, newest first. Lifts is the scoreboard: where every exercise stands
- * now, and how it got there. The week along the top answers the question you
- * open the tab with — have I been?
+ * History, reached from Profile: what you have done, two ways round.
+ * Sessions is the diary: each workout as it happened, newest first. Lifts is
+ * the scoreboard: where every exercise stands now, and how it got there.
+ * The week and the results are on Profile itself.
  */
 export default function HistoryScreen() {
   const { state } = useSession();
@@ -41,7 +36,7 @@ export default function HistoryScreen() {
   const params = useLocalSearchParams<{ view?: string }>();
   const insets = useSafeAreaInsets();
   const barSpace = useBarSpace();
-  const [segment, setSegment] = useState<Segment>(params.view === "sessions" ? "sessions" : "results");
+  const [segment, setSegment] = useState<Segment>(params.view === "lifts" ? "lifts" : "sessions");
 
   return (
     <ScrollView
@@ -72,16 +67,11 @@ export default function HistoryScreen() {
           fontSize: 48,
         }}
       >
-        Progress
+        History
       </Text>
-
-      <TrainingWeek state={state} />
-
-      {GOALS_ON ? <GoalProgress /> : null}
 
       <Segments
         options={[
-          { value: "results", label: "Results" },
           { value: "sessions", label: "Sessions" },
           { value: "lifts", label: "Lifts" },
         ]}
@@ -89,9 +79,7 @@ export default function HistoryScreen() {
         onChange={setSegment}
       />
 
-      {segment === "results" ? (
-        <Results state={state} />
-      ) : segment === "sessions" ? (
+      {segment === "sessions" ? (
         <Sessions log={state.log} />
       ) : (
         <Lifts state={state} />
@@ -414,12 +402,19 @@ type LiftRow = { key: string; scheme: Scheme; st: ExerciseState; exercise: Exerc
 function Lifts({ state }: { state: SessionState }) {
   const [open, setOpen] = useState<string | null>(null);
 
-  const rows: LiftRow[] = Object.entries(state.history).flatMap(([k, st]) => {
+  // One row a lift. Done on more than one range — volume on one plan, 6 to
+  // 10 on another — it shows the range it was trained on last; the weight
+  // is the lift's either way.
+  const latest = new Map<string, LiftRow>();
+  for (const [k, st] of Object.entries(state.history)) {
     const exercise = byId(st.exerciseId);
     // An exercise removed from the catalogue since has nothing to show.
-    if (!exercise || !(st.lastPerformed || st.skippedLast)) return [];
-    return [{ key: k, scheme: k.split(":")[1] as Scheme, st, exercise }];
-  });
+    if (!exercise || !(st.lastPerformed || st.skippedLast)) continue;
+    const had = latest.get(st.exerciseId);
+    if (had && (had.st.lastTrainedAt ?? 0) >= (st.lastTrainedAt ?? 0)) continue;
+    latest.set(st.exerciseId, { key: st.exerciseId, scheme: k.split(":")[1] as Scheme, st, exercise });
+  }
+  const rows = [...latest.values()];
   const cardio = Object.entries(state.conditioning).flatMap(([k, rec]) => {
     const machine = cardioById(rec.cardioId);
     return machine ? [{ key: k, rec, machine }] : [];
@@ -450,7 +445,6 @@ function Lifts({ state }: { state: SessionState }) {
               key={r.key}
               row={r}
               log={state.log}
-              history={state.history}
               first={i === 0}
               open={open === r.key}
               onToggle={() => toggle(r.key)}
@@ -474,14 +468,12 @@ function Lifts({ state }: { state: SessionState }) {
 function LiftRowView({
   row,
   log,
-  history,
   first,
   open,
   onToggle,
 }: {
   row: LiftRow;
   log: SessionLog[];
-  history: SessionState["history"];
   first: boolean;
   open: boolean;
   onToggle: () => void;
@@ -490,22 +482,17 @@ function LiftRowView({
   const ladder = ladderOf(exercise, scheme);
   const target = ladder[Math.min(st.rung, ladder.length - 1)];
 
-  // This lift's past, newest first, from the log — including sessions on a
-  // range it no longer has a record for, which were folded into this one.
+  // This lift's past, newest first, from the log: every session of it, on
+  // any range and in any plan.
   const past = log
     .flatMap((s) =>
       s.entries
-        .filter(
-          (e): e is LiftEntry =>
-            e.kind === "lift" &&
-            e.exerciseId === exercise.id &&
-            (e.scheme === scheme || !history[`${e.exerciseId}:${e.scheme}`]),
-        )
+        .filter((e): e is LiftEntry => e.kind === "lift" && e.exerciseId === exercise.id)
         .map((e) => ({ at: s.startedAt, e })),
     )
     .reverse();
-  // "Up from" compares like with like: the same range only.
-  const oldest = past.filter(({ e }) => e.scheme === scheme).at(-1);
+  // The weight is the lift's, whatever the range: up or down from the first time.
+  const oldest = past.at(-1);
   const since =
     oldest && oldest.e.weight !== st.weight
       ? `${st.weight > oldest.e.weight ? "Up" : "Down"} from ${weightLabel(exercise, oldest.e.weight)} on ${shortDate(oldest.at)}`

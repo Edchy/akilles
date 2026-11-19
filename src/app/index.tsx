@@ -9,15 +9,16 @@ import { Text } from "@/components/text";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useBarSpace } from "@/components/bottom-bar";
+import { EasyWeek, easyWeekShowing } from "@/components/easy-week";
 import { GrowthOffer } from "@/components/growth-offer";
 import { Mark } from "@/components/mark";
-import { PlaceLine } from "@/components/place";
 import { Column, COLUMN } from "@/components/screen";
 import { Sheet, OpenRow } from "@/components/sheet";
 import { colors, DUSK, DUSK_INK, DUSK_TODAY, FAMILY, fonts, mix, radii } from "@/constants/theme";
 import { DuskGround } from "@/components/dusk";
 import Svg, { Defs, LinearGradient, Rect, Stop } from "react-native-svg";
 import type { Family } from "@/data/families";
+import type { Workout } from "@/data/split";
 import { TODAY_LINES, fillLine, pickLine, type TodayMood } from "@/data/voice";
 import type { PreviewRow, SessionState } from "@/store/session";
 import {
@@ -29,7 +30,8 @@ import {
   didTrain,
   finishWorkout,
   itemFamily,
-  placeOf,
+  loopInUse,
+  loopName,
   sittingOut,
   setNextWorkout,
   upcomingWorkouts,
@@ -42,6 +44,38 @@ import {
 
 
 export default function TodayScreen() {
+  const { state } = useSession();
+  // A plan you have just made has nothing in it yet.
+  if (!state.active && state.workouts.length === 0) return <EmptyPlan />;
+  return <Deck />;
+}
+
+/** Today for a new plan: its name, and the way to fill it. */
+function EmptyPlan() {
+  const { state } = useSession();
+  const insets = useSafeAreaInsets();
+  const barSpace = useBarSpace();
+  return (
+    <View style={{ flex: 1, backgroundColor: colors.bg, paddingTop: insets.top + 16, paddingHorizontal: 22, paddingBottom: barSpace + 16 }}>
+      <Column style={{ flex: 1, justifyContent: "center", gap: 16 }}>
+        <Text accessibilityRole="header" style={{ color: colors.text, fontFamily: fonts.display, fontSize: 40, lineHeight: 48 }}>
+          {loopName(state, loopInUse(state))}
+        </Text>
+        <Text style={{ color: colors.text, fontSize: 19, lineHeight: 27 }}>
+          There are no workouts in this plan yet. Add your first one, and it will be here, ready to start.
+        </Text>
+      </Column>
+      <Column>
+        <View style={{ flexDirection: "row" }}>
+          <BigButton label="Add a workout" primary="push" onPress={() => router.push("/new-workout")} />
+        </View>
+      </Column>
+    </View>
+  );
+}
+
+/** Today with workouts: the round as a deck of cards, and Start. */
+function Deck() {
   const { state, setState } = useSession();
   const insets = useSafeAreaInsets();
   const barSpace = useBarSpace();
@@ -54,7 +88,8 @@ export default function TodayScreen() {
   const round = inProgress ? [currentWorkout(state)] : upcomingWorkouts(state, state.workouts.length);
   const [look, setLook] = useState(0);
   const at = round.length ? ((look % round.length) + round.length) % round.length : 0;
-  const workout = round[at] ?? upNext(state);
+  // There is always one: Today shows the deck only with a workout to show.
+  const workout = (round[at] ?? upNext(state))!;
   const [ending, setEnding] = useState(false);
 
   const idleDays = daysSinceTrained(state);
@@ -155,10 +190,9 @@ export default function TodayScreen() {
           gap: 20,
         }}
       >
-        {/* Away from your usual place: one quiet line, so a changed workout
-            has its reason, and the way back. At home base, nothing. */}
-        {inProgress || placeOf(state) !== "away" ? null : <PlaceLine />}
-        {inProgress ? null : <GrowthOffer />}
+        {inProgress ? null : <EasyWeek />}
+        {/* Nothing grows in an easy week, or while one is on offer. */}
+        {inProgress || easyWeekShowing(state) ? null : <GrowthOffer />}
         {/* The round as a deck, the one on top the day's: all one size, the
             room the screen has, so turning it moves only the card in your
             hand. The next two show their edges under it, in their colours;
@@ -273,7 +307,7 @@ export default function TodayScreen() {
  * scrolling inside the card when it is long. Fills whatever room it is given,
  * so every card in the deck is the same size.
  */
-function DayCard({ state, workout, inProgress = false }: { state: SessionState; workout: ReturnType<typeof upNext>; inProgress?: boolean }) {
+function DayCard({ state, workout, inProgress = false }: { state: SessionState; workout: Workout; inProgress?: boolean }) {
   const family = workoutFamily(state, workout);
   const card = cardInk(family);
   const minutes = workoutMinutes(state, workout);

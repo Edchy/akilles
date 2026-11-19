@@ -134,3 +134,16 @@ test("Klay asks how a lift's first time felt, and the answer carries to next tim
   for (let i = 0; i < again.active.items[at].logged.length; i++) again = store.tapSet(again, i);
   assert.equal(store.asksFeel(again), false);
 });
+
+test("push-ups speak for the upper body: 80 kg and 11 to 25 opens the DB bench at 15 kg, 17.5 kg after a while", () => {
+  const bench = byId("db_bench");
+  const guess = (lifter) => start.startGuess(bench, lifter);
+  assert.equal(guess({ experience: "some", bodyweight: 80, sex: "man", pushUps: "some" }), 15);
+  assert.equal(guess({ experience: "lots", bodyweight: 80, sex: "man", pushUps: "some" }), 17.5);
+  assert.equal(guess({ experience: "some", bodyweight: 80, sex: "man", pushUps: "none" }), 7.5);
+  // More push-ups, more weight; the legs are left to sex and experience.
+  const ranks = ["none", "few", "some", "many"].map((p) => guess({ experience: "some", bodyweight: 70, pushUps: p }));
+  for (let i = 1; i < ranks.length; i++) assert.ok(ranks[i] >= ranks[i - 1], ranks.join());
+  const squat = byId("goblet_squat");
+  assert.equal(start.startGuess(squat, { experience: "some", bodyweight: 80, pushUps: "many" }), start.startGuess(squat, { experience: "some", bodyweight: 80 }));
+});

@@ -7,6 +7,7 @@ import { createAudioPlayer, setAudioModeAsync, type AudioPlayer } from "expo-aud
  * - `start`: one soft note — hold now.
  * - `end`: two notes rising — the hold is over; change side, or the move is done.
  * - `finish`: three notes rising — the whole routine is done.
+ * - `rest`: two notes, a little brighter — rest is over, next set.
  *
  * Calm, low, soft-edged notes like a small singing bowl, made by
  * scripts/sounds.mjs: a nudge, never a fright.
@@ -16,12 +17,13 @@ import { createAudioPlayer, setAudioModeAsync, type AudioPlayer } from "expo-aud
  * cannot play is simply not heard, and the buzz that goes with it still says
  * the same thing.
  */
-export type Cue = "start" | "end" | "finish";
+export type Cue = "start" | "end" | "finish" | "rest";
 
 const SOURCES: Record<Cue, number> = {
   start: require("../../assets/sounds/hold-start.wav"),
   end: require("../../assets/sounds/hold-done.wav"),
   finish: require("../../assets/sounds/routine-done.wav"),
+  rest: require("../../assets/sounds/rest-done.wav"),
 };
 
 const players: Partial<Record<Cue, AudioPlayer>> = {};

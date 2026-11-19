@@ -31,9 +31,8 @@ export function Results({ state }: { state: SessionState }) {
 
   if (log.length === 0) {
     return (
-      <View style={{ gap: 10, paddingVertical: 12 }}>
-        <Text style={[display, { fontSize: 34, lineHeight: 36 }]}>Your results start here.</Text>
-        <Text style={{ color: colors.muted, fontSize: 15, lineHeight: 22 }}>
+      <View style={{ gap: 10 }}>
+        <Text style={{ color: colors.muted, fontSize: 17, lineHeight: 24 }}>
           Finish a workout and this fills in: how much you have lifted, how much
           stronger you are, and every record you set on the way.
         </Text>

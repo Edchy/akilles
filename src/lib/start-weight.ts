@@ -11,8 +11,8 @@ import { START_RATIO } from "@/data/start-ratios";
  *    Klay would have guessed for them (`personalFactor`). After a workout or
  *    two this is what counts.
  * 2. Before that, the first questions: how much you have lifted, and — if you
- *    chose to say — your weight and sex. Those are used for this and nothing
- *    else, and stay on the phone.
+ *    chose to say — your weight, your sex and how many push-ups you can do.
+ *    Those are used for this and nothing else, and stay on the phone.
  *
  * Every guess leans light. Owning a light weight is the point; a guess that
  * is too low costs a session, one that is too high costs your form.
@@ -20,12 +20,23 @@ import { START_RATIO } from "@/data/start-ratios";
 
 export type Experience = "new" | "some" | "lots";
 export type Sex = "woman" | "man";
+/** How many push-ups in a row: none yet, 1 to 10, 11 to 25, more. */
+export type PushUps = "none" | "few" | "some" | "many";
 
 /**
- * What the first questions learned about you. `bodyweight` and `sex` are
- * absent when you skipped them; `experience` is always answered.
+ * What the first questions learned about you. `bodyweight`, `sex` and
+ * `pushUps` are absent when you would rather not say, or weren't sure;
+ * `experience` is always answered.
  */
-export type Lifter = { experience: Experience; bodyweight?: number; sex?: Sex };
+export type Lifter = { experience: Experience; bodyweight?: number; sex?: Sex; pushUps?: PushUps };
+
+/**
+ * Push-ups in a row, as a measure of your pressing strength next to your
+ * body weight — a push-up lifts about two thirds of it. It speaks for the
+ * upper body in place of sex, which only guesses at it. "Some", 11 to 25,
+ * is a man who has lifted a bit, and a little more.
+ */
+export const PUSH_UPS: Record<PushUps, number> = { none: 0.55, few: 0.8, some: 1.15, many: 1.4 };
 
 /** How far each answer to "Have you lifted weights before?" moves a guess. */
 export const EXPERIENCE: Record<Experience, number> = { new: 0.6, some: 1, lots: 1.3 };
@@ -41,8 +52,9 @@ const SEX: Record<Sex | "unsaid", { upper: number; lower: number }> = {
   unsaid: { upper: 0.8, lower: 0.87 },
 };
 
-/** The weight assumed when you chose not to say it: on the light side. */
+/** The weight assumed when you chose not to say it: on the light side, for a man if you said so. */
 export const UNSAID_BODYWEIGHT = 60;
+const UNSAID_MAN = 75;
 /** The weight assumed before the questions existed — a phone set up earlier. */
 const EARLIER_BODYWEIGHT = 75;
 
@@ -61,12 +73,16 @@ export const isLower = (ex: Exercise): boolean => LOWER.has(ex.patterns[0]);
 export const startGuess = (ex: Exercise, lifter?: Lifter): number | undefined => {
   const entry = START_RATIO[ex.id];
   if (!entry) return ex.startWeight;
-  const bodyweight = lifter?.bodyweight ?? (lifter ? UNSAID_BODYWEIGHT : EARLIER_BODYWEIGHT);
+  const bodyweight =
+    lifter?.bodyweight ?? (!lifter ? EARLIER_BODYWEIGHT : lifter.sex === "man" ? UNSAID_MAN : UNSAID_BODYWEIGHT);
   const experience = EXPERIENCE[lifter?.experience ?? "some"];
   // A phone set up before the questions: as a man who has lifted a bit, so
   // nothing it already shows moves down.
   const sex = SEX[lifter ? (lifter.sex ?? "unsaid") : "man"];
-  const raw = entry.ratio * bodyweight * experience * (isLower(ex) ? sex.lower : sex.upper);
+  // Push-ups measure the upper body where sex can only guess at it. They
+  // already carry most of what experience says, so it counts for less with them.
+  const upper = lifter?.pushUps ? PUSH_UPS[lifter.pushUps] * Math.sqrt(experience) : sex.upper * experience;
+  const raw = entry.ratio * bodyweight * (isLower(ex) ? sex.lower * experience : upper);
   return settle(raw, ex.increment || 2.5, entry.bar ?? 0);
 };
 

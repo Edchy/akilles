@@ -124,16 +124,14 @@ test("short workouts run, and show, only the first two exercises", () => {
   assert.ok(named(s).includes("Dips"));
 });
 
-test("a save with loops keeps every workout: the other loop's are paused", () => {
-  let s = store.resetToDefault();
-  const id = s.workouts[0].id;
-  s = store.startLoopWith(store.addWorkoutOfKind(s, "bw1", "bodyweight"), "bw1", store.loopInUse(s), "l_away");
-  const total = [...store.loopsOf(s)].reduce((n, l) => n + l.workouts.length, 0);
-  const folded = storage.fromSaved(storage.toSaved(s));
-  assert.equal(folded.loops, undefined);
-  assert.equal(folded.workouts.length + folded.removedWorkouts.length, total);
-  assert.ok(folded.removedWorkouts.some((r) => r.workout.id === "bw1"), "the away workout waits, paused");
-  assert.ok(folded.workouts.some((w) => w.id === id));
+test("a save with loops from before they were folded away keeps every workout", () => {
+  let s = store.addWorkoutOfKind(store.resetToDefault(), "bw1", "bodyweight");
+  const bw = s.workouts.at(-1);
+  s = { ...s, workouts: s.workouts.slice(0, -1), loops: [{ id: "main", name: "Gym" }, { id: "l_away", name: "Bodyweight", body: { workouts: [bw], nextWorkout: "bw1", removedWorkouts: [] } }] };
+  const now = storage.fromSaved(JSON.stringify({ version: 21, state: s }));
+  assert.equal(store.loopInUse(now), "ppl");
+  assert.ok(now.workouts.some((w) => w.id === "push"));
+  assert.ok(now.removedWorkouts.some((r) => r.workout.id === "bw1"), "the away workout waits, paused");
 });
 
 test("dragging the active workouts reorders only them, and keeps what is next", () => {

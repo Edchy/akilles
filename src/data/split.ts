@@ -1,4 +1,4 @@
-import { EVERYDAY_WARMUP, type CardioBlock, type CardioEnd } from "@/data/conditioning";
+import { WARMUP, type CardioBlock, type CardioEnd } from "@/data/conditioning";
 import type { Pattern } from "@/data/exercises";
 import type { WorkoutKind } from "@/data/kinds";
 
@@ -248,13 +248,15 @@ const FULL_CYCLE: Authored[] = [
    *
    * Every slot climbs 6 → 8 → 10, then adds weight and starts again. Each
    * day opens on five minutes of cardio — the rower on Pull, the treadmill
-   * otherwise — and the same four-minute warm-up.
+   * otherwise — and then that day's own mobility: the shoulders, thoroughly,
+   * before pressing; the lats and upper back before pulling; hips and ankles
+   * before squatting.
    */
   {
     id: "push",
     name: "Push",
     subtitle: "chest, shoulders",
-    warmup: EVERYDAY_WARMUP,
+    warmup: WARMUP.push,
     exercises: [
       { slot: "Horizontal press", pattern: "horizontal_push", options: ["db_bench"], scheme: DEFAULT_SCHEME },
       { slot: "Vertical press", pattern: "vertical_push", options: ["db_shoulder"], scheme: DEFAULT_SCHEME },
@@ -272,7 +274,7 @@ const FULL_CYCLE: Authored[] = [
     subtitle: "back, arms",
     // The rower warms the back and the grip before you pull.
     cardio: { open: { machine: "row" } },
-    warmup: EVERYDAY_WARMUP,
+    warmup: WARMUP.pull,
     exercises: [
       // The pull-up chain first, while you are fresh: from a hang to the whole
       // pull-up, a step at a time (see `chains.ts`). The pulldown builds the
@@ -289,7 +291,7 @@ const FULL_CYCLE: Authored[] = [
     id: "legs",
     name: "Legs",
     subtitle: "legs, hips",
-    warmup: EVERYDAY_WARMUP,
+    warmup: WARMUP.legs,
     exercises: [
       { slot: "Squat", pattern: "squat", options: ["goblet_squat"], scheme: DEFAULT_SCHEME },
       { slot: "Hinge", pattern: "hinge", options: ["db_rdl"], scheme: DEFAULT_SCHEME },

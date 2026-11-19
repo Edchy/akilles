@@ -104,8 +104,17 @@ export function IntroFilm() {
   const [ended, setEnded] = useState(false);
   const [paused, setPaused] = useState(false);
   useEventListener(player, "playToEnd", () => setEnded(true));
-  // Stop the sound the moment the film leaves the screen.
-  useEffect(() => () => player.pause(), [player]);
+  // Stop the sound the moment the film leaves the screen. The player may
+  // already be released by then — going Back from the film — and a released
+  // player throws rather than pausing; it is silent anyway.
+  useEffect(
+    () => () => {
+      try {
+        player.pause();
+      } catch {}
+    },
+    [player],
+  );
 
   const again = () => {
     player.currentTime = 0;

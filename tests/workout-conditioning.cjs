@@ -54,7 +54,7 @@ test("out of the box, every workout ends on the everyday stretch", () => {
   }
   assert.deepEqual(blocks(state, "legs"), [
     { slot: "Cardio · open", id: "treadmill", course: 1 },
-    { slot: "Warm-up", id: "warmup" },
+    { slot: "Warm-up", id: "warmup_legs" },
     { slot: "Cardio · finish", id: "ski_erg", minutes: 5 },
     { slot: "Mobility", id: "everyday" },
   ]);
@@ -107,7 +107,7 @@ test("blocks come out of a workout and go back in", () => {
   state = store.setCardio(state, "push", "open", null);
   state = store.setMobility(state, "push", null);
   assert.deepEqual(blocks(state, "push"), [
-    { slot: "Warm-up", id: "warmup" },
+    { slot: "Warm-up", id: "warmup_push" },
     { slot: "Cardio · finish", id: "ski_erg", minutes: 5 },
   ]);
   assert.equal(blocks(state, "pull").length, 4);
@@ -194,7 +194,8 @@ test("a workout can get a copy of its routine, leaving the others alone", () => 
   assert.equal(store.mobilityPlan(state, workout(state, "legs")).moves.length, 7);
   assert.equal(store.mobilityPlan(state, workout(state, "push")).moves.length, 6);
   assert.deepEqual(plain(store.workoutsUsing(state, "m_legs").map((w) => w.id)), ["legs"]);
-  assert.equal(store.workoutsUsing(state, "everyday").length, 2);
+  // Push and Pull here, and the six PPLPPL days waiting: the everyday stretch ends them all.
+  assert.equal(store.workoutsUsing(state, "everyday").length, 8);
 });
 
 test("a removed machine falls back, and comes back when restored", () => {
@@ -308,7 +309,7 @@ test("the button that moves on names what comes next, and nothing after the last
   let state = store.buildWorkout(fresh());
   const at = (cursor) => ({ ...state, active: { ...state.active, cursor } });
   const items = state.active.items;
-  assert.equal(store.nextItemName(at(0)), "Warm-up");
+  assert.equal(store.nextItemName(at(0)), "Push mobility");
   assert.equal(store.nextItemName(at(1)), "DB bench press");
   assert.equal(store.nextItemName(at(items.length - 3)), "Ski-erg");
   assert.equal(store.nextItemName(at(items.length - 2)), "Everyday stretch");

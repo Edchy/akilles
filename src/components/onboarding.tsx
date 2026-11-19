@@ -15,10 +15,10 @@ import { Icon } from "@/components/icon";
 import { ClayPicture, HELLO, IntroFilm, MainButton } from "@/components/intro";
 import { Option } from "@/components/place";
 import { COLUMN } from "@/components/screen";
-import { SectionLabel, TextButton } from "@/components/sheet";
+import { SectionLabel } from "@/components/sheet";
 import { Text, TextInput } from "@/components/text";
 import { colors, fonts, radii } from "@/constants/theme";
-import { BODYWEIGHT_RANGE, type Experience, type Lifter, type Sex } from "@/lib/start-weight";
+import { BODYWEIGHT_RANGE, type Experience, type Lifter, type PushUps, type Sex } from "@/lib/start-weight";
 import { useReduceMotion } from "@/lib/use-reduce-motion";
 import {
   applyPlan,
@@ -33,7 +33,8 @@ import {
  *
  *   Welcome to Klay.               the clay fellow says hello, and what Klay is for
  *   Have you lifted weights?       new, a bit, or for a while
- *   Your first weights             weight and sex, said or skipped
+ *   Help Klay pick your weights    weight and sex — or rather not say
+ *   Push-ups                       how many in a row, or not sure
  *   The film                       why, and how a workout goes (see
  *                                  `intro.tsx`), then Start lifting
  *
@@ -41,9 +42,10 @@ import {
  * Push, Pull, Legs at a gym, small — three lifts a day, every day — and the
  * plan grows as you keep coming (see `data/growth.ts`). Changing it is Plan's
  * job: a workout of another kind, or a loop of its own for away. The only
- * questions are for the first weights: how much you have lifted, and — said
- * to be used for nothing else, kept on the phone, and skippable — weight
- * and sex. No question about days a week: the loop doesn't care.
+ * questions are for the first weights: how much you have lifted, your
+ * weight, your sex and your push-ups — each one you can decline, and said to
+ * be used for nothing else and kept on the phone. No question about days a
+ * week: the loop doesn't care.
  *
  * One look all the way through — a line of progress at the top, each page
  * sliding in from the side it comes from — so it reads as one thing, not a
@@ -55,18 +57,30 @@ export function Onboarding() {
   return <Steps onDone={(answers) => setState((s) => seeIntro(applyPlan(s, answers)))} />;
 }
 
-type Step = "welcome" | "lifted" | "body" | "film";
+type Step = "welcome" | "lifted" | "body" | "pushups" | "film";
 
 /** The steps the progress line counts. */
-/** The steps the progress line counts. */
-const ALONG: Step[] = ["lifted", "body", "film"];
+const ALONG: Step[] = ["lifted", "body", "pushups", "film"];
 const EXPERIENCE_LABEL: Record<Experience, string> = {
   new: "No, I'm new to this",
   some: "A bit",
   lots: "Yes, for a while",
 };
 
-const SEX_LABEL: Record<Sex, string> = { woman: "Woman", man: "Man" };
+/** "Unsaid" is a fine answer, said with a smile. */
+const SEX_LABEL: Record<Sex | "unsaid", string> = {
+  man: "Male",
+  woman: "Female",
+  unsaid: "None of your business",
+};
+
+const PUSH_UPS_LABEL: Record<PushUps | "unsure", string> = {
+  none: "None yet",
+  few: "1 to 10",
+  some: "11 to 25",
+  many: "More than 25",
+  unsure: "Not sure",
+};
 
 /** A typed body weight, or undefined when it isn't one Klay will take. */
 const readWeight = (text: string): number | undefined => {
@@ -86,9 +100,12 @@ function Steps({ onDone }: { onDone: (answers: Answers) => void }) {
   const [forward, setForward] = useState(true);
   const [experience, setExperience] = useState<Experience | null>(null);
   const [weightText, setWeightText] = useState("");
-  const [sex, setSex] = useState<Sex | undefined>(undefined);
-  // Said, or skipped: skipping leaves weight and sex out, whatever was typed.
-  const [skippedBody, setSkippedBody] = useState(false);
+  // Each answered, or declined: "I'd rather not say", "None of your business", "Not sure".
+  const [weightUnsaid, setWeightUnsaid] = useState(false);
+  // Out of range is said once you have finished typing — not at the "8" of 80.
+  const [weightTyped, setWeightTyped] = useState(false);
+  const [sex, setSex] = useState<Sex | "unsaid" | undefined>(undefined);
+  const [pushUps, setPushUps] = useState<PushUps | "unsure" | undefined>(undefined);
 
   const step = trail[trail.length - 1];
   const go = (next: Step) => {
@@ -99,9 +116,12 @@ function Steps({ onDone }: { onDone: (answers: Answers) => void }) {
     setForward(false);
     setTrail((t) => (t.length > 1 ? t.slice(0, -1) : t));
   };
+  const bodyweight = weightUnsaid ? undefined : readWeight(weightText);
   const lifter: Lifter = {
     experience: experience ?? "some",
-    ...(skippedBody ? {} : { bodyweight: readWeight(weightText), sex }),
+    ...(bodyweight !== undefined ? { bodyweight } : {}),
+    ...(sex && sex !== "unsaid" ? { sex } : {}),
+    ...(pushUps && pushUps !== "unsure" ? { pushUps } : {}),
   };
   // The plan itself is not a question: Push, Pull, Legs at a gym.
   const answers: Answers = { home: null, time: "long", easy: [], lifter };
@@ -114,7 +134,7 @@ function Steps({ onDone }: { onDone: (answers: Answers) => void }) {
           <Page
             art={<Welcome />}
             title="Welcome to Klay."
-            body="Klay tells you what to do at the gym, writes down what you did, and helps you do a little better each time. Two quick questions, and you're ready."
+            body="Klay tells you what to do at the gym, writes down what you did, and helps you do a little better each time. A few quick questions, and you're ready."
             action={{ label: "Let's go", onPress: () => go("lifted") }}
           />
         );
@@ -140,27 +160,14 @@ function Steps({ onDone }: { onDone: (answers: Answers) => void }) {
         );
       case "body": {
         const typed = weightText.trim().length > 0;
-        const unreadable = typed && readWeight(weightText) === undefined;
+        const unreadable = weightTyped && !weightUnsaid && typed && readWeight(weightText) === undefined;
+        // Both answered — a number or rather not, and one of the three.
+        const answered = (weightUnsaid || readWeight(weightText) !== undefined) && sex !== undefined;
         return (
           <Page
             title="Help Klay pick your weights."
-            body="Your weight and sex help pick a good starting weight for every new exercise: today, and whenever you add one later. Used for nothing else, and kept on your phone."
-            action={{
-              label: "Next",
-              onPress: () => {
-                setSkippedBody(false);
-                go("film");
-              },
-            }}
-            after={
-              <TextButton
-                label="Skip"
-                onPress={() => {
-                  setSkippedBody(true);
-                  go("film");
-                }}
-              />
-            }
+            body="Your weight and sex help pick a good starting weight for every new exercise. Used for nothing else, and kept on your phone."
+            action={{ label: "Next", disabled: !answered, onPress: () => go("pushups") }}
           >
             <SectionLabel>Your weight</SectionLabel>
             <View
@@ -173,12 +180,18 @@ function Steps({ onDone }: { onDone: (answers: Answers) => void }) {
                 borderRadius: 18,
                 borderCurve: "continuous",
                 backgroundColor: colors.surface,
+                opacity: weightUnsaid ? 0.4 : 1,
               }}
             >
               <TextInput
                 accessibilityLabel="Your weight in kilograms"
                 value={weightText}
-                onChangeText={setWeightText}
+                onChangeText={(text) => {
+                  setWeightText(text);
+                  setWeightUnsaid(false);
+                  setWeightTyped(false);
+                }}
+                onEndEditing={() => setWeightTyped(true)}
                 keyboardType="decimal-pad"
                 returnKeyType="done"
                 maxLength={5}
@@ -191,25 +204,51 @@ function Steps({ onDone }: { onDone: (answers: Answers) => void }) {
                 A weight between {BODYWEIGHT_RANGE.min} and {BODYWEIGHT_RANGE.max} kg.
               </Text>
             ) : null}
+            <Option
+              label="I'd rather not say"
+              on={weightUnsaid}
+              onPress={() => {
+                tap();
+                setWeightUnsaid((now) => !now);
+                setWeightText("");
+              }}
+            />
             <View style={{ height: 8 }} />
             <SectionLabel>Sex</SectionLabel>
-            {(Object.keys(SEX_LABEL) as Sex[]).map((x) => (
+            {(Object.keys(SEX_LABEL) as (Sex | "unsaid")[]).map((x) => (
               <Option
                 key={x}
                 label={SEX_LABEL[x]}
                 on={sex === x}
                 onPress={() => {
                   tap();
-                  setSex((now) => (now === x ? undefined : x));
+                  setSex(x);
                 }}
               />
             ))}
-            <Text style={{ marginTop: 12, color: colors.muted, fontFamily: fonts.regular, fontSize: 17, lineHeight: 24 }}>
-              Rather not say? Skip. Klay starts you light and finds your weights as you go.
-            </Text>
           </Page>
         );
       }
+      case "pushups":
+        return (
+          <Page
+            title="How many push-ups can you do in a row?"
+            body="Proper ones, chest close to the floor. It tells Klay how strong your upper body is, so your first presses suit you."
+          >
+            {(Object.keys(PUSH_UPS_LABEL) as (PushUps | "unsure")[]).map((x) => (
+              <Option
+                key={x}
+                label={PUSH_UPS_LABEL[x]}
+                on={pushUps === x}
+                onPress={() => {
+                  tap();
+                  setPushUps(x);
+                  go("film");
+                }}
+              />
+            ))}
+          </Page>
+        );
       case "film":
         // The film, then the way in: why, and how a workout goes (see `intro.tsx`).
         return (
@@ -385,7 +424,8 @@ function Page({
   art?: ReactNode;
   title: string;
   body: string;
-  action?: { label: string; onPress: () => void };
+  /** The way on. `disabled` until the page's question is answered. */
+  action?: { label: string; onPress: () => void; disabled?: boolean };
   after?: ReactNode;
   children?: ReactNode;
 }) {
@@ -436,6 +476,8 @@ function Page({
         >
           <Pressable
             accessibilityRole="button"
+            accessibilityState={{ disabled: !!action.disabled }}
+            disabled={action.disabled}
             onPress={action.onPress}
             style={({ pressed }) => ({
               height: 60,
@@ -446,7 +488,7 @@ function Page({
               alignItems: "center",
               justifyContent: "center",
               gap: 10,
-              opacity: pressed ? 0.85 : 1,
+              opacity: action.disabled ? 0.3 : pressed ? 0.85 : 1,
               transform: [{ scale: pressed ? 0.98 : 1 }],
             })}
           >

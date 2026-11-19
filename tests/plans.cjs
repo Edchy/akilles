@@ -25,17 +25,20 @@ const exercises = load("@/data/exercises");
 const conditioning = load("@/data/conditioning");
 const { guideFor } = load("@/data/guides");
 const kit = load("@/data/kit");
-const { PLANS, routinesOf } = load("@/data/plans");
+const { PLANS } = load("@/data/plans");
 const store = load("@/store/session");
 const storage = load("@/store/storage");
 
 const ids = (list) => list.map((w) => w.id).join();
 const paused = (state) => state.removedWorkouts.map((r) => r.workout.id);
 
-test("everyone starts on Push, pull, legs", () => {
+test("everyone starts on Push, pull, legs, with PPLPPL waiting", () => {
   const state = store.resetToDefault();
-  assert.equal(store.planOf(state), "ppl");
+  assert.equal(store.loopInUse(state), "ppl");
   assert.equal(ids(state.workouts), "push,pull,legs");
+  const plans = store.loopsOf(state);
+  assert.equal(plans.map((p) => p.name).join("|"), "Push, pull, legs|Push, pull, legs, twice over");
+  assert.equal(ids(plans[1].workouts), ids(PLANS.pplppl));
 });
 
 test("every PPLPPL lift, routine and machine is one the app knows", () => {
@@ -56,30 +59,62 @@ test("every PPLPPL lift, routine and machine is one the app knows", () => {
   assert.equal(new Set(PLANS.pplppl.map((w) => w.name)).size, 6);
 });
 
-test("switching to PPLPPL pauses your workouts, keeps them, and starts at Push A", () => {
+test("switching to PPLPPL keeps Push, pull, legs waiting as it was, and weights carry over", () => {
   let state = store.resetToDefault();
-  state = store.renameWorkout ? store.renameWorkout(state, "push", "My push") : state;
+  state = store.setNextWorkout(store.renameWorkout(state, "push", { name: "My push" }), "pull");
   state = { ...state, history: { "db_bench:6-10": { exerciseId: "db_bench", weight: 30, rung: 1, downStreak: 0, deloads: 0 } } };
-  const switched = store.switchPlan(state, "pplppl");
-  assert.equal(store.planOf(switched), "pplppl");
+  const switched = store.switchLoop(state, "pplppl");
+  assert.equal(store.loopInUse(switched), "pplppl");
   assert.equal(ids(switched.workouts), "push_a,pull_a,legs_a,push_b,pull_b,legs_b");
-  assert.deepEqual([...paused(switched)], ["push", "pull", "legs"]);
+  assert.equal(paused(switched).length, 0, "nothing of the other plan is paused here");
   assert.equal(switched.nextWorkout, "push_a");
   assert.deepEqual(switched.history, state.history);
   // Its lifts and routines are in your lists, so nothing it names is missing.
   for (const w of PLANS.pplppl) for (const e of w.exercises) assert.ok(!switched.hidden.includes(e.options[0]), e.options[0]);
-  for (const r of routinesOf("pplppl")) assert.ok(!switched.hiddenConditioning.includes(r), r);
+  for (const w of PLANS.pplppl) for (const r of [w.warmup, w.mobility]) assert.ok(!switched.hiddenConditioning.includes(r), r);
+  const bench = store.buildWorkout(switched).active.items.find((it) => it.exerciseId === "db_bench");
+  assert.equal(bench.weight, 30, "the same bench, the same weight");
 
-  // And back: your own push, pull and legs, as you left them.
-  const back = store.switchPlan(switched, "ppl");
-  assert.equal(store.planOf(back), "ppl");
+  // And back: your own push, pull and legs, where you left off.
+  const back = store.switchLoop(switched, "ppl");
   assert.equal(ids(back.workouts), "push,pull,legs");
-  assert.equal(store.workoutById(back, "push").name, store.workoutById(state, "push").name);
-  assert.deepEqual([...paused(back)], ["push_a", "pull_a", "legs_a", "push_b", "pull_b", "legs_b"]);
+  assert.equal(store.workoutById(back, "push").name, "My push");
+  assert.equal(back.nextWorkout, "pull");
+});
+
+test("a plan of your own: added empty, used, filled on Plan, and kept when you switch away", () => {
+  let state = store.newLoop(store.resetToDefault(), "travel", "Travel");
+  assert.equal(store.loopInUse(state), "ppl", "a new plan waits until you use it");
+  state = store.switchLoop(state, "travel");
+  assert.equal(state.workouts.length, 0);
+  assert.equal(store.upNext(state), undefined);
+  assert.equal(store.buildWorkout(state), state, "nothing to start");
+  assert.equal(store.skipWorkout(state), state);
+  assert.equal(store.upcomingWorkouts(state, 3).length, 0);
+  state = store.addWorkoutOfKind(state, "bw1", "bodyweight");
+  assert.equal(store.upNext(state).id, "bw1");
+  state = store.switchLoop(store.switchLoop(state, "pplppl"), "travel");
+  assert.equal(ids(state.workouts), "bw1", "it comes back with its workout");
+  assert.equal(store.loopsOf(state).map((p) => p.name).join("|"), "Push, pull, legs|Push, pull, legs, twice over|Travel");
+});
+
+test("plans can be renamed, and deleted when not in use; names stay unique", () => {
+  let state = store.newLoop(store.resetToDefault(), "a", "Home");
+  state = store.newLoop(state, "b", "Home");
+  assert.equal(store.loopName(state, "b"), "Home 2");
+  state = store.renameLoop(state, "ppl", "Gym");
+  assert.equal(store.loopName(state, "ppl"), "Gym");
+  assert.equal(store.renameLoop(state, "ppl", "  "), state, "a blank name is ignored");
+  assert.equal(store.deleteLoop(state, "ppl"), state, "not the plan in use");
+  state = store.deleteLoop(state, "pplppl");
+  assert.equal(store.loopsOf(state).map((p) => p.name).join("|"), "Gym|Home|Home 2");
+  // Down to the one in use, it keeps its name.
+  state = store.deleteLoop(store.deleteLoop(state, "a"), "b");
+  assert.equal(store.loopsOf(state).map((p) => p.name).join(), "Gym");
 });
 
 test("each PPLPPL day opens with its cardio and drills and ends on one stretch", () => {
-  let state = store.switchPlan(store.resetToDefault(), "pplppl");
+  let state = store.switchLoop(store.resetToDefault(), "pplppl");
   for (const w of PLANS.pplppl) {
     const built = store.buildWorkout(store.setNextWorkout(state, w.id));
     const items = built.active.items;
@@ -93,7 +128,7 @@ test("each PPLPPL day opens with its cardio and drills and ends on one stretch",
 });
 
 test("the first lift of each PPLPPL day climbs 6–10 over four sets; small muscles keep to 10–14", () => {
-  const state = store.switchPlan(store.resetToDefault(), "pplppl");
+  const state = store.switchLoop(store.resetToDefault(), "pplppl");
   const built = store.buildWorkout(state);
   const reps = (id) => {
     const at = built.active.items.findIndex((it) => it.exerciseId === id);
@@ -106,12 +141,73 @@ test("the first lift of each PPLPPL day climbs 6–10 over four sets; small musc
 
 test("no plan change in the middle of a workout", () => {
   const training = store.buildWorkout(store.resetToDefault());
-  assert.equal(store.switchPlan(training, "pplppl"), training);
+  assert.equal(store.switchLoop(training, "pplppl"), training);
 });
 
-test("a switched plan survives a save and a load", () => {
-  const state = store.switchPlan(store.resetToDefault(), "pplppl");
+test("plans survive a save and a load, and a backup restores them", () => {
+  let state = store.switchLoop(store.newLoop(store.resetToDefault(), "travel", "Travel"), "pplppl");
+  state = store.inLoop(state, "travel", (s) => store.addWorkoutOfKind(s, "bw1", "bodyweight"));
   const again = storage.fromSaved(storage.toSaved(state));
-  assert.equal(store.planOf(again), "pplppl");
+  assert.equal(store.loopInUse(again), "pplppl");
   assert.equal(ids(again.workouts), ids(state.workouts));
+  assert.equal(JSON.stringify(store.loopsOf(again)), JSON.stringify(store.loopsOf(state)));
+});
+
+test("a save from before plans becomes two: the one in use, and the other from its paused workouts", () => {
+  const v22 = (state) => JSON.stringify({ version: 22, state: { ...state, loops: undefined } });
+  // On Push, pull, legs, with PPLPPL never tried: PPLPPL arrives fresh.
+  let old = store.addWorkoutOfKind(store.resetToDefault(), "mine", "full");
+  let now = storage.fromSaved(v22(old));
+  assert.equal(store.loopInUse(now), "ppl");
+  assert.equal(ids(now.workouts), "push,pull,legs,mine", "your own stay with the plan in use");
+  assert.equal(ids(store.loopsOf(now)[1].workouts), ids(PLANS.pplppl));
+  // On PPLPPL, switched to the old way: Push, pull, legs comes back from paused.
+  const pausedPpl = {
+    ...old,
+    workouts: PLANS.pplppl,
+    nextWorkout: "pull_a",
+    removedWorkouts: old.workouts.map((workout, at) => ({ workout, at: 6 + at })),
+    planOrder: [...ids(PLANS.pplppl).split(","), ...ids(old.workouts).split(",")],
+  };
+  now = storage.fromSaved(v22(pausedPpl));
+  assert.equal(store.loopInUse(now), "pplppl");
+  assert.equal(now.nextWorkout, "pull_a");
+  assert.equal(ids(now.removedWorkouts.map((r) => r.workout)), "mine", "your own stay, paused, with the plan in use");
+  const ppl = store.loopsOf(now).find((p) => p.id === "ppl");
+  assert.equal(ids(ppl.workouts), "push,pull,legs");
+});
+
+test("a save whose PPLPPL days named their own routines gets the day mobility and the everyday stretch", () => {
+  const old = PLANS.pplppl.map((w) => ({ ...w, warmup: `pplppl_${w.kind}`, mobility: `pplppl_${w.kind}_end` }));
+  const state = { ...store.resetToDefault(), loops: undefined, workouts: old, nextWorkout: "push_a", hiddenConditioning: ["pplppl_push"], mobilityEdits: { pplppl_pull: { name: "Mine" } } };
+  const now = storage.fromSaved(JSON.stringify({ version: 22, state }));
+  assert.equal(store.loopInUse(now), "pplppl");
+  for (const w of now.workouts) {
+    assert.equal(w.warmup, conditioning.WARMUP[w.kind], w.id);
+    assert.equal(w.mobility, "everyday", w.id);
+  }
+  assert.ok(!now.hiddenConditioning.some((id) => id.startsWith("pplppl_")));
+  assert.equal(Object.keys(now.mobilityEdits).length, 0);
+});
+
+test("Push, Pull and Legs saved on the general warm-up open on their own day's", () => {
+  const old = store.resetToDefault().workouts.map((w) => ({ ...w, warmup: "warmup" }));
+  const state = { ...store.resetToDefault(), loops: undefined, workouts: old };
+  const now = storage.fromSaved(JSON.stringify({ version: 22, state }));
+  assert.equal(now.workouts.map((w) => w.warmup).join(), "warmup_push,warmup_pull,warmup_legs");
+});
+
+test("where you trained before plans becomes each plan's own kit", () => {
+  const home = { gear: ["dumbbells"], weights: { dumbbells: [10, 20] } };
+  const base = { ...store.resetToDefault(), loops: undefined };
+  // Away with nothing: the plan in use is trained with nothing; the other at home.
+  let now = storage.fromSaved(JSON.stringify({ version: 22, state: { ...base, place: "away", kits: { usual: home, away: { gear: [] } } } }));
+  assert.equal(store.kitOfLoop(now, "ppl").gear.length, 0);
+  assert.equal(store.kitOfLoop(now, "pplppl").gear.join(), "dumbbells");
+  assert.equal(now.place, undefined);
+  assert.equal(now.kits, undefined);
+  // At the gym: both plans at a full gym.
+  now = storage.fromSaved(JSON.stringify({ version: 22, state: base }));
+  assert.equal(store.kitOfLoop(now, "ppl"), undefined);
+  assert.equal(store.kitOfLoop(now, "pplppl"), undefined);
 });

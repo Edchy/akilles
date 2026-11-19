@@ -10,15 +10,11 @@ import { parseWeight } from "@/components/weight-field";
 import { colors } from "@/constants/theme";
 import type { Gear, Kit, Load } from "@/data/kit";
 import { DECORATIVE } from "@/lib/decorative";
-import { kitAt, placeOf, setPlace, useSession, type Place } from "@/store/session";
 
 /**
- * Where you are training, as one quiet line on Today, and the sheet behind
- * it. Most days it just says "At the gym". Away for a week, you set it once:
- * somewhere else, and what is there — and it stays until you change it.
- *
- * Nothing else moves. The plan and the loop are the same; Klay fills each
- * slot with what the place has.
+ * What a plan is trained with: a full gym, or somewhere with less — a home
+ * with a pair of dumbbells, a hotel with nothing. Set on each plan in
+ * Settings; Klay fills each slot with what is there.
  */
 
 /** What can be ticked for somewhere else, in the order people think of it. */
@@ -34,10 +30,6 @@ const WEIGHTS: Record<Load, number[]> = {
   dumbbells: [2.5, 5, 7.5, 10, 12.5, 15, 17.5, 20, 22.5, 25, 30],
   kettlebell: [4, 6, 8, 10, 12, 14, 16, 20, 24, 28, 32],
 };
-
-/** The usual place, as it reads: a gym unless you train at home. */
-export const usualName = (kit: Kit | undefined): string =>
-  !kit || kit.gear.includes("machine") ? "At the gym" : "At home";
 
 /** "and"-joined: "dumbbells, a bench and a pull-up bar". */
 const listed = (parts: string[]): string =>
@@ -71,85 +63,30 @@ export const kitSummary = (kit: Kit): string => {
   return parts.length ? listed(parts) : "bodyweight only";
 };
 
-/** The line on Today: where you are, and the way to change it. */
-export function PlaceLine() {
-  const { state } = useSession();
-  const [open, setOpen] = useState(false);
-  const away = placeOf(state) === "away";
-  const where = away ? "Somewhere else" : usualName(state.kits?.usual);
-  const detail = away ? kitSummary(kitAt(state, "away")) : null;
+/** What a plan is trained with, in a few words: "A full gym", "Dumbbells and a bench". */
+export const kitName = (kit: Kit | undefined): string => {
+  if (!kit || kit.gear.includes("machine")) return "A full gym";
+  const summary = kitSummary(kit);
+  return summary.charAt(0).toUpperCase() + summary.slice(1);
+};
+
+/**
+ * Where a plan is trained: a full gym, or somewhere with less — and then
+ * what is there. Undefined is the gym.
+ */
+export function KitChooser({ kit, onChange }: { kit: Kit | undefined; onChange: (kit: Kit | undefined) => void }) {
+  const gym = !kit;
   return (
-    <>
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel={`${where}${detail ? `, ${detail}` : ""}. Change where you are training`}
-        onPress={() => setOpen(true)}
-        hitSlop={8}
-        style={({ pressed }) => ({
-          flexDirection: "row",
-          alignItems: "center",
-          alignSelf: "flex-start",
-          gap: 8,
-          minHeight: 44,
-          opacity: pressed ? 0.5 : 1,
-        })}
-      >
-        <Text
-          numberOfLines={1}
-          style={{
-            flexShrink: 1,
-            color: away ? colors.rise : colors.muted,
-            fontSize: 17,
-            fontWeight: away ? "600" : "400",
-          }}
-        >
-          {where}
-          {detail ? <Text style={{ fontWeight: "400" }}> · {detail}</Text> : null}
-        </Text>
-        <Text style={{ color: colors.rise, fontSize: 17, fontWeight: "600" }}>Change</Text>
-      </Pressable>
-      {open ? <PlaceSheet onClose={() => setOpen(false)} /> : null}
-    </>
-  );
-}
-
-/** Pick the place, and for somewhere else, what is there. */
-export function PlaceSheet({ onClose }: { onClose: () => void }) {
-  const { state, setState } = useSession();
-  const [place, setPlaceDraft] = useState<Place>(placeOf(state));
-  const [kit, setKit] = useState<Kit>(kitAt(state, "away"));
-
-  const done = () => {
-    setState((s) => setPlace(s, place, place === "away" ? kit : undefined));
-    onClose();
-  };
-
-  return (
-    <Sheet visible title="Where are you training?" onClose={onClose}>
-      <View style={{ paddingTop: 12, gap: 12 }}>
-        <Option
-          label={usualName(state.kits?.usual)}
-          on={place === "usual"}
-          onPress={() => setPlaceDraft("usual")}
-        />
-        <Option
-          label="Somewhere else"
-          on={place === "away"}
-          onPress={() => setPlaceDraft("away")}
-        />
-      </View>
-
-      {place === "away" ? (
-        <View style={{ paddingTop: 32, gap: 12 }}>
-          <SectionLabel>What do you have there?</SectionLabel>
-          <KitPicker kit={kit} onChange={setKit} />
+    <View style={{ gap: 12 }}>
+      <Option label="A full gym" on={gym} onPress={() => onChange(undefined)} />
+      <Option label="Somewhere with less" on={!gym} onPress={() => onChange(kit ?? { gear: [] })} />
+      {kit ? (
+        <View style={{ paddingTop: 20, gap: 12 }}>
+          <SectionLabel>What is there?</SectionLabel>
+          <KitPicker kit={kit} onChange={onChange} />
         </View>
       ) : null}
-
-      <View style={{ paddingTop: 32 }}>
-        <BigButton label="Done" onPress={done} />
-      </View>
-    </Sheet>
+    </View>
   );
 }
 
