@@ -38,3 +38,4 @@ art/STYLE-stick.md
 # Local tool settings (Claude Code, Gemini)
 .claude/
 .gemini/
+art/.venv/

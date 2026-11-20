@@ -328,8 +328,12 @@ function CardioLine({ entry, first }: { entry: CardioEntry; first: boolean }) {
   if (!machine) return null;
   const over =
     entry.course !== undefined ? courseLabel(machine, entry.course) : `${entry.minutes} min`;
-  const score =
-    entry.course !== undefined ? timeLabel(entry.score) : distanceLabel(machine, entry.score);
+  // On the clock alone there is no number, only the minutes, done.
+  const score = entry.clock
+    ? "Done"
+    : entry.course !== undefined
+      ? timeLabel(entry.score)
+      : distanceLabel(machine, entry.score);
 
   return (
     <View

@@ -44,6 +44,11 @@ export type CardioExercise = {
    * or switch the block to the clock.
    */
   distance?: number;
+  /**
+   * Nothing to enter: the minutes count down on the card, and running out is
+   * done — see `onTheClock`. For cardio with no machine to read a number off.
+   */
+  clock?: boolean;
   /** Set false to bench a machine without losing its records. */
   enabled?: boolean;
 };
@@ -66,14 +71,23 @@ export const CARDIO: CardioExercise[] = [
 /**
  * Cardio that needs no machine, for away from the gym: it opens a workout in
  * place of the machine there. Not in the machine pool, so a gym's list is
- * never longer for it. The distance or count is yours to enter if you know
- * it; the minutes are what matter.
+ * never longer for it. With no machine to read a number off, each is just a
+ * clock counting down the minutes — see `onTheClock`.
  */
 export const AWAY_CARDIO: CardioExercise[] = [
-  { id: "outdoor", name: "Walk or jog outside", metric: KM, cue: "Out of the door and back. Enter the distance if you know it." },
-  { id: "skipping", name: "Skipping rope", metric: SKIPS, cue: "Small hops on the balls of your feet. Count the skips if you like." },
+  { id: "outdoor", name: "Walk or jog outside", metric: KM, clock: true, cue: "Out of the door, and back when the time is up." },
+  { id: "skipping", name: "Skipping rope", metric: SKIPS, cue: "Small hops on the balls of your feet." },
   { id: "jumping_jacks", name: "Jumping jacks", metric: { unit: "reps", decimals: 0, step: 10 } },
 ];
+
+/**
+ * Cardio done against the clock alone, with nothing to enter: marked so, or
+ * counted in skips or reps — nobody counts five minutes of skips, so a count
+ * is never asked for. Its block is always minutes, never a set distance.
+ * (Their unit stays, so counts entered before still read right in history.)
+ */
+export const onTheClock = (machine: CardioExercise): boolean =>
+  machine.clock === true || machine.metric.unit === "skips" || machine.metric.unit === "reps";
 
 /** The two ends of a session a cardio block can sit at. */
 export type CardioEnd = "open" | "close";
@@ -124,6 +138,7 @@ export const lengthOf = (
   machine: CardioExercise,
   block?: Pick<CardioBlock, "course" | "minutes">,
 ): CardioLength => {
+  if (onTheClock(machine)) return { minutes: block?.minutes ?? CARDIO_MINUTES };
   if (block?.course !== undefined) return { course: block.course };
   if (block?.minutes !== undefined) return { minutes: block.minutes };
   return machine.distance !== undefined ? { course: machine.distance } : { minutes: CARDIO_MINUTES };
@@ -433,6 +448,19 @@ export const MOBILITY: MobilityRoutine[] = [
     use: "warmup",
     moves: [hold("knee_circles"), hold("wide_stance"), hold("hamstring_bounce"), hold("side_stance"), hold("front_kick_swing")],
   },
+  {
+    // On all fours and on the floor, like an animal: the spine, shoulders
+    // and wrists, for fun. No clay pictures yet, so each shows the placeholder.
+    id: "animal",
+    name: "Animal",
+    subtitle: "crawl, arch and push, on the floor",
+    use: "warmup",
+    moves: [
+      drill("back_bend", "Back bend", { seconds: 40 }, "On your back, hands by your ears. Push up into an arch, twice for 20 seconds."),
+      drill("alligator_crawl", "Alligator crawl", { seconds: 30, reps: 10 }, "Low push-up position, hips down. Crawl forward, knee toward elbow each step."),
+      drill("cobra_pushup", "Cobra push-up", { seconds: 24, reps: 8 }, "Lower to the floor like a push-up, lift the chest into cobra, then push back up."),
+    ],
+  },
 ];
 
 /**
@@ -494,7 +522,7 @@ export const RETIRED_MOBILITY = ["full_body", "hips", "shoulders", "spine", "qui
  * Everything else ships removed and is one tap from coming back.
  */
 export const LEAN_CARDIO: string[] = ["treadmill", "ski_erg", "row"];
-export const LEAN_MOBILITY: string[] = [DEFAULT_MOBILITY, EVERYDAY_WARMUP, WARMUP.push, WARMUP.pull, WARMUP.legs, "yoga", "kung_fu"];
+export const LEAN_MOBILITY: string[] = [DEFAULT_MOBILITY, EVERYDAY_WARMUP, WARMUP.push, WARMUP.pull, WARMUP.legs, "yoga", "kung_fu", "animal"];
 
 /** Built-in machines and routines a new phone starts without — added from the foot of their list. */
 export const leanHiddenConditioning = (): string[] => [
@@ -577,7 +605,8 @@ export const hiddenMobility = (hidden: string[]): MobilityRoutine[] =>
 export const METRICS: { label: string; metric: CardioMetric }[] = [
   { label: "Kilometres", metric: KM },
   { label: "Metres", metric: METRES },
-  { label: "Reps", metric: { unit: "reps", decimals: 0, step: 10 } },
+  // Reps are never counted (see `onTheClock`): this is the one with only a timer.
+  { label: "Just a timer", metric: { unit: "reps", decimals: 0, step: 10 } },
 ];
 
 /** How long a routine takes, counting both sides of anything one-sided. */

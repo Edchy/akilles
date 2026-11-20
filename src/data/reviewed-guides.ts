@@ -15,6 +15,12 @@ const reviewed = (steps: string[], avoid: string, sources: NonNullable<Guide["so
 /** As `reviewed`, for lifts checked on 2026-11-19: the PPLPPL plan's and the easy plan's dips and one-arm row. */
 const reviewedPplppl = (steps: string[], avoid: string, sources: NonNullable<Guide["sources"]>, own: string, stepTitles: string[], hold?: string): Guide =>
   ({ ...reviewed(steps, avoid, sources, own, stepTitles, hold), reviewedOn: "2026-11-19" });
+/** As `reviewed`, for the handstand and its steps, checked on 2026-11-20. */
+const reviewedHandstand = (steps: string[], avoid: string, sources: NonNullable<Guide["sources"]>, own: string, stepTitles: string[], hold?: string): Guide =>
+  ({ ...reviewed(steps, avoid, sources, own, stepTitles, hold), reviewedOn: "2026-11-20" });
+const aloHeadstand = { title: "Alo Moves · Pose breakdown: headstand", url: "https://blog.alomoves.com/movement/pose-breakdown-headstand-sirsasana" };
+const tripodHeadstand = { title: "Sensational Yoga Poses · Tripod headstand", url: "https://sensational-yoga-poses.com/tripod-headstand.html" };
+const lifeTimeHandstand = { title: "Life Time · How to do a handstand", url: "https://experiencelife.lifetime.life/article/break-it-down-the-handstand/" };
 const aceKettlebells = { title: "ACE · Advanced kettlebell workout", url: "https://www.acefitness.org/resources/pros/expert-articles/5386/advanced-kettlebell-workout-for-increased-strength-and-conditioning/" };
 
 export const REVIEWED_GUIDES: Record<string, Guide> = {
@@ -403,4 +409,40 @@ export const REVIEWED_GUIDES: Record<string, Guide> = {
   ], "Leaning heavily on the handrails. Use them for balance instead of supporting your body weight.",
   [{ title: "StairMaster · Handrail use and stepping resistance", url: "https://corehandf.my.site.com/support/s/article/What-do-I-do-if-my-Stairmaster-8G-stepmill-is-having-resistance-issues" }], undefined,
   ["Find the controls", "Step steadily", "Let the legs work"]),
+  tripod_knees_elbows: reviewedHandstand([
+    "Kneel. Put your hands down shoulder-width apart and the top of your head in front of them, so head and hands make a triangle. Forearms upright.",
+    "Lift your knees off the floor and walk your feet in. Rest one knee, then the other, on the backs of your elbows.",
+    "Hold, breathing slowly, pressing through your hands. Come down one foot at a time.",
+  ], "Letting the head and neck carry you. Press through your hands so the weight is shared, and keep the neck firm.",
+  [aloHeadstand, tripodHeadstand],
+  "Hold still and breathe. Come down before you tip.", ["Make the triangle", "Knees on the elbows", "Hold and breathe"]),
+  tripod_headstand: reviewedHandstand([
+    "Set up as for knees to elbows: head and hands in a triangle, knees resting on the elbows.",
+    "When you feel steady, lift the knees off the elbows to hip height, then slowly straighten your legs up.",
+    "Hold, the weight in your hands. Bend the knees and come down the way you went up. Practise on a soft, clear floor.",
+  ], "Straightening the legs before you are steady with the knees up. Find the balance first, then extend.",
+  [aloHeadstand, tripodHeadstand],
+  "Legs still, weight in the hands. Breathe.", ["Knees on the elbows", "Lift slowly", "Come down slowly"]),
+  wall_walk: reviewedHandstand([
+    "Start in a push-up, your feet touching a wall behind you.",
+    "Walk your feet up the wall while you walk your hands back toward it, a little at a time.",
+    "Stop as close to the wall as you control, then walk the hands out and the feet down.",
+  ], "Starting so far out that your back arches to keep the feet on the wall. Walk in only as far as your body stays straight.",
+  [{ title: "StrengthLog · Wall walk", url: "https://www.strengthlog.com/wall-walk/" }, lifeTimeHandstand],
+  "Hold at the closest point you control.", ["Push-up at the wall", "Walk up", "Walk back down"],
+  "Hold for {s} at the closest point you control."),
+  wall_handstand: reviewedHandstand([
+    "Walk up the wall as in a wall walk, until your hands are close to it and your chest faces it.",
+    "Arms straight, push the floor away. Stay strong through the arms and shoulders, body in one straight line.",
+    "Hold, breathing. Walk back down before your arms tire.",
+  ], "Arching the back to reach the wall with your feet. Keep your body straight; move your hands instead.",
+  [lifeTimeHandstand],
+  "Push the floor away and breathe.", ["Walk up", "Push the floor away", "Walk down"]),
+  handstand: reviewedHandstand([
+    "Stand facing open floor with space around you. Reach forward and put your hands down shoulder-width apart.",
+    "Kick one leg up, then bring the other to it over your hips. Press the fingers into the floor to balance.",
+    "To come down, lower the feet the way you came up, or turn out to the side like a cartwheel.",
+  ], "Bending the elbows to drop out of it. Keep the arms strong until a foot is on the floor.",
+  [lifeTimeHandstand],
+  "Fingers do the balancing. Step down any time.", ["Hands down", "Kick up", "Come down safely"]),
 };

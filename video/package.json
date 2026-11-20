@@ -5,6 +5,7 @@
   "scripts": {
     "studio": "remotion studio src/index.ts",
     "render": "remotion render src/index.ts Onboarding out/klay-onboarding.mp4",
+    "logo": "remotion render src/index.ts Logo out/klay-logo.mp4",
     "voice": "node scripts/voice.mjs",
     "voice:scratch": "node scripts/voice.mjs --scratch",
     "pictures": "node scripts/pictures.mjs"

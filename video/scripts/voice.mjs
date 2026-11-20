@@ -4,15 +4,18 @@
 //   npm run voice -- --voice=<id>      another ElevenLabs voice
 //   npm run voice -- --voices          list the voices on your account
 //   npm run voice -- --scratch         the Mac's own voice, to time scenes with no key
+//   npm run voice -- --only=end        just these scenes (comma-separated); the rest stay
+//   npm run voice -- --logo            the logo film's one line: public/voice/logo.mp3
 //
 // The key is read from ELEVENLABS_API_KEY or ELEVEN_API_KEY, set in .local.env
 // at the top of the project or in video/.env. Both are ignored by git, so the
 // key never leaves this machine.
 
 import { execFileSync } from "node:child_process";
-import { existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { SCENES } from "../src/script.ts";
+import { LOGO_LINE } from "../src/logo-film.ts";
+import { SCENES as ALL } from "../src/script.ts";
 
 const OUT = new URL("../public/voice/", import.meta.url).pathname;
 const args = Object.fromEntries(
@@ -41,15 +44,24 @@ if (args.voices) {
 const scratch = args.scratch || !key;
 if (!args.scratch && !key) console.warn("No ElevenLabs key in video/.env, so this is the Mac's scratch voice.");
 
-// George: warm, calm, unhurried. Change with --voice= or KLAY_VOICE_ID.
-const voice = args.voice ?? process.env.KLAY_VOICE_ID ?? "JBFqnCBsd6RMkjVDRZzb";
-const model = args.model ?? "eleven_multilingual_v2";
+// The user's pick (2026-11-19). Change with --voice= or KLAY_VOICE_ID. (Was George, JBFqnCBsd6RMkjVDRZzb.)
+const voice = args.voice ?? process.env.KLAY_VOICE_ID ?? "jv41DhCf464zw0TI7I1w";
+const model = args.model ?? "eleven_v4";
 
 mkdirSync(OUT, { recursive: true });
 const seconds = (file) => Number(/estimated duration: ([\d.]+)/.exec(execFileSync("afinfo", [file], { encoding: "utf8" }))[1]);
-const durations = {};
+// The logo film is one scene of its own, with no lines either side.
+const SCENES = args.logo
+  ? [{ id: "logo", line: LOGO_LINE }]
+  : args.only
+    ? ALL.filter((s) => String(args.only).split(",").includes(s.id))
+    : ALL;
+const listed = join(OUT, "durations.json");
+// Only some scenes: the others keep the lengths they have.
+const durations = !args.logo && args.only && existsSync(listed) ? JSON.parse(readFileSync(listed, "utf8")).scenes : {};
 
-for (const [i, scene] of SCENES.entries()) {
+for (const scene of SCENES) {
+  const i = ALL.findIndex((s) => s.id === scene.id);
   for (const ext of ["mp3", "wav"]) rmSync(join(OUT, `${scene.id}.${ext}`), { force: true });
   let file;
   if (scratch) {
@@ -64,8 +76,8 @@ for (const [i, scene] of SCENES.entries()) {
         text: scene.line,
         model_id: model,
         // The lines either side, so each reads as part of one talk.
-        previous_text: SCENES[i - 1]?.line,
-        next_text: SCENES[i + 1]?.line,
+        previous_text: ALL[i - 1]?.line,
+        next_text: ALL[i + 1]?.line,
         voice_settings: { stability: 0.55, similarity_boost: 0.8, style: 0.1, use_speaker_boost: true, speed: 0.95 },
       }),
     });
@@ -76,7 +88,11 @@ for (const [i, scene] of SCENES.entries()) {
   console.log(`${scene.id}  ${durations[scene.id].seconds.toFixed(2)} s`);
 }
 
+if (args.logo) {
+  writeFileSync(join(OUT, "logo.json"), JSON.stringify(durations.logo, null, 2) + "\n");
+  process.exit(0);
+}
 writeFileSync(
-  join(OUT, "durations.json"),
+  listed,
   JSON.stringify({ voice: scratch ? "scratch (macOS Daniel)" : `elevenlabs ${voice} ${model}`, scenes: durations }, null, 2) + "\n",
 );

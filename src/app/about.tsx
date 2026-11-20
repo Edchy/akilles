@@ -86,7 +86,7 @@ export default function AboutScreen() {
         <Text accessibilityRole="header" style={{ color: colors.text, fontFamily: fonts.display, fontSize: 48 }}>
           About Klay
         </Text>
-        <Text style={{ color: colors.muted, fontFamily: fonts.italic, fontSize: 22 }}>Shape your life.</Text>
+        <Text style={{ color: colors.muted, fontFamily: fonts.italic, fontSize: 22 }}>Get in shape.</Text>
       </View>
       {/* The motto: everything below serves one of its two lines. */}
       <View style={{ gap: 14, padding: 20, borderRadius: 20, borderCurve: "continuous", backgroundColor: colors.surface }}>

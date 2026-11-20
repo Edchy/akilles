@@ -29,6 +29,7 @@ import {
   LEAN,
   MOVEMENT_EXPANSION_IDS,
   PULLUP_STEP_IDS,
+  HANDSTAND_IDS,
   PPLPPL_IDS,
   byId,
   leanHiddenExercises,
@@ -221,7 +222,8 @@ export const keepAside = async (state: SessionState): Promise<void> => {
 //     plan's lifts start in the library — see `toShorterRange` and `PPLPPL_IDS`.
 // 23: plans: Push, pull, legs, PPLPPL and any you add, each with its own workouts —
 //     see `intoLoops`. Saves from 23 on keep their plans as they are.
-const VERSION = 23;
+// 24: the handstand and its steps start in the library — see `HANDSTAND_IDS`.
+const VERSION = 24;
 
 /**
  * Version 14: lifts for training away from a gym. They start in the library
@@ -763,6 +765,9 @@ export const fromSaved = (raw: string): SessionState | Unreadable => {
       ];
     }
     if (saved.version < 23) migrated = intoLoops(retirePplpplRoutines(migrated));
+    if (saved.version < 24) {
+      migrated.hidden = [...migrated.hidden, ...HANDSTAND_IDS.filter((id) => !LEAN.includes(id) && !migrated.hidden.includes(id))];
+    }
     return correctTreadmillTarget(saved.version < 17 ? { ...migrated, treadmillTargetRevision: undefined } : migrated);
   } catch {
     return "invalid";

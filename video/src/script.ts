@@ -94,5 +94,5 @@ export const SCENES: Scene[] = [
   { id: "finish", line: "Pull down to see every card. Then tap Finish.", show: { kind: "finish" } },
   // The habit.
   { id: "shaped", line: "Show up, do a little. Small days add up.", show: clay("shaped") },
-  { id: "end", line: "Klay. Shape your life.", show: { kind: "end" } },
+  { id: "end", line: "Klay. Get in shape.", show: { kind: "end" } },
 ];

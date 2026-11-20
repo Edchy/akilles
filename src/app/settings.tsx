@@ -11,6 +11,7 @@ import { COLUMN } from "@/components/screen";
 import { PlansSheet } from "@/components/plans-sheet";
 import { BigButton, OpenRow, SectionLabel, Sheet } from "@/components/sheet";
 import { TestMode } from "@/components/test-mode";
+import { TEST_MODE_OFFERED } from "@/store/test-mode";
 import { Text } from "@/components/text";
 import { colors, fonts } from "@/constants/theme";
 import { forgetBody, loopInUse, loopName, loopsOf, useSession } from "@/store/session";
@@ -90,11 +91,13 @@ export default function SettingsScreen() {
         detail="Save everything to a file, or put it back"
         onPress={() => setSheet("backup")}
       />
-      <OpenRow
-        title="Test mode"
-        detail="Try things out without touching your training"
-        onPress={() => setSheet("test")}
-      />
+      {TEST_MODE_OFFERED ? (
+        <OpenRow
+          title="Test mode"
+          detail="Try things out without touching your training"
+          onPress={() => setSheet("test")}
+        />
+      ) : null}
       {body ? (
         <OpenRow
           title="What you told Klay"

@@ -1,6 +1,6 @@
 # Intro film — script, draft 10 (Klay)
 
-**Klay: Shape your life.** One clay story, told by the body itself: warm, playful, human, not a sales pitch. The app appears only lightly (Start, a circle); the hints teach the rest. Voice: trying `jv41DhCf464zw0TI7I1w` (earlier `hfqsl1OMbiWsgPpht3el`) on `eleven_v4`, recorded in one take. Earlier drafts (the draft-7 explainer, the draft-8 "before we could talk") are in git history.
+**Klay. Get in shape.** One clay story, told by the body itself: warm, playful, human, not a sales pitch. The app appears only lightly (Start, a circle); the hints teach the rest. Voice: `jv41DhCf464zw0TI7I1w` (the user's pick) on `eleven_v4`, recorded in one take. Earlier drafts (the draft-7 explainer, the draft-8 "before we could talk") are in git history.
 
 | # | Picture (rough) | Said |
 |---|---|---|
@@ -13,7 +13,7 @@
 | 7 | He gets up, stretches, a little bounce | But move me, play with me, a little every day, and I'll learn that too. |
 | 8 | Phone in his hands, full size: Start; a slow lift; a circle stamps full | So take me to the gym. Tap Start. Go slowly. Tap a circle. |
 | 9 | Walking home at dusk, standing a little taller | And on the way home, feel it. That's us, changing shape. |
-| 10 | Lockup: clay man, **Klay**, *Shape your life.* | Klay. Shape your life. |
+| 10 | The clay K logo sting (the user is making it), then **Klay**, *Get in shape.* | Klay. Get in shape. |
 
 ## Notes
 - Never say "clay" aloud: it sounds the same as Klay. The picture shows the clay, and the name is said once, at the end.

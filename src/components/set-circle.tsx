@@ -44,6 +44,7 @@ export function SetCircle({
   hint,
   onTap,
   onReset,
+  fillsOnTap = true,
   children,
 }: {
   size: number;
@@ -70,6 +71,11 @@ export function SetCircle({
   onTap: () => void;
   /** Hold: a set not done, 0, in one go. */
   onReset: () => void;
+  /**
+   * Whether a tap fills it — the wash thrown at once, before the set is in.
+   * False for a hold's empty circle, where a tap starts its clock instead.
+   */
+  fillsOnTap?: boolean;
   /** The number, or a running clock, drawn on top. */
   children: ReactNode;
 }) {
@@ -187,6 +193,10 @@ export function SetCircle({
       })
       .onEnd((_e, success) => {
         if (!success) return;
+        if (!fillsOnTap) {
+          runOnJS(onTap)();
+          return;
+        }
         const was = on.value;
         on.value = true;
         throwWash(was);
@@ -208,7 +218,7 @@ export function SetCircle({
       });
     return Gesture.Exclusive(hold, tap);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [reduce, onTap, onReset]);
+  }, [reduce, onTap, onReset, fillsOnTap]);
 
   const art = useMemo(() => drawCircle(size, seed), [size, seed]);
   const pad = art.pad;

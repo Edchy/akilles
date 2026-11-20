@@ -6,6 +6,13 @@
  */
 
 import { createContext, useContext } from "react";
+import { Platform } from "react-native";
+
+/**
+ * Test mode is the owner's: in Expo Go and from the Mac. The web version,
+ * the one friends try, never offers it.
+ */
+export const TEST_MODE_OFFERED = !(Platform.OS === "web" && !(typeof __DEV__ !== "undefined" && __DEV__));
 
 /**
  * How test mode starts: like a new phone (the intro, the starting program,

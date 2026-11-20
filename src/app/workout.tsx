@@ -48,6 +48,7 @@ import { scheduleOnRN } from "react-native-worklets";
 import Svg, { Circle, Defs, LinearGradient, Rect, Stop } from "react-native-svg";
 
 import { CardioKeyboardArea } from "@/components/cardio-keyboard";
+import { CardioClock } from "@/components/cardio-clock";
 import { CardioResult } from "@/components/cardio-result";
 import { CardioChoices } from "@/components/cardio-target";
 import { Column, COLUMN } from "@/components/screen";
@@ -70,6 +71,7 @@ import { BigButton, Sheet, TextButton } from "@/components/sheet";
 import { CLAY_CARD, colors, colors as paper, FAMILY, fieldColors, fieldIsDark, fonts, DUSK, DUSK_CARDS, LETTERPRESS, mix, PAPER, radii } from "@/constants/theme";
 import { ClayGround, DuskGround } from "@/components/dusk";
 import { Fit } from "@/components/fit";
+import { FitText } from "@/components/fit-text";
 import { grain } from "@/constants/grain";
 import { byId, inSentence, type Exercise } from "@/data/exercises";
 import { ownCue } from "@/data/guides";
@@ -82,7 +84,9 @@ import {
   type FinishedMood,
 } from "@/data/voice";
 import {
+  CARDIO_MINUTES,
   EFFORT,
+  onTheClock,
   pictureOf,
   timeLabel,
   type MobilityMove,
@@ -137,6 +141,15 @@ import {
   atGym,
   skipSet,
   scoreOf,
+  cardioDone,
+  cancelHold,
+  heldFor,
+  holdOn,
+  startHold,
+  stopHold,
+  finishClock,
+  pauseClock,
+  startClock,
   setGot,
   setScore,
   swapConditioning,
@@ -492,9 +505,11 @@ function Deck() {
     opened.value = still ? (on ? 1 : 0) : withSpring(on ? 1 : 0, SETTLE);
   };
   // The list of every card, when it is too long to fit even with its rows
-  // drawn tighter, scrolls — by this same pull, the way an iOS sheet does it:
-  // a swipe moves the list until the list reaches its end, and the rest of
-  // the same swipe closes the card. The header, the grab bar and the strip
+  // drawn tighter, scrolls — by this same pull, the way an iOS sheet does it.
+  // Which one a swipe moves is settled as it starts and never changes
+  // halfway, so the card never wobbles under a scroll: on the list, a swipe
+  // scrolls it and stops at its ends; only a push up that starts with the
+  // list at its end closes the card (it hangs from the top, so up is shut). The header, the grab bar and the strip
   // close it from anywhere, since there is no list under them.
   const listRef = useAnimatedRef<Reanimated.ScrollView>();
   const scrollY = useSharedValue(0);
@@ -502,6 +517,8 @@ function Deck() {
   const scrollFrom = useSharedValue(0);
   /** The pull began on the list itself, not its header or the strip. */
   const onList = useSharedValue(false);
+  /** What this swipe moves: the card, the list and only the list, or — on a list at its end — not yet known. */
+  const moves = useSharedValue<"card" | "list" | "either">("card");
   const listTop = useSharedValue(0);
   useAnimatedReaction(
     () => scrollY.value,
@@ -521,16 +538,20 @@ function Deck() {
       openedFrom.value = opened.value;
       cancelAnimation(scrollY);
       scrollFrom.value = scrollY.value;
+      // A list that scrolls takes the whole swipe — unless it's at its end
+      // and the swipe pushes up: that closes the card, like a sheet. Which
+      // way it goes is read from its first movement.
+      moves.value = !onList.value || scrollMax.value <= 0 ? "card" : scrollY.value > scrollMax.value - 1 ? "either" : "list";
     })
     .onChange((e) => {
       if (shift <= 0) return;
-      let by = e.translationY;
-      if (onList.value && scrollMax.value > 0) {
-        // The list takes the swipe first; what is left over moves the card.
-        const want = scrollFrom.value - by;
-        const y = Math.min(Math.max(want, 0), scrollMax.value);
-        scrollY.value = y;
-        by = y - want;
+      const by = e.translationY;
+      if (moves.value === "either" && by !== 0) moves.value = by < 0 ? "card" : "list";
+      if (moves.value === "either") return;
+      if (moves.value === "list") {
+        // Stops at either end; the card stays where it is.
+        scrollY.value = Math.min(Math.max(scrollFrom.value - by, 0), scrollMax.value);
+        return;
       }
       const want = openedFrom.value + by / shift;
       // Past either end it gives a little, stiffly.
@@ -538,9 +559,8 @@ function Deck() {
     })
     .onEnd((e) => {
       if (shift <= 0) return;
-      // Still fully open, and the list was moving: let the list carry on.
-      if (onList.value && scrollMax.value > 0 && opened.value > 0.98) {
-        opened.value = still ? 1 : withSpring(1, SETTLE);
+      // The list was moving: let it carry on.
+      if (moves.value === "list") {
         if (!still) scrollY.value = withDecay({ velocity: -e.velocityY, clamp: [0, scrollMax.value] });
         return;
       }
@@ -1047,6 +1067,15 @@ function WorkoutCard({
     list.max.value = Math.max(0, content - view);
     if (list.y.value > list.max.value) list.y.value = list.max.value;
   }, [content, view, list]);
+  // Opened on a long workout, the list starts with the card you're on in
+  // the middle of it, not at the top.
+  const cursor = active?.cursor ?? 0;
+  useEffect(() => {
+    if (!open) return;
+    const max = Math.max(0, content - view);
+    list.y.value = Math.min(max, Math.max(0, cursor * pitch - (view - pitch) / 2));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
   // A soft fade at the foot while there is more below.
   const more = useAnimatedStyle(() => ({
     opacity: list.max.value <= 0 ? 0 : Math.min(1, Math.max(0, (list.max.value - list.y.value) / 24)),
@@ -1562,21 +1591,37 @@ function StepBody() {
         </View>
 
         <View style={{ marginTop: L.sets }}>
-          <Sets
-            logged={item.logged}
-            target={p.reps}
-            role={partner ? "main" : "solo"}
-            cheer={motion?.id ?? null}
-            burst={motion?.big ? family : null}
-            onTap={(i) => setState((s) => tapSet(s, i))}
-            onReset={(i) => setState((s) => skipSet(s, i))}
-          />
+          {p.exercise.timed ? (
+            <HoldSets
+              logged={item.logged}
+              target={p.reps}
+              role={partner ? "main" : "solo"}
+              cheer={motion?.id ?? null}
+              burst={motion?.big ? family : null}
+              hold={holdOn(state, "main")}
+              onStart={(i) => setState((s) => startHold(s, "main", i, Date.now()))}
+              onStop={() => setState((s) => stopHold(s, Date.now()))}
+              onCancel={() => setState((s) => cancelHold(s))}
+              onTap={(i) => setState((s) => tapSet(s, i))}
+              onReset={(i) => setState((s) => skipSet(s, i))}
+            />
+          ) : (
+            <Sets
+              logged={item.logged}
+              target={p.reps}
+              role={partner ? "main" : "solo"}
+              cheer={motion?.id ?? null}
+              burst={motion?.big ? family : null}
+              onTap={(i) => setState((s) => tapSet(s, i))}
+              onReset={(i) => setState((s) => skipSet(s, i))}
+            />
+          )}
         </View>
 
         {/* The rest between sets: from the first set until the last. Its room
             is always there, so the clock arriving moves nothing. */}
         <View style={{ height: 28, marginTop: 8 }}>
-          {item.logged.some((r) => r !== null) && item.logged.some((r) => r === null) ? (
+          {item.logged.some((r) => r !== null) && item.logged.some((r) => r === null) && !state.active?.hold ? (
             <RestClock since={state.active?.lastSetAt} target={restSeconds(state) ?? REST.main} />
           ) : null}
         </View>
@@ -1609,6 +1654,12 @@ function StepBody() {
             logged={item.supersetLogged}
             onTap={(i) => setState((s) => tapSet(s, i, "partner"))}
             onReset={(i) => setState((s) => skipSet(s, i, "partner"))}
+            hold={{
+              clock: holdOn(state, "partner"),
+              onStart: (i) => setState((s) => startHold(s, "partner", i, Date.now())),
+              onStop: () => setState((s) => stopHold(s, Date.now())),
+              onCancel: () => setState((s) => cancelHold(s)),
+            }}
             onRemove={() => setState((s) => removeSuperset(s))}
           />
         ) : null}
@@ -1873,15 +1924,13 @@ function LiftTitle({
           })}
         >
           <Mark family={family} size={22} color={colors.text} />
-          <Text
+          <FitText
             accessibilityRole="header"
-            numberOfLines={1}
-            adjustsFontSizeToFit
-            minimumFontScale={0.6}
-            style={{ flexShrink: 1, textAlign: "center", color: colors.text, fontFamily: fonts.medium, fontSize: 34, lineHeight: 40 }}
+            least={0.6}
+            style={{ textAlign: "center", color: colors.text, fontFamily: fonts.medium, fontSize: 34, lineHeight: 40 }}
           >
             {name}
-          </Text>
+          </FitText>
           <Icon name="more" size={20} color={colors.text} />
         </Pressable>
         {children}
@@ -2199,6 +2248,7 @@ function Conditioning({ item }: { item: Item }) {
   const pool = conditioningPool(state, item);
   const note = cardio ? noteFor(state, cardio.id, "cardio") : "";
   if (!cardio) return null;
+  const clockOnly = onTheClock(cardio);
   const target = item.course !== undefined ? `${item.course} ${cardio.metric.unit}` : `${item.minutes} min`;
   const effort = EFFORT[cardioEnd(item) === "open" ? "open" : "close"];
   const amount = item.course !== undefined
@@ -2223,18 +2273,35 @@ function Conditioning({ item }: { item: Item }) {
             {note ? <View style={{ paddingTop: 8 }}><NoteLine text={note} lines={1} center onPress={() => setNoting(true)} /></View> : null}
           </LiftTitle>
 
-          {/* What to do, as one thing to read: the amount set large in ink,
-              and how hard, in a line. No shape: no other card has one here. */}
-          <View accessible accessibilityLabel={`Target: ${target}. ${effort}`} style={{ alignItems: "center", gap: 6, paddingHorizontal: 8 }}>
-            <Text style={{ color: colors.text, fontFamily: fonts.display, fontSize: 72, lineHeight: 82, fontVariant: ["lining-nums"] }}>
-              {amount.value}
-              <Text style={{ fontFamily: fonts.regular, fontSize: 30, color: colors.muted }}> {amount.unit}</Text>
-            </Text>
-            <Text style={{ textAlign: "center", color: colors.muted, fontFamily: fonts.italic, fontSize: 18, lineHeight: 24 }}>{effort}</Text>
-          </View>
+          {clockOnly ? (
+            // No machine to read a number off: just the minutes, counting
+            // down, and how hard. Running out is done.
+            <CardioClock
+              minutes={item.minutes ?? CARDIO_MINUTES}
+              clock={item.clock}
+              ran={item.ran}
+              onStart={() => setState((s) => startClock(s, Date.now()))}
+              onPause={() => setState((s) => pauseClock(s, Date.now()))}
+              onFinish={() => setState((s) => finishClock(s))}
+            >
+              <Text style={{ textAlign: "center", color: colors.muted, fontFamily: fonts.italic, fontSize: 18, lineHeight: 24, paddingHorizontal: 8 }}>{effort}</Text>
+            </CardioClock>
+          ) : (
+            <>
+              {/* What to do, as one thing to read: the amount set large in ink,
+                  and how hard, in a line. No shape: no other card has one here. */}
+              <View accessible accessibilityLabel={`Target: ${target}. ${effort}`} style={{ alignItems: "center", gap: 6, paddingHorizontal: 8 }}>
+                <Text style={{ color: colors.text, fontFamily: fonts.display, fontSize: 72, lineHeight: 82, fontVariant: ["lining-nums"] }}>
+                  {amount.value}
+                  <Text style={{ fontFamily: fonts.regular, fontSize: 30, color: colors.muted }}> {amount.unit}</Text>
+                </Text>
+                <Text style={{ textAlign: "center", color: colors.muted, fontFamily: fonts.italic, fontSize: 18, lineHeight: 24 }}>{effort}</Text>
+              </View>
 
-          <CardioResult key={`${cardio.id}:${item.course !== undefined ? "distance" : "time"}:${item.course ?? item.minutes}`}
-            cardio={cardio} item={item} record={cardioRecord(state, item)} onSet={(v) => setState((s) => setScore(s, v))} />
+              <CardioResult key={`${cardio.id}:${item.course !== undefined ? "distance" : "time"}:${item.course ?? item.minutes}`}
+                cardio={cardio} item={item} record={cardioRecord(state, item)} onSet={(v) => setState((s) => setScore(s, v))} />
+            </>
+          )}
         </CardioKeyboardArea>
       </View>
 
@@ -2243,7 +2310,7 @@ function Conditioning({ item }: { item: Item }) {
             moves on. Once it's in, a quiet line says so — and works as a tap,
             for anyone who doesn't swipe. */}
         <Column style={{ minHeight: 60, justifyContent: "center" }}>
-          {scoreOf(item) !== null ? (
+          {cardioDone(item) ? (
             <TextButton
               label={nextItemName(state) ? `Swipe on to ${inSentence(nextItemName(state)!)}` : "Swipe on to finish"}
               onPress={() => { Keyboard.dismiss(); setState((s) => completeCardio(s)); }}
@@ -2522,7 +2589,10 @@ function GoalBlock({
               target={step.target}
               cheer={motion?.id ?? null}
               burst={motion?.big ? "goal" : null}
-              onLog={(i, held) => setState((s) => logGoalSet(s, i, held))}
+              hold={holdOn(state, "main")}
+              onStart={(i) => setState((s) => startHold(s, "main", i, Date.now()))}
+              onStop={() => setState((s) => stopHold(s, Date.now()))}
+              onCancel={() => setState((s) => cancelHold(s))}
               onTap={(i) => setState((s) => tapGoalSet(s, i))}
               onReset={(i) => setState((s) => skipGoalSet(s, i))}
             />
@@ -2572,76 +2642,120 @@ function GoalBlock({
 }
 
 /**
- * A step's holds: the lift's circles, each one its own clock. Tap an empty
- * one and it counts down from the target, the ring running down with it;
- * at zero it buzzes and logs the full hold, so you never have to reach for
- * the phone mid-handstand. Tap it while it runs to stop early and log what
- * you held. A hold already in comes down five seconds a tap, like a timed
- * lift; holding resets it to the target. One clock runs at a time.
+ * Circles for timed holds — a plank, a dead hang, a goal's hold step. Tap an
+ * empty one and it counts 3, 2, 1 with a tick a second, so there's time to
+ * get your hands on the bar or down on the floor; a note says go, and it
+ * counts up. At the target a sound and a buzz say you're there, and it keeps
+ * counting: every second past it is yours. Tap it again to stop, and what it
+ * read is logged — so the phone can stay on the floor until you're done.
+ * Tapped during 3, 2, 1, it's put away. A hold already in comes down a few
+ * seconds a tap, like any set; holding a circle marks it not done.
+ *
+ * One clock at a time: another circle tapped meanwhile says so, where you
+ * tapped, rather than doing nothing.
  */
 function HoldSets({
   logged,
   target,
-  cheer,
-  burst,
-  onLog,
+  hold,
+  role,
+  cheer = null,
+  burst = null,
+  onStart,
+  onStop,
+  onCancel,
   onTap,
   onReset,
 }: {
   logged: (number | null)[];
   target: number;
-  cheer: number | null;
-  burst: Family | null;
-  onLog: (index: number, seconds: number) => void;
+  /** The clock running on these circles, if any — see `HoldClock`. */
+  hold: { set: number; startAt: number } | null;
+  role?: keyof typeof CIRCLES;
+  cheer?: number | null;
+  burst?: Family | null;
+  onStart: (index: number) => void;
+  onStop: () => void;
+  onCancel: () => void;
   onTap: (index: number) => void;
   onReset: (index: number) => void;
 }) {
-  // Kept as an end time, like a stretch's, so a slow frame or a locked phone
-  // cannot stretch the hold.
-  const [running, setRunning] = useState<{ index: number; endAt: number } | null>(null);
-  const [, tick] = useState(0);
+  const [now, setNow] = useState(Date.now);
+  const [busy, setBusy] = useState(false);
+  // The last second announced, so each tick, the go and the target sound once.
+  const said = useRef<number | null>(null);
+  const startAt = hold?.startAt ?? null;
   useEffect(() => {
-    if (!running) return;
+    if (startAt === null) return;
+    // Back to a clock already going: what has passed is not news.
+    said.current = heldFor({ startAt }, Date.now());
     const timer = setInterval(() => {
-      if (running.endAt - Date.now() > 0) return tick((t) => t + 1);
-      clearInterval(timer);
-      setRunning(null);
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      onLog(running.index, target);
-    }, 200);
+      const time = Date.now();
+      setNow(time);
+      const at = heldFor({ startAt }, time);
+      if (said.current !== null && at <= said.current) return;
+      said.current = at;
+      if (at < 0) Haptics.selectionAsync().catch(() => {});
+      else if (at === 0) {
+        cue("start");
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+      } else if (at === target) {
+        cue("end");
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+      }
+    }, 100);
     return () => clearInterval(timer);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [running]);
+  }, [startAt, target]);
+  useEffect(() => {
+    if (!busy) return;
+    const t = setTimeout(() => setBusy(false), 2500);
+    return () => clearTimeout(t);
+  }, [busy]);
 
-  const left = running ? Math.max(0, (running.endAt - Date.now()) / 1000) : 0;
+  const at = hold ? (now - hold.startAt) / 1000 : 0;
   return (
-    <Sets
-      logged={logged}
-      target={target}
-      seconds
-      clock={running ? { index: running.index, left } : null}
-      cheer={cheer}
-      burst={burst}
-      onTap={(i) => {
-        if (running) {
-          if (running.index !== i) return;
-          setRunning(null);
-          const held = target - left;
-          if (held >= 1) onLog(i, held);
-          return;
-        }
-        if (logged[i] === null) {
-          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-          setRunning({ index: i, endAt: Date.now() + target * 1000 });
-          return;
-        }
-        onTap(i);
-      }}
-      onReset={(i) => {
-        if (running?.index === i) setRunning(null);
-        onReset(i);
-      }}
-    />
+    <View>
+      <Sets
+        logged={logged}
+        target={target}
+        role={role}
+        seconds
+        clocked
+        clock={hold ? { index: hold.set, at } : null}
+        cheer={cheer}
+        burst={burst}
+        onTap={(i) => {
+          if (hold) {
+            if (hold.set !== i) {
+              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => {});
+              return setBusy(true);
+            }
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+            return at < 0 ? onCancel() : onStop();
+          }
+          if (logged[i] === null) {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+            setNow(Date.now());
+            return onStart(i);
+          }
+          onTap(i);
+        }}
+        onReset={(i) => {
+          if (hold?.set === i) onCancel();
+          onReset(i);
+        }}
+      />
+      {/* Said where you tapped, laid over what's below so nothing moves. */}
+      {busy ? (
+        <View pointerEvents="none" style={{ position: "absolute", left: 0, right: 0, top: "100%", alignItems: "center", paddingTop: 6 }}>
+          <View style={{ backgroundColor: paper.bg, borderRadius: 14, borderCurve: "continuous", paddingHorizontal: 16, paddingVertical: 10, shadowColor: "#000", shadowOpacity: 0.22, shadowRadius: 14, shadowOffset: { width: 0, height: 8 } }}>
+            <Text accessibilityLiveRegion="polite" style={{ color: paper.text, fontFamily: fonts.medium, fontSize: 17 }}>
+              Stop the hold that's running first.
+            </Text>
+          </View>
+        </View>
+      ) : null}
+    </View>
   );
 }
 
@@ -2786,13 +2900,13 @@ function GoalWhy({
   return (
     <View accessibilityLiveRegion="polite" style={{ alignItems: "center", gap: 6 }}>
       {quip ? (
-        <Text numberOfLines={2} style={voice}>
+        <Text style={voice}>
           {quip}
         </Text>
       ) : null}
       <View>
         {glow !== null ? <Glow key={glow} /> : null}
-        <Text numberOfLines={2} style={line}>
+        <Text style={line}>
           {fact}
         </Text>
       </View>
@@ -3334,9 +3448,9 @@ function MobilityCard({ move, side, turned, left, number, count, paused, status,
       </View>
 
       <View style={{ alignItems: "center", gap: 2, paddingHorizontal: 30 }}>
-        <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7} style={{ textAlign: "center", color: colors.text, fontFamily: fonts.medium, fontSize: 28, lineHeight: 34 }}>
+        <FitText least={0.7} style={{ textAlign: "center", color: colors.text, fontFamily: fonts.medium, fontSize: 28, lineHeight: 34 }}>
           {move.name}
-        </Text>
+        </FitText>
         {side ? (
           <Text style={{ color: colors.text, fontFamily: turned ? fonts.medium : fonts.italic, fontSize: 18, opacity: turned ? 1 : 0.75 }}>
             {side}
@@ -3362,8 +3476,10 @@ function MobilityCard({ move, side, turned, left, number, count, paused, status,
         >
           {status || (breath === "inhale" ? "Breathe in" : breath === "exhale" ? "Breathe out" : "")}
         </Text>
-        <Text numberOfLines={2} style={{ marginTop: 4, textAlign: "center", color: colors.muted, fontFamily: fonts.regular, fontSize: 17, lineHeight: 23 }}>
-          {/* Every move runs on a clock; for one done for reps, the reps are a pace, not a count. */}
+        <Text style={{ marginTop: 4, textAlign: "center", color: colors.muted, fontFamily: fonts.regular, fontSize: 17, lineHeight: 23 }}>
+          {/* Never capped: the picture above gives up the room, so the whole cue
+              always shows. Every move runs on a clock; for one done for reps,
+              the reps are a pace, not a count. */}
           {move.reps ? `About ${move.reps} slow reps${side ? " each side" : ""}. ` : ""}
           {move.cue ?? "Ease in, breathe slowly, and stop when the tension fades."}
         </Text>
@@ -3515,6 +3631,7 @@ function Sets({
   cheer = null,
   burst = null,
   seconds = false,
+  clocked = false,
   clock = null,
 }: {
   logged: (number | null)[];
@@ -3530,8 +3647,10 @@ function Sets({
   burst?: Family | null;
   /** Holds: each circle counts seconds, and says so. */
   seconds?: boolean;
-  /** The hold whose clock is running: what is left of it, drawn as a ring that runs down. */
-  clock?: { index: number; left: number } | null;
+  /** Each empty circle starts a clock rather than filling — see `HoldSets`. */
+  clocked?: boolean;
+  /** The hold whose clock is running: seconds counted, below zero while getting ready. */
+  clock?: { index: number; at: number } | null;
 }) {
   const colors = useColors();
   // On target: a ripple runs through the circles, left to right, each one
@@ -3587,10 +3706,11 @@ function Sets({
       ) : null}
       {logged.map((reps, i) => {
         const running = clock?.index === i;
+        const ready = running && clock.at < 0;
         const filled = reps !== null && !running;
         const short = filled && reps < target;
         const zero = filled && reps === 0;
-        const shown = running ? Math.ceil(clock.left) : filled ? reps : target;
+        const shown = running ? (ready ? Math.ceil(-clock.at) : Math.floor(clock.at)) : filled ? reps : target;
         const at = i * stagger;
         const swell = wave.interpolate({
           inputRange: [at, at + 0.06, at + 0.12, at + 0.26, at + 0.4],
@@ -3623,7 +3743,9 @@ function Sets({
                 seconds
                   ? `Hold ${i + 1}${
                       running
-                        ? `, ${shown} seconds left`
+                        ? ready
+                          ? `, get ready, ${shown}`
+                          : `, ${shown} seconds of ${target}`
                         : filled
                           ? `, ${reps} seconds`
                           : `, target ${target} seconds, not started`
@@ -3633,14 +3755,17 @@ function Sets({
               hint={
                 seconds
                   ? running
-                    ? "Tap to stop and log what you held."
-                    : "Tap to start its clock, or to take five seconds off. Hold if you didn't do it."
+                    ? ready
+                      ? "Tap to put the clock away."
+                      : "Tap to stop and log what you held."
+                    : "Tap to start its clock, or to take a few seconds off. Hold if you didn't do it."
                   : "Tap to log or count down. Hold if you didn't do it."
               }
               onTap={() => onTap(i)}
               onReset={() => onReset(i)}
+              fillsOnTap={!clocked || filled}
             >
-              {running ? <Countdown size={size} left={clock.left / target} /> : null}
+              {running ? <HoldRing size={size} fill={ready ? 0 : clock.at / target} /> : null}
               <Text
                 style={{
                   // Garamond's figures sit a touch low in a circle: lift them
@@ -3659,7 +3784,7 @@ function Sets({
                 {shown}
                 {/* Letterpress says a short set by how full the circle is, so just the reps. */}
                 {short && !zero && !LETTERPRESS ? <Text style={{ fontFamily: fonts.semibold, fontSize: Math.round(fontSize * 0.4) }}>/{target}</Text> : null}
-                {seconds ? (
+                {seconds && !ready ? (
                   <Text style={{ fontFamily: fonts.semibold, fontSize: Math.round(fontSize * 0.4) }}>
                     {" s"}
                   </Text>
@@ -3689,10 +3814,10 @@ function Sets({
 }
 
 /**
- * A running hold's ring: a faint track, and the time left on it as an arc
- * from the top, running down clockwise as the seconds go.
+ * A running hold's ring: a faint track, and the time held as an arc from
+ * the top, growing clockwise until it closes at the target.
  */
-function Countdown({ size, left }: { size: number; left: number }) {
+function HoldRing({ size, fill }: { size: number; fill: number }) {
   const colors = useColors();
   const r = (size - 3) / 2;
   const round = 2 * Math.PI * r;
@@ -3711,7 +3836,7 @@ function Countdown({ size, left }: { size: number; left: number }) {
         stroke={colors.text}
         strokeWidth={3}
         strokeLinecap="round"
-        strokeDasharray={`${Math.max(0, Math.min(1, left)) * round} ${round}`}
+        strokeDasharray={`${Math.max(0, Math.min(1, fill)) * round} ${round}`}
       />
     </Svg>
   );
@@ -4258,6 +4383,7 @@ function Why({
   const colors = useColors();
   if (!prescription) return null;
   const line = { textAlign: "center", color: colors.text, fontFamily: fonts.regular, fontSize: 19, lineHeight: 24 } as const;
+  const quip = { textAlign: "center", color: colors.text, fontFamily: fonts.italic, fontSize: 24, lineHeight: 28 } as const;
 
   if (result && feel) {
     return (
@@ -4307,14 +4433,15 @@ function Why({
   if (result) {
     return (
       <View accessibilityLiveRegion="polite" style={{ alignItems: "center", gap: 4 }}>
-        <Text
-          numberOfLines={compact ? 1 : 2}
-          adjustsFontSizeToFit={compact}
-          minimumFontScale={0.75}
-          style={{ textAlign: "center", color: colors.text, fontFamily: fonts.italic, fontSize: 24, lineHeight: 28 }}
-        >
-          {result.quip}
-        </Text>
+        {compact ? (
+          <FitText least={0.75} style={quip}>
+            {result.quip}
+          </FitText>
+        ) : (
+          <Text style={quip}>
+            {result.quip}
+          </Text>
+        )}
         <View>
           {glow !== null ? <Glow key={glow} /> : null}
           <Text numberOfLines={1} style={line}>
@@ -4328,7 +4455,7 @@ function Why({
 
   if (exercise.unloaded) {
     return (
-      <Text numberOfLines={3} style={line}>
+      <Text style={line}>
         Maximum effort every rep. Rest as long as you need between sets.
       </Text>
     );
@@ -4338,7 +4465,7 @@ function Why({
     // Every cue opens on a verb, so it carries on the sentence: "Own it: pause…".
     const cue = ownCue(exercise.id, exercise.holds ? prescription.weight : 0);
     return (
-      <Text numberOfLines={compact ? 2 : 3} style={line}>
+      <Text style={line}>
         <Text style={{ fontFamily: fonts.italic }}>Own it: </Text>
         {cue.charAt(0).toLowerCase() + cue.slice(1)}
       </Text>
@@ -4361,13 +4488,15 @@ function Why({
             ? null
             : exercise.id === "kb_swing"
               ? "First time on this one. Practise the hip hinge before adding swings. Use a light bell."
+            : exercise.timed
+              ? "First time on this one. Stop while your form is still good."
             : exercise.bodyweight && !exercise.assistable
               ? "First time on this one. Slow, controlled reps, with two to spare."
               : "First time on this one. Pick a weight you control, with two reps to spare.";
 
   if (text !== null || !last) {
     return (
-      <Text numberOfLines={compact ? 2 : 3} style={line}>
+      <Text style={line}>
         {text}
       </Text>
     );
@@ -4431,6 +4560,7 @@ function Partner({
   logged,
   onTap,
   onReset,
+  hold,
   onRemove,
 }: {
   id: string;
@@ -4446,6 +4576,13 @@ function Partner({
   logged: (number | null)[];
   onTap: (index: number) => void;
   onReset: (index: number) => void;
+  /** A timed partner's clock — see `HoldSets`. */
+  hold: {
+    clock: { set: number; startAt: number } | null;
+    onStart: (index: number) => void;
+    onStop: () => void;
+    onCancel: () => void;
+  };
   /** Unpair it: goes back to its own place in the workout, keeping its sets. */
   onRemove: () => void;
 }) {
@@ -4508,7 +4645,11 @@ function Partner({
       {/* One line, and only when there is one: the pair still has to fit. */}
       {note ? <NoteLine text={note} lines={1} size={15} onPress={onNote} /> : null}
 
-      <Sets logged={logged} target={target} onTap={onTap} onReset={onReset} role="partner" />
+      {timed ? (
+        <HoldSets logged={logged} target={target} role="partner" hold={hold.clock} onStart={hold.onStart} onStop={hold.onStop} onCancel={hold.onCancel} onTap={onTap} onReset={onReset} />
+      ) : (
+        <Sets logged={logged} target={target} onTap={onTap} onReset={onReset} role="partner" />
+      )}
     </View>
   );
 }

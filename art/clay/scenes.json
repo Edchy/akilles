@@ -85,5 +85,77 @@
    "standing tall and proud, hands on hips, chest open; the same figure but a little sturdier, with slightly fuller shoulders, arms and legs, as if a little more clay had been added and smoothed; a big warm smile."
   ],
   "props": "none"
+ },
+ "body_hello": {
+  "what": "The figure is the viewer's own body, saying hello to them, a little shy and warm.",
+  "view": "Seen straight from the front, the figure looking right into the camera.",
+  "frames": [
+   "standing relaxed, arms by the sides, looking straight at the viewer with a small, warm, slightly shy smile.",
+   "the same, now giving a small friendly wave with one hand at shoulder height, head tilted a little."
+  ],
+  "props": "none"
+ },
+ "young_climb": {
+  "what": "Remembering childhood: moving was a game. The figure as a small child, climbing just for fun.",
+  "view": "Seen from the front at a slight three-quarter angle, a little wider.",
+  "frames": [
+   "a smaller, younger, rounder version of the same figure (child proportions, same clay and shorts) climbing a simple clay climbing frame, one hand reaching up for the next bar, one foot on a lower bar, a big happy open smile.",
+   "the same child one step higher on the frame, the other hand reaching up now, the other foot lifted, still smiling."
+  ],
+  "props": "a simple light-wood clay climbing frame, like a small playground ladder"
+ },
+ "young_run": {
+  "what": "Remembering childhood: running for no reason, pure joy.",
+  "view": "Seen exactly from the side, the figure facing to the right.",
+  "frames": [
+   "a smaller, younger, rounder version of the same figure (child proportions, same clay and shorts) running happily, mid-stride, both feet off the ground, arms swinging, a big open laughing mouth.",
+   "the same child in the opposite stride, the other leg forward, the other arm swinging, still laughing."
+  ],
+  "props": "none"
+ },
+ "young_hang": {
+  "what": "Remembering childhood: hanging upside down until dinner.",
+  "view": "Seen from the side and a little in front.",
+  "frames": [
+   "a smaller, younger, rounder version of the same figure (child proportions, same clay and shorts) hanging upside down by the backs of the knees from a low clay bar, arms dangling down loosely, a big happy upside-down smile.",
+   "the same child, still hanging by the knees, now swinging a little, arms spread wide, laughing."
+  ],
+  "props": "one simple low light-wood clay bar on two posts"
+ },
+ "sit": {
+  "what": "Grown up: the figure mostly sits now, and its soft clay body slowly takes the shape of the sofa.",
+  "view": "Seen from the side and a little in front, the figure facing to the right.",
+  "frames": [
+   "sitting on a small simple grey clay sofa, a bit slumped, shoulders rounded, hands in the lap, a flat bored mouth.",
+   "the same, slumped much deeper: back curved like a C, head forward, the soft clay body sagging and settling into the cushion as if moulded to it, a tired mouth."
+  ],
+  "props": "a small simple grey clay sofa"
+ },
+ "get_up": {
+  "what": "The body wants to move again: the figure gets up off the sofa and stretches.",
+  "view": "Seen from the side and a little in front, the figure facing to the right.",
+  "frames": [
+   "standing up from the small grey clay sofa, halfway up, hands pushing on the knees, looking ahead with a small hopeful smile.",
+   "standing tall in front of the sofa, both arms stretched straight up overhead, up on the toes a little, eyes happily closed, a big smile."
+  ],
+  "props": "a small simple grey clay sofa"
+ },
+ "gym_phone": {
+  "what": "At the gym, the figure opens the app on its phone and knows what to do.",
+  "view": "Seen from the front at a slight three-quarter angle.",
+  "frames": [
+   "standing in the gym holding a small black clay phone in both hands at chest height, looking down at it with a calm, curious face.",
+   "the same, one thumb tapping the phone screen, a small pleased smile."
+  ],
+  "props": "a small black clay phone; behind, a few simple gym things in matte grey and black clay: a dumbbell rack and a flat bench, kept simple"
+ },
+ "walk_home": {
+  "what": "After the workout: walking home feeling light and warm, standing a little taller.",
+  "view": "Seen exactly from the side, the figure facing to the right.",
+  "frames": [
+   "walking along mid-stride, easy and light, chest open, standing tall, a small black clay gym bag over one shoulder, a quiet happy smile, eyes half closed as if feeling the cool air.",
+   "the same, in the opposite stride, a little bounce in the step."
+  ],
+  "props": "a small black clay gym bag"
  }
 }

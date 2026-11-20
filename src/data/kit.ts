@@ -107,6 +107,11 @@ const NEEDS: Record<string, Gear[]> = {
   machine_shoulder: ["machine"],
   kb_press: ["kettlebell"],
   pike_push_up: [],
+  tripod_knees_elbows: [],
+  tripod_headstand: [],
+  wall_walk: [],
+  wall_handstand: [],
+  handstand: [],
   arnold_press: ["dumbbells"],
   smith_shoulder_press: ["machine"],
   // vertical pull

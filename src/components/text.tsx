@@ -28,6 +28,15 @@ const SCALE = 1.12;
 
 type Face = { weight: TextStyle["fontWeight"]; italic: boolean; ui: boolean };
 
+/**
+ * How much larger than written a size is drawn: Garamond's lift, unless the
+ * style names its own face (drawn as written) or it's the interface face.
+ */
+export function drawnScale(style: TextProps["style"], ui?: boolean): number {
+  const flat = (StyleSheet.flatten(style) ?? {}) as TextStyle;
+  return flat.fontFamily || ui ? 1 : SCALE;
+}
+
 /** What a nested `Text` inherits when it says nothing about weight or slant. */
 const Parent = createContext<Face | null>(null);
 

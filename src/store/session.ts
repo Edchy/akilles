@@ -48,6 +48,7 @@ import {
   leanHiddenConditioning,
   lengthOf,
   mobilityById,
+  onTheClock,
   mobilityPool,
   routineUse,
   type RoutineUse,
@@ -169,6 +170,13 @@ export type Item = Entry & {
   course?: number;
   /** Time taken over `course`, in seconds. `null` until entered, as `distance`. */
   seconds?: number | null;
+  /**
+   * For cardio on the clock alone (see `onTheClock`): the countdown, while it
+   * is going — seconds `left` when paused, or when it ends while it runs.
+   */
+  clock?: { left: number; endAt: number | null };
+  /** Cardio on the clock alone, once it ran out: the seconds done. Its "done". */
+  ran?: number;
   /** Which poses of a mobility routine you have ticked off. */
   moves?: boolean[];
   /** Per-side routine progress. Skipped steps never count as performed. */
@@ -302,6 +310,8 @@ export type LogEntry =
       minutes?: number;
       /** A new best — or the first go, which is one by definition. */
       best: boolean;
+      /** On the clock alone: `score` is the seconds it ran, and never a best. */
+      clock?: true;
     };
 
 /** A finished workout, as it happened. Written once, by `finishWorkout`. */
@@ -528,6 +538,8 @@ export type SessionState = {
     startedAt: number;
     /** When a lift set was last logged; persists so rest includes time away. */
     lastSetAt?: number;
+    /** A hold whose clock is running — see `startHold`. One at a time. */
+    hold?: HoldClock;
     /** Started in an easy week: lighter, fewer sets, and nothing it does moves a lift's record. */
     easy?: boolean;
     /** Notes edited during this session only. */
@@ -2365,6 +2377,63 @@ const writeSet = (
   };
 };
 
+/**
+ * A timed hold's clock: tap an empty circle and, after a moment to get into
+ * position, it counts up; tap it again to stop, and what it read is logged.
+ * Kept in the workout as the moment counting starts, so a locked phone or a
+ * swipe to another card can't lose or stretch it.
+ */
+export type HoldClock = {
+  /** The card it's on. */
+  item: number;
+  which: "main" | "partner";
+  set: number;
+  /** When counting starts: the tap, plus `GET_READY`. */
+  startAt: number;
+};
+
+/** Seconds to get into position — hands on the bar, down on the floor — before a hold counts. */
+export const GET_READY = 3;
+
+/** The running hold on the card on screen, for these circles, if there is one. */
+export const holdOn = (state: SessionState, which: HoldClock["which"]): HoldClock | null => {
+  const hold = state.active?.hold;
+  return hold && hold.item === state.active!.cursor && hold.which === which ? hold : null;
+};
+
+/** Whole seconds a hold has counted at `now`; below zero while getting ready. */
+export const heldFor = (hold: Pick<HoldClock, "startAt">, now: number): number =>
+  Math.floor((now - hold.startAt) / 1000);
+
+/**
+ * Start a hold's clock on this card. A clock left running on another card
+ * gives way — it's this one you're doing now.
+ */
+export const startHold = (state: SessionState, which: HoldClock["which"], set: number, now: number): SessionState =>
+  state.active
+    ? { ...state, active: { ...state.active, hold: { item: state.active.cursor, which, set, startAt: now + GET_READY * 1000 } } }
+    : state;
+
+/** Put the clock away, logging nothing: tapped while still getting ready, or the set marked not done. */
+export const cancelHold = (state: SessionState): SessionState => {
+  if (!state.active?.hold) return state;
+  const { hold: _, ...active } = state.active;
+  return { ...state, active };
+};
+
+/** Stop the clock and log what it read — on a lift, or on a goal's hold step. */
+export const stopHold = (state: SessionState, now: number): SessionState => {
+  const hold = state.active?.hold;
+  if (!hold) return state;
+  const cleared = cancelHold(state);
+  const held = heldFor(hold, now);
+  if (held < 1 || cleared.active!.cursor !== hold.item) return cleared;
+  const item = cleared.active!.items[hold.item];
+  return isGoal(item)
+    ? logGoalSet(cleared, hold.set, held)
+    : writeSet(cleared, hold.set, hold.which, () => held);
+};
+
 /** Every circle filled — including the partner's? Then it's logged, hit or miss. */
 export const allSetsLogged = (state: SessionState): boolean => {
   const item = state.active?.items[state.active.cursor];
@@ -2587,7 +2656,9 @@ export const stepHere = (state: SessionState): { chain: Chain; at: number; owned
   const item = state.active?.items[state.active.cursor];
   const chain = item?.chain ? chainFor(item.chain) : undefined;
   if (!item || !chain) return null;
-  const at = Math.max(0, chain.steps.findIndex((s) => s.exerciseId === item.exerciseId));
+  const at = chain.steps.findIndex((s) => s.exerciseId === item.exerciseId);
+  // Not one of its steps — never "step 1" for something that isn't.
+  if (at < 0) return null;
   return { chain, at, owned: ownsStep(state, item) };
 };
 
@@ -2670,6 +2741,9 @@ export const swapForSession = (state: SessionState, exerciseId: string): Session
   return patchItem(state, (it) => ({
     ...it,
     exerciseId,
+    // A chain's card keeps its chain, but shows it only for one of its steps
+    // (see `stepHere`): swapped for anything else, it's just that exercise —
+    // and swapped back today, the steps return.
     weight: weightHere(state, ex, dueRecord(state, exerciseId, it.scheme).weight),
     logged: Array<number | null>(setsFor(it)).fill(null),
   }));
@@ -2952,7 +3026,7 @@ export const removeSuperset = (state: SessionState): SessionState => {
 export const didTrain = (active: SessionState["active"]): boolean =>
   (active?.items ?? []).some((item) => {
     if (item.skipped || isMobility(item)) return false;
-    if (isCardio(item)) return scoreOf(item) !== null;
+    if (isCardio(item)) return cardioDone(item);
     return [...item.logged, ...(item.supersetLogged ?? [])].some((r) => r !== null);
   });
 
@@ -3066,6 +3140,14 @@ export const finishWorkout = (
     // the course. A block with no score entered — skipped, or left before the
     // number went in — writes nothing, so the mark to beat stays where it was.
     if (isCardio(item)) {
+      // On the clock alone: the minutes are logged as done, with no record —
+      // there is no number to beat.
+      if (item.ran) {
+        if (!item.skipped) {
+          entries.push({ kind: "cardio", exerciseId: item.exerciseId, score: item.ran, minutes: item.minutes ?? CARDIO_MINUTES, best: false, clock: true });
+        }
+        continue;
+      }
       const score = scoreOf(item);
       if (item.skipped || score === null) continue;
       const k = itemKey(item);
@@ -3179,7 +3261,7 @@ export type CardMark = "todo" | "done";
 export const cardMark = (state: SessionState, index: number): CardMark => {
   const item = state.active?.items[index];
   if (!item) return "todo";
-  if (isCardio(item)) return scoreOf(item) !== null ? "done" : "todo";
+  if (isCardio(item)) return cardioDone(item) ? "done" : "todo";
   if (isMobility(item)) return item.finished || (item.moves?.length && item.moves.every(Boolean)) ? "done" : "todo";
   if (isGoal(item)) return item.logged.every((r) => r !== null) || !!item.got ? "done" : "todo";
   return allSetsLogged(atCard(state, index)) ? "done" : "todo";
@@ -3222,6 +3304,9 @@ export const isTimed = (item: Item): boolean => isCardio(item) && item.course !=
 export const scoreOf = (item: Item): number | null =>
   (isTimed(item) ? item.seconds : item.distance) ?? null;
 
+/** Whether a cardio block is done: its score entered, or its clock run out. */
+export const cardioDone = (item: Item): boolean => scoreOf(item) !== null || !!item.ran;
+
 /** Better means further in the minutes, but faster over a course. */
 export const isBetter = (item: Item, score: number, than: number): boolean =>
   isTimed(item) ? score < than : score > than;
@@ -3229,8 +3314,8 @@ export const isBetter = (item: Item, score: number, than: number): boolean =>
 /** The fields an item carries for a block of this length, score still to enter. */
 const lengthFields = (length: CardioLength) =>
   length.course !== undefined
-    ? { course: length.course, seconds: null, minutes: undefined, distance: undefined }
-    : { minutes: length.minutes, distance: null, course: undefined, seconds: undefined };
+    ? { course: length.course, seconds: null, minutes: undefined, distance: undefined, clock: undefined, ran: undefined }
+    : { minutes: length.minutes, distance: null, course: undefined, seconds: undefined, clock: undefined, ran: undefined };
 
 /**
  * The key old saves filed cardio and mobility choices under, when one choice
@@ -3292,7 +3377,8 @@ const extraOf = (workout: Workout, id: string): Extra | undefined => workout.ext
 /** The usual target, including an existing planned target before shared settings were added. */
 export const cardioTarget = (state: SessionState, id: string): CardioLength => {
   const saved = state.cardioTargets?.[id];
-  if (saved) return saved;
+  const machine = cardioById(id);
+  if (saved) return machine ? lengthOf(machine, saved) : saved;
   for (const workout of state.workouts) {
     for (const where of ["open", "close"] as const) {
       const plan = cardioPlan(state, workout, where);
@@ -3894,8 +3980,32 @@ export const nudgeScore = (state: SessionState, direction: 1 | -1): SessionState
 export const completeCardio = (state: SessionState): SessionState => {
   const item = state.active?.items[state.active.cursor];
   if (!item || !isCardio(item)) return completeExercise(state);
-  return scoreOf(item) === null ? state : completeExercise(state);
+  return cardioDone(item) ? completeExercise(state) : state;
 };
+
+/**
+ * The clock of a block on the clock alone (see `onTheClock`): start it, or
+ * carry on from a pause. It keeps an end time, so a locked phone or a slow
+ * frame can't stretch it.
+ */
+export const startClock = (state: SessionState, now: number): SessionState =>
+  patchItem(state, (it) => {
+    if (!isCardio(it) || it.ran || it.clock?.endAt) return it;
+    const left = it.clock?.left ?? (it.minutes ?? CARDIO_MINUTES) * 60;
+    return { ...it, clock: { left, endAt: now + left * 1000 } };
+  });
+
+/** Pause the clock: what is left is kept for carrying on. */
+export const pauseClock = (state: SessionState, now: number): SessionState =>
+  patchItem(state, (it) =>
+    isCardio(it) && it.clock?.endAt ? { ...it, clock: { left: Math.max(0, Math.ceil((it.clock.endAt - now) / 1000)), endAt: null } } : it,
+  );
+
+/** The clock ran out: the block is done, all its minutes in. */
+export const finishClock = (state: SessionState): SessionState =>
+  patchItem(state, (it) =>
+    isCardio(it) && !it.ran ? { ...it, clock: undefined, ran: (it.minutes ?? CARDIO_MINUTES) * 60 } : it,
+  );
 
 /** Mark a pose of the mobility routine done — its timer has run out on every side. */
 export const completeMove = (state: SessionState, index: number): SessionState =>

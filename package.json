@@ -9,6 +9,7 @@
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
+    "deploy-web": "npx expo export -p web && npx eas-cli@latest deploy --prod",
     "typecheck": "tsc --noEmit",
     "audit:exercises": "node scripts/audit-exercise-library.cjs",
     "test": "node --test tests/*.cjs"

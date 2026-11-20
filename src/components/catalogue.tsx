@@ -22,6 +22,7 @@ import {
   cardioPool,
   courseLabel,
   mobilityPool,
+  onTheClock,
   routineUse,
   STRETCHES,
   stretchById,
@@ -393,7 +394,7 @@ function CardioSheet({ visible, onClose }: { visible: boolean; onClose: () => vo
             title={c.name}
             detail={cardioTarget(state, c.id).course !== undefined
               ? `${courseLabel(c, cardioTarget(state, c.id).course!)} · log your time`
-              : `${cardioTarget(state, c.id).minutes} min · log your ${c.metric.unit === "reps" || c.metric.unit === "skips" ? "reps" : "distance"}`}
+              : `${cardioTarget(state, c.id).minutes} min · ${onTheClock(c) ? "just a timer" : "log your distance"}`}
             onPress={() => setEditing(c.id)}
           />
         ))}

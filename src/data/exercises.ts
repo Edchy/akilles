@@ -208,6 +208,23 @@ export const EXERCISES: Exercise[] = [
   { id: "pike_push_up", name: "Pike push-up", patterns: ["vertical_push"], increment: 1, bodyweight: true, holds: true,
     cue: "Hips high. Lower the top of your head toward the floor.",
     aliases: ["pike push up", "pike press", "bodyweight shoulder press"] },
+  // Steps on the way to a handstand (see `chains.ts`): offered by the chain,
+  // never picked on their own for a slot. The pike push-up above is one too.
+  { id: "tripod_knees_elbows", name: "Tripod knees to elbows", patterns: ["vertical_push"], autoSelect: false, increment: 0, bodyweight: true, timed: true,
+    seconds: { from: 10, to: 30, step: 5 }, cue: "Head and hands in a triangle. Rest the knees on the elbows.",
+    aliases: ["tripod", "tripod balance", "frog stand on head", "tripod knee to elbow"] },
+  { id: "tripod_headstand", name: "Tripod headstand", patterns: ["vertical_push"], autoSelect: false, increment: 0, bodyweight: true, timed: true,
+    seconds: { from: 10, to: 30, step: 5 }, cue: "From knees on elbows, lift the legs slowly straight up.",
+    aliases: ["headstand", "tripod head stand", "head stand"] },
+  { id: "wall_walk", name: "Wall walk", patterns: ["vertical_push"], autoSelect: false, increment: 1, bodyweight: true, holds: true,
+    cue: "Feet on the wall, walk the hands in. Only as close as you control.",
+    aliases: ["wall walks", "wall climb", "wall walk up"] },
+  { id: "wall_handstand", name: "Handstand against the wall", patterns: ["vertical_push"], autoSelect: false, increment: 0, bodyweight: true, timed: true,
+    seconds: { from: 15, to: 60, step: 5 }, cue: "Chest to the wall, arms straight, push the floor away.",
+    aliases: ["wall handstand", "chest to wall handstand", "handstand hold"] },
+  { id: "handstand", name: "Handstand", patterns: ["vertical_push"], autoSelect: false, increment: 0, bodyweight: true, timed: true,
+    seconds: { from: 5, to: 30, step: 5 }, cue: "Kick up, find the balance through your fingers. Come down any time.",
+    aliases: ["freestanding handstand", "free handstand", "handstands"] },
   // ---------- vertical pull ----------
   { id: "pullup", name: "Pull-up", patterns: ["vertical_pull"], increment: 2.5, bodyweight: true, assistable: true, cue: "Chest to bar, full hang each rep.",
     aliases: ["pull up", "pull ups", "pull-ups", "pullups", "assisted pull-up", "assisted pull up"] },
@@ -538,6 +555,9 @@ export const PPLPPL_IDS = [
   "double_kb_press", "deficit_push_up", "turkish_get_up", "db_bent_over_row", "kb_high_pull",
   "twisting_knee_raise", "single_leg_ext", "double_kb_front_squat",
 ];
+
+/** Frozen batch: the handstand and its steps, new in save version 24. */
+export const HANDSTAND_IDS = ["tripod_knees_elbows", "tripod_headstand", "wall_walk", "wall_handstand", "handstand"];
 
 /** Frozen batch: the steps to a pull-up, new in save version 21. */
 export const PULLUP_STEP_IDS = ["scap_pullup", "pullup_negative"];

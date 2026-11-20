@@ -219,7 +219,8 @@ export const cardioGains = (log: SessionLog[]): CardioGain[] => {
   const runs = new Map<string, { first: CardioEntry; at: number; best: number }>();
   for (const s of log) {
     for (const e of s.entries) {
-      if (e.kind !== "cardio") continue;
+      // On the clock alone has nothing to gain on: the minutes are the minutes.
+      if (e.kind !== "cardio" || e.clock) continue;
       const k = `${e.exerciseId}:${e.course ?? `${e.minutes}m`}`;
       const had = runs.get(k);
       const timed = e.course !== undefined;

@@ -19,6 +19,7 @@ import { SectionLabel } from "@/components/sheet";
 import { Text, TextInput } from "@/components/text";
 import { colors, fonts, radii } from "@/constants/theme";
 import { BODYWEIGHT_RANGE, type Experience, type Lifter, type PushUps, type Sex } from "@/lib/start-weight";
+import { address, where, type Where } from "@/lib/home-screen";
 import { useReduceMotion } from "@/lib/use-reduce-motion";
 import {
   applyPlan,
@@ -32,6 +33,9 @@ import {
  * The first launch, as one flow from hello to the first workout:
  *
  *   Welcome to Klay.               the clay fellow says hello, and what Klay is for
+ *   Put Klay on your Home Screen   only in a browser tab: how to open it full
+ *                                  screen (see `lib/home-screen.ts`) — first,
+ *                                  before any answers, so none are left behind
  *   Have you lifted weights?       new, a bit, or for a while
  *   Help Klay pick your weights    weight and sex — or rather not say
  *   Push-ups                       how many in a row, or not sure
@@ -57,7 +61,7 @@ export function Onboarding() {
   return <Steps onDone={(answers) => setState((s) => seeIntro(applyPlan(s, answers)))} />;
 }
 
-type Step = "welcome" | "lifted" | "body" | "pushups" | "film";
+type Step = "welcome" | "home" | "lifted" | "body" | "pushups" | "film";
 
 /** The steps the progress line counts. */
 const ALONG: Step[] = ["lifted", "body", "pushups", "film"];
@@ -106,6 +110,7 @@ function Steps({ onDone }: { onDone: (answers: Answers) => void }) {
   const [weightTyped, setWeightTyped] = useState(false);
   const [sex, setSex] = useState<Sex | "unsaid" | undefined>(undefined);
   const [pushUps, setPushUps] = useState<PushUps | "unsure" | undefined>(undefined);
+  const [place] = useState(where);
 
   const step = trail[trail.length - 1];
   const go = (next: Step) => {
@@ -135,9 +140,11 @@ function Steps({ onDone }: { onDone: (answers: Answers) => void }) {
             art={<Welcome />}
             title="Welcome to Klay."
             body="Klay tells you what to do at the gym, writes down what you did, and helps you do a little better each time. A few quick questions, and you're ready."
-            action={{ label: "Let's go", onPress: () => go("lifted") }}
+            action={{ label: "Let's go", onPress: () => go(place === "app" ? "lifted" : "home") }}
           />
         );
+      case "home":
+        return <HomeScreen place={place} onNext={() => go("lifted")} />;
       case "lifted":
         return (
           <Page
@@ -387,6 +394,119 @@ function Progress({ at, of }: { at: number; of: number }) {
         }}
       />
     </View>
+  );
+}
+
+// ---- the Home Screen ----
+
+const HOME_SCREEN: Record<Exclude<Where, "app">, { title: string; body: string; steps: string[]; copy?: boolean; next: string }> = {
+  "ios-safari": {
+    title: "Put Klay on your Home Screen.",
+    body: "In Safari, the bars at the top and bottom take up room and make everything small. From your Home Screen, Klay fills the whole screen, like an app.",
+    steps: [
+      "Tap Share: the square with an arrow. Can't see it? Tap ⋯ first.",
+      "Tap “Add to Home Screen”, then “Add”.",
+      "Close Safari and open Klay from your Home Screen.",
+    ],
+    next: "Keep going in Safari",
+  },
+  "ios-other": {
+    title: "Open Klay in Safari.",
+    body: "Klay goes on your Home Screen from Safari. From there it fills the whole screen, like an app, without a browser's bars making everything small.",
+    steps: [
+      "Copy the link below and open it in Safari.",
+      "In Safari, tap Share: the square with an arrow. Can't see it? Tap ⋯ first.",
+      "Tap “Add to Home Screen”, then open Klay from your Home Screen.",
+    ],
+    copy: true,
+    next: "Keep going here",
+  },
+  android: {
+    title: "Put Klay on your Home Screen.",
+    body: "In the browser, its bars take up room and make everything small. From your Home Screen, Klay fills the whole screen, like an app.",
+    steps: [
+      "Tap ⋮ at the top right.",
+      "Tap “Add to Home screen” or “Install app”.",
+      "Open Klay from your Home Screen.",
+    ],
+    next: "Keep going in the browser",
+  },
+  computer: {
+    title: "Klay is made for your phone.",
+    body: "You take it to the gym. On your phone's Home Screen it fills the whole screen, like an app.",
+    steps: [
+      "On your phone, open the link below. On an iPhone, use Safari.",
+      "Tap Share, then “Add to Home Screen”. On Android, tap ⋮, then “Add to Home screen”.",
+      "Open Klay from your Home Screen.",
+    ],
+    copy: true,
+    next: "Keep going here",
+  },
+};
+
+/**
+ * In a browser tab, how to open Klay full screen instead — said once, at the
+ * start, with the way on always there: it's advice, not a gate.
+ */
+function HomeScreen({ place, onNext }: { place: Where; onNext: () => void }) {
+  const [copied, setCopied] = useState(false);
+  if (place === "app") return null;
+  const say = HOME_SCREEN[place];
+  const link = address();
+  const copy = () => {
+    tap();
+    navigator.clipboard
+      ?.writeText(`https://${link}`)
+      .then(() => setCopied(true))
+      .catch(() => {});
+  };
+  return (
+    <Page title={say.title} body={say.body} action={{ label: say.next, onPress: onNext }}>
+      {say.steps.map((line, i) => (
+        <View key={i} style={{ flexDirection: "row", gap: 14, alignItems: "flex-start" }}>
+          <View
+            style={{
+              width: 34,
+              height: 34,
+              borderRadius: 17,
+              alignItems: "center",
+              justifyContent: "center",
+              backgroundColor: colors.surface,
+            }}
+          >
+            <Text style={{ color: colors.text, fontFamily: fonts.medium, fontSize: 19 }}>{i + 1}</Text>
+          </View>
+          <Text style={{ flex: 1, paddingTop: 4, color: colors.text, fontFamily: fonts.regular, fontSize: 20, lineHeight: 27 }}>
+            {line}
+          </Text>
+        </View>
+      ))}
+      {say.copy && link ? (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={copied ? "Link copied" : `Copy the link, ${link}`}
+          onPress={copy}
+          style={({ pressed }) => ({
+            marginTop: 8,
+            minHeight: 60,
+            paddingHorizontal: 18,
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 12,
+            borderRadius: 18,
+            borderCurve: "continuous",
+            backgroundColor: copied ? colors.riseWash : colors.surface,
+            opacity: pressed ? 0.8 : 1,
+            transform: [{ scale: pressed ? 0.98 : 1 }],
+          })}
+        >
+          <Text style={{ flex: 1, color: colors.text, fontFamily: fonts.medium, fontSize: 20 }}>{link}</Text>
+          <Text style={{ color: colors.text, fontFamily: fonts.italic, fontSize: 18 }}>
+            {copied ? "Copied" : "Copy link"}
+          </Text>
+        </Pressable>
+      ) : null}
+    </Page>
   );
 }
 

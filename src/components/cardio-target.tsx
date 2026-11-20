@@ -5,7 +5,7 @@ import { useColors } from "@/components/field";
 import { Text } from "@/components/text";
 import { CardioInput } from "@/components/cardio-keyboard";
 import { fonts } from "@/constants/theme";
-import { CARDIO_MINUTES, defaultCourse, type CardioExercise, type CardioLength } from "@/data/conditioning";
+import { CARDIO_MINUTES, defaultCourse, onTheClock, type CardioExercise, type CardioLength } from "@/data/conditioning";
 
 /** The same two target choices in a session and in the saved plan. */
 export function CardioTarget({ exercise, target, onChange }: {
@@ -25,7 +25,8 @@ export function CardioTarget({ exercise, target, onChange }: {
 
   return (
     <View style={{ gap: 12 }}>
-      <View accessibilityRole="tablist" style={{ flexDirection: "row", borderRadius: 20, padding: 2, gap: 2, backgroundColor: colors.surface }}>
+      {/* On the clock alone, minutes are the only target there is. */}
+      {onTheClock(exercise) ? null : <View accessibilityRole="tablist" style={{ flexDirection: "row", borderRadius: 20, padding: 2, gap: 2, backgroundColor: colors.surface }}>
         {(["distance", "time"] as const).map((mode) => {
           const selected = distance === (mode === "distance");
           return (
@@ -38,7 +39,7 @@ export function CardioTarget({ exercise, target, onChange }: {
             </Pressable>
           );
         })}
-      </View>
+      </View>}
       <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
         <Text style={{ color: colors.text, fontSize: 18 }}>{distance ? counted ? "Rep target" : "Distance target" : "Time target"}</Text>
         <View style={{ flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "flex-end", gap: 8 }}>

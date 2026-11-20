@@ -85,6 +85,35 @@ export const CHAINS: Chain[] = [
       ],
     },
   },
+  {
+    id: "handstand",
+    name: "Handstand",
+    start: 0,
+    steps: [
+      { exerciseId: "tripod_knees_elbows", why: "Head and hands take your weight while you learn to balance upside down." },
+      { exerciseId: "tripod_headstand", why: "The same balance with your legs up: your first time fully upside down." },
+      { exerciseId: "pike_push_up", why: "Hips high, you press with your shoulders. That is the strength a handstand stands on." },
+      { exerciseId: "wall_walk", why: "Feet up the wall, hands closer each time: more of you over your hands." },
+      { exerciseId: "wall_handstand", why: "Chest to the wall, arms straight: a handstand, with the wall to keep you there." },
+      { exerciseId: "handstand", why: "On your own. Learn to step down safely before you try to hold it." },
+    ],
+    place: {
+      question: "Try a handstand against a wall, chest facing the wall. Can you hold it for 20 seconds?",
+      answers: [
+        {
+          label: "No",
+          then: {
+            question: "Can you balance on your head and hands, with your knees resting on your elbows?",
+            answers: [
+              { label: "Yes", step: 1 },
+              { label: "No", step: 0 },
+            ],
+          },
+        },
+        { label: "Yes", step: 5 },
+      ],
+    },
+  },
 ];
 
 /** The chain an exercise names, if it is one. */
