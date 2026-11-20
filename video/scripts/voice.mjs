@@ -1,21 +1,20 @@
-// The narration, one file per scene, and how long each takes.
+// The narration, in one take: public/voice/film.mp3, and public/voice/film.json
+// with when every line and every word starts and ends.
 //
-//   npm run voice                      ElevenLabs, with the voice in KLAY_VOICE_ID (or George)
+//   npm run voice                      ElevenLabs, the voice in KLAY_VOICE_ID (or the user's pick)
 //   npm run voice -- --voice=<id>      another ElevenLabs voice
-//   npm run voice -- --voices          list the voices on your account
-//   npm run voice -- --scratch         the Mac's own voice, to time scenes with no key
-//   npm run voice -- --only=end        just these scenes (comma-separated); the rest stay
-//   npm run voice -- --logo            the logo film's one line: public/voice/logo.mp3
+//   npm run voice -- --model=<id>      another model (eleven_v4 by default)
+//
+// One take, so the lines run into each other as one talk; the timings come back
+// with it (ElevenLabs' with-timestamps), and the film is cut to them.
 //
 // The key is read from ELEVENLABS_API_KEY or ELEVEN_API_KEY, set in .local.env
 // at the top of the project or in video/.env. Both are ignored by git, so the
-// key never leaves this machine.
+// key never leaves this machine. (The key can't list voices or models.)
 
-import { execFileSync } from "node:child_process";
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { LOGO_LINE } from "../src/logo-film.ts";
-import { SCENES as ALL } from "../src/script.ts";
+import { SCENES } from "../src/script.ts";
 
 const OUT = new URL("../public/voice/", import.meta.url).pathname;
 const args = Object.fromEntries(
@@ -25,74 +24,53 @@ const args = Object.fromEntries(
   }),
 );
 
-// video/.env, or .local.env at the top of the project (where the key lives now).
 for (const file of ["../.env", "../../.local.env"]) {
   const path = new URL(file, import.meta.url).pathname;
   if (existsSync(path)) process.loadEnvFile(path);
 }
 const key = (process.env.ELEVENLABS_API_KEY ?? process.env.ELEVEN_API_KEY)?.trim() ?? "";
-const API = "https://api.elevenlabs.io/v1";
+if (!key) throw new Error("No key: put ELEVENLABS_API_KEY=… in .local.env or video/.env");
 
-if (args.voices) {
-  if (!key) throw new Error("No key: put ELEVENLABS_API_KEY=… in video/.env");
-  const res = await fetch(`${API}/voices`, { headers: { "xi-api-key": key } });
-  const { voices } = await res.json();
-  for (const v of voices) console.log(`${v.voice_id}  ${v.name}  ${Object.values(v.labels ?? {}).join(", ")}`);
-  process.exit(0);
-}
-
-const scratch = args.scratch || !key;
-if (!args.scratch && !key) console.warn("No ElevenLabs key in video/.env, so this is the Mac's scratch voice.");
-
-// The user's pick (2026-11-19). Change with --voice= or KLAY_VOICE_ID. (Was George, JBFqnCBsd6RMkjVDRZzb.)
+// The user's pick (2026-11-19). Was George, JBFqnCBsd6RMkjVDRZzb.
 const voice = args.voice ?? process.env.KLAY_VOICE_ID ?? "jv41DhCf464zw0TI7I1w";
 const model = args.model ?? "eleven_v4";
 
+// A blank line between lines: a breath.
+const SEP = "\n\n";
+const text = SCENES.map((s) => s.line).join(SEP);
+
+const res = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voice}/with-timestamps?output_format=mp3_44100_128`, {
+  method: "POST",
+  headers: { "xi-api-key": key, "content-type": "application/json" },
+  body: JSON.stringify({ text, model_id: model }),
+});
+if (!res.ok) throw new Error(`${res.status} ${await res.text()}`);
+const { audio_base64, alignment } = await res.json();
+const { characters, character_start_times_seconds: starts, character_end_times_seconds: ends } = alignment;
+if (characters.join("") !== text) console.warn("The timings' text differs from the script's; lines are matched by position.");
+
 mkdirSync(OUT, { recursive: true });
-const seconds = (file) => Number(/estimated duration: ([\d.]+)/.exec(execFileSync("afinfo", [file], { encoding: "utf8" }))[1]);
-// The logo film is one scene of its own, with no lines either side.
-const SCENES = args.logo
-  ? [{ id: "logo", line: LOGO_LINE }]
-  : args.only
-    ? ALL.filter((s) => String(args.only).split(",").includes(s.id))
-    : ALL;
-const listed = join(OUT, "durations.json");
-// Only some scenes: the others keep the lengths they have.
-const durations = !args.logo && args.only && existsSync(listed) ? JSON.parse(readFileSync(listed, "utf8")).scenes : {};
+writeFileSync(join(OUT, "film.mp3"), Buffer.from(audio_base64, "base64"));
 
+// Each line's characters, then its words.
+const lines = {};
+let i = 0;
 for (const scene of SCENES) {
-  const i = ALL.findIndex((s) => s.id === scene.id);
-  for (const ext of ["mp3", "wav"]) rmSync(join(OUT, `${scene.id}.${ext}`), { force: true });
-  let file;
-  if (scratch) {
-    file = `${scene.id}.wav`;
-    execFileSync("say", ["-v", "Daniel", "-r", "165", "--file-format=WAVE", "--data-format=LEI16@44100", "-o", join(OUT, file), scene.line]);
-  } else {
-    file = `${scene.id}.mp3`;
-    const res = await fetch(`${API}/text-to-speech/${voice}?output_format=mp3_44100_128`, {
-      method: "POST",
-      headers: { "xi-api-key": key, "content-type": "application/json" },
-      body: JSON.stringify({
-        text: scene.line,
-        model_id: model,
-        // The lines either side, so each reads as part of one talk.
-        previous_text: ALL[i - 1]?.line,
-        next_text: ALL[i + 1]?.line,
-        voice_settings: { stability: 0.55, similarity_boost: 0.8, style: 0.1, use_speaker_boost: true, speed: 0.95 },
-      }),
-    });
-    if (!res.ok) throw new Error(`${scene.id}: ${res.status} ${await res.text()}`);
-    writeFileSync(join(OUT, file), Buffer.from(await res.arrayBuffer()));
+  const from = i;
+  const to = i + scene.line.length; // exclusive
+  const words = [];
+  for (const m of scene.line.matchAll(/[A-Za-z']+/g)) {
+    const a = from + m.index;
+    const b = a + m[0].length - 1;
+    words.push({ word: m[0], start: starts[a], end: ends[b] });
   }
-  durations[scene.id] = { file, seconds: seconds(join(OUT, file)) };
-  console.log(`${scene.id}  ${durations[scene.id].seconds.toFixed(2)} s`);
+  lines[scene.id] = { start: starts[from], end: ends[to - 1], words };
+  i = to + SEP.length;
+  console.log(`${scene.id.padEnd(10)} ${starts[from].toFixed(2)}–${ends[to - 1].toFixed(2)} s`);
 }
 
-if (args.logo) {
-  writeFileSync(join(OUT, "logo.json"), JSON.stringify(durations.logo, null, 2) + "\n");
-  process.exit(0);
-}
 writeFileSync(
-  listed,
-  JSON.stringify({ voice: scratch ? "scratch (macOS Daniel)" : `elevenlabs ${voice} ${model}`, scenes: durations }, null, 2) + "\n",
+  join(OUT, "film.json"),
+  JSON.stringify({ voice: `elevenlabs ${voice} ${model}`, seconds: ends.at(-1), lines }, null, 1) + "\n",
 );
+console.log(`${ends.at(-1).toFixed(1)} s in all`);

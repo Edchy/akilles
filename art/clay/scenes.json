@@ -39,12 +39,14 @@
   "props": "none"
  },
  "gym_lost": {
-  "what": "Walking into a gym for the first time and not knowing what to do.",
+  "what": "Walking into a gym and not knowing what to do, as if nobody ever showed you; then opening the app, and the relief of being shown.",
   "view": "Seen from the front at three-quarters, a little wider so some of the gym shows.",
   "frames": [
-   "standing still between gym machines, one hand scratching the side of the head, looking around unsure, a small puzzled mouth instead of a smile."
+   "standing still between gym machines, one hand scratching the side of the head, looking around unsure, a small puzzled mouth instead of a smile.",
+   "the same spot, still a little unsure, the hand now down from the head, taking a small black clay phone out and holding it up in both hands at chest height, looking at it hopefully, a small unsure mouth.",
+   "the same, holding the small black clay phone in both hands at chest height and looking down at the screen, the face relaxing into a small, relieved smile, shoulders a little lower and softer."
   ],
-  "props": "a few simple clay gym things around and behind the figure: a dumbbell rack with a few black dumbbells, a cable machine and a flat bench, all in matte grey and black clay, kept simple"
+  "props": "a few simple clay gym things around and behind the figure: a dumbbell rack with a few black dumbbells, a cable machine and a flat bench, all in matte grey and black clay, kept simple; from the second moment on, a small black clay phone in the hands"
  },
  "guess": {
   "what": "Guessing at the gym: trying something at random, unsure if it's right.",
@@ -99,35 +101,38 @@
   "what": "Remembering childhood: moving was a game. The figure as a small child, climbing just for fun.",
   "view": "Seen from the front at a slight three-quarter angle, a little wider.",
   "frames": [
-   "a smaller, younger, rounder version of the same figure (child proportions, same clay and shorts) climbing a simple clay climbing frame, one hand reaching up for the next bar, one foot on a lower bar, a big happy open smile.",
-   "the same child one step higher on the frame, the other hand reaching up now, the other foot lifted, still smiling."
+   "a smaller, younger, rounder version of the same figure (child proportions, same clay, in a sweater) climbing a simple clay climbing frame, one hand reaching up for the next bar, one foot on a lower bar, a big happy open smile.",
+   "the same child one step higher on the frame, the other hand reaching up now, the other foot lifted, still smiling. The climbing frame stays exactly where it is in the first picture: same position, size and angle; only the child moves."
   ],
-  "props": "a simple light-wood clay climbing frame, like a small playground ladder"
+  "props": "a simple light-wood clay climbing frame, like a small playground ladder",
+  "wears": "a soft, chunky knitted clay sweater in a muted pastel blue, long sleeves to the wrists, over the black shorts"
  },
  "young_run": {
   "what": "Remembering childhood: running for no reason, pure joy.",
   "view": "Seen exactly from the side, the figure facing to the right.",
   "frames": [
-   "a smaller, younger, rounder version of the same figure (child proportions, same clay and shorts) running happily, mid-stride, both feet off the ground, arms swinging, a big open laughing mouth.",
-   "the same child in the opposite stride, the other leg forward, the other arm swinging, still laughing."
+   "a smaller, younger, rounder version of the same figure (child proportions, same clay, in a sweater) running happily, mid-stride, both feet off the ground, arms swinging, a big open laughing mouth.",
+   "the same child in the OPPOSITE stride: now the other leg is forward and the first leg is stretched back, and the arms have swapped too (the arm that was forward is now back), so the two pictures clearly alternate like a run cycle; both feet off the ground, still laughing, same place and size."
   ],
-  "props": "none"
+  "props": "none",
+  "wears": "a soft, chunky knitted clay sweater in a muted pastel blue, long sleeves to the wrists, over the black shorts"
  },
  "young_hang": {
   "what": "Remembering childhood: hanging upside down until dinner.",
   "view": "Seen from the side and a little in front.",
   "frames": [
-   "a smaller, younger, rounder version of the same figure (child proportions, same clay and shorts) hanging upside down by the backs of the knees from a low clay bar, arms dangling down loosely, a big happy upside-down smile.",
-   "the same child, still hanging by the knees, now swinging a little, arms spread wide, laughing."
+   "a smaller, younger, rounder version of the same figure (child proportions, same clay, in a sweater) hanging upside down by the backs of the knees from a low clay bar, arms dangling down loosely, laughing with a wide-open round mouth (an open laughing O), which reads as happy from any angle; the eyes and mouth are upside down together with the head.",
+   "the same child, still hanging by the knees in exactly the same place, now swinging a little, arms spread wide, still laughing with the same open mouth; the face stays upside down with the head exactly as in the first picture."
   ],
-  "props": "one simple low light-wood clay bar on two posts"
+  "props": "one simple low light-wood clay bar on two posts",
+  "wears": "a soft, chunky knitted clay sweater in a muted pastel blue, long sleeves to the wrists, over the black shorts"
  },
  "sit": {
   "what": "Grown up: the figure mostly sits now, and its soft clay body slowly takes the shape of the sofa.",
   "view": "Seen from the side and a little in front, the figure facing to the right.",
   "frames": [
    "sitting on a small simple grey clay sofa, a bit slumped, shoulders rounded, hands in the lap, a flat bored mouth.",
-   "the same, slumped much deeper: back curved like a C, head forward, the soft clay body sagging and settling into the cushion as if moulded to it, a tired mouth."
+   "the same, but sunk right down into the armchair: the soft clay body has slumped and settled into the cushion like soft dough, back curved deep like a C, shoulders melted forward, the belly and seat squashed and spread into the shape of the seat so it's hard to see where the figure ends and the cushion begins; head drooping, a tired flat mouth. The armchair stays exactly where it is."
   ],
   "props": "a small simple grey clay sofa"
  },
@@ -139,15 +144,6 @@
    "standing tall in front of the sofa, both arms stretched straight up overhead, up on the toes a little, eyes happily closed, a big smile."
   ],
   "props": "a small simple grey clay sofa"
- },
- "gym_phone": {
-  "what": "At the gym, the figure opens the app on its phone and knows what to do.",
-  "view": "Seen from the front at a slight three-quarter angle.",
-  "frames": [
-   "standing in the gym holding a small black clay phone in both hands at chest height, looking down at it with a calm, curious face.",
-   "the same, one thumb tapping the phone screen, a small pleased smile."
-  ],
-  "props": "a small black clay phone; behind, a few simple gym things in matte grey and black clay: a dumbbell rack and a flat bench, kept simple"
  },
  "walk_home": {
   "what": "After the workout: walking home feeling light and warm, standing a little taller.",

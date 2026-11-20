@@ -1,0 +1,654 @@
+{
+ "voice": "elevenlabs jv41DhCf464zw0TI7I1w eleven_v4",
+ "seconds": 45.44,
+ "lines": {
+  "hello": {
+   "start": 0,
+   "end": 2.36,
+   "words": [
+    {
+     "word": "Hey",
+     "start": 0,
+     "end": 0.4
+    },
+    {
+     "word": "It's",
+     "start": 0.72,
+     "end": 0.88
+    },
+    {
+     "word": "me",
+     "start": 1.04,
+     "end": 1.2
+    },
+    {
+     "word": "Your",
+     "start": 1.6,
+     "end": 1.68
+    },
+    {
+     "word": "body",
+     "start": 1.76,
+     "end": 2.08
+    }
+   ]
+  },
+  "remember": {
+   "start": 2.64,
+   "end": 8.64,
+   "words": [
+    {
+     "word": "Remember",
+     "start": 2.64,
+     "end": 3.04
+    },
+    {
+     "word": "when",
+     "start": 3.12,
+     "end": 3.2
+    },
+    {
+     "word": "we",
+     "start": 3.28,
+     "end": 3.36
+    },
+    {
+     "word": "used",
+     "start": 3.44,
+     "end": 3.52
+    },
+    {
+     "word": "to",
+     "start": 3.6,
+     "end": 3.68
+    },
+    {
+     "word": "climb",
+     "start": 3.76,
+     "end": 4.24
+    },
+    {
+     "word": "everything",
+     "start": 4.52,
+     "end": 4.8
+    },
+    {
+     "word": "Run",
+     "start": 5.2,
+     "end": 5.44
+    },
+    {
+     "word": "for",
+     "start": 5.52,
+     "end": 5.6
+    },
+    {
+     "word": "no",
+     "start": 5.76,
+     "end": 5.92
+    },
+    {
+     "word": "reason",
+     "start": 6,
+     "end": 6.4
+    },
+    {
+     "word": "Hang",
+     "start": 6.8,
+     "end": 6.96
+    },
+    {
+     "word": "upside",
+     "start": 7.04,
+     "end": 7.36
+    },
+    {
+     "word": "down",
+     "start": 7.44,
+     "end": 7.68
+    },
+    {
+     "word": "until",
+     "start": 7.84,
+     "end": 8
+    },
+    {
+     "word": "dinner",
+     "start": 8.08,
+     "end": 8.4
+    }
+   ]
+  },
+  "best": {
+   "start": 8.88,
+   "end": 10.4,
+   "words": [
+    {
+     "word": "That",
+     "start": 8.88,
+     "end": 9.04
+    },
+    {
+     "word": "was",
+     "start": 9.12,
+     "end": 9.2
+    },
+    {
+     "word": "the",
+     "start": 9.28,
+     "end": 9.52
+    },
+    {
+     "word": "best",
+     "start": 9.8,
+     "end": 10.08
+    }
+   ]
+  },
+  "sit": {
+   "start": 10.72,
+   "end": 12.68,
+   "words": [
+    {
+     "word": "Lately",
+     "start": 10.72,
+     "end": 11.2
+    },
+    {
+     "word": "we",
+     "start": 11.44,
+     "end": 11.52
+    },
+    {
+     "word": "mostly",
+     "start": 11.6,
+     "end": 11.92
+    },
+    {
+     "word": "sit",
+     "start": 12.08,
+     "end": 12.4
+    }
+   ]
+  },
+  "soft": {
+   "start": 12.96,
+   "end": 17.8,
+   "words": [
+    {
+     "word": "I'm",
+     "start": 12.96,
+     "end": 13.2
+    },
+    {
+     "word": "soft",
+     "start": 13.4,
+     "end": 13.6
+    },
+    {
+     "word": "you",
+     "start": 13.653,
+     "end": 13.68
+    },
+    {
+     "word": "know",
+     "start": 13.76,
+     "end": 14
+    },
+    {
+     "word": "Whatever",
+     "start": 14.56,
+     "end": 14.88
+    },
+    {
+     "word": "you",
+     "start": 14.96,
+     "end": 15.04
+    },
+    {
+     "word": "do",
+     "start": 15.12,
+     "end": 15.36
+    },
+    {
+     "word": "every",
+     "start": 15.44,
+     "end": 15.68
+    },
+    {
+     "word": "day",
+     "start": 15.76,
+     "end": 16.08
+    },
+    {
+     "word": "that's",
+     "start": 16.4,
+     "end": 16.64
+    },
+    {
+     "word": "the",
+     "start": 16.72,
+     "end": 16.8
+    },
+    {
+     "word": "shape",
+     "start": 16.92,
+     "end": 17.04
+    },
+    {
+     "word": "I",
+     "start": 17.12,
+     "end": 17.2
+    },
+    {
+     "word": "take",
+     "start": 17.36,
+     "end": 17.52
+    }
+   ]
+  },
+  "learn-sit": {
+   "start": 18.08,
+   "end": 20.4,
+   "words": [
+    {
+     "word": "Sit",
+     "start": 18.08,
+     "end": 18.24
+    },
+    {
+     "word": "all",
+     "start": 18.32,
+     "end": 18.4
+    },
+    {
+     "word": "day",
+     "start": 18.48,
+     "end": 18.72
+    },
+    {
+     "word": "and",
+     "start": 18.96,
+     "end": 19.04
+    },
+    {
+     "word": "I'll",
+     "start": 19.2,
+     "end": 19.36
+    },
+    {
+     "word": "learn",
+     "start": 19.44,
+     "end": 19.6
+    },
+    {
+     "word": "to",
+     "start": 19.68,
+     "end": 19.84
+    },
+    {
+     "word": "sit",
+     "start": 20,
+     "end": 20.16
+    }
+   ]
+  },
+  "move-me": {
+   "start": 20.64,
+   "end": 25.8,
+   "words": [
+    {
+     "word": "But",
+     "start": 20.64,
+     "end": 20.8
+    },
+    {
+     "word": "move",
+     "start": 20.96,
+     "end": 21.28
+    },
+    {
+     "word": "me",
+     "start": 21.36,
+     "end": 21.52
+    },
+    {
+     "word": "play",
+     "start": 21.76,
+     "end": 22.08
+    },
+    {
+     "word": "with",
+     "start": 22.16,
+     "end": 22.32
+    },
+    {
+     "word": "me",
+     "start": 22.4,
+     "end": 22.56
+    },
+    {
+     "word": "a",
+     "start": 22.88,
+     "end": 22.96
+    },
+    {
+     "word": "little",
+     "start": 23.04,
+     "end": 23.36
+    },
+    {
+     "word": "every",
+     "start": 23.44,
+     "end": 23.76
+    },
+    {
+     "word": "day",
+     "start": 23.84,
+     "end": 24.16
+    },
+    {
+     "word": "and",
+     "start": 24.4,
+     "end": 24.48
+    },
+    {
+     "word": "I'll",
+     "start": 24.56,
+     "end": 24.72
+    },
+    {
+     "word": "learn",
+     "start": 24.8,
+     "end": 24.96
+    },
+    {
+     "word": "that",
+     "start": 25.08,
+     "end": 25.2
+    },
+    {
+     "word": "too",
+     "start": 25.36,
+     "end": 25.52
+    }
+   ]
+  },
+  "gym": {
+   "start": 26.08,
+   "end": 27.56,
+   "words": [
+    {
+     "word": "So",
+     "start": 26.08,
+     "end": 26.24
+    },
+    {
+     "word": "take",
+     "start": 26.36,
+     "end": 26.48
+    },
+    {
+     "word": "me",
+     "start": 26.56,
+     "end": 26.64
+    },
+    {
+     "word": "to",
+     "start": 26.68,
+     "end": 26.72
+    },
+    {
+     "word": "the",
+     "start": 26.8,
+     "end": 26.88
+    },
+    {
+     "word": "gym",
+     "start": 26.96,
+     "end": 27.28
+    }
+   ]
+  },
+  "scary": {
+   "start": 27.84,
+   "end": 32.08,
+   "words": [
+    {
+     "word": "I",
+     "start": 27.84,
+     "end": 28
+    },
+    {
+     "word": "know",
+     "start": 28.12,
+     "end": 28.24
+    },
+    {
+     "word": "It's",
+     "start": 28.56,
+     "end": 28.68
+    },
+    {
+     "word": "a",
+     "start": 28.72,
+     "end": 28.76
+    },
+    {
+     "word": "bit",
+     "start": 28.8,
+     "end": 28.96
+    },
+    {
+     "word": "scary",
+     "start": 29.04,
+     "end": 29.44
+    },
+    {
+     "word": "Nobody",
+     "start": 29.92,
+     "end": 30.32
+    },
+    {
+     "word": "ever",
+     "start": 30.4,
+     "end": 30.56
+    },
+    {
+     "word": "showed",
+     "start": 30.64,
+     "end": 30.88
+    },
+    {
+     "word": "us",
+     "start": 30.96,
+     "end": 31.04
+    },
+    {
+     "word": "what",
+     "start": 31.12,
+     "end": 31.2
+    },
+    {
+     "word": "to",
+     "start": 31.28,
+     "end": 31.36
+    },
+    {
+     "word": "do",
+     "start": 31.44,
+     "end": 31.52
+    },
+    {
+     "word": "there",
+     "start": 31.6,
+     "end": 31.84
+    }
+   ]
+  },
+  "start": {
+   "start": 32.32,
+   "end": 36.12,
+   "words": [
+    {
+     "word": "That's",
+     "start": 32.32,
+     "end": 32.48
+    },
+    {
+     "word": "okay",
+     "start": 32.68,
+     "end": 32.88
+    },
+    {
+     "word": "Tap",
+     "start": 33.36,
+     "end": 33.6
+    },
+    {
+     "word": "Start",
+     "start": 33.76,
+     "end": 34.16
+    },
+    {
+     "word": "It",
+     "start": 34.48,
+     "end": 34.64
+    },
+    {
+     "word": "shows",
+     "start": 34.76,
+     "end": 34.88
+    },
+    {
+     "word": "us",
+     "start": 34.96,
+     "end": 35.2
+    },
+    {
+     "word": "everything",
+     "start": 35.28,
+     "end": 35.84
+    }
+   ]
+  },
+  "slowly": {
+   "start": 36.4,
+   "end": 38.56,
+   "words": [
+    {
+     "word": "Go",
+     "start": 36.4,
+     "end": 36.56
+    },
+    {
+     "word": "slowly",
+     "start": 36.72,
+     "end": 37.2
+    },
+    {
+     "word": "Tap",
+     "start": 37.6,
+     "end": 37.76
+    },
+    {
+     "word": "a",
+     "start": 37.8,
+     "end": 37.84
+    },
+    {
+     "word": "circle",
+     "start": 37.92,
+     "end": 38.32
+    }
+   ]
+  },
+  "home": {
+   "start": 38.8,
+   "end": 42.96,
+   "words": [
+    {
+     "word": "And",
+     "start": 38.8,
+     "end": 38.96
+    },
+    {
+     "word": "on",
+     "start": 39,
+     "end": 39.04
+    },
+    {
+     "word": "the",
+     "start": 39.12,
+     "end": 39.2
+    },
+    {
+     "word": "way",
+     "start": 39.28,
+     "end": 39.36
+    },
+    {
+     "word": "home",
+     "start": 39.44,
+     "end": 39.92
+    },
+    {
+     "word": "feel",
+     "start": 40.16,
+     "end": 40.4
+    },
+    {
+     "word": "it",
+     "start": 40.52,
+     "end": 40.64
+    },
+    {
+     "word": "That's",
+     "start": 41.12,
+     "end": 41.36
+    },
+    {
+     "word": "us",
+     "start": 41.44,
+     "end": 41.68
+    },
+    {
+     "word": "changing",
+     "start": 42,
+     "end": 42.48
+    },
+    {
+     "word": "shape",
+     "start": 42.56,
+     "end": 42.88
+    }
+   ]
+  },
+  "end": {
+   "start": 43.52,
+   "end": 45.44,
+   "words": [
+    {
+     "word": "Klay",
+     "start": 43.52,
+     "end": 43.92
+    },
+    {
+     "word": "Get",
+     "start": 44.4,
+     "end": 44.56
+    },
+    {
+     "word": "in",
+     "start": 44.64,
+     "end": 44.72
+    },
+    {
+     "word": "shape",
+     "start": 44.8,
+     "end": 45.2
+    }
+   ]
+  }
+ }
+}

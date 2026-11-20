@@ -8,7 +8,8 @@
     "logo": "remotion render src/index.ts Logo out/klay-logo.mp4",
     "voice": "node scripts/voice.mjs",
     "voice:scratch": "node scripts/voice.mjs --scratch",
-    "pictures": "node scripts/pictures.mjs"
+    "pictures": "node scripts/pictures.mjs",
+    "score": "node scripts/score.mjs"
   },
   "dependencies": {
     "@remotion/cli": "^4.0.543",
