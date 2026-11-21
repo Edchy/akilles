@@ -196,7 +196,10 @@ function Line({
 
 const display = {
   color: colors.text,
-  fontFamily: fonts.display,
+  // Read when drawn: a look from the Lab can change the face.
+  get fontFamily() {
+    return fonts.display;
+  },
 } as const;
 
 const caps = {

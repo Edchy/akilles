@@ -1,5 +1,4 @@
 import * as Haptics from "expo-haptics";
-import { activateKeepAwakeAsync, deactivateKeepAwake } from "expo-keep-awake";
 import { router } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { SetCircle } from "@/components/set-circle";
@@ -68,10 +67,10 @@ import { GestureHint } from "@/components/hint";
 import { ClayStretch, hasClay } from "@/components/clay";
 import { GoalSheet, Pips, hasTutorial, openTutorial } from "@/components/goals";
 import { BigButton, Sheet, TextButton } from "@/components/sheet";
-import { CLAY_CARD, colors, colors as paper, FAMILY, fieldColors, fieldIsDark, fonts, DUSK, DUSK_CARDS, LETTERPRESS, mix, PAPER, radii } from "@/constants/theme";
-import { ClayGround, DuskGround } from "@/components/dusk";
+import { CLAY_CARD, CONCRETE, colors, colors as paper, FAMILY, fieldColors, fieldIsDark, fonts, DUSK, LETTERPRESS, mix, PAPER, POSTER_INK, radii, worn, POSTER_EDGE } from "@/constants/theme";
+import { ClayGround, DuskGround, PosterFrame, PosterGround } from "@/components/dusk";
 import { Fit } from "@/components/fit";
-import { FitText } from "@/components/fit-text";
+import { FitText, WholeText } from "@/components/fit-text";
 import { grain } from "@/constants/grain";
 import { byId, inSentence, type Exercise } from "@/data/exercises";
 import { ownCue } from "@/data/guides";
@@ -384,7 +383,7 @@ const CIRCLES = {
  * deck's width; let go past `away` of the way, or flicked faster than
  * `flick` points a second, and it goes — sooner, and it comes back.
  */
-const DECK = { side: 14, peek: 13, shrink: 0.045, corner: 14, travel: 0.8, away: 0.28, flick: 600 };
+const DECK = { side: 14, peek: 13, shrink: 0.045, corner: 14, travel: 0.8, away: 0.28, flick: 600, shade: 0.07 };
 /** How the deck comes to rest on a card: quick, and without a wobble. */
 const SETTLE = { damping: 26, stiffness: 260, mass: 1 };
 
@@ -769,11 +768,16 @@ function DeckCard({
   const family = item ? itemFamily(item) : state.active ? workoutFamily(state, currentWorkout(state)) : null;
   // The mobility card is white, the clay pictures' own, not dusk (see `CLAY_CARD`).
   const clay = family === "mobility";
-  const ground = clay ? CLAY_CARD.top : family && DUSK_CARDS ? DUSK[family].foot : LETTERPRESS && family ? fieldColors(family).bg : null;
+  const ground = clay ? CLAY_CARD.top : family && worn.dusk ? DUSK[family].foot : LETTERPRESS && family ? fieldColors(family).bg : null;
+  // How much each side is trimmed this far down the deck.
+  const trimAt = (down: number) => {
+    "worklet";
+    return ((width - DECK.side * 2) * DECK.shrink * Math.max(0, down)) / 2;
+  };
   const style = useAnimatedStyle(() => {
     // How far down the deck, from −1 (gone off to the left) up to the bottom.
     const place = index - turned.value;
-    if (place <= -1) return { opacity: 0, zIndex: 0, transform: [{ translateX: 0 }, { translateY: 0 }, { rotateZ: "0deg" }, { scale: 1 }] };
+    if (place <= -1) return { opacity: 0, zIndex: 0, left: DECK.side, right: DECK.side, transform: [{ translateX: 0 }, { translateY: 0 }, { rotateZ: "0deg" }, { scale: 1 }] };
 
     if (place < 0) {
       // Leaving to the left, or coming back from it: over everything else.
@@ -782,22 +786,40 @@ function DeckCard({
       return {
         opacity: 1,
         zIndex: count + 2,
+        left: DECK.side,
+        right: DECK.side,
         transform: [{ translateX: x }, { translateY: 0 }, { rotateZ: `${-9 * gone}deg` }, { scale: 1 }],
       };
     }
     const down = Math.min(place, 3);
-    const scale = 1 - DECK.shrink * down;
+    // Narrower the further down, but never scaled: iOS draws a scaled view
+    // as a picture of itself, shrunk, and its lines and words come out soft.
+    // Its sides are trimmed instead (see `inner`), so what is on it stays
+    // sharp and still, and the edges grow back out as it comes to the top.
+    const trim = trimAt(down);
     return {
       opacity: down <= 2 ? 1 : 3 - down,
       zIndex: count - Math.round(place),
+      left: DECK.side + trim,
+      right: DECK.side + trim,
       transform: [
         { translateX: 0 },
-        // Smaller, and lower by its share of the peek: its foot shows under the card above.
-        { translateY: DECK.peek * down + (height * (1 - scale)) / 2 },
+        // Lower by its share of the peek: its foot shows under the card above.
+        { translateY: DECK.peek * down },
         { rotateZ: "0deg" },
-        { scale },
+        { scale: 1 },
       ],
     };
+  });
+  // In the shade of the cards above it, as in a real deck: clear on top,
+  // a little darker each card down, and lifting as a swipe uncovers it.
+  const shade = useAnimatedStyle(() => ({
+    opacity: Math.min(2, Math.max(0, index - turned.value)) * DECK.shade,
+  }));
+  // What is on the card keeps the full card's width, centred, whatever is trimmed.
+  const inner = useAnimatedStyle(() => {
+    const trim = trimAt(Math.max(0, Math.min(index - turned.value, 3)));
+    return { left: -trim, right: -trim };
   });
 
   return (
@@ -813,30 +835,36 @@ function DeckCard({
           right: DECK.side,
           height,
           overflow: "hidden",
-          borderRadius: DECK.corner,
+          borderRadius: worn.concrete ? CONCRETE.corner : DECK.corner,
           borderCurve: "continuous",
           backgroundColor: ground ?? (PAPER ? colors.bg : colors.surface),
+          // Concrete: white cards, each floating on a soft shadow.
+          boxShadow: worn.concrete ? CONCRETE.shadow : undefined,
           pointerEvents: onTop ? "auto" : "none",
           // Each card's edge, so the deck reads as cards and the feet of the
           // ones underneath show: an ink line on paper, or a line of the
           // ground between coloured cards.
           // Letterpress: no ink line, just the card stock's own darker edge.
-          borderWidth: LETTERPRESS ? 1 : PAPER ? 2 : 1.5,
+          // Poster: no border; its frame is laid over the top (see `PosterFrame`).
+          // The stretch card too: framed as every card of the look, told apart by its white.
+          borderWidth: worn.poster ? 0 : LETTERPRESS ? 1 : PAPER ? 2 : 1.5,
           // Solid, a shade under the card: a see-through edge picks up whatever is behind it.
-          borderColor: clay ? mix(CLAY_CARD.foot, "#000000", 0.12) : family && DUSK_CARDS ? mix(DUSK[family].top, "#000000", 0.35) : ground ? mix(ground, "#000000", 0.28) : edge,
+          borderColor: worn.poster ? POSTER_INK : worn.concrete ? CONCRETE.edge : clay ? mix(CLAY_CARD.foot, "#000000", 0.12) : family && worn.dusk ? mix(DUSK[family].top, "#000000", 0.35) : ground ? mix(ground, "#000000", 0.28) : edge,
         },
         style,
       ]}
     >
-      {clay ? <ClayGround /> : family && DUSK_CARDS ? <DuskGround family={family} /> : null}
-      {children}
+      {clay ? <ClayGround /> : family && worn.poster ? <PosterGround family={family} shape={height * 0.62} at="foot" /> : family && worn.dusk ? <DuskGround family={family} /> : null}
+      <Reanimated.View style={[{ position: "absolute", top: 0, bottom: 0 }, inner]}>{children}</Reanimated.View>
       {/* The paper's grain, over everything, so the words look pressed into it. */}
-      {LETTERPRESS && !DUSK_CARDS ? (
+      {worn.poster && family ? <PosterFrame radius={DECK.corner} /> : null}
+      {LETTERPRESS && !worn.dusk && !worn.poster && !worn.concrete ? (
         // Never takes a touch: it lies over the whole card.
         <View pointerEvents="none" style={StyleSheet.absoluteFill}>
           <Image source={grain()} resizeMode="repeat" style={{ width: "100%", height: "100%", opacity: 0.14 }} />
         </View>
       ) : null}
+      <Reanimated.View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: "#000000" }, shade]} />
     </Reanimated.View>
   );
 }
@@ -1092,12 +1120,14 @@ function WorkoutCard({
           left: DECK.side,
           right: DECK.side,
           overflow: "hidden",
-          borderRadius: DECK.corner,
+          borderRadius: worn.concrete ? CONCRETE.corner : DECK.corner,
           borderCurve: "continuous",
           // Off the white, plainly: its own card, not part of the page.
           backgroundColor: colors.panel,
-          borderWidth: 1.5,
-          borderColor: colors.panelEdge,
+          // Edged as the look edges its cards, so it sits with the deck under it.
+          borderWidth: worn.poster ? POSTER_EDGE : worn.concrete ? 1 : 1.5,
+          borderColor: worn.poster ? POSTER_INK : worn.concrete ? CONCRETE.edge : colors.panelEdge,
+          boxShadow: worn.concrete ? CONCRETE.shadow : undefined,
         },
         grown,
       ]}
@@ -1168,12 +1198,12 @@ function WorkoutCard({
               })}
             >
               <CardDot mark={mark} color={color} size={18} />
-              <Text
-                numberOfLines={1}
-                style={{ flex: 1, color: colors.text, fontFamily: current ? fonts.semibold : fonts.regular, fontSize: 19 }}
+              <WholeText
+                least={0.8}
+                style={{ flex: 1, color: colors.text, fontFamily: current ? fonts.semibold : fonts.regular, fontSize: 19, lineHeight: 22 }}
               >
                 {cardName(state, i)}
-              </Text>
+              </WholeText>
               {current ? (
                 <Text style={{ color: colors.text, fontFamily: fonts.uiSemibold, fontSize: 15 }}>Now</Text>
               ) : done ? (
@@ -1924,13 +1954,15 @@ function LiftTitle({
           })}
         >
           <Mark family={family} size={22} color={colors.text} />
-          <FitText
+          {/* Never cut: it comes down in size, then takes two lines (see `WholeText`).
+              Poster sets it in its condensed headline face. */}
+          <WholeText
             accessibilityRole="header"
-            least={0.6}
-            style={{ textAlign: "center", color: colors.text, fontFamily: fonts.medium, fontSize: 34, lineHeight: 40 }}
+            least={0.75}
+            style={{ flexShrink: 1, textAlign: "center", color: colors.text, fontFamily: worn.poster ? fonts.display : fonts.medium, fontSize: 34, lineHeight: 40 }}
           >
             {name}
-          </FitText>
+          </WholeText>
           <Icon name="more" size={20} color={colors.text} />
         </Pressable>
         {children}
@@ -1949,19 +1981,19 @@ function LiftTitle({
         style={({ pressed }) => ({ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10, minHeight: 44, borderRadius: radii.card, backgroundColor: pressed ? colors.surface : "transparent" })}
       >
         <Mark family={family} size={24} color={colors.text} />
-        <Text
+        <WholeText
           accessibilityRole="header"
-          numberOfLines={1}
           style={{
             flexShrink: 1,
+            textAlign: "center",
             color: colors.text,
-            fontFamily: fonts.medium,
+            fontFamily: worn.poster ? fonts.display : fonts.medium,
             fontSize: 27,
             lineHeight: 33,
           }}
         >
           {name}
-        </Text>
+        </WholeText>
         <Icon name="more" size={20} color={colors.text} />
       </Pressable>
       {children}
@@ -2063,7 +2095,7 @@ function ToolsMenu({
 }
 
 /**
- * What the number is in: "kg"; "kg ×2" for a dumbbell in each hand; "kg
+ * What the number is in: "kg"; "kg / hand" for a dumbbell in each hand; "kg
  * added" on a bodyweight lift with a belt or a dumbbell; "kg assist" where a
  * negative number is the machine's help, so it never reads as an error; and
  * "s hold" on a lift that progresses by holding, where it is seconds.
@@ -2945,8 +2977,6 @@ function GoalWhy({
 
 /** Seconds between one move and the next, to get into position. */
 const CHANGE_SECONDS = 5;
-/** What keeps the screen on while the routine runs itself. */
-const AWAKE = "mobility";
 /** How far up a card must be thrown to go. */
 const THROW = 90;
 /** A rep, unhurried: a move done for reps runs this long a rep, so it can run itself too. */
@@ -3049,15 +3079,6 @@ function MobilityDeck({
   useEffect(() => {
     if (cardActive && !held && !flowing && !done) setFlowing(true);
   }, [cardActive, held, flowing, done, page]);
-
-  // A phone that locks would stop the clock, and the routine with it.
-  useEffect(() => {
-    if (!flowing) return;
-    activateKeepAwakeAsync(AWAKE).catch(() => {});
-    return () => {
-      deactivateKeepAwake(AWAKE).catch(() => {});
-    };
-  }, [flowing]);
 
   const setHere = (patch: Partial<{ side: number; left: number }>, p = page) =>
     setAt((all) => all.map((a, i) => (i === p ? { ...a, ...patch } : a)));
@@ -3448,9 +3469,9 @@ function MobilityCard({ move, side, turned, left, number, count, paused, status,
       </View>
 
       <View style={{ alignItems: "center", gap: 2, paddingHorizontal: 30 }}>
-        <FitText least={0.7} style={{ textAlign: "center", color: colors.text, fontFamily: fonts.medium, fontSize: 28, lineHeight: 34 }}>
+        <WholeText style={{ textAlign: "center", color: colors.text, fontFamily: fonts.medium, fontSize: 28, lineHeight: 34 }}>
           {move.name}
-        </FitText>
+        </WholeText>
         {side ? (
           <Text style={{ color: colors.text, fontFamily: turned ? fonts.medium : fonts.italic, fontSize: 18, opacity: turned ? 1 : 0.75 }}>
             {side}
@@ -3882,7 +3903,7 @@ function WeightControl({
   bodyweight?: boolean;
   /** Progresses by holding: the number is seconds, from bodyweight up. */
   holds?: boolean;
-  /** Held in each hand: the number shown is one dumbbell, marked ×2. */
+  /** Held in each hand: the number shown is one dumbbell, marked per hand. */
   perHand?: boolean;
   /** How big the number is drawn — see `LAYOUT`. */
   size: number;
@@ -4511,7 +4532,8 @@ function Why({
     <View
       accessible
       accessibilityLabel={`Last time: ${weight}, ${last.reps.join(", ")} reps`}
-      style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10, height: 32 }}
+      // "5 kg per hand" is long: where the circles don't fit beside it, they go under.
+      style={{ flexDirection: "row", flexWrap: "wrap", alignItems: "center", justifyContent: "center", columnGap: 10, rowGap: 6, minHeight: 32 }}
     >
       <Text style={{ color: colors.text, fontFamily: fonts.italic, fontSize: 19 }}>Last time</Text>
       <Text style={{ color: colors.text, fontFamily: fonts.medium, fontSize: 19 }}>{weight}</Text>
@@ -4842,10 +4864,10 @@ function EndCard({ left, nothing, quip, facts, onFinish }: {
                     backgroundColor: pressed ? colors.raised : colors.surface,
                   })}
                 >
-                  <Mark family={itemFamily(items[i])} size={18} color={DUSK_CARDS ? DUSK[itemFamily(items[i])].glow : colors.text} plain={DUSK_CARDS} />
-                  <Text numberOfLines={1} style={{ flex: 1, color: colors.text, fontFamily: fonts.regular, fontSize: 20 }}>
+                  <Mark family={itemFamily(items[i])} size={18} color={worn.dusk ? DUSK[itemFamily(items[i])].glow : colors.text} plain={worn.dusk} />
+                  <WholeText style={{ flex: 1, color: colors.text, fontFamily: fonts.regular, fontSize: 20 }}>
                     {cardName(state, i)}
-                  </Text>
+                  </WholeText>
                   <Icon name="previous" size={15} color={colors.text} />
                 </Pressable>
               ))}

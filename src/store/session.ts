@@ -2239,6 +2239,101 @@ export const buildWorkout = (
   };
 };
 
+/** The same values, whatever order their keys are in; an `undefined` key is no key. */
+const same = (a: unknown, b: unknown): boolean => {
+  if (a === b) return true;
+  if (typeof a !== "object" || typeof b !== "object" || a === null || b === null) return false;
+  if (Array.isArray(a) !== Array.isArray(b)) return false;
+  if (Array.isArray(a)) {
+    const bs = b as unknown[];
+    return a.length === bs.length && a.every((v, i) => same(v, bs[i]));
+  }
+  const ao = a as Record<string, unknown>;
+  const bo = b as Record<string, unknown>;
+  const keys = new Set([...Object.keys(ao), ...Object.keys(bo)]);
+  for (const k of keys) if (!same(ao[k], bo[k])) return false;
+  return true;
+};
+
+/**
+ * A change made to the plan while its workout is under way reaches the
+ * session too, wherever that is safe: an exercise, cardio or routine added
+ * comes in where the plan puts it; one taken out goes; new sets, reps or
+ * order apply to the cards still ahead.
+ *
+ * Only cards you have not touched follow. A card is untouched when it is
+ * still exactly as Start built it — the plan before the change, built again,
+ * gives the same card. Anything logged, weighed, swapped, put off or ticked
+ * stays as it is, and so does every card up to the one on screen: nothing
+ * you are looking at, or did, moves under you. Something new lands after the
+ * card on screen at the earliest — on the Finish card, it is the next thing.
+ *
+ * Runs on every change the session itself didn't make (see `use-saved.ts`).
+ */
+export const followPlan = (prev: SessionState, next: SessionState): SessionState => {
+  const active = next.active;
+  if (!active || prev === next || prev.active !== active) return next;
+  if (!workoutById(prev, active.workoutId) || !workoutById(next, active.workoutId)) return next;
+  const now = Date.now();
+  const fresh = (s: SessionState): Item[] =>
+    buildWorkout({ ...s, nextWorkout: active.workoutId, active: null }, now).active?.items ?? [];
+  const before = new Map(fresh(prev).map((it) => [it.id, it]));
+  const after = fresh(next);
+  const afterById = new Map(after.map((it) => [it.id, it]));
+  const order = new Map(after.map((it, i) => [it.id, i]));
+
+  const { items, cursor } = active;
+  const head = items.slice(0, cursor + 1);
+  const holding = active.hold ? items[active.hold.item] : undefined;
+  const untouched = (it: Item) => it !== holding && before.has(it.id) && same(it, before.get(it.id));
+
+  // The cards still ahead: touched ones stay put; untouched ones become the
+  // plan's version, or go.
+  type Spot = { keep: Item } | { follow: string };
+  const ahead: Spot[] = items.slice(cursor + 1).flatMap((it): Spot[] =>
+    !untouched(it) ? [{ keep: it }] : afterById.has(it.id) ? [{ follow: it.id }] : [],
+  );
+  // The untouched ones in the plan's new order, in the places they had.
+  const following = ahead
+    .flatMap((x) => ("follow" in x ? [x.follow] : []))
+    .sort((a, b) => order.get(a)! - order.get(b)!);
+  let k = 0;
+  const was = new Map(items.map((it) => [it.id, it]));
+  const tail: Item[] = ahead.map((x) => {
+    if ("keep" in x) return x.keep;
+    const id = following[k++];
+    const card = afterById.get(id)!;
+    // Nothing changed for it: the very same card, so nothing redraws.
+    return same(card, was.get(id)) ? was.get(id)! : card;
+  });
+
+  // What the plan has that the session doesn't — not a partner folded into
+  // a superset — comes in after what comes before it in the plan.
+  const present = new Set([...head, ...tail].flatMap((it) => [it.id, ...(it.supersetEntry ? [it.supersetEntry.id] : [])]));
+  after.forEach((it, i) => {
+    if (present.has(it.id)) return;
+    let at = 0;
+    for (let j = i - 1; j >= 0; j--) {
+      const t = tail.findIndex((x) => x.id === after[j].id);
+      if (t >= 0) {
+        at = t + 1;
+        break;
+      }
+    }
+    tail.splice(at, 0, it);
+    present.add(it.id);
+  });
+
+  const merged = [...head, ...tail];
+  if (merged.length === items.length && merged.every((it, i) => it === items[i])) return next;
+  const held = holding ? merged.indexOf(holding) : -1;
+  const { hold, ...rest } = active;
+  return {
+    ...next,
+    active: { ...rest, items: merged, ...(hold && held >= 0 ? { hold: { ...hold, item: held } } : {}) },
+  };
+};
+
 /** The workout being trained, or next. Only asked for with a workout to give. */
 export const currentWorkout = (state: SessionState): Workout =>
   ((state.active && workoutById(state, state.active.workoutId)) || upNext(state))!;

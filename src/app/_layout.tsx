@@ -15,9 +15,33 @@ import {
   AtkinsonHyperlegibleNext_600SemiBold,
   AtkinsonHyperlegibleNext_700Bold,
 } from "@expo-google-fonts/atkinson-hyperlegible-next";
-import { Stack } from "expo-router";
+import { activateKeepAwakeAsync, deactivateKeepAwake } from "expo-keep-awake";
+import { Anton_400Regular } from "@expo-google-fonts/anton";
+import {
+  Archivo_400Regular,
+  Archivo_400Regular_Italic,
+  Archivo_500Medium,
+  Archivo_500Medium_Italic,
+  Archivo_600SemiBold,
+  Archivo_600SemiBold_Italic,
+  Archivo_800ExtraBold,
+} from "@expo-google-fonts/archivo";
+import { ArchivoBlack_400Regular } from "@expo-google-fonts/archivo-black";
+import { BebasNeue_400Regular } from "@expo-google-fonts/bebas-neue";
+import { BigShouldersDisplay_900Black } from "@expo-google-fonts/big-shoulders-display";
+import {
+  InterTight_400Regular,
+  InterTight_400Regular_Italic,
+  InterTight_500Medium,
+  InterTight_500Medium_Italic,
+  InterTight_600SemiBold,
+  InterTight_600SemiBold_Italic,
+  InterTight_700Bold,
+  InterTight_800ExtraBold,
+} from "@expo-google-fonts/inter-tight";
+import { router, Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { useMemo } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import {
@@ -39,6 +63,10 @@ import { useReduceMotion } from "@/lib/use-reduce-motion";
 import { SessionContext } from "@/store/session";
 import { TestModeContext, useTestMode, type TestModeValue } from "@/store/test-mode";
 import { useSaved } from "@/store/use-saved";
+import { loadLook, LookContext, saveLook, type Worn } from "@/store/look";
+
+/** A look was just put on from the Lab: once the app is drawn again, back to the Lab. */
+let backToLab = false;
 
 function Shell() {
   // A screen can replace the bar's buttons with its own; the bar itself is
@@ -53,6 +81,11 @@ function Shell() {
   const { on } = useTestMode();
   const insets = useSafeAreaInsets();
   const below = useMemo(() => (on ? { ...insets, top: 0 } : insets), [on, insets]);
+  useEffect(() => {
+    if (!backToLab) return;
+    backToLab = false;
+    router.push("/lab");
+  }, []);
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.bg }}>
@@ -96,6 +129,22 @@ function Shell() {
 
 export default function RootLayout() {
   const { state, setState, ready, locked, profile, switchTo } = useSaved();
+  // The look this phone wears, read before anything is drawn (see `store/look.ts`).
+  const [look, setLook] = useState<Worn | null>(null);
+  useEffect(() => {
+    loadLook().then(setLook);
+  }, []);
+  // Every screen is drawn again from the top in the new look.
+  const worn = useRef<Worn | null>(null);
+  worn.current = look;
+  const wear = useCallback((next: Partial<Worn>) => {
+    const now: Worn = { look: "dusk", headline: "anton", ...worn.current, ...next };
+    saveLook(now).then(() => {
+      backToLab = true;
+      setLook(now);
+    });
+  }, []);
+  const lookValue = useMemo(() => ({ look: look?.look ?? "dusk", headline: look?.headline ?? "anton", wear }), [look, wear]);
   const testMode = useMemo<TestModeValue>(
     () => ({
       on: profile === "test",
@@ -105,6 +154,16 @@ export default function RootLayout() {
     }),
     [profile, switchTo],
   );
+  // While a workout is in progress the screen stays on: between sets, on the
+  // rest clock, in the plan for a peek. It sleeps again once the workout ends.
+  const working = !!state.active;
+  useEffect(() => {
+    if (!working) return;
+    activateKeepAwakeAsync("workout").catch(() => {});
+    return () => {
+      deactivateKeepAwake("workout").catch(() => {});
+    };
+  }, [working]);
   // The face ships inside the bundle, so this is as quick as the read below.
   // A font that fails to load falls back to the system face rather than
   // holding the app on a blank screen.
@@ -121,12 +180,34 @@ export default function RootLayout() {
     AtkinsonHyperlegibleNext_500Medium,
     AtkinsonHyperlegibleNext_600SemiBold,
     AtkinsonHyperlegibleNext_700Bold,
+    // The Lab's Poster look (see `LOOKS` in theme.ts).
+    Anton_400Regular,
+    Archivo_400Regular,
+    Archivo_400Regular_Italic,
+    Archivo_500Medium,
+    Archivo_500Medium_Italic,
+    Archivo_600SemiBold,
+    Archivo_600SemiBold_Italic,
+    Archivo_800ExtraBold,
+    // Poster's other headline faces (see `HEADLINES`).
+    ArchivoBlack_400Regular,
+    BebasNeue_400Regular,
+    BigShouldersDisplay_900Black,
+    // The Lab's Concrete look.
+    InterTight_400Regular,
+    InterTight_400Regular_Italic,
+    InterTight_500Medium,
+    InterTight_500Medium_Italic,
+    InterTight_600SemiBold,
+    InterTight_600SemiBold_Italic,
+    InterTight_700Bold,
+    InterTight_800ExtraBold,
   });
 
   // Nothing renders until the saved training is read back, so no screen can
   // act on an empty state and write it over a year of history. The read is a
   // single small file, so this is a frame or two, not a visible spinner.
-  if (!ready || (!fontsLoaded && !fontError)) {
+  if (!ready || !look || (!fontsLoaded && !fontError)) {
     return <View style={{ flex: 1, backgroundColor: colors.bg }} />;
   }
 
@@ -151,7 +232,9 @@ export default function RootLayout() {
           {/* The intro, when it is wanted, covers everything — the bar too. */}
           <IntroProvider>
             <BarActionsProvider>
-              <Shell />
+              <LookContext.Provider value={lookValue}>
+                <Shell key={`${look.look}-${look.headline}`} />
+              </LookContext.Provider>
             </BarActionsProvider>
           </IntroProvider>
         </SessionContext.Provider>

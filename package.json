@@ -15,8 +15,14 @@
     "test": "node --test tests/*.cjs"
   },
   "dependencies": {
+    "@expo-google-fonts/anton": "^0.4.2",
+    "@expo-google-fonts/archivo": "^0.4.2",
+    "@expo-google-fonts/archivo-black": "^0.4.1",
     "@expo-google-fonts/atkinson-hyperlegible-next": "^0.4.1",
+    "@expo-google-fonts/bebas-neue": "^0.4.1",
+    "@expo-google-fonts/big-shoulders-display": "^0.2.3",
     "@expo-google-fonts/eb-garamond": "^0.4.3",
+    "@expo-google-fonts/inter-tight": "^0.4.2",
     "@react-native-async-storage/async-storage": "2.2.0",
     "expo": "^57.0.19",
     "expo-audio": "~57.0.5",

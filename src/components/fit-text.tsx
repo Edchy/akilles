@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { StyleSheet, View, type TextProps, type TextStyle } from "react-native";
 
 import { drawnScale, Text } from "@/components/text";
@@ -79,3 +79,80 @@ export function FitText({
     </View>
   );
 }
+
+/**
+ * A name that is never cut short — an exercise, where "DB shoulder…" could be
+ * any of three. One line, coming down in size to fit, no smaller than
+ * `least`; past that it takes a second line at that size, never a "…".
+ *
+ * It measures itself: drawn as it is, it reads back how many lines it took,
+ * and if more than one, comes down by the share that would make it one. No
+ * hidden copy, nothing about its box to get wrong. Where lines can't be read
+ * back (the web), it simply wraps.
+ */
+export function WholeText({
+  least = 0.75,
+  ui,
+  style,
+  children,
+  ...rest
+}: Omit<TextProps, "numberOfLines" | "adjustsFontSizeToFit" | "minimumFontScale" | "onTextLayout"> & {
+  ui?: boolean;
+  /** The smallest it may be drawn on one line, as a share of its written size. */
+  least?: number;
+}) {
+  const flat = (StyleSheet.flatten(style) ?? {}) as TextStyle;
+  const size = flat.fontSize ?? 14;
+  const [fit, setFit] = useState(1);
+  // The width it has to fill, read off its own box.
+  const [room, setRoom] = useState(0);
+  // On two lines at its smallest: split at the space nearest the middle.
+  const [balanced, setBalanced] = useState(false);
+  // A new name, or a new size: measured again from full size.
+  const name = typeof children === "string" ? children : "";
+  useEffect(() => {
+    setFit(1);
+    setBalanced(false);
+  }, [name, size]);
+  return (
+    <Text
+      {...rest}
+      ui={ui}
+      name
+      onLayout={(e) => setRoom(e.nativeEvent.layout.width)}
+      style={[
+        style,
+        { fontSize: Math.floor(size * fit * 2) / 2 },
+        typeof flat.lineHeight === "number" ? { lineHeight: Math.ceil(flat.lineHeight * fit) } : null,
+      ]}
+      onTextLayout={(e) => {
+        const lines = e.nativeEvent.lines;
+        if (lines.length < 2) return;
+        if (fit <= least) {
+          // As small as it goes, and still two lines: even them out, rather
+          // than leave "DB" alone above "Romanian deadlift".
+          if (lines.length === 2 && name && !balanced) setBalanced(true);
+          return;
+        }
+        // All its lines laid end to end are the name; its box is the room.
+        const whole = lines.reduce((sum, l) => sum + l.width, 0);
+        const width = room || Math.max(...lines.map((l) => l.width));
+        const next = Math.max(least, fit * (width / whole) * 0.97);
+        if (next < fit - 0.01) setFit(next);
+      }}
+    >
+      {balanced ? halves(name) : children}
+    </Text>
+  );
+}
+
+/** A name on two lines of about the same length: broken at the space nearest its middle. */
+function halves(name: string): string {
+  const middle = name.length / 2;
+  let at = -1;
+  for (let i = 0; i < name.length; i++) {
+    if (name[i] === " " && (at < 0 || Math.abs(i - middle) < Math.abs(at - middle))) at = i;
+  }
+  return at < 0 ? name : `${name.slice(0, at)}\n${name.slice(at + 1)}`;
+}
+

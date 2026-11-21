@@ -88,7 +88,7 @@ test("Today explains actual heavier and lighter weights beside their exercises",
     "db_rdl:6-10": done("db_rdl", 16, 18),
   });
   assert.equal(row(rows, "Goblet squat").adjustment, "Heavier this time — up from 18 kg.");
-  assert.equal(row(rows, "DB Romanian deadlift").adjustment, "Lighter this time — down from 18 kg ×2.");
+  assert.equal(row(rows, "DB Romanian deadlift").adjustment, "Lighter this time — down from 18 kg per hand.");
 });
 
 test("Today distinguishes fewer reps, more reps and consolidating the same weight", () => {
@@ -149,6 +149,8 @@ test("Today renders per-exercise changes, includes them in accessibility labels,
     if (Array.isArray(node)) return node.forEach(walk);
     if (!node || typeof node !== "object") return;
     if (typeof node.type === "function") return walk(node.type(node.props));
+    // A memo'd component: the function is inside.
+    if (typeof node.type?.type === "function") return walk(node.type.type(node.props));
     nodes.push(node);
     walk(node.props?.children);
   };

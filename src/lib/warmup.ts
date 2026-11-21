@@ -12,7 +12,8 @@ export type WarmupSet = { weight: number; reps: number };
 
 /**
  * How a weight reads on screen. A dumbbell exercise shows the weight of one
- * dumbbell with a ×2, because that is the number on the thing you pick up.
+ * dumbbell, "per hand", because that is the number on the thing you pick up
+ * — said in words, as the lift card says it; a "×2" read like a count.
  */
 export const weightLabel = (exercise: Exercise, weight: number): string => {
   if (exercise.bodyweight) {
@@ -22,7 +23,7 @@ export const weightLabel = (exercise: Exercise, weight: number): string => {
     // Negative is assistance from a machine; positive is added load.
     return weight < 0 ? `−${Math.abs(weight)} kg assist` : `+${weight} kg`;
   }
-  return exercise.perHand ? `${weight} kg ×2` : `${weight} kg`;
+  return exercise.perHand ? `${weight} kg per hand` : `${weight} kg`;
 };
 
 /** Fractions of the working weight, with the reps that suit each. */

@@ -137,7 +137,10 @@ export function BottomBar({ children }: PropsWithChildren) {
 
 /** The bar's labels: the interface face, in sentence case like everything else. */
 export const barLabel = {
-  fontFamily: fonts.ui,
+  // Read when drawn: a look from the Lab can change the face.
+  get fontFamily() {
+    return fonts.ui;
+  },
   fontSize: BAR.label,
   lineHeight: BAR.label + 3,
 } as const;

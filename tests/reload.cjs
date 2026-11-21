@@ -166,7 +166,7 @@ test("topping out into a reload is a hit, and says so before you move on", () =>
   const verdict = store.nextTime(state);
   assert.equal(verdict.outcome, "hit");
   assert.equal(verdict.say, "reload");
-  assert.equal(verdict.fact, "Reload next time: 25 kg ×2 again, from 8 reps.");
+  assert.equal(verdict.fact, "Reload next time: 25 kg per hand again, from 8 reps.");
   assert.ok(voice.OUTCOME_LINES.reload.length > 0);
   assert.equal(store.sessionTally(state).reload, 1);
 
@@ -181,7 +181,7 @@ test("finishing a reload is owned, and earns the next step", () => {
   const state = benchDone(record("db_bench", 25, { rung: 2, reloading: true, climbs: 0, lastPerformed: last, lastTrainedAt: NOW - 3 * DAY }));
   const verdict = store.nextTime(state);
   assert.equal(verdict.say, "owned");
-  assert.equal(verdict.fact, "Up to 27.5 kg ×2 next time.");
+  assert.equal(verdict.fact, "Up to 27.5 kg per hand next time.");
 });
 
 test("Today says a lift reloads", () => {
@@ -218,7 +218,7 @@ test("the verdict states the real reduced weight without claiming an exact perce
   const missed = { ...state, active: { ...state.active, items: state.active.items.map((it, i) =>
     i === at ? { ...it, logged: it.logged.map(() => 4) } : it,
   ) } };
-  assert.equal(store.nextTime(missed).fact, "Lighter next time: 7.5 kg ×2.");
+  assert.equal(store.nextTime(missed).fact, "Lighter next time: 7.5 kg per hand.");
   assert.equal(store.finishWorkout(missed).history["db_bench:6-10"].weight, 7.5);
 });
 

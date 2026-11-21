@@ -1,9 +1,9 @@
 import { router } from "expo-router";
 import { Button } from "@/components/buttons";
-import { useLayoutEffect, useState } from "react";
+import { memo, useState, type ReactNode } from "react";
 import { Pressable, ScrollView, View, useWindowDimensions } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
-import Animated, { useAnimatedStyle, useSharedValue, withSpring, withTiming } from "react-native-reanimated";
+import Animated, { type SharedValue, useAnimatedStyle, useSharedValue, withSpring, withTiming } from "react-native-reanimated";
 import { scheduleOnRN } from "react-native-worklets";
 import { Text } from "@/components/text";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -14,8 +14,8 @@ import { GrowthOffer } from "@/components/growth-offer";
 import { Mark } from "@/components/mark";
 import { Column, COLUMN } from "@/components/screen";
 import { Sheet, OpenRow } from "@/components/sheet";
-import { colors, DUSK, DUSK_INK, DUSK_TODAY, FAMILY, fonts, mix, radii } from "@/constants/theme";
-import { DuskGround } from "@/components/dusk";
+import { colors, CONCRETE, CONCRETE_TONE, DUSK, DUSK_INK, FAMILY, fonts, mix, POSTER_COLOUR, POSTER_EDGE, POSTER_INK, radii, worn } from "@/constants/theme";
+import { DuskGround, PosterGround } from "@/components/dusk";
 import Svg, { Defs, LinearGradient, Rect, Stop } from "react-native-svg";
 import type { Family } from "@/data/families";
 import type { Workout } from "@/data/split";
@@ -96,7 +96,7 @@ function Deck() {
 
   const start = () => {
     const id = workout.id;
-    setLook(0);
+    goTo(0);
     // Never over the top of one in progress — that would throw its sets away.
     // The deck is the round and the swipe only moves where you are in it:
     // Start does the one on top, and next time the one after it is on top.
@@ -110,6 +110,8 @@ function Deck() {
   };
 
   const family = workoutFamily(state, workout);
+  // The same workouts as the round, but in the plan's order, each once.
+  const inPlanOrder = state.workouts.filter((w) => round.some((r) => r.id === w.id));
   // The next two in the round after the one on top, under it: the deck's edges.
   const behind = [1, 2]
     .filter((k) => round.length > k)
@@ -123,10 +125,19 @@ function Deck() {
   const { width } = useWindowDimensions();
   const away = width + 60;
   const x = useSharedValue(0);
+  // Which card is on top, as the deck itself knows it: changed on the UI
+  // thread in the same frame the thrown card lands, so every card simply
+  // takes its new place — nothing is drawn again, nothing jumps.
+  const base = useSharedValue(look);
+  const n = round.length;
+  // The shapes under the deck move the moment you let go, not when it lands.
   const turn = (by: number) => setLook((l) => l + by);
-  useLayoutEffect(() => {
+  // Straight to one (a tap on its shape, or Start): the deck goes with it.
+  const goTo = (i: number) => {
+    setLook(i);
+    base.value = i;
     x.value = 0;
-  }, [at, x]);
+  };
   const swipe = Gesture.Pan()
     .enabled(round.length > 1)
     .activeOffsetX([-12, 12])
@@ -141,20 +152,15 @@ function Deck() {
         return;
       }
       const by = e.translationX < 0 ? 1 : -1;
+      scheduleOnRN(turn, by);
       x.value = withTiming(-by * away, { duration: 220 }, (done) => {
-        if (done) scheduleOnRN(turn, by);
+        if (!done) return;
+        // Landed: the deck is one further round. The thrown card is now the
+        // one waiting off to the left, exactly where it already is.
+        base.value += by;
+        x.value = 0;
       });
     });
-  // The top card goes left with the finger, tilting a little; going right it stays.
-  const top = useAnimatedStyle(() => {
-    const v = Math.min(0, x.value);
-    return { transform: [{ translateX: v }, { rotate: `${(v / Math.max(1, width)) * 8}deg` }] };
-  });
-  // The one before waits off to the left and follows the finger in.
-  const before = useAnimatedStyle(() => {
-    const v = Math.max(0, x.value);
-    return { transform: [{ translateX: v - away }, { rotate: `${((v - away) / Math.max(1, width)) * 8}deg` }] };
-  });
 
   // Today always points to the next workout, including after training today.
   // Only first-use guidance and returning need a remark.
@@ -210,52 +216,71 @@ function Deck() {
                   bottom: -8 * depth,
                   left: 10 * depth,
                   right: 10 * depth,
-                  borderRadius: radii.card,
+                  borderRadius: worn.poster ? POSTER_CORNER : worn.concrete ? CONCRETE.corner : radii.card,
                   borderCurve: "continuous",
-                  borderWidth: DUSK_TODAY ? 1 : 1.5,
-                  borderColor: DUSK_TODAY ? mix(DUSK[workoutFamily(state, w)].top, "#000000", 0.35) : colors.text,
-                  backgroundColor: DUSK_TODAY ? DUSK[workoutFamily(state, w)].top : FAMILY[workoutFamily(state, w)].field,
+                  borderWidth: worn.poster ? POSTER_EDGE : worn.dusk || worn.concrete ? 1 : 1.5,
+                  borderColor: worn.poster ? POSTER_INK : worn.concrete ? CONCRETE.edge : worn.dusk ? mix(DUSK[workoutFamily(state, w)].top, "#000000", 0.35) : colors.text,
+                  // Concrete: white like every card in it, each on its own soft shadow.
+                  boxShadow: worn.concrete ? "0 4px 14px rgba(0, 0, 0, 0.08)" : undefined,
+                  backgroundColor: worn.poster
+                    ? POSTER_COLOUR[workoutFamily(state, w)].card
+                    : worn.concrete ? CONCRETE.card
+                    : worn.dusk ? DUSK[workoutFamily(state, w)].top : FAMILY[workoutFamily(state, w)].field,
                 }}
-              />
+              >
+                {/* Deeper in the deck, deeper in its shade. */}
+                <View
+                  style={{
+                    position: "absolute",
+                    top: 0,
+                    bottom: 0,
+                    left: 0,
+                    right: 0,
+                    borderRadius: worn.poster ? POSTER_CORNER : worn.concrete ? CONCRETE.corner : radii.card,
+                    borderCurve: "continuous",
+                    backgroundColor: "#000000",
+                    opacity: SHADE * (depth + 1),
+                  }}
+                />
+              </View>
             );
           })}
-          {/* The one after, whole, under the top: there as soon as it goes. */}
-          {round.length > 1 ? (
-            <View pointerEvents="none" style={{ position: "absolute", top: 0, bottom: 0, left: 0, right: 0 }}>
-              <DayCard state={state} workout={round[(at + 1) % round.length]} />
-            </View>
-          ) : null}
+          {/* Every card of the round, each always itself: the deck only
+              moves them — on top, under it, or waiting off to the left. */}
           <GestureDetector gesture={swipe}>
             <View style={{ flex: 1 }}>
-              <Animated.View style={[{ flex: 1 }, top]}>
-                <DayCard state={state} workout={workout} inProgress={inProgress} />
-              </Animated.View>
-              {round.length > 1 ? (
-                <Animated.View pointerEvents="none" style={[{ position: "absolute", top: 0, bottom: 0, left: 0, right: 0 }, before]}>
-                  <DayCard state={state} workout={round[(at - 1 + round.length) % round.length]} />
-                </Animated.View>
-              ) : null}
+              {round.map((w, i) => (
+                <DeckSlot key={`${w.id}-${i}`} index={i} count={n} base={base} x={x} away={away} width={width} onTop={i === at}>
+                  <DayCard state={state} workout={w} inProgress={inProgress} />
+                </DeckSlot>
+              ))}
             </View>
           </GestureDetector>
         </View>
 
-        {/* The round, one shape a workout, the one on top full size: where
-            you are in it, and a tap to go straight to one. */}
+        {/* The plan, one shape a workout, always in the plan's own order —
+            push, pull, legs — so it is learned once and never read again.
+            Only the light moves: the one on top full size, which on opening
+            is today's, so it says where you are in the cycle. A tap goes
+            straight to one. */}
         {round.length > 1 ? (
           <View style={{ marginTop: -6, flexDirection: "row", justifyContent: "center", alignItems: "center", gap: 6 }}>
-            {round.map((w, i) => (
-              <Pressable
-                key={`${w.id}-${i}`}
-                accessibilityRole="button"
-                accessibilityLabel={`Show ${w.name || "Untitled"}`}
-                accessibilityState={{ selected: i === at }}
-                hitSlop={6}
-                onPress={() => setLook(i)}
-                style={{ width: 32, height: 32, alignItems: "center", justifyContent: "center", opacity: i === at ? 1 : 0.4 }}
-              >
-                <Mark family={workoutFamily(state, w)} size={i === at ? 20 : 14} />
-              </Pressable>
-            ))}
+            {inPlanOrder.map((w) => {
+              const lit = w.id === workout.id;
+              return (
+                <Pressable
+                  key={w.id}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Show ${w.name || "Untitled"}`}
+                  accessibilityState={{ selected: lit }}
+                  hitSlop={6}
+                  onPress={() => goTo(round.findIndex((r) => r.id === w.id))}
+                  style={{ width: 32, height: 32, alignItems: "center", justifyContent: "center", opacity: lit ? 1 : 0.4 }}
+                >
+                  <Mark family={workoutFamily(state, w)} size={lit ? 20 : 14} />
+                </Pressable>
+              );
+            })}
           </View>
         ) : null}
       </View>
@@ -307,14 +332,89 @@ function Deck() {
  * scrolling inside the card when it is long. Fills whatever room it is given,
  * so every card in the deck is the same size.
  */
-function DayCard({ state, workout, inProgress = false }: { state: SessionState; workout: Workout; inProgress?: boolean }) {
+/**
+ * One card's place in the deck, worked out on the UI thread from which card
+ * is on top (`base`) and the finger (`x`): on top, going left with the finger
+ * and tilting a little; the one before, waiting off to the left and following
+ * a rightward finger in over the top; the one after, still, under the top;
+ * the rest out of sight.
+ */
+/** How dark the card under the top one is, at most. */
+const SHADE = 0.08;
+
+function DeckSlot({
+  index,
+  count,
+  base,
+  x,
+  away,
+  width,
+  onTop,
+  children,
+}: {
+  index: number;
+  count: number;
+  base: SharedValue<number>;
+  x: SharedValue<number>;
+  away: number;
+  width: number;
+  onTop: boolean;
+  children: ReactNode;
+}) {
+  const style = useAnimatedStyle(() => {
+    const d = (((index - base.value) % count) + count) % count;
+    const tilt = (v: number) => `${(v / Math.max(1, width)) * 8}deg`;
+    if (d === 0) {
+      const v = Math.min(0, x.value);
+      return { opacity: 1, zIndex: 3, transform: [{ translateX: v }, { rotate: tilt(v) }] };
+    }
+    // With two, the other one is both after and before: before while the finger goes right.
+    if (d === count - 1 && (count > 2 || x.value > 0)) {
+      const v = Math.max(0, x.value) - away;
+      return { opacity: 1, zIndex: 4, transform: [{ translateX: v }, { rotate: tilt(v) }] };
+    }
+    if (d === 1) return { opacity: 1, zIndex: 2, transform: [{ translateX: 0 }, { rotate: "0deg" }] };
+    return { opacity: 0, zIndex: 0, transform: [{ translateX: 0 }, { rotate: "0deg" }] };
+  });
+  // In the shade of the card above it, as in a real deck: the one under the
+  // top a little darker, lifting as the top card is thrown off it; the top
+  // one darkening as the one before comes in over it.
+  const shade = useAnimatedStyle(() => {
+    const d = (((index - base.value) % count) + count) % count;
+    const off = Math.min(1, Math.abs(x.value) / away);
+    if (d === 0) return { opacity: x.value > 0 ? off * SHADE : 0 };
+    if (d === 1 && x.value <= 0) return { opacity: (1 - off) * SHADE };
+    return { opacity: 0 };
+  });
+  return (
+    <Animated.View
+      pointerEvents={onTop ? "auto" : "none"}
+      accessibilityElementsHidden={!onTop}
+      importantForAccessibility={onTop ? "auto" : "no-hide-descendants"}
+      style={[{ position: "absolute", top: 0, bottom: 0, left: 0, right: 0 }, style]}
+    >
+      {children}
+      <Animated.View
+        pointerEvents="none"
+        style={[
+          { position: "absolute", top: 0, bottom: 0, left: 0, right: 0, backgroundColor: "#000000" },
+          { borderRadius: worn.poster ? POSTER_CORNER : worn.concrete ? CONCRETE.corner : radii.card, borderCurve: "continuous" },
+          shade,
+        ]}
+      />
+    </Animated.View>
+  );
+}
+
+// Drawn again only when what it shows changes, so turning the deck redraws nothing.
+export const DayCard = memo(function DayCard({ state, workout, inProgress = false }: { state: SessionState; workout: Workout; inProgress?: boolean }) {
   const family = workoutFamily(state, workout);
   const card = cardInk(family);
   const minutes = workoutMinutes(state, workout);
   const rows = inProgress ? [] : workoutPreview(state, workout);
   // Slots with nothing here to do them with, said rather than hidden.
   const missing = inProgress ? [] : sittingOut(state, workout);
-  const dusk = DUSK_TODAY ? DUSK[family] : null;
+  const dusk = worn.dusk ? DUSK[family] : null;
   // Whether the list runs past the card, and whether it has been scrolled to its end.
   const [box, setBox] = useState(0);
   const [content, setContent] = useState(0);
@@ -325,19 +425,42 @@ function DayCard({ state, workout, inProgress = false }: { state: SessionState; 
     <View
       style={{
         flex: 1,
-        borderRadius: radii.card,
+        borderRadius: worn.poster ? POSTER_CORNER : worn.concrete ? CONCRETE.corner : radii.card,
         borderCurve: "continuous",
-        borderWidth: dusk ? 1 : 1.5,
-        borderColor: dusk ? mix(dusk.top, "#000000", 0.35) : colors.text,
-        backgroundColor: dusk ? dusk.foot : colors.bg,
+        borderWidth: worn.poster ? POSTER_EDGE : worn.concrete || dusk ? 1 : 1.5,
+        borderColor: worn.poster ? POSTER_INK : worn.concrete ? CONCRETE.edge : dusk ? mix(dusk.top, "#000000", 0.35) : colors.text,
+        backgroundColor: dusk ? dusk.foot : worn.concrete ? CONCRETE.card : colors.bg,
+        // Concrete: the card floats on a soft shadow.
+        boxShadow: worn.concrete ? CONCRETE.shadow : undefined,
         overflow: "hidden",
       }}
     >
       {dusk ? <DuskGround family={family} shape={160} /> : null}
+      {worn.poster ? (
+        // The day's colour, its shape huge off the corner, and the name as a headline.
+        <View style={{ overflow: "hidden", paddingHorizontal: 16, paddingTop: 14, paddingBottom: 14 }}>
+          <PosterGround family={family} shape={200} />
+          {/* One line: a long name ends in "…" rather than taking over the card. */}
+          <Text
+            accessibilityRole="header"
+            numberOfLines={1}
+            style={{ color: card.ink, fontFamily: fonts.display, fontSize: 68, lineHeight: 76 }}
+          >
+            {workout.name || "Untitled"}
+          </Text>
+          {/* Capitalised in the words, not the style: see `upper` in text.tsx. */}
+          <Text ui style={{ color: card.ink, fontSize: 14, fontWeight: "800", letterSpacing: 1.2 }}>
+            {[workout.subtitle, `about ${minutes} min`].filter(Boolean).join(" · ").toUpperCase()}
+          </Text>
+        </View>
+      ) : null}
+      {/* The rule under the header, its own strip: nothing in the header can cover it. */}
+      {worn.poster ? <View style={{ height: POSTER_EDGE, backgroundColor: POSTER_INK }} /> : (
       <View style={{ backgroundColor: dusk ? "transparent" : card.field, paddingHorizontal: 16, paddingTop: 14, paddingBottom: 14 }}>
         <View style={{ flexDirection: "row", alignItems: "center", gap: GAP }}>
           <View style={{ width: MARKS, alignItems: "center" }}>
-            <Mark family={family} size={MARKS - 4} color={card.ink} plain={DUSK_TODAY} />
+            {/* Concrete: the icon keeps its colour on the grey band. */}
+            <Mark family={family} size={MARKS - 4} color={card.ink} plain={worn.dusk} />
           </View>
           <Text
             accessibilityRole="header"
@@ -351,6 +474,7 @@ function DayCard({ state, workout, inProgress = false }: { state: SessionState; 
           {[workout.subtitle, `about ${minutes} min`].filter(Boolean).join(" · ")}
         </Text>
       </View>
+      )}
       <ScrollView
         style={{ flex: 1 }}
         onLayout={(e) => setBox(e.nativeEvent.layout.height)}
@@ -368,10 +492,10 @@ function DayCard({ state, workout, inProgress = false }: { state: SessionState; 
         ) : null}
       </ScrollView>
       {/* More below: the list fades into the card's foot, rather than being cut by its edge. */}
-      {overflows && !atFoot ? <FootFade color={dusk ? dusk.foot : colors.bg} /> : null}
+      {overflows && !atFoot ? <FootFade color={dusk ? dusk.foot : worn.concrete ? CONCRETE.card : colors.bg} /> : null}
     </View>
   );
-}
+});
 
 /** How tall the fade at the foot of a long list is. */
 const FADE = 44;
@@ -407,8 +531,12 @@ function missingLine(slots: string[]): string {
  * ink, and each shape in its own colour (`marks`).
  */
 type CardInk = { field: string; ink: string; soft: string; marks?: boolean; glow?: boolean };
+/** Poster's corners: just off square, like a printed card. */
+const POSTER_CORNER = 4;
 const cardInk = (family: Family): CardInk => {
-  if (DUSK_TODAY) return { field: "transparent", ink: DUSK_INK.ink, soft: DUSK_INK.soft };
+  if (worn.poster) return { field: POSTER_COLOUR[family].card, ink: POSTER_COLOUR[family].ink, soft: POSTER_COLOUR[family].ink };
+  if (worn.concrete) return { field: CONCRETE_TONE[family].tone, ink: CONCRETE_TONE[family].ink, soft: `${CONCRETE_TONE[family].ink}CC` };
+  if (worn.dusk) return { field: "transparent", ink: DUSK_INK.ink, soft: DUSK_INK.soft };
   const { field, mark: ink } = FAMILY[family];
   return { field, ink, soft: `${ink}CC` };
 };
@@ -434,7 +562,7 @@ const ROWS = { most: 44, least: 36 } as const;
 /** The next workout, with short change labels tucked beneath the figures. */
 function Preview({ rows, rowHeight = ROWS.most, ink }: { rows: PreviewRow[]; rowHeight?: number; ink: CardInk }) {
   return (
-    <View accessibilityRole="list" style={{ gap: rowHeight >= ROWS.most ? 4 : 2 }}>
+    <View accessibilityRole="list" style={{ gap: worn.poster ? 0 : rowHeight >= ROWS.most ? 4 : 2 }}>
       {rows.map((r) => {
         const timed = r.family === "cardio" || r.family === "mobility" || r.family === "goal";
         const strong = !!r.adjustmentLabel || r.family === "goal";
@@ -444,20 +572,27 @@ function Preview({ rows, rowHeight = ROWS.most, ink }: { rows: PreviewRow[]; row
             key={r.id}
             accessible
             accessibilityLabel={[r.name, figure, r.adjustment].filter(Boolean).join(". ")}
-            style={{ flexDirection: "row", alignItems: "center", gap: GAP, minHeight: rowHeight }}
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              gap: GAP,
+              minHeight: rowHeight,
+              // Poster: each row ruled off in the ink, like a results table.
+              ...(worn.poster ? { borderBottomWidth: 2, borderColor: POSTER_INK } : null),
+            }}
           >
             <View style={{ width: MARKS, alignItems: "center" }}>
               <RowMark family={r.family} size={22} ink={ink} />
             </View>
-            <Text style={{ flex: 1, color: ink.ink, fontFamily: fonts.regular, fontSize: 20 }}>
+            <Text style={{ flex: 1, color: ink.ink, fontFamily: worn.poster ? fonts.semibold : fonts.regular, fontSize: worn.poster ? 18 : 20 }}>
               {r.name}
             </Text>
             {figure ? (
               <View style={{ alignItems: "flex-end", flexShrink: 0 }}>
                 <Text
                   style={{
-                    color: strong ? ink.ink : ink.soft,
-                    fontFamily: strong ? fonts.medium : fonts.regular,
+                    color: strong || worn.poster ? ink.ink : ink.soft,
+                    fontFamily: worn.poster ? fonts.bold : strong ? fonts.medium : fonts.regular,
                     fontSize: 17,
                     lineHeight: 21,
                     fontVariant: ["lining-nums", "tabular-nums"],
@@ -545,8 +680,9 @@ function BigButton({
     <Button
       label={label}
       kind={primary ? "primary" : "secondary"}
-      fill={primary ? colors.text : undefined}
-      onFill={colors.bg}
+      // Poster: the day's flat colour, its word in the day's ink.
+      fill={primary ? (worn.poster ? POSTER_COLOUR[primary].card : colors.text) : undefined}
+      onFill={primary && worn.poster ? POSTER_COLOUR[primary].ink : colors.bg}
       // Start is the answer nearly every time, so it takes twice the room.
       flex={primary ? 2 : 1}
       onPress={onPress}

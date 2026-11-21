@@ -103,7 +103,7 @@ export type Exercise = {
   assistable?: boolean;
   /**
    * Held in each hand. The weight stored and shown is the weight of ONE
-   * dumbbell — "20 kg ×2" — because that is the number written on the
+   * dumbbell — "20 kg per hand" — because that is the number written on the
    * dumbbell you pick up, not the total you are moving.
    */
   perHand?: boolean;

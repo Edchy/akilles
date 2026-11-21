@@ -75,7 +75,7 @@ test("new library exercises have traceable demonstrations and exercise-specific 
 test("loaded carries track seconds and kilograms independently, never kg multiplied by seconds", () => {
   const carry = byId("farmer_carry");
   const fresh = prog.freshState(carry);
-  assert.equal(weightLabel(carry, fresh.weight), "7.5 kg ×2");
+  assert.equal(weightLabel(carry, fresh.weight), "7.5 kg per hand");
   assert.equal(prog.ladderOf(carry, "6-12").join(), "30,40,50,60");
   assert.equal(warmupFor(carry, 20).length, 0);
   const next = prog.applyResult({ ...fresh, rung: 3 }, "6-12", [60, 60, 60], Date.now());

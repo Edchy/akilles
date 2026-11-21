@@ -17,7 +17,8 @@ import { WorkoutGoals } from "@/components/goals";
 import { GOALS_ON } from "@/data/goals";
 import { Icon } from "@/components/icon";
 import { Mark } from "@/components/mark";
-import { DuskGround } from "@/components/dusk";
+import { DuskGround, PosterFrame } from "@/components/dusk";
+import { WholeText } from "@/components/fit-text";
 import { Segments } from "@/components/segments";
 import { Swipe, swipedRecently } from "@/components/swipe";
 import { HINT_LABELS, InlineTip, playedHint } from "@/components/tips";
@@ -32,7 +33,7 @@ import {
 import { NoteField } from "@/components/note";
 import { WeightField } from "@/components/weight-field";
 import { grain } from "@/constants/grain";
-import { DUSK, DUSK_CARDS, LETTERPRESS, cardOf, mix, colors, familyWash, fonts, radii } from "@/constants/theme";
+import { CONCRETE, CONCRETE_TONE, DUSK, LETTERPRESS, POSTER_COLOUR, cardOf, mix, colors, familyWash, fonts, radii, worn } from "@/constants/theme";
 import {
   cardioPool,
   mobilityPool,
@@ -475,15 +476,20 @@ function WorkoutRow({
           borderRadius: radii.card,
           borderCurve: "continuous",
           backgroundColor: paused ? colors.surface : fill.bg,
-          borderWidth: 1.5,
-          borderColor: drag.active ? colors.text : "transparent",
+          // Poster: every card framed in the ink.
+          // Poster: its frame is laid over the top instead (see `PosterFrame`).
+          borderWidth: worn.poster ? 0 : 1.5,
+          borderColor: drag.active ? colors.text : worn.concrete ? CONCRETE.edge : "transparent",
+          // Concrete: a white card on a soft shadow.
+          boxShadow: worn.concrete && !paused ? CONCRETE.shadow : undefined,
           overflow: "hidden",
           opacity: pressed && !drag.active ? 0.7 : 1,
         })}
       >
-        {DUSK_CARDS && !paused ? <DuskGround family={family} /> : null}
+        {worn.dusk && !paused ? <DuskGround family={family} /> : null}
         <Watermark id={workout.id} family={family} ground={paused ? colors.surface : fill.bg} ink={ink} faint={paused} />
-        {LETTERPRESS && !DUSK_CARDS && !paused ? <Grain /> : null}
+        {LETTERPRESS && !worn.dusk && !worn.poster && !worn.concrete && !paused ? <Grain /> : null}
+        {worn.poster ? <PosterFrame radius={radii.card} /> : null}
         {/* Paused: the shape goes grey and the words step back, so it reads
             as out of the loop at a glance; "Paused" says it in words too, and
             it comes back with a swipe left, Resume. */}
@@ -845,17 +851,20 @@ function Row({
           borderRadius: radii.card,
           borderCurve: "continuous",
           backgroundColor: fill.bg,
-          borderWidth: 1.5,
-          borderColor: lifted ? colors.text : "transparent",
+          borderWidth: worn.poster ? 0 : 1.5,
+          borderColor: lifted ? colors.text : worn.concrete ? CONCRETE.edge : "transparent",
+          boxShadow: worn.concrete ? CONCRETE.shadow : undefined,
           overflow: "hidden",
           opacity: pressed && !lifted ? 0.6 : 1,
         })}
       >
-        {DUSK_CARDS ? <DuskGround family={family} /> : LETTERPRESS ? <Grain /> : null}
+        {worn.dusk ? <DuskGround family={family} /> : LETTERPRESS && !worn.poster && !worn.concrete ? <Grain /> : null}
+        {worn.poster ? <PosterFrame radius={radii.card} /> : null}
         {drag ? <Icon name="grip" size={16} color={ink} /> : null}
         <View style={{ width: 18, alignItems: "center" }}><Mark family={family} size={16} color={ink} /></View>
         <View style={{ flex: 1, gap: 2 }}>
-          <Text numberOfLines={1} style={{ color: ink, fontSize: 19 }}>{title}</Text>
+          {/* An exercise's name is never cut: it comes down a little, then wraps. */}
+          <WholeText least={0.85} style={{ color: ink, fontSize: 19 }}>{title}</WholeText>
           {detail ? <Text ui style={{ color: ink, opacity: 0.85, fontSize: 15 }}>{detail}</Text> : null}
         </View>
         <Icon name="open" size={14} color={ink} />
@@ -1419,7 +1428,7 @@ function Watermark({ id, family, ground, ink, faint }: { id: string; family: Fam
     </View>
   );
   // At dusk the shape glows faintly in its family's light instead.
-  const glow = DUSK_CARDS && !faint;
+  const glow = worn.dusk && !faint;
   return (
     <View
       style={{
@@ -1436,6 +1445,11 @@ function Watermark({ id, family, ground, ink, faint }: { id: string; family: Fam
     >
       {glow ? (
         layer(0, 0, DUSK[family].glow)
+      ) : worn.poster && !faint ? (
+        layer(0, 0, POSTER_COLOUR[family].deep)
+      ) : worn.concrete && !faint ? (
+        // A pale wash of the family's grey: there, but quiet.
+        layer(0, 0, mix("#FFFFFF", CONCRETE_TONE[family].tone, 0.22))
       ) : (
         <>
           {layer(edge, edge, faint ? "rgba(255, 255, 255, 0.25)" : "rgba(255, 255, 255, 0.14)")}

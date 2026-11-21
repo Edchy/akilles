@@ -6,8 +6,8 @@ import { Icon } from "@/components/icon";
 import { Mark } from "@/components/mark";
 import { SectionLabel, Sheet, TextButton } from "@/components/sheet";
 import { Text, TextInput } from "@/components/text";
-import { DUSK_CARDS, DUSK_INK, colors, radii } from "@/constants/theme";
-import { DuskGround } from "@/components/dusk";
+import { DUSK_INK, POSTER_COLOUR, colors, radii, worn } from "@/constants/theme";
+import { DuskGround, PosterFrame, PosterGround } from "@/components/dusk";
 import type { Exercise, Pattern } from "@/data/exercises";
 import { familyOf, type Family } from "@/data/families";
 import { newId, type EntryPart, type Workout } from "@/data/split";
@@ -449,7 +449,7 @@ function BackRow({ label, onPress }: { label: string; onPress: () => void }) {
  * one wraps cleanly, then how many — and an arrow, saying it opens.
  */
 function Tile({ label, detail, family, onPress }: { label: string; detail: string; family: Family; onPress: () => void }) {
-  const ink = DUSK_CARDS ? DUSK_INK.ink : colors.text;
+  const ink = worn.poster ? POSTER_COLOUR[family].ink : worn.dusk ? DUSK_INK.ink : colors.text;
   return (
     <Pressable
       accessibilityRole="button"
@@ -464,18 +464,21 @@ function Tile({ label, detail, family, onPress }: { label: string; detail: strin
         overflow: "hidden",
         borderRadius: radii.card,
         borderCurve: "continuous",
-        ...(DUSK_CARDS
+        ...(worn.poster
+          ? { opacity: pressed ? 0.75 : 1 }
+          : worn.dusk
           ? { opacity: pressed ? 0.75 : 1 }
           : { borderWidth: 1.5, borderColor: colors.line, backgroundColor: pressed ? colors.surface : colors.bg }),
       })}
     >
-      {DUSK_CARDS ? <DuskGround family={family} shape={72} /> : null}
+      {worn.poster ? <PosterGround family={family} shape={96} /> : worn.dusk ? <DuskGround family={family} shape={72} /> : null}
+      {worn.poster ? <PosterFrame radius={radii.card} /> : null}
       <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
         <Mark family={family} size={22} color={ink} />
         <Icon name="forward" size={16} color={ink} />
       </View>
       <Text numberOfLines={2} style={{ color: ink, fontSize: 21, lineHeight: 25, fontWeight: "600" }}>{label}</Text>
-      <Text style={{ marginTop: "auto", color: ink, opacity: DUSK_CARDS ? 0.85 : 1, fontSize: 16, fontStyle: "italic" }}>{detail}</Text>
+      <Text style={{ marginTop: "auto", color: ink, opacity: worn.dusk ? 0.85 : 1, fontSize: 16, fontStyle: "italic" }}>{detail}</Text>
     </Pressable>
   );
 }

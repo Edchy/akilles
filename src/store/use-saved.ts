@@ -20,7 +20,7 @@ import {
 } from "react";
 import { AppState } from "react-native";
 
-import { correctTreadmillTarget, initialState, resetToDefault, type SessionState } from "@/store/session";
+import { correctTreadmillTarget, followPlan, initialState, resetToDefault, type SessionState } from "@/store/session";
 import {
   copyForTest,
   FROM_MAC,
@@ -64,7 +64,11 @@ export const useSaved = () => {
   // What screens see: plain state, whoever's it is.
   const setState = useCallback<Dispatch<SetStateAction<SessionState>>>(
     (next) =>
-      setHeld((h) => ({ ...h, state: typeof next === "function" ? next(h.state) : next })),
+      setHeld((h) => {
+        const after = typeof next === "function" ? next(h.state) : next;
+        // A plan edit mid-workout reaches the workout too: see `followPlan`.
+        return { ...h, state: followPlan(h.state, after) };
+      }),
     [],
   );
 

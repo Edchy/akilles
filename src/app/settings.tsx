@@ -11,7 +11,7 @@ import { COLUMN } from "@/components/screen";
 import { PlansSheet } from "@/components/plans-sheet";
 import { BigButton, OpenRow, SectionLabel, Sheet } from "@/components/sheet";
 import { TestMode } from "@/components/test-mode";
-import { TEST_MODE_OFFERED } from "@/store/test-mode";
+import { TEST_MODE_OFFERED, useTestMode } from "@/store/test-mode";
 import { Text } from "@/components/text";
 import { colors, fonts } from "@/constants/theme";
 import { forgetBody, loopInUse, loopName, loopsOf, useSession } from "@/store/session";
@@ -25,6 +25,7 @@ export default function SettingsScreen() {
   const insets = useSafeAreaInsets();
   const barSpace = useBarSpace();
   const router = useRouter();
+  const { on: testing } = useTestMode();
   const { state, setState } = useSession();
   const openIntro = useOpenIntro();
   const [sheet, setSheet] = useState<"plan" | "backup" | "test" | "body" | null>(null);
@@ -97,6 +98,10 @@ export default function SettingsScreen() {
           detail="Try things out without touching your training"
           onPress={() => setSheet("test")}
         />
+      ) : null}
+      {/* The Lab is for trying looks: only while testing. */}
+      {testing ? (
+        <OpenRow title="Lab" detail="Try new looks for the cards" onPress={() => router.push("/lab")} />
       ) : null}
       {body ? (
         <OpenRow

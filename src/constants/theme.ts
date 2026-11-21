@@ -167,13 +167,16 @@ export const PRESS: Record<Family, { card: string; ink: string; stamp: string }>
  * shapes on the card. Since 18 November 2026; `false` brings back the pale
  * band over paper.
  */
-export const DUSK_TODAY = true;
+/**
+ * The look being worn (see `applyLook`, at the foot): read when drawing,
+ * never copied, so a change reaches every file. `dusk` is the app as it is.
+ */
+export const worn = { id: "dusk" as LookId, dusk: true, poster: false, concrete: false, fontScale: 1.12, headline: "anton" as HeadlineId };
 /**
  * Dusk everywhere a workout is a card: the workout's own cards and the Plan
  * rows too, so Today, Plan and the workout are one look. The stamp on a set
  * is the family's glow. `false` leaves them letterpress.
  */
-export const DUSK_CARDS = true;
 export const DUSK: Record<Family, { top: string; foot: string; glow: string }> = {
   push: { top: "#2B3F8C", foot: "#141A33", glow: "#6E8CFF" },
   pull: { top: "#22604A", foot: "#0F1F1A", glow: "#5FD39E" },
@@ -196,7 +199,11 @@ export const DUSK_INK = { ink: "#F3E9D6", soft: "#F3E9D6CC" };
 
 /** A family's row or card colours: letterpress, or the pale field with its ink. */
 export const cardOf = (family: Family): { bg: string; ink: string } =>
-  DUSK_CARDS
+  worn.poster
+    ? { bg: POSTER_COLOUR[family].card, ink: POSTER_COLOUR[family].ink }
+    : worn.concrete
+    ? { bg: CONCRETE.card, ink: CONCRETE.text }
+    : worn.dusk
     ? { bg: mix(DUSK[family].top, DUSK[family].foot, 0.45), ink: DUSK_INK.ink }
     : LETTERPRESS ? { bg: PRESS[family].card, ink: PRESS[family].ink } : { bg: FAMILY[family].field, ink: FAMILY[family].mark };
 
@@ -218,7 +225,7 @@ export function familyWash(family: Family): string {
 
 /** Whether a family card needs light text. */
 export const fieldIsDark = (family: Family): boolean =>
-  (!PAPER || COLOURED_CARDS) && (LETTERPRESS || FAMILY[family].dark);
+  worn.concrete ? false : worn.poster ? POSTER_COLOUR[family].ink !== POSTER_INK : (!PAPER || COLOURED_CARDS) && (LETTERPRESS || FAMILY[family].dark);
 
 /** Quiet backgrounds for the three connected stages in the workout editor. */
 export const WORKOUT_STAGE = {
@@ -231,7 +238,57 @@ export const WORKOUT_STAGE = {
 export function fieldColors(family: Family): Palette {
   // On paper the screen stays paper; the family's colour is the wash.
   if (PAPER && !COLOURED_CARDS) return { ...colors, wash: FAMILY[family].field };
-  if (DUSK_CARDS) {
+  if (worn.concrete) {
+    // White, in ink and greys; a done set is filled in near-black.
+    return {
+      bg: CONCRETE.card,
+      surface: "#F3F2EF",
+      raised: "#E9E8E5",
+      line: "#E2E1DE",
+      panel: CONCRETE.card,
+      panelEdge: CONCRETE.text,
+      text: CONCRETE.text,
+      muted: CONCRETE.muted,
+      faint: CONCRETE.muted,
+      dim: "#6B6B6B",
+      rise: CONCRETE.text,
+      riseWash: "rgba(0, 0, 0, 0.05)",
+      bend: CONCRETE.text,
+      danger: colors.danger,
+      cloud: CONCRETE.text,
+      ink: CONCRETE.card,
+      white: colors.white,
+      wash: "#1C1C1C",
+      ground: CONCRETE.card,
+    };
+  }
+  if (worn.poster) {
+    // Flat colour, one ink: words, lines and a done set all in it.
+    const { card, ink } = POSTER_COLOUR[family];
+    return {
+      bg: card,
+      surface: mix(card, ink, 0.12),
+      raised: mix(card, ink, 0.2),
+      line: ink,
+      panel: card,
+      panelEdge: ink,
+      text: ink,
+      muted: ink,
+      faint: ink,
+      dim: ink,
+      rise: ink,
+      riseWash: mix(card, ink, 0.12),
+      bend: ink,
+      danger: ink,
+      cloud: ink,
+      // The number on a done set: the card's own colour, knocked out of the ink.
+      ink: card,
+      white: colors.white,
+      wash: ink,
+      ground: card,
+    };
+  }
+  if (worn.dusk) {
     const { top, foot, glow } = DUSK[family];
     // One flat colour for what needs one — the knocked-out number on a
     // stamp, an opaque fill — between the gradient's two ends.
@@ -386,3 +443,149 @@ export const BAR = {
   glyph: 24,
   label: 15,
 } as const;
+
+// ---- looks: the Lab (Settings › Lab, in test mode) ----
+
+/**
+ * A look is how the cards are drawn — Today's deck, the workout's cards, the
+ * Plan rows — and the type everywhere. Never what they show or what they do.
+ * Dusk is the app as it is; the others are tried in the Lab, and one worn
+ * there stays on this phone only, never in the training save.
+ *
+ * `worn` and `fonts` are changed in place by `applyLook`, so every file
+ * that reads them follows; the app is drawn again from the top after.
+ */
+export type LookId = "dusk" | "poster" | "concrete";
+
+export const LOOKS: { id: LookId; name: string; line: string }[] = [
+  { id: "dusk", name: "Dusk", line: "The look Klay has now: deep colour fading to night, in a book face." },
+  { id: "poster", name: "Poster", line: "Like an Olympic poster: flat bold colour, heavy black lines, big condensed type." },
+  { id: "concrete", name: "Concrete", line: "Black and white: calm cards on soft shadows, and only the icons in colour." },
+];
+
+/**
+ * Concrete is black and white: white cards floating on a soft shadow, each
+ * family a shade of warm grey, dark to light — the day's band, the deck's
+ * edges. `ink` is the words on that shade. The one colour is on the icons
+ * (`CONCRETE_MARK`), so push and pull are told apart at a glance.
+ */
+export const CONCRETE_TONE: Record<Family, { tone: string; ink: string }> = {
+  push: { tone: "#1C1C1C", ink: "#FFFFFF" },
+  pull: { tone: "#6E6D69", ink: "#FFFFFF" },
+  legs: { tone: "#DCDBD8", ink: "#1A1A1A" },
+  core: { tone: "#3F3E3B", ink: "#FFFFFF" },
+  cardio: { tone: "#A6A5A1", ink: "#1A1A1A" },
+  mobility: { tone: "#ECEBE8", ink: "#1A1A1A" },
+  goal: { tone: "#55544F", ink: "#FFFFFF" },
+  full: { tone: "#C4C3BF", ink: "#1A1A1A" },
+};
+/**
+ * Concrete's only colour: each family's icon. Clear colours that also differ
+ * in lightness (cobalt dark, saffron light), so they part even half seen.
+ */
+export const CONCRETE_MARK: Record<Family, string> = {
+  push: "#EE5A3F",
+  pull: "#2F5BEA",
+  legs: "#F4B62F",
+  core: "#7444E0",
+  cardio: "#17A894",
+  mobility: "#F08BBB",
+  goal: "#E0A51C",
+  full: "#A9CC3C",
+};
+/** Concrete's card: white, with a hairline and a soft shadow under it. */
+export const CONCRETE = {
+  card: "#FFFFFF",
+  text: "#1A1A1A",
+  muted: "#5E5E5E",
+  edge: "#E4E3E0",
+  shadow: "0 10px 28px rgba(0, 0, 0, 0.14)",
+  corner: 24,
+};
+
+
+/** Poster's colours: each family's card, a deeper shade for its big shape, and the words on it. */
+export const POSTER_COLOUR: Record<Family, { card: string; deep: string; ink: string }> = {
+  push: { card: "#FF4A1C", deep: "#E03A0E", ink: "#111111" },
+  pull: { card: "#1F3BFF", deep: "#152BD6", ink: "#FFFFFF" },
+  legs: { card: "#FFE14A", deep: "#F2CC1F", ink: "#111111" },
+  core: { card: "#B48CFF", deep: "#9F70F5", ink: "#111111" },
+  cardio: { card: "#00B36B", deep: "#009A5B", ink: "#111111" },
+  mobility: { card: "#FF9EC9", deep: "#F57FB2", ink: "#111111" },
+  goal: { card: "#FFB800", deep: "#EBA600", ink: "#111111" },
+  full: { card: "#E9F056", deep: "#D9E033", ink: "#111111" },
+};
+/** Poster's one ink: lines, frames, the Start button. */
+export const POSTER_INK = "#111111";
+/** Poster's frame round every card. */
+export const POSTER_EDGE = 3;
+
+/**
+ * Poster's headline faces, tried in the Lab. Each with its own line (top of
+ * its tallest letter to the foot of its lowest, as a share of its size, from
+ * the font's own metrics) and a size factor that sets its capitals about as
+ * tall as Anton's, so they compare fairly.
+ */
+export type HeadlineId = "anton" | "shoulders" | "archivoBlack" | "bebas";
+export const HEADLINES: { id: HeadlineId; name: string; line: string; face: string; height: number; scale: number }[] = [
+  { id: "anton", name: "Anton", line: "Tall, narrow and heavy: the loudest.", face: "Anton_400Regular", height: 3083 / 2048, scale: 1 },
+  { id: "shoulders", name: "Big Shoulders", line: "Made for Chicago's city posters: condensed and sporty.", face: "BigShouldersDisplay_900Black", height: 2394 / 2000, scale: 1.05 },
+  { id: "archivoBlack", name: "Archivo Black", line: "Wide and solid, kin to the words under it.", face: "ArchivoBlack_400Regular", height: 1088 / 1000, scale: 0.85 },
+  { id: "bebas", name: "Bebas Neue", line: "The classic poster capital: lighter, cleaner.", face: "BebasNeue_400Regular", height: 1.2, scale: 1.15 },
+];
+export const headlineOf = (id: HeadlineId) => HEADLINES.find((h) => h.id === id) ?? HEADLINES[0];
+
+const GARAMOND = { ...fonts };
+const ROUND = { ...radii };
+const INTER_TIGHT: typeof fonts = {
+  display: "InterTight_700Bold",
+  displayBold: "InterTight_800ExtraBold",
+  voice: "InterTight_400Regular_Italic",
+  regular: "InterTight_400Regular",
+  medium: "InterTight_500Medium",
+  semibold: "InterTight_600SemiBold",
+  bold: "InterTight_700Bold",
+  italic: "InterTight_400Regular_Italic",
+  mediumItalic: "InterTight_500Medium_Italic",
+  semiboldItalic: "InterTight_600SemiBold_Italic",
+  ui: "InterTight_400Regular",
+  uiItalic: "InterTight_400Regular_Italic",
+  uiMedium: "InterTight_500Medium",
+  uiSemibold: "InterTight_600SemiBold",
+  uiBold: "InterTight_700Bold",
+};
+const POSTER_FONTS: typeof fonts = {
+  display: "Anton_400Regular",
+  displayBold: "Anton_400Regular",
+  voice: "Archivo_500Medium_Italic",
+  regular: "Archivo_400Regular",
+  medium: "Archivo_500Medium",
+  semibold: "Archivo_600SemiBold",
+  bold: "Archivo_800ExtraBold",
+  italic: "Archivo_400Regular_Italic",
+  mediumItalic: "Archivo_500Medium_Italic",
+  semiboldItalic: "Archivo_600SemiBold_Italic",
+  ui: "Archivo_400Regular",
+  uiItalic: "Archivo_400Regular_Italic",
+  uiMedium: "Archivo_500Medium",
+  uiSemibold: "Archivo_600SemiBold",
+  uiBold: "Archivo_800ExtraBold",
+};
+
+
+/** Wear a look, and for Poster a headline face. Whoever calls it draws the app again after. */
+export function applyLook(id: LookId, headline: HeadlineId = worn.headline) {
+  worn.id = id;
+  worn.headline = headlineOf(headline).id;
+  worn.poster = id === "poster";
+  worn.dusk = id === "dusk";
+  worn.concrete = id === "concrete";
+  Object.assign(fonts, worn.poster ? POSTER_FONTS : worn.concrete ? INTER_TIGHT : GARAMOND);
+  // Concrete is soft-cornered: cards, buttons and the big buttons a pill.
+  Object.assign(radii, worn.concrete ? { card: 22, button: 16, action: 30 } : ROUND);
+  if (worn.poster) fonts.display = fonts.displayBold = headlineOf(worn.headline).face;
+  // How much larger than written a size is drawn (see `components/text.tsx`):
+  // Garamond sets small, so it is lifted; Archivo reads true to size.
+  worn.fontScale = worn.dusk ? 1.12 : 1;
+}
+
