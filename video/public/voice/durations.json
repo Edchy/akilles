@@ -1,57 +1,57 @@
 {
-  "voice": "elevenlabs JBFqnCBsd6RMkjVDRZzb eleven_multilingual_v2",
+  "voice": "elevenlabs jv41DhCf464zw0TI7I1w eleven_v4",
   "scenes": {
-    "eat": {
-      "file": "eat.mp3",
-      "seconds": 1.38449
-    },
-    "sleep": {
-      "file": "sleep.mp3",
-      "seconds": 1.48898
-    },
-    "move": {
-      "file": "move.mp3",
-      "seconds": 2.873469
-    },
-    "now-what": {
-      "file": "now-what.mp3",
+    "hello": {
+      "file": "hello.mp3",
       "seconds": 2.35102
+    },
+    "remember": {
+      "file": "remember.mp3",
+      "seconds": 6.687347
+    },
+    "best": {
+      "file": "best.mp3",
+      "seconds": 1.880816
+    },
+    "sit": {
+      "file": "sit.mp3",
+      "seconds": 2.429388
+    },
+    "soft": {
+      "file": "soft.mp3",
+      "seconds": 5.564082
+    },
+    "learn-sit": {
+      "file": "learn-sit.mp3",
+      "seconds": 3.004082
+    },
+    "move-me": {
+      "file": "move-me.mp3",
+      "seconds": 5.799184
+    },
+    "gym": {
+      "file": "gym.mp3",
+      "seconds": 1.802449
+    },
+    "scary": {
+      "file": "scary.mp3",
+      "seconds": 5.32898
     },
     "start": {
       "file": "start.mp3",
-      "seconds": 4.858776
+      "seconds": 4.205714
     },
-    "circles": {
-      "file": "circles.mp3",
-      "seconds": 5.982041
+    "slowly": {
+      "file": "slowly.mp3",
+      "seconds": 2.925714
     },
-    "short": {
-      "file": "short.mp3",
-      "seconds": 5.093878
-    },
-    "next": {
-      "file": "next.mp3",
-      "seconds": 5.746939
-    },
-    "deck": {
-      "file": "deck.mp3",
-      "seconds": 6.217143
-    },
-    "stretch": {
-      "file": "stretch.mp3",
-      "seconds": 3.84
-    },
-    "finish": {
-      "file": "finish.mp3",
-      "seconds": 3.422041
-    },
-    "shaped": {
-      "file": "shaped.mp3",
-      "seconds": 2.821224
+    "home": {
+      "file": "home.mp3",
+      "seconds": 4.989388
     },
     "end": {
       "file": "end.mp3",
-      "seconds": 1.697959
+      "seconds": 2.194286
     }
   }
 }

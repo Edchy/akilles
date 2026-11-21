@@ -12,7 +12,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { Icon } from "@/components/icon";
-import { ClayPicture, HELLO, IntroFilm, MainButton } from "@/components/intro";
+import { ClayPicture, IntroFilm, MainButton, READY } from "@/components/intro";
 import { Option } from "@/components/place";
 import { COLUMN } from "@/components/screen";
 import { SectionLabel } from "@/components/sheet";
@@ -30,17 +30,20 @@ import {
 } from "@/store/session";
 
 /**
- * The first launch, as one flow from hello to the first workout:
+ * The first launch, as one flow from the film to the first workout:
  *
- *   Welcome to Klay.               the clay fellow says hello, and what Klay is for
+ *   The film                       the body says hello: why move, the gym's
+ *                                  fear, and the app's one move (see `intro.tsx`)
  *   Put Klay on your Home Screen   only in a browser tab: how to open it full
- *                                  screen (see `lib/home-screen.ts`) — first,
- *                                  before any answers, so none are left behind
- *   Have you lifted weights?       new, a bit, or for a while
- *   Help Klay pick your weights    weight and sex — or rather not say
+ *                                  screen (see `lib/home-screen.ts`) — before
+ *                                  any answers, so none are left behind
+ *   Have you lifted weights?       new, a little, or for a while
+ *   A little about you             weight and sex — or rather not say
  *   Push-ups                       how many in a row, or not sure
- *   The film                       why, and how a workout goes (see
- *                                  `intro.tsx`), then Start lifting
+ *   You're ready.                  the whole app in a sentence, then Start
+ *
+ * Written for someone a bit scared of the gym, whom nobody ever showed what
+ * to do: there are no wrong answers, and nothing promises results.
  *
  * Klay is opinionated so nobody has to set anything up: everyone starts on
  * Push, Pull, Legs at a gym, small — three lifts a day, every day — and the
@@ -61,13 +64,13 @@ export function Onboarding() {
   return <Steps onDone={(answers) => setState((s) => seeIntro(applyPlan(s, answers)))} />;
 }
 
-type Step = "welcome" | "home" | "lifted" | "body" | "pushups" | "film";
+type Step = "film" | "home" | "lifted" | "body" | "pushups" | "ready";
 
 /** The steps the progress line counts. */
-const ALONG: Step[] = ["lifted", "body", "pushups", "film"];
+const ALONG: Step[] = ["lifted", "body", "pushups", "ready"];
 const EXPERIENCE_LABEL: Record<Experience, string> = {
   new: "No, I'm new to this",
-  some: "A bit",
+  some: "A little",
   lots: "Yes, for a while",
 };
 
@@ -100,7 +103,7 @@ const tap = () => Haptics.selectionAsync().catch(() => {});
 function Steps({ onDone }: { onDone: (answers: Answers) => void }) {
   const { state } = useSession();
   const insets = useSafeAreaInsets();
-  const [trail, setTrail] = useState<Step[]>(["welcome"]);
+  const [trail, setTrail] = useState<Step[]>(["film"]);
   const [forward, setForward] = useState(true);
   const [experience, setExperience] = useState<Experience | null>(null);
   const [weightText, setWeightText] = useState("");
@@ -131,17 +134,20 @@ function Steps({ onDone }: { onDone: (answers: Answers) => void }) {
   // The plan itself is not a question: Push, Pull, Legs at a gym.
   const answers: Answers = { home: null, time: "long", easy: [], lifter };
   const finish = () => onDone(answers);
+  // From the film to the questions (by way of the Home Screen, in a browser).
+  const afterFilm = () => go(place === "app" ? "lifted" : "home");
 
   const page = (() => {
     switch (step) {
-      case "welcome":
+      case "film":
+        // The film first: it says why, and sets the tone for the rest (see `intro.tsx`).
         return (
-          <Page
-            art={<Welcome />}
-            title="Welcome to Klay."
-            body="Klay tells you what to do at the gym, writes down what you did, and helps you do a little better each time. A few quick questions, and you're ready."
-            action={{ label: "Let's go", onPress: () => go(place === "app" ? "lifted" : "home") }}
-          />
+          <View style={{ flex: 1 }}>
+            <IntroFilm />
+            <View style={{ paddingHorizontal: 22, paddingTop: 10 }}>
+              <MainButton label="Let's go" onPress={afterFilm} />
+            </View>
+          </View>
         );
       case "home":
         return <HomeScreen place={place} onNext={() => go("lifted")} />;
@@ -149,7 +155,7 @@ function Steps({ onDone }: { onDone: (answers: Answers) => void }) {
         return (
           <Page
             title="Have you lifted weights before?"
-            body="So your first weights suit you. New to it? Klay starts you light."
+            body="Three quick questions, so your first day feels easy. There are no wrong answers."
           >
             {(Object.keys(EXPERIENCE_LABEL) as Experience[]).map((e) => (
               <Option
@@ -172,8 +178,8 @@ function Steps({ onDone }: { onDone: (answers: Answers) => void }) {
         const answered = (weightUnsaid || readWeight(weightText) !== undefined) && sex !== undefined;
         return (
           <Page
-            title="Help Klay pick your weights."
-            body="Your weight and sex help pick a good starting weight for every new exercise. Used for nothing else, and kept on your phone."
+            title="A little about you."
+            body="This helps Klay pick weights that feel light to start with. It stays on your phone and is used for nothing else. Skip anything you like."
             action={{ label: "Next", disabled: !answered, onPress: () => go("pushups") }}
           >
             <SectionLabel>Your weight</SectionLabel>
@@ -239,8 +245,8 @@ function Steps({ onDone }: { onDone: (answers: Answers) => void }) {
       case "pushups":
         return (
           <Page
-            title="How many push-ups can you do in a row?"
-            body="Proper ones, chest close to the floor. It tells Klay how strong your upper body is, so your first presses suit you."
+            title="How many push-ups can you do?"
+            body="In a row, the way you can do them today. Not sure? That's fine, Klay will find out with you."
           >
             {(Object.keys(PUSH_UPS_LABEL) as (PushUps | "unsure")[]).map((x) => (
               <Option
@@ -250,21 +256,24 @@ function Steps({ onDone }: { onDone: (answers: Answers) => void }) {
                 onPress={() => {
                   tap();
                   setPushUps(x);
-                  go("film");
+                  go("ready");
                 }}
               />
             ))}
           </Page>
         );
-      case "film":
-        // The film, then the way in: why, and how a workout goes (see `intro.tsx`).
+      case "ready":
+        // The whole app in a sentence, in the film's words: Start, slowly, a circle.
         return (
-          <View style={{ flex: 1 }}>
-            <IntroFilm />
-            <View style={{ paddingHorizontal: 22, paddingTop: 10 }}>
-              <MainButton label="Start lifting" onPress={finish} />
-            </View>
-          </View>
+          <Page
+            art={<Ready />}
+            title="You're ready."
+            body={
+              "Each time you're at the gym, open Klay and tap Start. Do what the card says, slowly, and tap a circle after each set. That's all.\n\n" +
+              "You start small, with three exercises a day. Klay adds more when you're ready, never without asking."
+            }
+            action={{ label: "Start", onPress: finish }}
+          />
         );
     }
   })();
@@ -309,7 +318,7 @@ function Steps({ onDone }: { onDone: (answers: Answers) => void }) {
             {step === "film" ? (
               <Pressable
                 accessibilityRole="button"
-                onPress={finish}
+                onPress={afterFilm}
                 hitSlop={8}
                 style={({ pressed }) => ({
                   minHeight: 44,
@@ -512,8 +521,8 @@ function HomeScreen({ place, onNext }: { place: Where; onNext: () => void }) {
 
 // ---- pictures ----
 
-/** The clay fellow saying hello: the same figure as the stretches, before a word about lifting. */
-function Welcome() {
+/** The clay fellow in the gym, phone in hand, relieved: the film's turn, as the way in. */
+function Ready() {
   const { width, height } = useWindowDimensions();
   const side = Math.min(Math.min(width, COLUMN) - 44, height * 0.5, 420);
   return (
@@ -522,7 +531,7 @@ function Welcome() {
       importantForAccessibility="no-hide-descendants"
       style={{ alignItems: "center", paddingTop: 8, paddingBottom: 16 }}
     >
-      <ClayPicture source={HELLO} width={side} />
+      <ClayPicture source={READY} width={side} />
     </View>
   );
 }

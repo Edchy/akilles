@@ -12,16 +12,16 @@ import { Onboarding } from "@/components/onboarding";
 import { seeIntro, useSession, wantsIntro, wantsOnboarding } from "@/store/session";
 
 /**
- * Why Klay, and how a workout goes, as one short film (made in `video/`, see
- * its SCRIPT.md): move every day, like eating and sleeping; at the gym, now
- * what? Then Start, the circles, a short set, next time, swiping between the
- * cards, a stretch, Finish — drawn as the app draws them, with a finger. Said
- * aloud and captioned, so it works with the sound off.
+ * Why Klay, as one short clay film (made in `video/`, see its SCRIPT.md): the
+ * body talks to its person — it remembers playing, it is learning to sit, it
+ * wants to move — then the gym, where nobody ever showed us what to do, the
+ * app's one move (Start, a circle), and the walk home. Said aloud and
+ * captioned, so it works with the sound off.
  *
  * The rest — swap, warm-ups, the Library — is taught by a tip the first time
  * it comes up (see `tips.tsx`), not here.
  *
- * A new phone meets the film in the onboarding, after the two questions (see
+ * A new phone meets the film first thing in the onboarding (see
  * `onboarding.tsx`). This modal shows it again from Settings, and opens by
  * itself only on a phone that trained before the onboarding existed and never
  * saw it. Skip is always there.
@@ -193,8 +193,8 @@ export function MainButton({ label, onPress }: { label: string; onPress: () => v
   );
 }
 
-/** The clay fellow saying hello (see art/clay/scenes.json). */
-export const HELLO = require("../../assets/clay/hello.jpg");
+/** The clay fellow in the gym with his phone, relieved (art/clay/gym_lost-2.png): the onboarding's last page. */
+export const READY = require("../../assets/clay/gym_ready.jpg");
 
 /** One of the clay fellow's pictures, 3:2, on the page's own white. */
 export function ClayPicture({ source, width = 330 }: { source: number; width?: number }) {
