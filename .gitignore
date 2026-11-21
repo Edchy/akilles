@@ -39,3 +39,9 @@ art/STYLE-stick.md
 .claude/
 .gemini/
 art/.venv/
+# Rebuilt by art/morph.py
+video/public/logo/morph/
+art/clay/review/
+art/clay/standin/
+art/clay/refs/
+art/clay/redo-check/

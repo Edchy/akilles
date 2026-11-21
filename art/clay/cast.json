@@ -1,0 +1,34 @@
+{
+ "ingrid": {
+  "who": "An older woman, about 70: light skin with rosy cheeks, soft short silver-grey hair in a neat bob, a few gentle smile lines. Slim and a little soft, real proportions for her age.",
+  "wears": "a fitted plain dusty-blue t-shirt, black leggings to the ankle and simple white trainers."
+ },
+ "dele": {
+  "who": "A big, heavy-set man, about 40: deep dark brown skin, a shaved head, a short neat black beard, a round belly, broad shoulders and thick arms, real proportions for a big man.",
+  "wears": "a fitted plain charcoal t-shirt, black shorts to just above the knee and simple grey trainers."
+ },
+ "noor": {
+  "who": "A young woman, about 25: warm medium-brown skin, long dark brown hair tied up in a high ponytail, small gold hoop earrings, and a simple black line-drawn flower tattoo all down her left forearm and upper arm. Athletic, real proportions.",
+  "wears": "a fitted plain terracotta sports top, black leggings to the ankle and simple white trainers."
+ },
+ "kenji": {
+  "who": "A young man, about 20: light golden-tan skin, short black hair under a black baseball cap worn backwards, small round black glasses. Lean, real proportions.",
+  "wears": "a fitted plain moss-green tank top, black shorts and simple black trainers."
+ },
+ "arne": {
+  "who": "An older man, about 75: light pinkish skin, a short neat white beard, a little white hair at the sides, a soft round tummy, slightly stooped but strong, real proportions for his age.",
+  "wears": "a fitted plain navy t-shirt, grey joggers fitted at the ankle, simple brown trainers, and a grey flat cap."
+ },
+ "rosa": {
+  "who": "A bigger woman, about 35: warm light-brown skin, big dark curly hair tied up on top of her head, full round body, wide hips and soft strong arms, real proportions for a big woman.",
+  "wears": "a fitted plain plum-purple t-shirt, black leggings to the ankle and simple white trainers."
+ },
+ "kofi": {
+  "who": "A lean young man, about 30: dark brown skin, long black dreadlocks tied back in a low bun, a small silver nose ring, a thin moustache. Lean and wiry, real proportions.",
+  "wears": "a fitted plain mustard-yellow t-shirt, black shorts and simple white trainers."
+ },
+ "maeve": {
+  "who": "A middle-aged woman, about 50: very fair skin with lots of freckles, short bright copper-red hair in a pixie cut, small round stud earrings. Medium build, real proportions.",
+  "wears": "a fitted plain teal t-shirt, black leggings to the ankle and simple grey trainers."
+ }
+}

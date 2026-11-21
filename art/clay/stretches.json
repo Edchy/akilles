@@ -3,8 +3,8 @@
   "what": "The figure-four stretch, lying on the back.",
   "view": "Seen from the side and a little above, the figure's head to the right. The near leg is the crossed one.",
   "frames": [
-   "lying on the back, head and shoulders on the floor; the far knee bent with its foot flat on the floor; the near leg lifted with its ankle resting across the far knee, the near knee falling open to the side, so the legs make a clear figure 4.",
-   "the far foot lifted off the floor and both hands holding behind the far thigh, gently pulling both legs toward the chest; head and shoulders still resting on the floor."
+   "lying on the back, head and shoulders on the floor; the far knee bent with its foot flat on the floor; the near leg lifted, its ankle resting across the far thigh just above the knee, the near knee falling wide open to the side, so the two legs clearly make the shape of a 4.",
+   "the far foot lifted off the floor; the near hand threaded through the gap between the legs and the far hand round the outside, both hands clasped behind the far thigh, gently pulling it towards the chest; the near ankle still resting on the far thigh, the near knee still open wide; head and shoulders on the floor."
   ],
   "breath": {
    "to1": "exhale",
@@ -81,10 +81,10 @@
  },
  "chest_opener": {
   "what": "The chest and shoulder opener with a stick.",
-  "view": "Seen from the front at three-quarters, the figure facing to the left of the camera, so the whole length of the stick shows.",
+  "view": "Seen at three-quarters from the figure's right side and a little in front, so the stick moving from over the head to behind the back clearly shows.",
   "frames": [
    "standing tall, both hands holding the long wooden stick far wider than the shoulders, arms straight, the stick raised straight up above the head.",
-   "arms still straight and wide, the stick taken back behind the head, so it is now behind the back of the head and the shoulders and chest open; the body stays upright."
+   "arms still straight and wide, the stick carried over and back in a big arc until it rests behind the body against the bottom, the chest open and proud; the body stays upright, the arms straight the whole way."
   ],
   "props": "a long thin light-wood stick, about 1.5 m long, clearly visible, held in both hands",
   "breath": {
@@ -131,12 +131,12 @@
  },
  "leg_swing": {
   "what": "Leg swings, holding a wall.",
-  "view": "Seen exactly from the side, the figure facing right. The wall is behind the figure at the left; the near leg swings.",
+  "view": "Seen at three-quarters from the front and the figure's right side, the figure standing side-on to a wall on its left.",
   "frames": [
-   "standing tall, the far hand on the wall for balance, the near leg swung back behind the body, straight and loose.",
-   "the near leg swung forward and up in front, straight and loose, about hip height; the body stays tall and still."
+   "standing tall side-on to the wall, the LEFT hand resting flat on the wall at shoulder height with the arm out to the side, NOT reaching back; the right hand on the hip; the right leg swung back behind the body, straight and loose.",
+   "the right leg swung forward and up in front to about hip height, straight and loose; the left hand still flat on the wall beside the shoulder, the body tall and still."
   ],
-  "props": "a plain white wall at the left edge",
+  "props": "a plain white wall on the figure's left side",
   "breath": {
    "to1": "exhale",
    "to0": "inhale"
@@ -168,22 +168,23 @@
  },
  "thread_needle": {
   "what": "Thread the needle, on hands and knees.",
-  "view": "Seen from the side and a little in front, the figure facing right.",
+  "view": "Seen straight from the front, a little above, the figure on hands and knees with its head towards the camera, so an arm crossing sideways under the chest is clearly visible.",
   "frames": [
-   "on hands and knees, hips over the knees, the left hand planted; the right arm reaching straight up to the ceiling, the chest turned open toward the camera, eyes following the hand.",
-   "the right arm threaded under the body, sliding along the floor through the gap between the left hand and the knees, palm up, so the right shoulder and the side of the head rest on the floor; the hips stay high, right over the knees."
+   "on hands and knees on the floor, knees under the hips, back flat; the LEFT hand planted flat on the floor under the left shoulder, arm straight; the RIGHT arm raised straight up to the ceiling, full length, the chest turned open to the right, the head turned to look up at the right hand.",
+   "the LEFT hand still planted flat on the floor exactly where it was, the left elbow bent. The RIGHT arm has come down and is threaded UNDER the chest, passing sideways BENEATH the body from the right side to the left side, palm facing up, the back of the right hand and forearm lying on the floor beyond the left hand, so the right arm is clearly seen crossing under the body. The right shoulder and the right side of the head (the right cheek) rest on the floor, the face turned towards the camera. The hips stay high, right above the knees. The head is turned down so only the smooth top and back of the head show: no eyes, no smile. (The face was smoothed out by hand on 2026-11-21: Codex blocks this edit.)"
   ],
   "breath": {
    "to1": "exhale",
    "to0": "inhale"
-  }
+  },
+  "faces": false
  },
  "downward_dog": {
   "what": "Downward dog.",
   "view": "Seen exactly from the side, the figure head to the left.",
   "frames": [
    "on hands and knees, hands a little in front of the shoulders, knees under the hips, back flat, toes tucked under.",
-   "hips lifted up and back so the body makes an upside-down V, arms and back in one straight line, legs straight, heels sinking toward the floor, head hanging between the arms."
+   "hips lifted up and back so the body makes an upside-down V, arms and back in one straight line, legs straight, heels sinking towards the floor. The head hangs relaxed between the upper arms, so the head is UPSIDE DOWN: on the face, the two dot eyes are near the BOTTOM of the head (towards the floor) and the small smile is ABOVE the eyes. The face looks back towards the feet."
   ],
   "breath": {
    "to1": "exhale",
@@ -226,10 +227,10 @@
  },
  "knee_circles": {
   "what": "Knee circles, standing.",
-  "view": "Seen from the front at three-quarters, the figure facing to the right of the camera.",
+  "view": "Seen straight from the front, the figure facing the camera.",
   "frames": [
-   "standing tall on one leg, arms straight out to the sides at shoulder height, the other knee lifted high in front, toward the opposite hand.",
-   "the lifted knee opened out wide to the side, so the thigh points out to the right at hip height and the foot hangs under the knee; the standing leg straight, arms still out to the sides."
+   "standing tall on the left leg facing the camera, hands on the hips; the right knee lifted to hip height pointing STRAIGHT AT THE CAMERA, the thigh level and coming towards us, the shin hanging straight down under the knee.",
+   "everything exactly the same — the standing leg, the hands, the body, the camera — except the lifted right leg: its knee now turned out to point STRAIGHT OUT TO THE SIDE (to the figure's right), the thigh still level at hip height and now seen from the side, the shin hanging down under the knee."
   ],
   "breath": "steady"
  },
@@ -323,29 +324,35 @@
   "breath": "steady"
  },
  "worlds_greatest": {
-  "what": "The world's greatest stretch: a long lunge with an elbow to the instep, then a turn of the chest.",
-  "view": "Seen from the front at three-quarters, the figure facing to the left of the camera.",
+  "what": "A gentle mobility move for the hips and upper back.",
+  "view": "Seen from the front at three-quarters, the figure facing to the right of the camera.",
   "frames": [
-   "a long lunge with the left foot forward and the back leg long, back knee off the floor; both hands on the floor inside the front foot; the right elbow sinking down toward the inside of the front foot.",
-   "the same long lunge, the left hand still on the floor inside the front foot; the chest turned open toward the camera and the right arm reaching straight up to the ceiling, eyes following the hand."
-  ],
-  "breath": {
-   "to1": "inhale",
-   "to0": "exhale"
-  }
- },
- "band_pull_apart": {
-  "what": "The band pull-apart.",
-  "view": "Seen from the front, the figure facing the camera.",
-  "frames": [
-   "standing tall, both arms straight out in front at shoulder height, hands shoulder-width apart holding a light resistance band.",
-   "arms still straight and at shoulder height, pulled out wide to the sides so the band stretches across the front of the chest; shoulder blades squeezed together, shoulders down."
+   "a low lunge seen from the front: the front knee bent with the foot flat on the floor, the back leg long behind with the back knee resting on the floor. One hand planted flat on the floor below the shoulder, its arm straight. The other arm reaching straight up to the ceiling, long and full length, the chest turned open to the side, the head turned to look up at the raised hand.",
+   "EXACTLY the same legs as the attached first picture, unchanged: the LEFT knee resting on the floor with the left leg long behind, the RIGHT leg bent in front with the right foot flat on the floor. The same planted hand, the same camera. ONLY the arms and head change: the raised arm comes down and threads under the chest towards the planted hand, its hand resting on the floor beyond the planted wrist, the shoulders turned down towards the floor, the head down — the arms exactly as in the thread-the-needle reference picture."
   ],
   "breath": {
    "to1": "exhale",
    "to0": "inhale"
   },
-  "props": "a light green resistance band held in both hands"
+  "note": "Start drawn from words. Finish: legs locked to the start, arms from our own thread_needle-1.png (photos tripped Codex's filter). Until it passes, the app shows standin/worlds_greatest-1.png (thread_needle-1 reused).",
+  "faces": false,
+  "refs": [
+   null,
+   "thread_needle-1.png"
+  ]
+ },
+ "band_pull_apart": {
+  "what": "The band pull-apart.",
+  "view": "Seen from the front, the figure facing the camera.",
+  "frames": [
+   "standing tall, both arms straight out in front at shoulder height; each hand is a closed fist wrapped around one end of a light resistance band, the band's ends visibly looped around the hands, the band running between the two fists, slightly slack.",
+   "arms still straight and at shoulder height, pulled out wide to the sides; each fist still wrapped around its end of the band, which is now stretched taut across the front of the chest; shoulder blades squeezed together, shoulders down."
+  ],
+  "breath": {
+   "to1": "exhale",
+   "to0": "inhale"
+  },
+  "props": "a light green flat resistance band, its ends wrapped around the hands"
  },
  "wall_slide": {
   "what": "The wall slide.",
@@ -364,10 +371,11 @@
   "what": "The lying Y-raise.",
   "view": "Seen from above and behind at about 45 degrees, the figure lying face down with its head away from the camera, so both arms and the Y shape they make are clearly visible.",
   "frames": [
-   "lying face down, legs long, forehead just above the floor; both arms reaching forward and out in a wide Y, about 45 degrees apart from the head, resting on the floor, thumbs pointing up.",
-   "still lying face down, legs and chest on the floor, head in line; both arms in the same wide Y lifted a hand's width off the floor, shoulder blades squeezed together, a small gap of shadow under each arm."
+   "lying face down, legs long, forehead just above the floor; both arms reaching forward and out in a wide Y, about 45 degrees apart from the head, resting on the floor, thumbs pointing up. The back of the head faces the camera: NO face is visible at all, the face points down at the floor.",
+   "still lying face down, legs and chest on the floor, head in line; both arms in the same wide Y lifted a hand's width off the floor, shoulder blades squeezed together, a small gap of shadow under each arm. The back of the head faces the camera: NO face is visible at all, the face points down at the floor."
   ],
   "breath": "steady",
-  "single": 1
+  "single": 1,
+  "faces": false
  }
 }

@@ -22,7 +22,11 @@ import { fileURLToPath } from "node:url";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const dir = join(here, "clay");
-const [id, frameArg, breathArg] = process.argv.slice(2);
+// `--cast <who>` draws a lift with one of the cast (art/clay/cast.json) instead of the first figure.
+const argv = process.argv.slice(2);
+const castAt = argv.indexOf("--cast");
+const castId = castAt >= 0 ? argv[castAt + 1] : undefined;
+const [id, frameArg, breathArg] = argv.filter((_, i) => castAt < 0 || (i !== castAt && i !== castAt + 1));
 if (!id) throw new Error("sheet, or which stretch?");
 
 const FIGURE =
@@ -46,7 +50,25 @@ const ask = (body) =>
 let prompt;
 let images = [];
 let out;
-const sheet = join(dir, "sheet.png");
+/**
+ * The cast: people of every age, build and skin tone, in the first figure's
+ * clay style — the big round head, the dot eyes, the mitten hands — each with
+ * hair, clothes and small things of their own (art/clay/cast.json).
+ */
+const CAST = existsSync(join(dir, "cast.json")) ? JSON.parse(readFileSync(join(dir, "cast.json"), "utf8")) : {};
+const STYLE =
+  "A small, friendly person sculpted from matte modelling clay, like a stop-motion character, in" +
+  " exactly the style of the attached figure: smooth soft rounded forms, a big round head with two" +
+  " tiny black dot eyes and a small smile, simple mitten-like hands, real adult proportions so every" +
+  " pose is anatomically correct, a faint fingerprint texture and soft handmade imperfections.";
+const castFigure = (c) =>
+  `${STYLE} This person: ${c.who} Wears ${c.wears} Clothes fitted close to the body, so the shape of` +
+  " the back, hips and joints always shows; hair kept off the neck and back. Keep exactly the sheet's proportions: a short neck, the head sitting on the shoulders, never a long stretched neck.";
+if (castId && !CAST[castId]) throw new Error(`No ${castId} in art/clay/cast.json`);
+const figure = castId ? castFigure(CAST[castId]) : FIGURE;
+const sheet = join(dir, castId ? `sheet-${castId}.png` : "sheet.png");
+/** Pictures with one of the cast are named <id>@<who>-<n>.png, beside the first figure's. */
+const named = (n) => join(dir, castId ? `${id}@${castId}-${n}.png` : `${id}-${n}.png`);
 
 /** An equipment sheet by number: 1 is gear.png, the rest gear-<n>.png. */
 const gearFile = (n = 1) => join(dir, n === 1 ? "gear.png" : `gear-${n}.png`);
@@ -166,6 +188,19 @@ if (breathArg) {
   // The second sheet copies the first, so every piece is from one world.
   images = [n === 1 ? join(dir, "gym_lost-0.png") : gearFile(1)];
   out = gearFile(n);
+} else if (id === "sheet" && castId) {
+  // One of the cast: their own turnaround, in the first figure's clay.
+  prompt = ask(
+    "Generate a character turnaround sheet for an exercise app.\n\n" +
+      `THE CHARACTER\n${figure}\nThe attached sheet is the app's first character: copy its clay,` +
+      " its style, head size against the body, face and light exactly, but make this new person.\n\n" +
+      "THE SHEET\nThe same person four times in a row, standing relaxed and tall, arms hanging by the" +
+      " sides: from the front, from the side facing right, from the back, and at three-quarters." +
+      " Same size, same height, evenly spaced, feet on one level.\n\n" +
+      `THE PICTURE\n${PICTURE.replace("the whole figure in frame, centred", "all four figures in frame")}`,
+  );
+  images = [join(dir, "sheet.png")];
+  out = sheet;
 } else if (id === "sheet") {
   const first = join(here, "photos", "downward_dog-clay.png");
   prompt = ask(
@@ -180,7 +215,7 @@ if (breathArg) {
   images = [first];
   out = sheet;
 } else {
-  if (!existsSync(sheet)) throw new Error("Make the sheet first: node art/clay.mjs sheet");
+  if (!existsSync(sheet)) throw new Error(`Make the sheet first: node art/clay.mjs sheet${castId ? ` --cast ${castId}` : ""}`);
   // A stretch, or a scene for the intro (art/clay/scenes.json): the same figure either way.
   const read = (file) => JSON.parse(readFileSync(join(dir, file), "utf8"))[id];
   const scene = existsSync(join(dir, "scenes.json")) ? read("scenes.json") : undefined;
@@ -191,12 +226,18 @@ if (breathArg) {
   if (lift && !existsSync(gear)) throw new Error(`Make the equipment first: node art/clay.mjs gear ${lift.gear ?? 1}`);
   const n = Number(frameArg ?? 0);
   const moment = spec.frames[n];
-  const first = join(dir, `${id}-0.png`);
+  const first = named(0);
   const edit = n > 0 && existsSync(first);
+  // A photo of a real person in this moment (spec.refs[n], under art/clay/), for the pose only:
+  // some moves are far easier to show than to say. Always the last image attached.
+  const ref = spec.refs?.[n] ? join(dir, spec.refs[n]) : undefined;
+  if (ref && !existsSync(ref)) throw new Error(`${id}: no reference at ${ref}`);
   prompt = ask(
     `Generate one picture for an exercise app's ${lift ? "lifting" : "stretch"} guide.\n\n` +
-      `THE CHARACTER\n${FIGURE}\nThe first attached image is this character's sheet: draw exactly` +
-      " this figure, its clay, colours, face, proportions and shorts.\n" +
+      `THE CHARACTER\n${figure}\nThe first attached image is this character's sheet: draw exactly` +
+      ` this ${castId ? "person, their clay, colours, face, hair, clothes and proportions" : "figure, its clay, colours, face, proportions and shorts"}.\n` +
+      // A scene may dress the figure (a child in a sweater): this overrides "no other clothes".
+      (spec.wears ? `In this picture the figure also wears ${spec.wears}; that is the only exception to "no other clothes".\n` : "") +
       (edit
         ? "The second attached image is the other moment of this same movement, already made. Make" +
           " this picture as an edit of it: the same camera, framing, scale, light and figure; move" +
@@ -207,16 +248,29 @@ if (breathArg) {
         ? `The second attached image is the equipment sheet: any equipment in the` +
           " picture is copied exactly from it, its clay, colours, shape and size against the figure.\n"
         : "") +
+      (ref
+        ? "The LAST attached image is a photo of a real person in this exact moment. Use it ONLY" +
+          " for the pose: how the body, limbs, hands and joints are placed, and how the person sits in" +
+          " or holds any equipment. Do NOT copy the person, their clothes, the background, the gym," +
+          " the light or the photographic look: the picture stays this clay character on the plain" +
+          ` background, and ${spec.refCamera ? "the camera is the same as the photo's: the same angle and height" : "the camera is the one given under THE VIEW, not the photo's"}.\n`
+        : "") +
       `\n${scene ? "THE SCENE" : "THE MOVEMENT"}\n${spec.what}\n\nTHIS MOMENT\n${moment}` +
-      (scene ? "" : " The form must be correct: this picture teaches the movement.") +
+      (scene
+        ? ""
+        : " The form must be correct, and more than correct: the optimal form a top coach would" +
+          " demonstrate, because this picture teaches the movement. A neutral spine; the head and" +
+          " neck always in line with the spine (in a hinge, row, plank or push-up the eyes look at" +
+          " the floor, never up or forward); joints stacked; shoulders down and away from the ears;" +
+          " nothing sloppy.") +
       (lift ? " Exactly ONE figure in the picture, in this one moment: never a before-and-after, never two figures side by side." : "") +
       "\n\n" +
-      `THE VIEW\n${spec.view}\n\n` +
+      `THE VIEW\n${ref && spec.refCamera ? "Exactly the camera angle of the reference photo." : spec.view}\n\n` +
       `THE PICTURE\n${PICTURE}${spec.props && spec.props !== "none" ? ` The only props: ${spec.props}.` : ""}`,
   );
   // The second moment copies the first, equipment and all: a third picture only pulls it about.
-  images = [sheet, ...(edit ? [first] : lift ? [gear] : [])];
-  out = join(dir, `${id}-${n}.png`);
+  images = [sheet, ...(edit ? [first] : lift ? [gear] : []), ...(ref ? [ref] : [])];
+  out = named(n);
 }
 
 const run = spawnSync(

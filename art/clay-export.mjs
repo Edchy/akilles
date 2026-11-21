@@ -28,16 +28,23 @@ for (const [id, l] of Object.entries(lifts)) {
 const entries = [];
 /** Every picture this run puts in the app: anything else in assets/clay is left over. */
 const written = new Set();
-const png = (name) => join(here, "clay", `${name}.png`);
+// A picture set aside for a redraw keeps showing from art/clay/standin/ until the new one is made.
+const png = (name) => {
+  const made = join(here, "clay", `${name}.png`);
+  const standin = join(here, "clay", "standin", `${name}.png`);
+  return existsSync(made) || !existsSync(standin) ? made : standin;
+};
 const face = (b) => (b === "inhale" ? "in" : "out");
 
 for (const [id, s0] of Object.entries(spec)) {
   let s = s0;
-  let names = (s.single === undefined ? [0, 1] : [s.single]).map((n) => `${id}-${n}`);
+  // A lift drawn with one of the cast is <id>@<who>-<n>.png; in the app it is still <id>-<n>.jpg.
+  const who = s.cast ? `@${s.cast}` : "";
+  let names = (s.single === undefined ? [0, 1] : [s.single]).map((n) => `${id}${who}-${n}`);
   // The breathing faces (art/clay.mjs <id> <n> in|out), where they are made:
   // a hold becomes two pictures, in and out, flipping with the breath; a
   // pair gets each picture's face for the breath that brings it.
-  if (!s.effort && !s.lift) {
+  if (!s.effort && !s.lift && s.faces !== false) {
     if (s.single !== undefined) {
       const breathing = [`${id}-${s.single}-in`, `${id}-${s.single}-out`];
       if (breathing.every((n) => existsSync(png(n)))) {
@@ -56,7 +63,7 @@ for (const [id, s0] of Object.entries(spec)) {
     continue;
   }
   const files = shown.map((n, i) => {
-    const file = `${n}.jpg`;
+    const file = `${n.replace(/@[a-z]+/, "")}.jpg`;
     // 960 wide is sharp on a phone at full width; quality 82 keeps them ~50 KB.
     const run = spawnSync("ffmpeg", ["-v", "error", "-y", "-i", pngs[i], "-vf", "scale=960:-2",
       "-q:v", "4", join(out, file)]);
@@ -114,5 +121,8 @@ ${entries.join("\n")}
 `,
 );
 // Pictures nothing uses any more (a hold that now breathes, say) leave the app.
-for (const f of readdirSync(out)) if (f.endsWith(".jpg") && !written.has(f)) rmSync(join(out, f));
+// Only pictures of a stretch, lift or scene this script knows: anything else in
+// assets/clay was put there by hand (gym_ready.jpg) and stays.
+const ours = (f) => Object.keys(spec).concat(Object.keys(scenes)).some((id) => f === `${id}.jpg` || f.startsWith(`${id}-`));
+for (const f of readdirSync(out)) if (f.endsWith(".jpg") && !written.has(f) && ours(f)) rmSync(join(out, f));
 console.log(`wrote ${entries.length} stretches and lifts`);

@@ -1,72 +1,71 @@
 """Lift clay off a plain white background: a PNG with no background at all.
 
-    python3 art/cutout.py art/logo/k.png out.png [--crop] [--size 1024]
+    art/.venv/bin/python art/cutout.py art/logo/k.png out.png [--crop] [--size 1024]
 
 The background is whatever near-white is connected to the picture's edge, so
-a pale highlight on the clay itself is kept. Its rim fades with how white it
-is, and the white is taken back out of those rim colours, so the K sits
-cleanly on dark ground as well as light. --crop trims to the clay with a
-little room round it, square. Needs only Pillow.
+a pale highlight on the clay itself is kept. The clay's outline is then taken
+in by a hair and softened, and the pixels along it are given the clay's own
+colour from just inside, so no white from the old background is left in the
+rim: the K sits cleanly on dark ground as well as light. --crop trims to the
+clay with a little room round it, square. Needs Pillow and numpy.
 """
 
 from __future__ import annotations
 
 import sys
-from collections import deque
 
-from PIL import Image
+import numpy as np
+from PIL import Image, ImageDraw, ImageFilter
 
-# How far from pure white still counts as background (0–255), fully and partly.
-SOLID, EDGE = 10, 46
+# How far from pure white (0–255) still counts as background.
+EDGE = 46
+# How far the outline is taken in, and how soft it is, in pixels.
+TRIM, SOFT = 2, 1.1
+# How deep the rim whose colour is replaced from inside the clay goes.
+RIM = 6
+
+
+def grow(mask: Image.Image, px: int, shrink: bool) -> Image.Image:
+    size = 2 * px + 1
+    return mask.filter(ImageFilter.MinFilter(size) if shrink else ImageFilter.MaxFilter(size))
 
 
 def cutout(src: str, out: str, crop: bool, size: int | None) -> None:
     img = Image.open(src).convert("RGB")
+    rgb = np.asarray(img).astype(np.float32)
     w, h = img.size
-    px = img.load()
-    away = [[0] * w for _ in range(h)]
-    for y in range(h):
-        row = away[y]
-        for x in range(w):
-            r, g, b = px[x, y]
-            row[x] = 255 - min(r, g, b)
 
-    # The background: near-white reached from the edge without crossing clay.
-    back = [[False] * w for _ in range(h)]
-    todo = deque()
-    for x in range(w):
-        todo.extend([(x, 0), (x, h - 1)])
-    for y in range(h):
-        todo.extend([(0, y), (w - 1, y)])
-    while todo:
-        x, y = todo.popleft()
-        if back[y][x] or away[y][x] >= EDGE:
-            continue
-        back[y][x] = True
-        if x > 0: todo.append((x - 1, y))
-        if x < w - 1: todo.append((x + 1, y))
-        if y > 0: todo.append((x, y - 1))
-        if y < h - 1: todo.append((x, y + 1))
+    # Near-white reached from the edge without crossing clay is the background.
+    near = (255 - rgb.min(axis=2)) < EDGE
+    fill = Image.fromarray(np.where(near, 255, 0).astype(np.uint8))
+    draw = ImageDraw.Draw(fill)
+    edge = [(x, 0) for x in range(w)] + [(x, h - 1) for x in range(w)]
+    edge += [(0, y) for y in range(h)] + [(w - 1, y) for y in range(h)]
+    for xy in edge:
+        if fill.getpixel(xy) == 255:
+            ImageDraw.floodfill(fill, xy, 128)
+    clay = Image.fromarray(np.where(np.asarray(fill) == 128, 0, 255).astype(np.uint8))
+    # Specks of clay-coloured noise out in the white are not clay.
+    clay = clay.filter(ImageFilter.MedianFilter(5))
 
-    result = Image.new("RGBA", (w, h))
-    put = result.load()
-    for y in range(h):
-        for x in range(w):
-            r, g, b = px[x, y]
-            if not back[y][x]:
-                put[x, y] = (r, g, b, 255)
-                continue
-            t = max(0.0, min(1.0, (away[y][x] - SOLID) / (EDGE - SOLID)))
-            a = t * t * (3 - 2 * t)
-            if a <= 0:
-                put[x, y] = (0, 0, 0, 0)
-                continue
-            # The colour under the white that was mixed in.
-            un = lambda c: max(0, min(255, round((c - (1 - a) * 255) / a)))
-            put[x, y] = (un(r), un(g), un(b), round(a * 255))
+    alpha = grow(clay, TRIM, shrink=True).filter(ImageFilter.GaussianBlur(SOFT))
+
+    # The rim's colour, from the clay just inside it.
+    inner = np.asarray(grow(clay, TRIM + RIM, shrink=True)).astype(np.float32) / 255
+    blur = lambda a: np.asarray(Image.fromarray(a).filter(ImageFilter.GaussianBlur(RIM * 1.5))).astype(np.float32)
+    weight = blur((inner * 255).astype(np.uint8)) / 255
+    spread = np.stack(
+        [blur((rgb[..., c] * inner).astype(np.uint8)) / np.maximum(weight, 1e-3) for c in range(3)], axis=2
+    )
+    keep = inner[..., None]
+    colour = rgb * keep + np.clip(spread, 0, 255) * (1 - keep)
+
+    result = Image.fromarray(
+        np.dstack([colour, np.asarray(alpha).astype(np.float32)]).round().astype(np.uint8)
+    )
 
     if crop:
-        box = result.getbbox()
+        box = alpha.point(lambda a: 255 if a > 8 else 0).getbbox()
         if box:
             left, top, right, bottom = box
             side = round(max(right - left, bottom - top) * 1.08)

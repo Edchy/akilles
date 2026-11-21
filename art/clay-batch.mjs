@@ -1,5 +1,6 @@
 // Many clay pictures in one go, unattended:
 //
+//   node art/clay-batch.mjs stretches          # any stretch picture that is missing
 //   node art/clay-batch.mjs breaths            # every stretch's breathing faces
 //   node art/clay-batch.mjs lifts [id ...]     # lifts.json (or just these): start, then finish
 //   node art/clay-batch.mjs lifts --min 4      # only the common ones: rated 4 or 5
@@ -22,7 +23,7 @@ const dir = join(here, "clay");
 const [what, ...rest] = process.argv.slice(2);
 const minAt = rest.indexOf("--min");
 const min = minAt >= 0 ? Number(rest[minAt + 1]) : 1;
-const only = rest.filter((a, i) => i !== minAt && i !== minAt + 1);
+const only = minAt >= 0 ? rest.filter((_, i) => i !== minAt && i !== minAt + 1) : rest;
 const read = (f) => JSON.parse(readFileSync(join(dir, f), "utf8"));
 
 /** Each job: the arguments to clay.mjs, the file it makes, and what it waits for. */
@@ -31,12 +32,26 @@ if (what === "breaths") {
   const face = (b) => (b === "inhale" ? "in" : "out");
   for (const [id, s] of Object.entries(read("stretches.json"))) {
     if (only.length && !only.includes(id)) continue;
+    // A face that can't be seen (lying face down) has no breathing faces.
+    if (s.faces === false) continue;
+    // Faces are edits of the pictures: wait until those are made.
+    const base = (n) => ({ after: `${id}-${n}.png` });
     if (s.single !== undefined) {
-      for (const b of ["in", "out"]) jobs.push({ args: [id, String(s.single), b], out: `${id}-${s.single}-${b}.png` });
+      for (const b of ["in", "out"]) jobs.push({ args: [id, String(s.single), b], out: `${id}-${s.single}-${b}.png`, ...base(s.single) });
     } else if (s.breath !== "steady") {
-      jobs.push({ args: [id, "0", face(s.breath.to0)], out: `${id}-0-${face(s.breath.to0)}.png` });
-      jobs.push({ args: [id, "1", face(s.breath.to1)], out: `${id}-1-${face(s.breath.to1)}.png` });
+      jobs.push({ args: [id, "0", face(s.breath.to0)], out: `${id}-0-${face(s.breath.to0)}.png`, ...base(0) });
+      jobs.push({ args: [id, "1", face(s.breath.to1)], out: `${id}-1-${face(s.breath.to1)}.png`, ...base(1) });
     }
+  }
+} else if (what === "stretches") {
+  // Stretch pictures that are missing (set aside for a redraw): the start, then the
+  // other moment as an edit of it. Their breathing faces follow with "breaths".
+  for (const [id, s] of Object.entries(read("stretches.json"))) {
+    if (only.length && !only.includes(id)) continue;
+    jobs.push({ args: [id, "0"], out: `${id}-0.png` });
+    // A hold shown in one picture needs only up to that one (its frame 1 is drawn from frame 0).
+    const last = s.single !== undefined ? s.single : s.frames.length - 1;
+    if (last >= 1) jobs.push({ args: [id, "1"], out: `${id}-1.png`, after: `${id}-0.png` });
   }
 } else if (what === "lifts") {
   const lifts = read("lifts.json");
@@ -44,14 +59,24 @@ if (what === "breaths") {
   for (const id of order) {
     if (only.length && !only.includes(id)) continue;
     if ((lifts[id].common ?? 3) < min) continue;
-    jobs.push({ args: [id, "0"], out: `${id}-0.png` });
+    // Drawn with its own person from the cast, if it has one (lifts.json "cast").
+    const who = lifts[id].cast;
+    const cast = who ? ["--cast", who] : [];
+    const name = (n) => (who ? `${id}@${who}-${n}.png` : `${id}-${n}.png`);
+    jobs.push({ args: [id, "0", ...cast], out: name(0) });
     // The finish is an edit of the start, so it waits for it. A hold has none.
-    if (lifts[id].single === undefined) jobs.push({ args: [id, "1"], out: `${id}-1.png`, after: `${id}-0.png` });
+    if (lifts[id].single === undefined) jobs.push({ args: [id, "1", ...cast], out: name(1), after: name(0) });
   }
 } else {
-  throw new Error("breaths or lifts?");
+  throw new Error("stretches, breaths or lifts?");
 }
 jobs = jobs.filter((j) => !existsSync(join(dir, j.out)));
+// A job waiting on a picture that neither exists nor is made in this run would wait forever.
+jobs = jobs.filter((j) => {
+  if (!j.after || existsSync(join(dir, j.after)) || jobs.some((k) => k.out === j.after)) return true;
+  console.log(`skipping ${j.out}: needs ${j.after} first`);
+  return false;
+});
 console.log(`${jobs.length} to make`);
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
