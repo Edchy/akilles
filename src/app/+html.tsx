@@ -16,7 +16,20 @@ export default function Root({ children }: PropsWithChildren) {
         <meta name="description" content="Klay. Get in shape." />
         <meta name="theme-color" content="#FCFCFA" />
         <link rel="manifest" href="/manifest.json" />
-        <link rel="icon" type="image/png" href="/icon-192.png" />
+        {/* The clay K: black on paper, white on black when the system is dark. */}
+        <link rel="icon" href="/favicon.ico" sizes="48x48" />
+        <link
+          rel="icon"
+          type="image/png"
+          href="/favicon-light.png"
+          media="(prefers-color-scheme: light)"
+        />
+        <link
+          rel="icon"
+          type="image/png"
+          href="/favicon-dark.png"
+          media="(prefers-color-scheme: dark)"
+        />
         <link rel="apple-touch-icon" href="/icon-180.png" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="mobile-web-app-capable" content="yes" />

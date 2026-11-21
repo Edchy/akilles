@@ -6,6 +6,7 @@
     "orientation": "portrait",
     "scheme": "klay",
     "userInterfaceStyle": "light",
+    "icon": "./assets/icon.png",
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
@@ -14,6 +15,10 @@
       }
     },
     "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#FCFCFA"
+      },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": true,
       "permissions": [
@@ -29,7 +34,19 @@
     },
     "plugins": [
       "expo-router",
-      "expo-splash-screen",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash.png",
+          "imageWidth": 200,
+          "resizeMode": "contain",
+          "backgroundColor": "#FCFCFA",
+          "dark": {
+            "image": "./assets/splash-dark.png",
+            "backgroundColor": "#0B0B0B"
+          }
+        }
+      ],
       "expo-status-bar",
       "expo-sharing",
       "expo-font",

@@ -20,12 +20,14 @@ if [ "$1" != "cut" ]; then
 fi
 
 PY=art/.venv/bin/python
-[ -x "$PY" ] || { arch -arm64 /usr/bin/python3 -m venv art/.venv && art/.venv/bin/pip install -q pillow; }
+[ -x "$PY" ] || { arch -arm64 /usr/bin/python3 -m venv art/.venv && art/.venv/bin/pip install -q pillow numpy scipy; }
 $PY art/cutout.py art/logo/k.png art/logo/klay-k.png --crop --size 1024
 mkdir -p video/public/logo
 # The film's frames keep their place in the picture, so the camera never jumps.
 for f in k stage-0 stage-1 stage-2 stage-3; do
   $PY art/cutout.py art/logo/$f.png video/public/logo/$f.png
 done
+# The in-between shapes, so the clay flows from stage to stage.
+$PY art/morph.py
 [ -f video/public/voice/logo.mp3 ] || (cd video && npm run voice -- --logo)
 (cd video && npm run logo)
