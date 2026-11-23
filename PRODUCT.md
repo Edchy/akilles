@@ -8,13 +8,13 @@ ios
 
 ## Users
 
-Right now: one person, the author, training in a commercial gym with an iPhone in hand between sets. The app is also meant to grow into a product for the people described in `PRODUCT_STRATEGY.md`: people who want to train but struggle to start and keep coming back. Design for the first user without closing the door on the second group. Teaching is in two parts: one film of about a minute (why: move every day, like eating and sleeping; then how a workout goes: Start, the circles, a short set, next time, swiping between cards, a stretch, Finish), shown after the two onboarding questions and again from Settings; and first-time tips on the screens for everything else (swap, warm-ups, a short set, the list of every card, Plan's workouts, the Library; never one a screen already says in its own words), each shown once. There is no marketing surface yet.
+Right now: one person, the author, training in a commercial gym with an iPhone in hand between sets. The app is also meant to grow into a product for people who want to train but struggle to start and keep coming back. Design for the first user without closing the door on the second group. Teaching is in two parts: one film of about a minute (why: move every day, like eating and sleeping; then how a workout goes: Start, the circles, a short set, next time, swiping between cards, a stretch, Finish), shown after the two onboarding questions and again from Settings; and first-time tips on the screens for everything else (swap, warm-ups, a short set, the list of every card, Plan's workouts, the Library; never one a screen already says in its own words), each shown once. There is no marketing surface yet.
 
 Situation of use: mid-session, heart rate up, sweaty hands, a glance at arm's length, often while walking between machines.
 
 ## Product Purpose
 
-Open it and know exactly what to do. One exercise on screen at a time, with the weight and reps already decided, and the next session's numbers worked out from how this one went. Success means the user keeps coming back, not that they have a perfect program (see "Governing Principle" in `PRODUCT_STRATEGY.md`).
+Open it and know exactly what to do. One exercise on screen at a time, with the weight and reps already decided, and the next session's numbers worked out from how this one went. Success means the user keeps coming back, not that they have a perfect program (the best program is the most effective one a person will keep doing).
 
 ## Positioning
 

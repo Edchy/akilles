@@ -486,4 +486,4 @@ and lives on in Progress. Several goals can run at once, each its own block.
   unless you set one in Plan, or when creating the exercise.
 - No way to log what you *actually* did if it differs from the prescription.
 
-Product direction and research notes live in [PRODUCT_STRATEGY.md](./PRODUCT_STRATEGY.md).
+Product direction lives in [PRODUCT.md](./PRODUCT.md).
