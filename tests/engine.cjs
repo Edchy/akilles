@@ -208,7 +208,7 @@ function act(state, rnd, now, planOnly = false) {
   return [name, run()];
 }
 
-for (const seed of [1, 7, 42, 2026, 31337]) {
+for (const seed of [1, 7, 22, 27, 35, 38, 42, 55, 2026, 31337]) {
   test(`a long run of everything, seed ${seed}: every rule holds after every step`, () => {
     const rnd = random(seed);
     let state = store.resetToDefault();

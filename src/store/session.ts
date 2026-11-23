@@ -838,11 +838,43 @@ export const takenElsewhere = (
   workoutId: string,
   entry: Entry,
 ): Set<string> =>
-  new Set(
-    workoutById(state, workoutId)
-      ?.exercises.filter((e) => e.id !== entry.id)
-      .map((e) => chosenRaw(state, workoutId, e)) ?? [],
-  );
+  new Set([...settleSlots(state, workoutId)].filter(([id]) => id !== entry.id).map(([, picked]) => picked));
+
+/**
+ * What fills each slot of a workout, settled together so no exercise is in
+ * two. First every slot whose own pick is still there keeps it; then each
+ * slot left, in order, takes the first of its options no slot has — or, with
+ * all of those taken (two slots of one kind: a pull-up chain and a pulldown),
+ * one from the library. Settling a slot on its own, against what the others
+ * had picked rather than what they ended up with, let two slots that both
+ * lost their exercise fall back to the same one (fixed 23 November 2026).
+ */
+const settleSlots = (state: SessionState, workoutId: string): Map<string, string> => {
+  const settled = new Map<string, string>();
+  const workout = workoutById(state, workoutId);
+  if (!workout) return settled;
+  const taken = new Set<string>();
+  const pools = new Map(workout.exercises.map((e) => [e.id, poolFor(state, workoutId, e)]));
+  for (const e of workout.exercises) {
+    const picked = chosenRaw(state, workoutId, e);
+    if (pools.get(e.id)!.includes(picked) && !taken.has(picked)) {
+      settled.set(e.id, picked);
+      taken.add(picked);
+    }
+  }
+  for (const e of workout.exercises) {
+    if (settled.has(e.id)) continue;
+    const pool = pools.get(e.id)!;
+    const spare = () =>
+      hiddenExercises(state).find(
+        (x) => !x.restricted && x.autoSelect !== false && isPattern(x, e.pattern) && !taken.has(x.id),
+      )?.id;
+    const pick = pool.find((id) => !taken.has(id)) ?? spare() ?? pool[0];
+    settled.set(e.id, pick);
+    taken.add(pick);
+  }
+  return settled;
+};
 
 /**
  * The raw choice for a slot without the duplicate filtering, used to work out
@@ -851,25 +883,21 @@ export const takenElsewhere = (
 const chosenRaw = (state: SessionState, workoutId: string, entry: Entry): string =>
   state.choices[slotKey(workoutId, entry.id)] ?? entry.options[0];
 
-/** The exercise filling a slot: your choice, else the pool's first option. */
+/**
+ * The exercise filling a slot: your choice, else the first option no other
+ * slot has (see `settleSlots`).
+ */
 export const chosen = (
   state: SessionState,
   workoutId: string,
   entry: Entry,
 ): string => {
+  const settled = settleSlots(state, workoutId).get(entry.id);
+  if (settled !== undefined) return settled;
+  // A slot that isn't the workout's own: on its own, as it stands.
   const picked = chosenRaw(state, workoutId, entry);
   const pool = poolFor(state, workoutId, entry);
-  if (pool.includes(picked)) return picked;
-  // Fall back to the first option no other slot is using — or, with all of
-  // yours taken (two slots of one kind: a pull-up chain and a pulldown), one
-  // from the library, rather than the same exercise twice.
-  const taken = takenElsewhere(state, workoutId, entry);
-  const free = pool.find((id) => !taken.has(id));
-  if (free) return free;
-  const spare = hiddenExercises(state).find(
-    (e) => !e.restricted && e.autoSelect !== false && isPattern(e, entry.pattern) && !taken.has(e.id),
-  );
-  return spare?.id ?? pool[0];
+  return pool.includes(picked) ? picked : pool[0];
 };
 
 /**
@@ -2179,14 +2207,28 @@ export const buildWorkout = (
         const warmed = new Set<Group>();
         // In the order they run, so the first lift of a group is the one warmed up.
         const runOrder = (["start", "main", "finish"] as const).flatMap((part) => partIds(workout, part));
-        const lifts = [...liftsToRun(state, workout)]
-          .sort((a, b) => runOrder.indexOf(a.entry.id) - runOrder.indexOf(b.entry.id))
-          .map(({ entry: e, exerciseId: named }) => {
-          // A chain is done at your step; its first time, at its start, and
-          // the card asks where you are.
+        // A chain is done at your step; its first time, at its start, and
+        // the card asks where you are.
+        const stepOf = (named: string) => {
           const chain = chainFor(named);
           const at = chain ? state.steps?.[chain.id] : undefined;
-          const exerciseId = chain ? chain.steps[Math.min(at ?? chain.start, chain.steps.length - 1)].exerciseId : named;
+          return { chain, at, exerciseId: chain ? chain.steps[Math.min(at ?? chain.start, chain.steps.length - 1)].exerciseId : named };
+        };
+        // Never the same exercise twice in one session. A chain's step can be
+        // another slot's exercise (push-ups at the incline step, beside an
+        // incline push-up slot): the first in run order stays, the other sits
+        // this session out.
+        const inSession = new Set<string>();
+        const lifts = [...liftsToRun(state, workout)]
+          .sort((a, b) => runOrder.indexOf(a.entry.id) - runOrder.indexOf(b.entry.id))
+          .filter(({ exerciseId: named }) => {
+            const { exerciseId } = stepOf(named);
+            if (inSession.has(exerciseId)) return false;
+            inSession.add(exerciseId);
+            return true;
+          })
+          .map(({ entry: e, exerciseId: named }) => {
+          const { chain, at, exerciseId } = stepOf(named);
           const ex = byId(exerciseId)!;
           const group = groupOf(ex);
           // Start and finish exercises are light by nature: no ramp, and
