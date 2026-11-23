@@ -4,6 +4,7 @@ const path = require("node:path");
 const vm = require("node:vm");
 const { test } = require("node:test");
 const ts = require("typescript");
+const { nativeStub } = require("./native-stubs.cjs");
 
 // Exercise the real store, progression engine and save format without a native runtime.
 const modules = new Map();
@@ -131,7 +132,13 @@ test("Today continues a workout you stepped out of, and End commits it", () => {
   let pushed = 0;
   const uiRequire = (name) => {
     if (name === "react") return fakeReact;
-    if (name === "react-native") return { Pressable: "Pressable", ScrollView: "ScrollView", Text: "Text", View: "View" };
+    if (nativeStub(name)) return nativeStub(name);
+    if (name === "react-native") return { Pressable: "Pressable", ScrollView: "ScrollView", Text: "Text", View: "View", useWindowDimensions: () => ({ width: 390, height: 844 }) };
+    // Parts of Today these checks don't look inside.
+    if (name === "@/components/dusk") return { DuskGround: "DuskGround", PosterGround: "PosterGround", PosterFrame: "PosterFrame" };
+    if (name === "@/components/easy-week") return { EasyWeek: "EasyWeek", easyWeekShowing: () => false };
+    if (name === "@/components/growth-offer") return { GrowthOffer: "GrowthOffer" };
+    if (name === "@/lib/use-reduce-motion") return { useReduceMotion: () => true };
     if (name === "expo-router") return { router: { push: () => { pushed++; } } };
     if (name === "react-native-safe-area-context") return { useSafeAreaInsets: () => ({ top: 0 }) };
     if (name === "@/store/session") return { ...store, useSession: () => ({ state, setState: (fn) => { state = fn(state); } }) };
@@ -150,7 +157,12 @@ test("Today continues a workout you stepped out of, and End commits it", () => {
     compilerOptions: { jsx: ts.JsxEmit.ReactJSX, module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 },
   });
   vm.runInNewContext(outputText, { module, exports: module.exports, require: uiRequire, Date });
-  const render = () => { hookIndex = 0; return module.exports.default(); };
+  // Today is a screen around the deck: open it to reach the deck's buttons.
+  const render = () => {
+    hookIndex = 0;
+    const screen = module.exports.default();
+    return typeof screen.type === "function" ? screen.type(screen.props) : screen;
+  };
   function find(node, predicate) {
     if (!node || typeof node !== "object") return;
     if (predicate(node)) return node;

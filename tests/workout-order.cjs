@@ -4,6 +4,7 @@ const path = require("node:path");
 const vm = require("node:vm");
 const { test } = require("node:test");
 const ts = require("typescript");
+const { nativeStub } = require("./native-stubs.cjs");
 
 // Exercise the real store, progression engine and save format without a native runtime.
 const modules = new Map();
@@ -144,7 +145,7 @@ test("skip and postpone cannot change a workout in progress or a single-workout 
   assert.equal(store.postponeWorkout(single), single);
 });
 
-test("Today skips immediately without a sheet, and Undo restores an existing queue", () => {
+test("Today has no Skip: picking another workout only looks, and Start begins the one on top", () => {
   let state = fresh(ids[2]);
   const hooks = [];
   let hookIndex = 0;
@@ -159,7 +160,13 @@ test("Today skips immediately without a sheet, and Undo restores an existing que
   };
   const uiRequire = (name) => {
     if (name === "react") return fakeReact;
-    if (name === "react-native") return { Pressable: "Pressable", ScrollView: "ScrollView", Text: "Text", View: "View" };
+    if (nativeStub(name)) return nativeStub(name);
+    if (name === "react-native") return { Pressable: "Pressable", ScrollView: "ScrollView", Text: "Text", View: "View", useWindowDimensions: () => ({ width: 390, height: 844 }) };
+    // Parts of Today these checks don't look inside.
+    if (name === "@/components/dusk") return { DuskGround: "DuskGround", PosterGround: "PosterGround", PosterFrame: "PosterFrame" };
+    if (name === "@/components/easy-week") return { EasyWeek: "EasyWeek", easyWeekShowing: () => false };
+    if (name === "@/components/growth-offer") return { GrowthOffer: "GrowthOffer" };
+    if (name === "@/lib/use-reduce-motion") return { useReduceMotion: () => true };
     if (name === "expo-router") return { router: { push: () => {} } };
     if (name === "react-native-safe-area-context") return { useSafeAreaInsets: () => ({ top: 0 }) };
     if (name === "@/store/session") return { ...store, useSession: () => ({ state, setState: (fn) => { state = fn(state); } }) };
@@ -177,7 +184,12 @@ test("Today skips immediately without a sheet, and Undo restores an existing que
     compilerOptions: { jsx: ts.JsxEmit.ReactJSX, module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 },
   });
   vm.runInNewContext(outputText, { module, exports: module.exports, require: uiRequire, Date });
-  const render = () => { hookIndex = 0; return module.exports.default(); };
+  // Today is a screen around the deck: open it to reach the deck's buttons.
+  const render = () => {
+    hookIndex = 0;
+    const screen = module.exports.default();
+    return typeof screen.type === "function" ? screen.type(screen.props) : screen;
+  };
   function find(node, predicate) {
     if (!node || typeof node !== "object") return;
     if (predicate(node)) return node;
@@ -187,34 +199,20 @@ test("Today skips immediately without a sheet, and Undo restores an existing que
       if (found) return found;
     }
   }
-  const undo = () => find(render(), (node) => node.props?.accessibilityLabel?.startsWith("Undo skipping"));
-  const skip = () => find(render(), (node) => node.props?.label === "Skip").props.onPress();
-  const originalHistory = state.history;
-  const originalLog = state.log;
-  skip();
-  assert.equal(next(state), ids[3]);
-  assert.ok(!find(render(), (node) => node.type === "Sheet" && node.props.visible));
-  assert.equal(state.history, originalHistory);
-  assert.equal(state.log, originalLog);
-  undo().props.onPress();
-  assert.equal(next(state), ids[2]);
-  assert.equal(state.workoutQueue, undefined);
+  const button = (label) => find(render(), (node) => node.props?.label === label);
+  const before = state;
 
-  // A saved queue is respected and restored exactly by Undo.
-  state = store.postponeWorkout(state);
-  const pending = state;
-  skip();
-  assert.equal(next(state), ids[4]);
-  undo().props.onPress();
-  assert.equal(next(state), ids[3]);
-  assert.deepEqual(state.workoutQueue, pending.workoutQueue);
-  assert.deepEqual(state.postponed, pending.postponed);
+  // The deck replaced Skip: there is no way to skip from Today.
+  assert.equal(button("Skip"), undefined);
+  assert.equal(find(render(), (node) => node.props?.accessibilityLabel?.startsWith("Undo skipping")), undefined);
 
-  // Repeated taps walk forward; Undo reverses the most recent skip.
-  state = fresh();
-  skip();
-  skip();
+  // Tapping another workout's shape only changes what you look at.
+  const other = state.workouts.find((w) => w.id === ids[4]);
+  find(render(), (node) => node.props?.accessibilityLabel === `Show ${other.name || "Untitled"}`).props.onPress();
+  assert.equal(state, before);
   assert.equal(next(state), ids[2]);
-  undo().props.onPress();
-  assert.equal(next(state), ids[1]);
+
+  // Start begins the one on top: the one you picked.
+  button("Start").props.onPress();
+  assert.equal(state.active.workoutId, ids[4]);
 });

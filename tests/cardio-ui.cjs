@@ -113,9 +113,11 @@ test("a time target asks for distance, accepts a decimal comma and rejects inval
   }
 });
 
-test("bodyweight cardio supports reps as well as time without calling it distance", () => {
+test("counted cardio, like jumping jacks, is on the clock: minutes only, never a count or a distance", () => {
+  // Nobody counts five minutes of jumping jacks (see `onTheClock`).
   hooks = [];
   const list = render(CardioTarget, { exercise: cardioById("jumping_jacks"), target: { minutes: 5 }, onChange: () => {} });
-  assert.match(text(list), /Reps/);
+  assert.match(text(list), /Time target/);
+  assert.doesNotMatch(text(list), /Reps|Rep target/);
   assert.doesNotMatch(text(list), /Distance/);
 });
