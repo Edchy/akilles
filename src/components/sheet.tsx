@@ -1,5 +1,6 @@
 import type { PropsWithChildren, ReactNode } from "react";
 import { Modal, Pressable, ScrollView, View } from "react-native";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
 import {
   SafeAreaProvider,
   initialWindowMetrics,
@@ -132,9 +133,13 @@ export function Sheet({
       onRequestClose={onBack ?? onClose}
     >
       <Plain>
-        <SafeAreaProvider initialMetrics={initialWindowMetrics}>
-          <Clear full={full} background={background}>{content}</Clear>
-        </SafeAreaProvider>
+        {/* A modal is its own window: swipes inside it (a row swiped to
+            delete) need their own gesture root. */}
+        <GestureHandlerRootView style={{ flex: 1 }}>
+          <SafeAreaProvider initialMetrics={initialWindowMetrics}>
+            <Clear full={full} background={background}>{content}</Clear>
+          </SafeAreaProvider>
+        </GestureHandlerRootView>
       </Plain>
     </Modal>
   );

@@ -5,7 +5,7 @@ const vm = require("node:vm");
 const { test } = require("node:test");
 const ts = require("typescript");
 
-// Two built-in plans: Push, pull, legs to start, and the advanced one (id "pplppl") to switch to in Settings.
+// Three built-in plans: Push, pull, legs to start; the advanced one (id "pplppl") and Kettlebell Flow to switch to in Settings.
 const modules = new Map();
 function load(name) {
   if (name === "@react-native-async-storage/async-storage") return {};
@@ -32,17 +32,17 @@ const storage = load("@/store/storage");
 const ids = (list) => list.map((w) => w.id).join();
 const paused = (state) => state.removedWorkouts.map((r) => r.workout.id);
 
-test("everyone starts on Push, pull, legs, with PPLPPL waiting", () => {
+test("everyone starts on Push, pull, legs, with the advanced plan and Kettlebell Flow waiting", () => {
   const state = store.resetToDefault();
   assert.equal(store.loopInUse(state), "ppl");
   assert.equal(ids(state.workouts), "push,pull,legs");
   const plans = store.loopsOf(state);
-  assert.equal(plans.map((p) => p.name).join("|"), "Push, pull, legs|Push, pull, legs, advanced");
+  assert.equal(plans.map((p) => p.name).join("|"), "Push, pull, legs|Push, pull, legs, advanced|Kettlebell Flow");
   assert.equal(ids(plans[1].workouts), ids(PLANS.pplppl));
 });
 
-test("every PPLPPL lift, routine and machine is one the app knows", () => {
-  for (const w of PLANS.pplppl) {
+test("every built-in plan's lift and routine is one the app knows", () => {
+  for (const w of [...PLANS.pplppl, ...PLANS.kettlebell_flow]) {
     for (const e of w.exercises) {
       for (const id of e.options) {
         const ex = exercises.byId(id);
@@ -52,7 +52,7 @@ test("every PPLPPL lift, routine and machine is one the app knows", () => {
         assert.ok(kit.isListed(id), `${id} has no equipment listed`);
       }
     }
-    assert.ok(conditioning.cardioById(w.cardio.open.machine), w.id);
+    if (w.cardio.open) assert.ok(conditioning.cardioById(w.cardio.open.machine), w.id);
     assert.equal(conditioning.routineUse(conditioning.mobilityById(w.warmup)), "warmup", w.warmup);
     assert.equal(conditioning.routineUse(conditioning.mobilityById(w.mobility)), "end", w.mobility);
   }
@@ -95,7 +95,7 @@ test("a plan of your own: added empty, used, filled on Plan, and kept when you s
   assert.equal(store.upNext(state).id, "bw1");
   state = store.switchLoop(store.switchLoop(state, "pplppl"), "travel");
   assert.equal(ids(state.workouts), "bw1", "it comes back with its workout");
-  assert.equal(store.loopsOf(state).map((p) => p.name).join("|"), "Push, pull, legs|Push, pull, legs, advanced|Travel");
+  assert.equal(store.loopsOf(state).map((p) => p.name).join("|"), "Push, pull, legs|Push, pull, legs, advanced|Kettlebell Flow|Travel");
 });
 
 test("plans can be renamed, and deleted when not in use; names stay unique", () => {
@@ -106,7 +106,7 @@ test("plans can be renamed, and deleted when not in use; names stay unique", () 
   assert.equal(store.loopName(state, "ppl"), "Gym");
   assert.equal(store.renameLoop(state, "ppl", "  "), state, "a blank name is ignored");
   assert.equal(store.deleteLoop(state, "ppl"), state, "not the plan in use");
-  state = store.deleteLoop(state, "pplppl");
+  state = store.deleteLoop(store.deleteLoop(state, "pplppl"), "kettlebell_flow");
   assert.equal(store.loopsOf(state).map((p) => p.name).join("|"), "Gym|Home|Home 2");
   // Down to the one in use, it keeps its name.
   state = store.deleteLoop(store.deleteLoop(state, "a"), "b");
@@ -245,6 +245,11 @@ test("saves before version 26: the six PPLPPL days become three, on the same kin
   assert.equal(JSON.stringify(now.choices), JSON.stringify({ "pull_a/Row": "kb_row" }), "swaps on the kept days stay");
   assert.equal(now.history["db_bench:6-10"].weight, 30);
   assert.ok(!now.hiddenConditioning.includes("animal"));
+  // The one-bell lifts on Legs, the carry at two sets, and in your list.
+  const legs = now.workouts.find((w) => w.id === "legs_a").exercises;
+  assert.equal(legs.map((e) => e.options[0]).join(), "goblet_squat,db_rdl,kb_single_leg_rdl,single_leg_ext,kb_suitcase_carry");
+  assert.equal(legs.at(-1).sets, 2);
+  assert.ok(!now.hidden.includes("kb_suitcase_carry") && !now.hidden.includes("kb_single_leg_rdl"));
   // From a second-version day, the first version of the same.
   const fromB = storage.fromSaved(JSON.stringify({ version: 25, state: { ...state, nextWorkout: "push_b" } }));
   assert.equal(fromB.nextWorkout, "push_a");
@@ -271,4 +276,51 @@ test("Push opens with the animal routine, the get-up at its end", () => {
   assert.ok(at("warmup_push") >= 0 && at("animal") > at("warmup_push"), "after the shoulders");
   assert.ok(at("animal") < at("db_bench"), "before the first lift");
   assert.equal(conditioning.mobilityById("animal").moves.at(-1).id, "turkish_get_up");
+});
+
+test("Kettlebell Flow: one workout of six kettlebell lifts, the kung fu mobility first and no cardio", () => {
+  const state = store.switchLoop(store.resetToDefault(), "kettlebell_flow");
+  assert.equal(ids(state.workouts), "kb_flow");
+  const built = store.buildWorkout(state);
+  const items = built.active.items;
+  assert.equal(items[0].exerciseId, "kung_fu");
+  assert.equal(items.at(-1).exerciseId, "everyday");
+  assert.ok(!items.some((it) => conditioning.cardioById(it.exerciseId)), "no cardio");
+  const lifts = items.filter((it) => store.isLift(it)).map((it) => it.exerciseId);
+  assert.equal(lifts.join(), "kb_goblet_squat,kb_press,kb_single_leg_rdl,kb_swing,kb_row,kb_suitcase_carry");
+  for (const id of lifts) assert.ok(!state.hidden.includes(id), id);
+  // Finished, it comes round again.
+  assert.equal(store.upNext(store.finishWorkout(built, Date.now())).id, "kb_flow");
+});
+
+test("saves before version 27 get Kettlebell Flow, waiting; the plan in use stays", () => {
+  const state = store.switchLoop(store.resetToDefault(), "pplppl");
+  const old = { ...state, loops: state.loops.filter((l) => l.id !== "kettlebell_flow") };
+  const now = storage.fromSaved(JSON.stringify({ version: 26, state: old }));
+  assert.equal(store.loopInUse(now), "pplppl");
+  assert.equal(store.loopsOf(now).map((p) => p.id).join(), "ppl,pplppl,kettlebell_flow");
+  assert.equal(ids(store.loopsOf(now)[2].workouts), "kb_flow");
+  // Once there, never added twice.
+  assert.equal(store.loopsOf(storage.fromSaved(storage.toSaved(now))).length, 3);
+});
+
+test("the KB suitcase carry is a minute a side, two sets, and its bell goes up when both make the minute", () => {
+  const state = store.switchLoop(store.resetToDefault(), "kettlebell_flow");
+  const built = store.buildWorkout(state);
+  const at = built.active.items.findIndex((it) => it.exerciseId === "kb_suitcase_carry");
+  const carry = store.currentPrescription({ ...built, active: { ...built.active, cursor: at } });
+  assert.deepEqual([carry.reps, carry.sets], [60, 2]);
+});
+
+test("saves before version 27: the one-bell lifts start in the library, and a Legs day you changed stays", () => {
+  let state = store.resetToDefault();
+  const old = { ...state, loops: state.loops.filter((l) => l.id !== "kettlebell_flow"), hidden: state.hidden.filter((id) => !id.startsWith("kb_s")) };
+  const now = storage.fromSaved(JSON.stringify({ version: 26, state: old }));
+  assert.ok(now.hidden.includes("kb_suitcase_carry") && now.hidden.includes("kb_single_leg_rdl"), "not on Push, pull, legs");
+  const waitingLegs = store.loopsOf(now).find((l) => l.id === "pplppl").workouts.find((w) => w.id === "legs_a");
+  assert.equal(waitingLegs.exercises.at(-1).options[0], "kb_suitcase_carry");
+  // A carry slot you set to one set keeps it.
+  const mine = store.inLoop(old, "pplppl", (s) => ({ ...s, workouts: s.workouts.map((w) => (w.id === "legs_a" ? { ...w, exercises: w.exercises.map((e) => (e.id === "Carry" ? { ...e, options: ["suitcase_carry"], sets: 1 } : e)) } : w)) }));
+  const kept = store.loopsOf(storage.fromSaved(JSON.stringify({ version: 26, state: mine }))).find((l) => l.id === "pplppl").workouts.find((w) => w.id === "legs_a");
+  assert.equal(kept.exercises.at(-1).sets, 1);
 });

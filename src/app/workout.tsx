@@ -2034,7 +2034,8 @@ function LiftTitle({
               boxShadow: pressed ? CLAY_LOOK.dent : CLAY_LOOK.bump,
             })}
           >
-            <Icon name="more" size={20} color={colors.text} />
+            {/* A cream button: its dots in the dark ink, whatever the card. */}
+            <Icon name="more" size={20} color={CLAY_LOOK.ink} />
           </Pressable>
         </View>
         {children}
@@ -3907,8 +3908,9 @@ function Sets({
               // Three colours a set can be, told apart at a glance: deep clay
               // on target, a pale clay short of it, and the card's own colour,
               // hollow, not done. Cream is only ever a set not yet started.
-              wash={short ? mix(CLAY_LOOK.well, colors.wash, 0.42) : colors.wash}
+              wash={short ? mix(colors.blank, colors.wash, 0.42) : colors.wash}
               card={colors.bg}
+              blank={colors.blank}
               ink={colors.text}
               ringWidth={role === "partner" ? 2 : 3}
               label={

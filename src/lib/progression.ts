@@ -14,6 +14,12 @@
  *   short twice in a row       same weight, one rung down (10 → 8 reps)
  *     ...on the bottom rung    the weight down a step, about 10%
  *
+ * Away from the gym the next weight may be a long way up: a 10 and a 16 kg
+ * kettlebell. Topping out before a jump like that — or at the heaviest
+ * weight there is — climbs on past the ladder, two reps at a time, to about
+ * 40% more (10 → 12 → 14), so the jump lands on a body ready for it. See
+ * `BIG_JUMP` and `ExerciseState.extra`.
+ *
  * A set left empty is not a miss. Running out of time says nothing about the
  * weight, so an unfinished exercise repeats without counting against it.
  *
@@ -86,6 +92,12 @@ export type ExerciseState = {
    * see `lib/fill.ts`.
    */
   maxed?: boolean;
+  /**
+   * Reps added past the top of the ladder while the next weight is a big
+   * jump away, or there is none: 10 + 2 = 12 reps on a 6–10 ladder. Counts
+   * only on the top rung; cleared whenever the weight or the rung moves.
+   */
+  extra?: number;
   /**
    * A time-based cut applied but not yet trained through. Kept so the screen
    * can explain today's number, and cleared the moment the exercise is
@@ -411,6 +423,22 @@ export const ladderOf = (exercise: Exercise | undefined, scheme: Scheme): number
 export const canStepUp = (exercise: Exercise, weight: number): boolean =>
   exercise.increment > 0 && !(exercise.holds && weight + exercise.increment > HOLD_MAX);
 
+/**
+ * A step up this much heavier or more is a jump: 10 → 16 kg is 60%. Below
+ * it — a 12 kg bell after a 10, 20 % — the usual step is close enough.
+ */
+export const BIG_JUMP = 1.25;
+
+/** How far past the ladder's top a lift may climb before a jump: about 40%, in twos. */
+export const extraCap = (ladder: readonly number[]): number =>
+  Math.max(2, Math.floor((ladder[ladder.length - 1] * 0.4) / 2) * 2);
+
+/** The reps (or seconds) due: the ladder's rung, plus any climbed past its top. */
+export const targetOf = (ladder: readonly number[], state: Pick<ExerciseState, "rung" | "extra">): number => {
+  const top = ladder.length - 1;
+  return ladder[Math.min(state.rung, top)] + (state.rung >= top ? (state.extra ?? 0) : 0);
+};
+
 /** Turn stored state into the numbers on the screen. */
 export const prescribe = (
   state: ExerciseState,
@@ -422,7 +450,7 @@ export const prescribe = (
   return {
     exercise,
     weight: state.weight,
-    reps: ladder[Math.min(state.rung, ladder.length - 1)],
+    reps: targetOf(ladder, state),
     sets,
     scheme,
     last: state.lastPerformed,
@@ -478,6 +506,22 @@ export const applyResult = (
   state: ExerciseState,
   scheme: Scheme,
   reps: (number | null)[],
+  now: number = Date.now(),
+  weights: number[] | null = null,
+): ExerciseState => {
+  const after = applyCore(state, scheme, reps, now, weights);
+  // Reps past the top belong to one weight on the top rung: anything that
+  // moves either starts the count again.
+  const top = ladderOf(byId(state.exerciseId), scheme).length - 1;
+  if (!after.extra || (after.weight === state.weight && after.rung >= top)) return after;
+  const { extra: _extra, ...rest } = after;
+  return rest;
+};
+
+const applyCore = (
+  state: ExerciseState,
+  scheme: Scheme,
+  reps: (number | null)[],
   /** When the session happened. Defaults to now; passed in so it is testable. */
   now: number = Date.now(),
   /**
@@ -489,7 +533,7 @@ export const applyResult = (
 ): ExerciseState => {
   const exercise = byId(state.exerciseId)!;
   const ladder = ladderOf(exercise, scheme);
-  const target = ladder[Math.min(state.rung, ladder.length - 1)];
+  const target = targetOf(ladder, state);
   const performed = {
     weight: state.weight,
     reps: reps.map((r) => r ?? 0),
@@ -522,6 +566,13 @@ export const applyResult = (
     // make the same lift easier for no reason. Jumps are the exception: they
     // have no top to stay at, and simply go round again.
     const next = nextWeightUp(weights, state.weight, exercise.increment);
+    // Before a big jump, or at the heaviest weight there is: two more reps
+    // on the same weight, up to the cap, rather than the jump or a stop.
+    const extra = state.extra ?? 0;
+    const jump = next === null || (state.weight > 0 && next / state.weight >= BIG_JUMP);
+    if (weights && !exercise.unloaded && !exercise.timed && canStepUp(exercise, state.weight) && jump && extra < extraCap(ladder)) {
+      return { ...hit, extra: Math.min(extra + 2, extraCap(ladder)), reloading: false };
+    }
     if (!exercise.unloaded && (!canStepUp(exercise, state.weight) || next === null)) {
       return { ...hit, reloading: false, maxed: true };
     }
@@ -532,7 +583,9 @@ export const applyResult = (
     // A reload just climbed is never followed by another — its own top is
     // what earns the step. Nothing to reload where there is no step to hold.
     const climbs = state.climbs ?? 0;
+    // A weight climbed well past the ladder is owned already: no reload.
     if (
+      extra === 0 &&
       !state.reloading &&
       climbs >= RELOAD_AFTER &&
       canStepUp(exercise, state.weight) &&
@@ -557,6 +610,18 @@ export const applyResult = (
     return {
       ...trained,
       downStreak,
+      skippedLast: false,
+      lastPerformed: performed,
+    };
+  }
+
+  // Short twice in a row past the top of the ladder: two reps back first,
+  // same weight.
+  if (state.extra) {
+    return {
+      ...trained,
+      extra: state.extra - 2 > 0 ? state.extra - 2 : undefined,
+      downStreak: 0,
       skippedLast: false,
       lastPerformed: performed,
     };

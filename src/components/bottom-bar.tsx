@@ -8,7 +8,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { Icon, type IconName } from "@/components/icon";
 import { COLUMN } from "@/components/screen";
-import { BAR, colors, FAMILY, fieldColors, fonts, radii } from "@/constants/theme";
+import { BAR, colors, fieldColors, fonts, radii } from "@/constants/theme";
 import type { Family } from "@/data/families";
 import { isComplete, itemFamily, useSession } from "@/store/session";
 
@@ -96,7 +96,7 @@ export function BottomBar({ children }: PropsWithChildren) {
             colorScheme="light"
             // Tinted with the field itself, so over orange it is orange glass
             // rather than a frosted white or a smoked navy.
-            tintColor={ground ? `${FAMILY[ground].field}B3` : undefined}
+            tintColor={ground ? `${fieldColors(ground).bg}B3` : undefined}
             isInteractive
             style={capsule}
           >

@@ -134,16 +134,52 @@ test("too heavy to do well: the slot gives way or sits out", () => {
 });
 
 test("with only some weights, a step up goes to the next one there is", () => {
+  // 12 → 14 kg is a small step: taken at the top of the ladder, as at a gym.
   const st = { exerciseId: "kb_goblet_squat", weight: 12, rung: 2, downStreak: 0, deloads: 0 };
   const top = prog.ladderOf(exercises.byId("kb_goblet_squat"), SCHEME)[2];
-  const after = prog.applyResult(st, SCHEME, [top, top, top], Date.now(), [12, 20]);
-  assert.equal(after.weight, 20);
+  const after = prog.applyResult(st, SCHEME, [top, top, top], Date.now(), [12, 14]);
+  assert.equal(after.weight, 14);
   assert.equal(after.rung, 0);
 });
 
+test("before a big jump, the lift climbs past the ladder two reps at a time, then jumps", () => {
+  // A 10 and a 16 kg bell: 10, then 12 and 14 reps on the 10, then the 16 at 6.
+  const ex = exercises.byId("kb_goblet_squat");
+  const ladder = prog.ladderOf(ex, SCHEME);
+  let st = { exerciseId: "kb_goblet_squat", weight: 10, rung: ladder.length - 1, downStreak: 0, deloads: 0 };
+  const seen = [];
+  for (let i = 0; i < 3; i++) {
+    const due = prog.prescribe(st, SCHEME, 3).reps;
+    seen.push(due);
+    st = prog.applyResult(st, SCHEME, [due, due, due], Date.now(), [10, 16]);
+  }
+  assert.deepEqual(seen, [10, 12, 14]);
+  assert.equal(st.weight, 16);
+  assert.equal(st.rung, 0);
+  assert.equal(st.extra, undefined);
+  assert.equal(prog.prescribe(st, SCHEME, 3).reps, ladder[0]);
+});
+
+test("short twice past the ladder, two reps come off before anything else", () => {
+  const st = { exerciseId: "kb_goblet_squat", weight: 10, rung: 2, extra: 4, downStreak: 1, deloads: 0 };
+  const after = prog.applyResult(st, SCHEME, [12, 11, 10], Date.now(), [10, 16]);
+  assert.equal(after.weight, 10);
+  assert.equal(after.rung, 2);
+  assert.equal(after.extra, 2);
+  assert.equal(after.deloads, 0);
+});
+
+test("at a gym nothing climbs past the ladder", () => {
+  const st = { exerciseId: "goblet_squat", weight: 20, rung: 2, downStreak: 0, deloads: 0 };
+  const top = prog.ladderOf(exercises.byId("goblet_squat"), SCHEME)[2];
+  assert.equal(prog.applyResult(st, SCHEME, [top, top, top], Date.now()).extra, undefined);
+});
+
 test("topped out at the heaviest bell, the lift stays at the top and counts as outgrown", () => {
-  const st = { exerciseId: "kb_goblet_squat", weight: 10, rung: 2, downStreak: 0, deloads: 0 };
-  const top = prog.ladderOf(exercises.byId("kb_goblet_squat"), SCHEME)[2];
+  // Already climbed as far past the ladder as it goes.
+  const ladder = prog.ladderOf(exercises.byId("kb_goblet_squat"), SCHEME);
+  const st = { exerciseId: "kb_goblet_squat", weight: 10, rung: 2, extra: prog.extraCap(ladder), downStreak: 0, deloads: 0 };
+  const top = prog.prescribe(st, SCHEME, 3).reps;
   const after = prog.applyResult(st, SCHEME, [top, top, top], Date.now(), [10]);
   assert.equal(after.weight, 10);
   assert.equal(after.rung, 2);
@@ -265,12 +301,15 @@ const finishedPress = (weights, extra = {}, reps = 10) => {
 
 test("the verdict and saved progression use the same sparse rack", () => {
   const state = finishedPress([12, 20]);
-  assert.equal(store.nextTime(state).fact, "Up to 20 kg next time.");
-  assert.equal(store.finishWorkout(state).history[store.key("kb_press", SCHEME)].weight, 20);
+  assert.equal(store.nextTime(state).fact, "12 reps next time, on the same 12 kg. Then the next weight.");
+  assert.equal(store.finishWorkout(state).history[store.key("kb_press", SCHEME)].extra, 2);
+  const climbed = finishedPress([12, 20], { extra: 4 }, 14);
+  assert.equal(store.nextTime(climbed).fact, "Up to 20 kg next time.");
+  assert.equal(store.finishWorkout(climbed).history[store.key("kb_press", SCHEME)].weight, 20);
 });
 
 test("the verdict never promises a heavier bell when already at the heaviest", () => {
-  const state = finishedPress([12]);
+  const state = finishedPress([12], { extra: 4 }, 14);
   assert.match(store.nextTime(state).fact, /again next time.*top/);
   assert.equal(store.finishWorkout(state).history[store.key("kb_press", SCHEME)].weight, 12);
 });
@@ -307,4 +346,67 @@ test("changing kit before the lighter session cannot round back to the failed we
   const nextPlace = trainWith({ ...finished, nextWorkout: "push" }, KB(12));
   const next = store.buildWorkout(nextPlace);
   assert.ok(!lifts(next).some((it) => it.exerciseId === "kb_press"));
+});
+
+test("the Library and Add exercise show only what the plan's equipment can do", () => {
+  const all = store.everyExercise(fresh());
+  assert.equal(store.doableHere(fresh(), all).length, all.length);
+  const bells = trainWith(fresh(), KB(10, 16));
+  const shown = store.doableHere(bells, all);
+  assert.ok(shown.length > 0 && shown.length < all.length);
+  assert.ok(shown.every((e) => kit.fits({ id: e.id }, KB(10, 16))));
+  assert.ok(shown.some((e) => e.id === "kb_swing"));
+  assert.ok(!shown.some((e) => e.id === "bench_press"));
+});
+
+test("away from the gym, a slot gives way to the closest lift, not the first on the list", () => {
+  const { closestFirst } = load("@/lib/similar");
+  const ids = ["db_floor_press", "machine_chest", "db_bench", "push_up"];
+  assert.equal(closestFirst(exercises.byId("bench"), ids.map(exercises.byId))[0].id, "db_bench");
+  assert.equal(closestFirst(exercises.byId("incline_bench"), ["db_bench", "incline_db_press"].map(exercises.byId))[0].id, "incline_db_press");
+  // Twins on other gear are closest of all.
+  assert.equal(closestFirst(exercises.byId("kb_press"), ["arnold_press", "db_shoulder"].map(exercises.byId))[0].id, "db_shoulder");
+});
+
+test("changing a plan's equipment says what will change before it is saved", () => {
+  const state = fresh();
+  const plan = store.loopInUse(state);
+  assert.equal(store.equipmentChanges(state, plan, undefined).length, 0);
+  const changes = store.equipmentChanges(state, plan, { gear: [] });
+  assert.ok(changes.some((c) => c.workout === "Push" && c.from === "db_bench" && c.to === "push_up"));
+  assert.ok(changes.some((c) => c.to === null));
+  // Nothing is saved by looking.
+  assert.equal(store.kitOfLoop(state, plan), undefined);
+});
+
+test("a lift with a bell in each hand needs two bells of one weight", () => {
+  const one = { gear: ["kettlebell"], weights: { kettlebell: [16] } };
+  const two = { ...one, pairs: [16] };
+  assert.equal(kit.fits({ id: "double_kb_front_squat" }, one), false);
+  assert.equal(kit.fits({ id: "double_kb_front_squat" }, two), true);
+  assert.equal(kit.fits({ id: "kb_goblet_squat" }, one), true);
+  // Pairs are the only weights it can use.
+  assert.deepEqual([...kit.weightsFor(exercises.byId("double_kb_press"), { gear: ["kettlebell"], weights: { kettlebell: [12, 16] }, pairs: [12] })], [12]);
+  // Any bells at all: two of each, as before.
+  assert.equal(kit.fits({ id: "double_kb_front_squat" }, { gear: ["kettlebell"] }), true);
+});
+
+test("a heavier only weight keeps the lift and starts it at the bottom of its reps", () => {
+  let state = withRecord(fresh(), "goblet_squat", 12.5, { rung: 2, lastTrainedAt: Date.now() });
+  state = trainWith(state, { gear: ["dumbbells", "kettlebell"], weights: { dumbbells: [20], kettlebell: [16] } });
+  state = store.buildWorkout({ ...state, nextWorkout: "legs" });
+  const at = state.active.items.findIndex((it) => it.exerciseId === "goblet_squat");
+  assert.ok(at >= 0);
+  const p = store.currentPrescription({ ...state, active: { ...state.active, cursor: at } });
+  assert.equal(p.weight, 20);
+  assert.equal(p.reps, prog.ladderOf(exercises.byId("goblet_squat"), SCHEME)[0]);
+});
+
+test("the preview says why each exercise gives way", () => {
+  const state = fresh();
+  const changes = store.equipmentChanges(state, store.loopInUse(state), { gear: ["dumbbells"], weights: { dumbbells: [20] } });
+  const bench = changes.find((c) => c.from === "db_bench");
+  assert.equal(bench.to, "db_floor_press");
+  assert.equal(bench.why, "no bench");
+  assert.ok(changes.every((c) => c.why));
 });

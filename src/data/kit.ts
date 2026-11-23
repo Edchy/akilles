@@ -42,7 +42,19 @@ export type Kit = {
    * dumbbells, a gym.
    */
   weights?: Partial<Record<Load, number[]>>;
+  /**
+   * The kettlebell weights you have two of, for the lifts that take a bell in
+   * each hand. Only read when `weights.kettlebell` lists your bells: absent
+   * there means any bells, two of each.
+   */
+  pairs?: number[];
 };
+
+/** Lifts with a kettlebell in each hand: they need two of one weight. */
+export const TWO_BELLS = new Set(["kb_floor_press", "double_kb_press", "double_kb_front_squat"]);
+
+/** Whether a kit's bells are listed one by one, so pairs have to be said. */
+const bellsListed = (kit: Kit): boolean => !!kit.weights?.kettlebell?.length;
 
 export const ALL_GEAR: Gear[] = [
   "barbell",
@@ -150,6 +162,7 @@ const NEEDS: Record<string, Gear[]> = {
   kb_rdl: ["kettlebell"],
   nordic_curl: ["gym"],
   kb_swing: ["kettlebell"],
+  kb_single_leg_rdl: ["kettlebell"],
   sumo_deadlift: ["barbell"],
   trap_bar_deadlift: ["gym"],
   glute_bridge: [],
@@ -252,6 +265,7 @@ const NEEDS: Record<string, Gear[]> = {
   suspension_row: ["suspension_trainer"],
   farmer_carry: ["dumbbells"],
   suitcase_carry: ["dumbbells"],
+  kb_suitcase_carry: ["kettlebell"],
   double_kb_press: ["kettlebell"],
   deficit_push_up: ["dumbbells"],
   turkish_get_up: ["kettlebell"],
@@ -275,6 +289,8 @@ export const TWIN: Record<string, string> = {
   kb_floor_press: "db_bench",
   double_kb_press: "db_shoulder",
   double_kb_front_squat: "db_front_squat",
+  kb_single_leg_rdl: "single_leg_rdl",
+  kb_suitcase_carry: "suitcase_carry",
 };
 
 /** Whether a built-in exercise has its needs listed. For the test. */
@@ -289,7 +305,8 @@ export const needsOf = (ex: Pick<Exercise, "id"> & Partial<Pick<Exercise, "equip
 
 /** Whether everything an exercise needs is in the kit. */
 export const fits = (ex: Pick<Exercise, "id">, kit: Kit): boolean =>
-  needsOf(ex).every((g) => kit.gear.includes(g));
+  needsOf(ex).every((g) => kit.gear.includes(g)) &&
+  !(TWO_BELLS.has(ex.id) && bellsListed(kit) && !kit.pairs?.length);
 
 /** The gear that carries an exercise's weight, if it is one that may come in only some weights. */
 export const loadOf = (ex: Pick<Exercise, "id">): Load | null => {
@@ -304,7 +321,10 @@ export const loadOf = (ex: Pick<Exercise, "id">): Load | null => {
  */
 export const weightsFor = (ex: Pick<Exercise, "id">, kit: Kit): number[] | null => {
   const load = loadOf(ex);
-  const list = load ? kit.weights?.[load] : undefined;
+  // A bell in each hand: only the weights you have two of.
+  const list = load === "kettlebell" && TWO_BELLS.has(ex.id) && bellsListed(kit)
+    ? kit.pairs
+    : load ? kit.weights?.[load] : undefined;
   return list && list.length > 0 ? [...list].sort((a, b) => a - b) : null;
 };
 

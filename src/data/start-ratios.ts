@@ -85,6 +85,7 @@ export const START_RATIO: Record<string, StartRatio> = {
   trap_bar_deadlift: barbell(0.75),
   cable_pull_through: r(0.25),
   single_leg_rdl: r(0.1),
+  kb_single_leg_rdl: r(0.1),
   speed_deadlift: barbell(0.45),
   // ---------- lunge ----------
   bulgarian: r(0.08),

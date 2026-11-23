@@ -2177,5 +2177,28 @@
    "standing tall, feet shoulder-width, a kettlebell racked at each shoulder, the bells resting on the backs of the forearms, elbows tucked in, chest up.",
    "a deep squat with the kettlebells still racked: the thighs below parallel, the knees out over the toes, the heels down, the chest up and the back straight."
   ]
+ },
+ "kb_single_leg_rdl": {
+  "what": "The one-arm, one-leg kettlebell deadlift: ONE kettlebell in ONE hand only.",
+  "view": "Seen exactly from the side, the figure facing right.",
+  "frames": [
+   "standing tall on the left leg, knee soft, the right foot just off the floor; a single kettlebell hanging at arm's length in the right hand only, the left hand empty.",
+   "hinged forward on the standing left leg until the torso and the lifted right leg make one level line, the back flat, the neck in line with the spine, the hips square to the floor; the kettlebell in the right hand hanging straight down below the shoulder, near the standing foot. The left hand empty."
+  ],
+  "props": "one kettlebell from the equipment sheet",
+  "effort": "to0",
+  "common": 2,
+  "cast": "rosa"
+ },
+ "kb_suitcase_carry": {
+  "what": "The kettlebell suitcase march: ONE kettlebell in ONE hand only, marching with high knees.",
+  "view": "Seen exactly from the side, the figure facing right, so the lifted knee shows clearly.",
+  "frames": [
+   "marching tall with one kettlebell held by the handle in the near hand only, the arm straight down by the side, the other hand empty; the far leg's knee lifted high to hip height, thigh level with the floor, foot under the knee; the standing leg straight; the body upright, not leaning back or to the side."
+  ],
+  "props": "one kettlebell from the equipment sheet",
+  "single": 0,
+  "common": 2,
+  "cast": "arne"
  }
 }

@@ -53,6 +53,7 @@ const SPECIFIC: Record<string, Tags> = {
   back_ext: { movements: ["hinge"], muscles: ["glutes", "hamstrings", "lower_back"] },
   db_rdl: { movements: ["hinge"] }, kb_rdl: { movements: ["hinge"] },
   single_leg_rdl: { movements: ["hinge"] },
+  kb_single_leg_rdl: { movements: ["hinge"] },
   hack_squat: { movements: ["squat"] }, leg_press: { movements: ["squat"] },
   smith_squat: { movements: ["squat"] },
   bulgarian: { movements: ["lunge"] }, walking_lunge: { movements: ["lunge"] },

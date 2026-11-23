@@ -548,7 +548,19 @@ export const EXERCISES: Exercise[] = [
     cue: "One leg at a time, same weight both sides.", aliases: ["single leg extension", "one leg extension", "single leg knee extension"] },
   { id: "double_kb_front_squat", name: "Double KB front squat", patterns: ["squat"], autoSelect: false, increment: 4, perHand: true, startWeight: 12,
     cue: "Both bells in the rack, elbows under them. Hips drop straight down.", aliases: ["double kettlebell front squat", "kettlebell front squat"] },
+  // Kettlebell Flow's one-bell lifts — see `data/plans.ts`.
+  { id: "kb_single_leg_rdl", name: "One-arm, one-leg KB deadlift", patterns: ["hinge", "hamstrings"], autoSelect: false, increment: 4, startWeight: 8,
+    cue: "One bell, in the hand opposite the standing leg. Hips square.",
+    aliases: ["single leg kettlebell deadlift", "single arm single leg deadlift", "kettlebell single leg rdl", "kb single leg rdl"] },
+  // Marched with high knees, forward and back. A minute each side, every set:
+  // the bell gets heavier, the minute stays.
+  { id: "kb_suitcase_carry", name: "KB suitcase carry", patterns: ["abs"], movements: ["carry", "lateral_stability"], muscles: ["forearms", "obliques"],
+    autoSelect: false, increment: 4, timed: true, seconds: { from: 60, to: 60, step: 5 }, startWeight: 12,
+    aliases: ["kettlebell suitcase carry", "one arm kettlebell carry", "suitcase walk", "suitcase march", "high knee carry"] },
 ];
+
+/** Frozen batch: Kettlebell Flow's one-bell lifts, new in save version 27. */
+export const KB_FLOW_IDS = ["kb_single_leg_rdl", "kb_suitcase_carry"];
 
 /** Frozen batch: the PPLPPL plan's lifts, new in save version 22. */
 export const PPLPPL_IDS = [

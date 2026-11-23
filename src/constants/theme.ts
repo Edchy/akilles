@@ -2,7 +2,7 @@ import type { Family } from "@/data/families";
 
 /**
  * Clay. The app is made of modelling clay, like its figures: soft, rounded
- * cards in each family's colour, lit from above and sitting on a warm
+ * cards in five colours (salmon, sand, tan, slate, navy), lit from above and sitting on a warm
  * shadow, on a sand page, in one warm dark-brown ink. Bebas Neue for names
  * and headings, M PLUS Rounded for everything else.
  *
@@ -10,25 +10,73 @@ import type { Family } from "@/data/families";
  * Dusk, Poster, Concrete and Clay. Clay stayed; see git history for the rest.)
  *
  * Each family of exercise — push, pull, legs, core, cardio, stretch — has
- * its own clay (`CLAY_TONE`): a workout's cards, a Plan row, a shape. A done
- * set is pressed in, a shade deeper. Every word on a colour is the ink.
+ * its own card colour (`CLAY_TONE`) and mark colour (`HUE`).
  */
 
 /**
- * Clay: the cards are lumps of modelling clay in the family's colour — soft,
- * rounded, lit from above and sitting on a warm shadow — on a sand page. One
- * warm dark-brown ink. `deep` is the clay pressed in: a done set, a well.
+ * Five colours, picked by the user on 23 November 2026: salmon #E9967A,
+ * sand #E3C7A1, tan #A98467, slate #4A4E69 and navy #22223B. Each family
+ * has its own card in one of them (stretch a light slate from the same
+ * family), so you see at once what is what.
+ */
+const SALMON = "#E9967A";
+const SAND = "#E3C7A1";
+const TAN = "#A98467";
+const SLATE = "#4A4E69";
+const NAVY = "#22223B";
+const MIST = "#9A9DB5";
+
+/** Each family's colour as a mark: the little shape for push, pull, legs and the rest. */
+export const HUE: Record<Family, string> = {
+  push: SALMON,
+  pull: SLATE,
+  legs: TAN,
+  core: NAVY,
+  cardio: SAND,
+  mobility: MIST,
+  goal: TAN,
+  full: SLATE,
+};
+
+/** Light words, for a dark card. */
+const BONE_INK = "#F4EEE4";
+/** Dark words, for a light card. */
+const BLACK_INK = "#22223B";
+
+/**
+ * Each family's card. `ink` is the words on it: navy on the light cards,
+ * bone on slate and navy. `deep` is a done set: a shade deeper on a light
+ * card, and salmon on a dark one, so it always stands out.
  */
 export const CLAY_TONE: Record<Family, { card: string; deep: string; ink: string }> = {
-  push: { card: "#F0703F", deep: "#E06438", ink: "#2A160C" },
-  pull: { card: "#4FAAA7", deep: "#3F9894", ink: "#0B2222" },
-  legs: { card: "#F4C542", deep: "#DDAA22", ink: "#2A160C" },
-  core: { card: "#B497EA", deep: "#977AD0", ink: "#1E1030" },
-  cardio: { card: "#7DBD5A", deep: "#5FA03E", ink: "#14240C" },
-  mobility: { card: "#F2A3C6", deep: "#DD84AC", ink: "#2A160C" },
-  goal: { card: "#F2B33D", deep: "#D9961F", ink: "#2A160C" },
-  full: { card: "#CBD85E", deep: "#AFBC41", ink: "#22260C" },
+  push: { card: SALMON, deep: "#D27A5E", ink: BLACK_INK },
+  pull: { card: SLATE, deep: SALMON, ink: BONE_INK },
+  legs: { card: TAN, deep: "#7A5A41", ink: BLACK_INK },
+  core: { card: NAVY, deep: SALMON, ink: BONE_INK },
+  cardio: { card: SAND, deep: "#CDAE84", ink: BLACK_INK },
+  mobility: { card: MIST, deep: "#8689A6", ink: BLACK_INK },
+  goal: { card: TAN, deep: "#7A5A41", ink: BLACK_INK },
+  full: { card: SLATE, deep: SALMON, ink: BONE_INK },
 };
+
+/** Navy or bone, whichever reads better on a colour. */
+export function wordsOn(color: string): string {
+  return contrast(color, BLACK_INK) >= contrast(color, BONE_INK) ? BLACK_INK : BONE_INK;
+}
+
+/** How far apart two colours are in lightness: 4.5 and up reads as text. */
+export function contrast(a: string, b: string): number {
+  const lum = (hex: string) => {
+    const [r, g, b2] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255).map((v) => (v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4));
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b2;
+  };
+  const [x, y] = [lum(a), lum(b)].sort((p, q) => q - p);
+  return (x + 0.05) / (y + 0.05);
+}
+
+/** Whether a family's card is dark, so what sits on it is lightened rather than darkened. */
+export const darkCard = (family: Family): boolean => CLAY_TONE[family].ink === BONE_INK;
+
 export const CLAY_LOOK = {
   page: "#F3ECE2",
   /** The cream pressed into a card: a list, a number. */
@@ -79,6 +127,8 @@ export const colors = {
   /** Text and glyphs on a filled button. */
   ink: CLAY_LOOK.well,
   white: "#FFFFFF",
+  /** A set not yet done: a cream lump. */
+  blank: CLAY_LOOK.well as string,
   /** What a screen paints behind itself. */
   ground: CLAY_LOOK.page as string,
 };
@@ -92,7 +142,7 @@ export type Palette = typeof colors;
  * pressed-in shade.
  */
 export const FAMILY: Record<Family, { field: string; mark: string; dark: boolean }> = Object.fromEntries(
-  Object.entries(CLAY_TONE).map(([family, { card, deep }]) => [family, { field: card, mark: deep, dark: false }]),
+  Object.entries(HUE).map(([family, hue]) => [family, { field: hue, mark: hue, dark: false }]),
 ) as Record<Family, { field: string; mark: string; dark: boolean }>;
 
 /**
@@ -110,35 +160,45 @@ export const MARK_EDGE = true;
 
 /** One opaque tint of a family's colour, the same over every background. */
 export function familyWash(family: Family): string {
-  return mix(CLAY_LOOK.page, CLAY_TONE[family].card, 0.12);
+  return mix(CLAY_LOOK.page, HUE[family], 0.12);
 }
 
 /** A workout card's palette: its family's clay, in the one warm ink; a done set pressed in, a shade deeper. */
 export function fieldColors(family: Family): Palette {
   const { card, deep, ink } = CLAY_TONE[family];
+  const dark = darkCard(family);
+  // A step off the card, towards the light on a dark card and towards the
+  // ink on a light one.
+  const step = (n: number) => mix(card, dark ? "#FFFFFF" : ink, n);
   return {
     bg: card,
-    surface: CLAY_LOOK.well,
-    raised: mix(card, ink, 0.15),
-    line: mix(card, ink, 0.45),
-    panel: CLAY_LOOK.well,
+    surface: step(0.1),
+    raised: step(0.16),
+    line: mix(card, ink, 0.3),
+    panel: step(0.1),
     panelEdge: ink,
     text: ink,
-    muted: mix(ink, card, 0.15),
-    faint: mix(ink, card, 0.15),
-    dim: mix(ink, card, 0.25),
+    muted: mix(ink, card, 0.22),
+    faint: mix(ink, card, 0.22),
+    dim: mix(ink, card, 0.32),
     rise: ink,
     riseWash: mix(card, ink, 0.1),
     bend: ink,
     danger: ink,
+    // Anything filled, and a done set: the card pressed deeper (salmon on a
+    // dark card), in whichever words read best on it.
     cloud: deep,
-    // The number on a done set: the ink, on the pressed-in clay.
-    ink,
+    ink: wordsOn(deep),
     white: colors.white,
     wash: deep,
+    blank: setBlank(family),
     ground: card,
   };
 }
+
+/** A not-yet-done set on a family's card: a lump a step lighter (or darker) than the card. */
+export const setBlank = (family: Family): string =>
+  darkCard(family) ? mix(CLAY_TONE[family].card, "#FFFFFF", 0.14) : CLAY_LOOK.well;
 
 /** Mix two colours: `amount` of the way from one to the other. */
 export function mix(from: string, to: string, amount: number): string {

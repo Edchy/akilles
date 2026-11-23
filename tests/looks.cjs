@@ -55,7 +55,9 @@ test("every Clay colour keeps its words readable, on the clay and pressed in", (
   };
   for (const [family, { card, deep, ink }] of Object.entries(theme.CLAY_TONE)) {
     assert.ok(ratio(card, ink) >= 4.5, `${family}: ${ink} on ${card}`);
-    assert.ok(ratio(deep, ink) >= 4.5, `${family}: ${ink} on ${deep}`);
+    // A done set's number: whichever words the palette puts on it.
+    const done = theme.fieldColors(family).ink;
+    assert.ok(ratio(deep, done) >= 4.5, `${family}: ${done} on ${deep}`);
   }
   assert.ok(ratio(theme.CLAY_LOOK.well, theme.CLAY_LOOK.ink) >= 4.5);
 });

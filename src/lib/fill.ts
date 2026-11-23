@@ -23,8 +23,14 @@ export type Fit = "ok" | "light" | "heavy" | "outgrown";
 
 /** Below this share of the weight you are due, a lift is too light to be worth much. */
 export const LIGHT = 0.6;
-/** Above this multiple of the weight you are due, a lift is too heavy to do well. */
-export const HEAVY = 1.3;
+/**
+ * Above this multiple of the weight you are due, a lift is too heavy to do
+ * well. Up to it, the lift stays and starts at the bottom of its reps (see
+ * `HEAVIER_START` in store/session.ts): the same lift at 6 reps beats a
+ * different lift. One 20 kg dumbbell for a goblet squat due at 12.5 stays a
+ * goblet squat.
+ */
+export const HEAVY = 1.6;
 
 /** One exercise that could fill a slot, with what you are due on it. */
 export type Candidate = {

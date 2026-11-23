@@ -11,6 +11,7 @@ import { BigButton, OpenRow, SectionLabel, Sheet, TextButton } from "@/component
 import { WeightField } from "@/components/weight-field";
 import { FAMILY, colors, radii } from "@/constants/theme";
 import { Mark } from "@/components/mark";
+import { kitSummary } from "@/components/place";
 import { CLAY } from "@/data/clay";
 import { guideFor } from "@/data/guides";
 import { hasIllustration, Illustration } from "@/components/illustration";
@@ -36,6 +37,9 @@ import { newId } from "@/data/split";
 import {
   addCardio,
   addExercise,
+  atGym,
+  doableHere,
+  kitAt,
   canRemove,
   canRemoveConditioning,
   cardioTarget,
@@ -73,9 +77,11 @@ export function Catalogue() {
   // Making your own: the name typed so far, or null while not.
   const [making, setMaking] = useState<string | null>(null);
   const [makingFrom, setMakingFrom] = useState<Pattern | undefined>(undefined);
-  // Every exercise the app knows, and any you made: nothing is kept out of
-  // the Library. Which ones the app picks for your workouts is separate.
-  const all = [...catalogue(state), ...hiddenExercises(state)];
+  // Every exercise the app knows, and any you made, that the plan in use
+  // can do with its equipment: at a full gym, all of them. Which ones the
+  // app picks for your workouts is separate.
+  const gym = atGym(state);
+  const all = doableHere(state, [...catalogue(state), ...hiddenExercises(state)]);
   // A stretch found by the search opens in Mobility.
   const [stretch, setStretch] = useState<string | null>(null);
   const cardio = cardioPool();
@@ -84,7 +90,12 @@ export function Catalogue() {
   // The same library as adding to a workout, so it looks and works the same;
   // here a tap opens a thing to change it everywhere.
   return (
-    <View>
+    <View style={{ gap: gym ? 0 : 16 }}>
+      {gym ? null : (
+        <Text style={{ color: colors.muted, fontSize: 16, lineHeight: 22 }}>
+          {`Only what you can do with ${kitSummary(kitAt(state))}.`}
+        </Text>
+      )}
       <LibraryBrowser
         mode="edit"
         exercises={all}

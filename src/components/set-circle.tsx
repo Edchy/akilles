@@ -52,6 +52,7 @@ export function SetCircle({
   level = 1,
   wash,
   card,
+  blank = CLAY_LOOK.well,
   ink,
   ringWidth = 3,
   seed = 0,
@@ -78,6 +79,8 @@ export function SetCircle({
   wash: string;
   /** The card's own colour: a set not done (0) is a hollow pressed into it. */
   card: string;
+  /** A set not yet done: a lump a step off the card. Cream unless the card is dark. */
+  blank?: string;
   /** The ring's colour. */
   ink: string;
   ringWidth?: number;
@@ -216,7 +219,7 @@ export function SetCircle({
               position: "absolute",
               inset: 0,
               borderRadius: size / 2,
-              backgroundColor: zero ? card : filled ? wash : CLAY_LOOK.well,
+              backgroundColor: zero ? card : filled ? wash : blank,
               boxShadow: zero ? HOLLOW : CLAY_SET,
             }}
           />

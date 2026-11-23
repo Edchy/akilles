@@ -441,6 +441,22 @@ const LIFTS: Record<string, Guide> = {
     ],
     "The hip opening toward the ceiling — keep both hips facing the floor.",
   ),
+  kb_single_leg_rdl: g(
+    [
+      "One kettlebell, in the hand opposite the leg you stand on. Knee soft.",
+      "Hinge forward as the free leg reaches back, the bell lowering straight down beside the standing foot.",
+      "Stretch, then drive the hip through to stand. Do all the reps, then the other side.",
+    ],
+    "The hip opening toward the ceiling — keep both hips facing the floor.",
+  ),
+  kb_suitcase_carry: g(
+    [
+      "One kettlebell in one hand, by your side. Stand tall.",
+      "March with high knees, each thigh up level with the hip. A few steps forward, then a few back, for a minute. Don't lean toward the bell.",
+      "Set it down under control, then a minute with the other hand. Both sides make one set.",
+    ],
+    "Leaning back or toward the bell as the knee comes up. Take a lighter bell if you can't stay straight.",
+  ),
   bulgarian: g(
     [
       "Back foot on a bench, front foot far enough out.",
@@ -1278,6 +1294,7 @@ const OWN: Record<string, string> = {
   trap_bar_deadlift: "Stand tall for a second, then lower it under control.",
   cable_pull_through: "Hold the top for a second, glutes squeezed.",
   single_leg_rdl: "Pause in the stretch, hips square.",
+  kb_single_leg_rdl: "Pause in the stretch, hips square.",
   bulgarian: "Pause at the bottom, front heel down.",
   walking_lunge: "Pause with the back knee just off the floor.",
   step_up: "Stand tall on the box for a second. No push from the back foot.",
@@ -1326,6 +1343,7 @@ const OWN: Record<string, string> = {
   speed_squat: "Down slow and controlled. Only the way up is fast.",
   speed_deadlift: "Set your position every rep. Speed comes after.",
   dead_hang: "Hang still and breathe. Step down before your grip gives.",
+  kb_suitcase_carry: "Knee up to the hip, a beat at the top. Set the bell down before you start to lean.",
   hanging_leg_raise: "Hold the legs up for a second. No swing.",
   rotation_machine: "Pause at the end of each turn.",
   cable_crunch: "Hold the crunch for a second.",

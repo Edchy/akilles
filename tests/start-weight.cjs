@@ -147,3 +147,16 @@ test("push-ups speak for the upper body: 80 kg and 11 to 25 opens the DB bench a
   const squat = byId("goblet_squat");
   assert.equal(start.startGuess(squat, { experience: "some", bodyweight: 80, pushUps: "many" }), start.startGuess(squat, { experience: "some", bodyweight: 80 }));
 });
+
+test("a new lift starts from the same lift on other gear, at 85%", () => {
+  // A year of DB bench up to 80 kg: BB bench starts near 190, not at a beginner's guess.
+  const trained = [{ exercise: byId("db_bench"), weight: 80 }];
+  assert.equal(start.firstWeight(byId("bench"), trained), 190);
+  // And back: a 100 kg bar bench says DB bench at about 30 per hand.
+  assert.equal(start.firstWeight(byId("db_bench"), [{ exercise: byId("bench"), weight: 100 }]), 30);
+  // A twin moves weight for weight.
+  assert.equal(start.firstWeight(byId("kb_press"), [{ exercise: byId("db_shoulder"), weight: 16 }]), 16);
+  // A different lift of the same movement is not the same lift: the usual estimate.
+  const other = start.firstWeight(byId("bench"), [{ exercise: byId("db_floor_press"), weight: 80 }]);
+  assert.notEqual(other, 190);
+});

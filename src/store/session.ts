@@ -78,10 +78,11 @@ import {
 } from "@/data/split";
 import { warmupFor, weightLabel, type WarmupSet } from "@/lib/warmup";
 import { feelWeight, firstWeight, type Feel, type Lifter } from "@/lib/start-weight";
-import { BODYWEIGHT, GYM, fits, nearestWeight, TWIN, weightsFor, type Kit } from "@/data/kit";
+import { BODYWEIGHT, GYM, fits, nearestWeight, needsOf, TWIN, TWO_BELLS, weightsFor, type Gear, type Kit } from "@/data/kit";
+import { closestFirst } from "@/lib/similar";
 import { FALL_BACK, fitOf, pick, STAND_IN, type Candidate } from "@/lib/fill";
 import { avoidFor, EXTRAS, SHAPES, type Easy, type Shape, type Time } from "@/data/templates";
-import { OLD_PPLPPL_DAYS, PLAN_IDS, PLAN_NAME, PLANS, type PlanId } from "@/data/plans";
+import { OLD_PPLPPL_DAYS, PLAN_NAME, PLANS, type PlanId } from "@/data/plans";
 import type { Outcome, Say } from "@/data/voice";
 import { familyOf, type Family } from "@/data/families";
 import { chainFor, type Chain } from "@/data/chains";
@@ -124,6 +125,7 @@ import {
   markSkipped,
   ownRange,
   prescribe,
+  targetOf,
   TIMED_SECONDS,
   type Decay,
   type ExerciseState,
@@ -913,26 +915,32 @@ export const fillWorkout = (
   const library = hiddenExercises(state).filter((e) => !e.restricted && e.autoSelect !== false);
   const filled: Record<string, string | null> = {};
   for (const entry of workout.exercises) {
-    // The slot's own options lead even from the library: a plan made at
-    // first launch names exercises nobody has added yet.
-    const pool = [
+    // What the slot holds at a full gym: everything else is ranked by how
+    // close it is to that (see `lib/similar.ts`), so a BB bench press gives
+    // way to a DB bench press before a floor press. The slot's own options
+    // come in even from the library: a plan made at first launch names
+    // exercises nobody has added yet.
+    const planned = byId(chosen(state, workout.id, entry));
+    const closest = (ids: string[]) => closestFirst(planned, ids.map((id) => byId(id)!)).map((e) => e.id);
+    const pool = closest([
       ...new Set([
         ...entry.options.filter((id) => byId(id) && !avoid.includes(id)),
         ...poolFor(state, workout.id, entry),
         ...library.filter((e) => isPattern(e, entry.pattern)).map((e) => e.id),
       ]),
-    ];
+    ]);
     const mine = choices[slotKey(workout.id, entry.id)];
     const standIn = STAND_IN[entry.pattern];
     const standIns = standIn
-      ? [...catalogue(state).filter((e) => !e.restricted), ...library]
+      ? closest([...catalogue(state).filter((e) => !e.restricted), ...library]
           .filter((e) => isPattern(e, standIn))
-          .map((e) => e.id)
+          .map((e) => e.id))
       : [];
     const ofKind = (pattern: Pattern) =>
-      [...catalogue(state).filter((e) => !e.restricted), ...library]
+      closest([...catalogue(state).filter((e) => !e.restricted), ...library]
         .filter((e) => isPattern(e, pattern) && usable(e.id))
-        .map((e) => candidate(entry)(e.id));
+        .map((e) => e.id))
+        .map(candidate(entry));
     const id =
       mine && pool.includes(mine) && usable(mine) && fitOf(candidate(entry)(mine), kit) !== "heavy"
         ? mine
@@ -957,6 +965,72 @@ export const kitOfLoop = (state: SessionState, id: string): Kit | undefined =>
 
 /** What the plan in use is trained with. */
 export const kitAt = (state: SessionState): Kit => kitOfLoop(state, loopInUse(state)) ?? GYM;
+
+/** One exercise that changes when a plan's equipment does: null is left out. `why` in a few words. */
+export type EquipmentChange = { workout: string; from: string; to: string | null; why: string };
+
+/** What a missing thing is called, in "no bench", "needs a barbell". */
+const MISSING: Partial<Record<Gear, string>> = {
+  bench: "no bench",
+  barbell: "needs a barbell",
+  dumbbells: "needs dumbbells",
+  kettlebell: "needs a kettlebell",
+  pullup_bar: "needs a pull-up bar",
+  machine: "needs a gym machine",
+  cable: "needs a cable machine",
+  resistance_band: "needs a resistance band",
+  band_anchor: "needs somewhere to tie a band",
+  stability_ball: "needs an exercise ball",
+  medicine_ball: "needs a medicine ball",
+  slam_ball: "needs a slam ball",
+  rings: "needs gymnastic rings",
+  suspension_trainer: "needs suspension straps",
+  parallel_bars: "needs dip bars",
+  ab_wheel: "needs an ab wheel",
+  gym: "needs a station only a gym has",
+};
+
+/** Why an exercise gives way with this kit, in a few words. */
+const whyNot = (state: SessionState, id: string, scheme: Scheme, kit: Kit): string => {
+  const ex = byId(id);
+  if (!ex) return "";
+  if (!fits({ id }, kit)) {
+    if (TWO_BELLS.has(id) && needsOf({ id }).every((g) => kit.gear.includes(g))) return "needs two kettlebells of one weight";
+    const missing = needsOf({ id }).filter((g) => !kit.gear.includes(g));
+    return missing.map((g) => MISSING[g]).find(Boolean) ?? "needs a station only a gym has";
+  }
+  const due = dueRecord(state, id, scheme);
+  const weights = weightsFor(ex, kit);
+  const known = Object.values(state.history).some((r) => r.exerciseId === id || r.exerciseId === TWIN[id]);
+  const fit = fitOf({ ex, due: due.weight, maxed: due.maxed, lighterThan: due.lighterThan, known }, kit);
+  if (fit === "heavy") return `${weightLabel(ex, nearestWeight(weights, due.weight))} is too heavy for now`;
+  if (fit === "light") return "your weights are too light for it";
+  if (fit === "outgrown") return "you have outgrown your heaviest weight";
+  return "already in this workout";
+};
+
+/**
+ * What changing a plan's equipment would do to its workouts, slot by slot,
+ * before it is saved: "BB bench press → DB bench press", "Leg press, left
+ * out". Only the slots that change. Paused workouts are not counted.
+ */
+export const equipmentChanges = (state: SessionState, planId: string, kit: Kit | undefined): EquipmentChange[] => {
+  const view = viewLoop(state, planId);
+  const before = kitOfLoop(state, planId);
+  const runs = (w: Workout, k: Kit | undefined): Record<string, string | null> =>
+    k ? fillWorkout(view, w, k) : Object.fromEntries(w.exercises.map((e) => [e.id, chosen(view, w.id, e)]));
+  return planWorkouts(view).flatMap((w) => {
+    const was = runs(w, before);
+    const now = runs(w, kit);
+    return w.exercises.flatMap((e) => {
+      const from = was[e.id];
+      const to = now[e.id];
+      return from && from !== to
+        ? [{ workout: w.name || "Untitled", from, to, why: kit ? whyNot(view, from, e.scheme, kit) : "back at the gym" }]
+        : [];
+    });
+  });
+};
 
 /** At a full gym, where every slot simply holds what Plan says. */
 export const atGym = (state: SessionState): boolean => !kitOfLoop(state, loopInUse(state));
@@ -1027,6 +1101,23 @@ const dueRecord = (state: SessionState, exerciseId: string, scheme: Scheme) => {
     };
   }
   return twin ? { ...start, weight: roundTo(twin.weight, ex.increment || 1) } : start;
+};
+
+/**
+ * A weight served this much over the one you are due — the only dumbbell
+ * here is heavier — starts at the bottom of the reps rather than wherever
+ * the ladder had got to: 20 kg for a goblet squat due at 12.5 is 6 reps,
+ * not 10. Only where the place has some weights and not others.
+ */
+export const HEAVIER_START = 1.15;
+
+/** A record met at the weight actually served: see `HEAVIER_START`. */
+const servedAt = (state: SessionState, st: ExerciseState, weight: number): ExerciseState => {
+  const ex = byId(st.exerciseId);
+  const sparse = ex && weightsFor(ex, kitAt(state));
+  if (!sparse || st.weight <= 0 || weight <= st.weight * HEAVIER_START) return { ...st, weight };
+  const { extra: _extra, ...rest } = st;
+  return { ...rest, weight, rung: 0, reloading: false };
 };
 
 /** The weight to use here: the one you are due, or the nearest the place has. */
@@ -1119,7 +1210,7 @@ export const workoutPreview = (state: SessionState, workout: Workout, now = Date
     const here = weightHere(state, ex, due.weight);
     // What Start will give, an easy week's lighter load included.
     const load = easy ? easyLoad(state, ex, entry, here) : { weight: here, sets: setsFor(entry) };
-    const st = { ...due, weight: load.weight };
+    const st = servedAt(state, due, load.weight);
     const p = prescribe(st, entry.scheme, load.sets);
     // Speed work takes its weight from another lift on the day; jumps have none.
     const loaded = !entry.derive && !ex.unloaded;
@@ -1616,10 +1707,11 @@ const waitingBody = (workouts: Workout[]): LoopBody => ({
   removedWorkouts: [],
 });
 
-/** The plans everyone starts with: Push, pull, legs in use, the bigger one waiting. */
+/** The plans everyone starts with: Push, pull, legs in use, the others waiting. */
 export const startingLoops = (): Loop[] => [
   { id: "ppl", name: PLAN_NAME.ppl },
   { id: "pplppl", name: PLAN_NAME.pplppl, body: waitingBody(PLANS.pplppl) },
+  { id: "kettlebell_flow", name: PLAN_NAME.kettlebell_flow, body: waitingBody(PLANS.kettlebell_flow) },
 ];
 
 /** The id of the plan in use. */
@@ -1755,6 +1847,124 @@ export const deleteLoop = (state: SessionState, id: string): SessionState => {
   };
 };
 
+// ---- restoring a built-in plan ----
+
+/** Push, pull, legs, advanced and Kettlebell Flow: the plans Klay ships. */
+export const isBuiltInPlan = (id: string): id is PlanId => (["ppl", "pplppl", "kettlebell_flow"] as string[]).includes(id);
+
+/**
+ * Push, pull, legs as Klay made it for you — filled as the first questions
+ * filled it, for this plan's equipment and what you ruled out — grown as far
+ * as yours has: the small start, every slot growth has added, and the cardio
+ * and stretch it has given. Restoring undoes your edits, never the growth
+ * you earned. A plan from before growth started whole, so it comes back whole.
+ */
+const grownPpl = (state: SessionState): Workout[] => {
+  const growth = state.growth;
+  const made = shapePlan(state, DEFAULT_WORKOUTS, kitOfLoop(state, "ppl") ?? GYM, state.avoid ?? []);
+  if (!growth) return made;
+  return made.map(startSmall).map((w) => {
+    const added = (growth?.added ?? [])
+      .filter((a) => a.workoutId === w.id)
+      .flatMap((a) => {
+        const entry = GROWTH_SLOTS[w.id]?.find((e) => e.id === a.slot);
+        return entry && !w.exercises.some((e) => e.id === entry.id) ? [{ ...entry }] : [];
+      });
+    let out: Workout = { ...w, exercises: [...w.exercises, ...added] };
+    if ((growth?.steps.cardio ?? 0) > 0 && out.cardio?.close === null) {
+      const { close: _none, ...rest } = out.cardio;
+      out = { ...out, cardio: rest };
+    }
+    if ((growth?.steps.stretch ?? 0) > 0 && out.mobility === undefined) out = { ...out, mobility: LONGER_STRETCH };
+    return out;
+  });
+};
+
+/** A built-in plan's workouts as Klay made them. */
+const originalWorkouts = (state: SessionState, id: PlanId): Workout[] =>
+  id === "ppl" ? grownPpl(state) : PLANS[id];
+
+/**
+ * A built-in plan back as Klay made it: its workouts, their order and what
+ * is in them, with your swaps, paused and added workouts gone, and its own
+ * name. Weights, history, its equipment and which plan you are on stay.
+ * Not the plan in use while a workout is running.
+ */
+export const restoreLoop = (state: SessionState, id: string): SessionState => {
+  if (!isBuiltInPlan(id) || !state.loops?.some((l) => l.id === id)) return state;
+  if (state.active && id === loopInUse(state)) return state;
+  const workouts = originalWorkouts(state, id).map((w) => ({ ...w, exercises: w.exercises.map((e) => ({ ...e })) }));
+  const old = new Set(planWorkouts(viewLoop(state, id)).map((w) => w.id));
+  const mine = new Set([...old, ...workouts.map((w) => w.id)]);
+  let next = inLoop(state, id, (s) => ({
+    ...s,
+    workouts,
+    nextWorkout: workouts[0]?.id ?? "",
+    workoutQueue: undefined,
+    postponed: undefined,
+    removedWorkouts: [],
+    planOrder: undefined,
+  }));
+  next = {
+    ...next,
+    loops: next.loops!.map((l) => (l.id === id ? { ...l, name: PLAN_NAME[id] } : l)),
+    // Swaps in its workouts go; swaps in other plans' stay.
+    choices: Object.fromEntries(Object.entries(next.choices).filter(([k]) => !mine.has(k.split("/")[0]))),
+  };
+  // What it names is in your lists again, as when you first switch to it.
+  const lifts = new Set(workouts.flatMap((w) => w.exercises.flatMap((e) => e.options)));
+  return { ...next, hidden: next.hidden.filter((x) => !lifts.has(x)) };
+};
+
+/**
+ * Whether a built-in plan has been changed from how Klay made it, in ways
+ * you would see: its name, its workouts and their order, or what is in them.
+ */
+export const canRestore = (state: SessionState, id: string): boolean => {
+  if (!isBuiltInPlan(id) || !state.loops?.some((l) => l.id === id)) return false;
+  if (loopName(state, id) !== PLAN_NAME[id]) return true;
+  const order = (s: SessionState) => planWorkouts(viewLoop(s, id)).map((w) => w.id).join();
+  return order(state) !== order(restoreLoop(state, id)) || restoreChanges(state, id).length > 0;
+};
+
+/** What restoring would do, workout by workout, in a few words each. */
+export const restoreChanges = (state: SessionState, id: string): { workout: string; what: string }[] => {
+  if (!isBuiltInPlan(id)) return [];
+  const now = viewLoop(state, id);
+  const after = viewLoop(restoreLoop(state, id), id);
+  // What each slot names — your swap, else the plan's own — so a lift kept
+  // out of your lists until the plan is used still counts as there.
+  const list = (s: SessionState, w: Workout) =>
+    w.exercises.map((e) => lookup(s, s.choices[slotKey(w.id, e.id)] ?? e.options[0])?.name ?? "");
+  const and = (xs: string[]) => (xs.length < 2 ? xs.join("") : `${xs.slice(0, -1).join(", ")} and ${xs.at(-1)}`);
+  /** "Back: DB shoulder press. Goes: Lateral raise." — or the order, when only that moved. */
+  const diff = (was: string[], is: string[]): string => {
+    const back = is.filter((n) => !was.includes(n));
+    const goes = was.filter((n) => !is.includes(n));
+    const parts = [back.length ? `Back: ${and(back)}.` : "", goes.length ? `Goes: ${and(goes)}.` : ""].filter(Boolean);
+    return parts.length ? parts.join(" ") : was.join() !== is.join() ? "Back in its original order." : "";
+  };
+  const out: { workout: string; what: string }[] = [];
+  for (const w of planWorkouts(now)) {
+    const back = after.workouts.find((x) => x.id === w.id);
+    const paused = (now.removedWorkouts ?? []).some((r) => r.workout.id === w.id);
+    if (!back) {
+      out.push({ workout: w.name || "Untitled", what: "Goes: it is not part of this plan." });
+      continue;
+    }
+    const what = [
+      paused ? "Back in the plan, no longer paused." : "",
+      w.name !== back.name ? `Named ${back.name} again.` : "",
+      diff(list(now, w), list(after, back)),
+    ].filter(Boolean).join(" ");
+    if (what) out.push({ workout: back.name, what });
+  }
+  for (const w of after.workouts) {
+    if (!planWorkouts(now).some((x) => x.id === w.id)) out.push({ workout: w.name, what: `Back in the plan: ${and(list(after, w))}.` });
+  }
+  return out;
+};
+
 /** The plan a workout is in, running or paused. */
 export const loopOfWorkout = (state: SessionState, workoutId: string): string | undefined =>
   loopsOf(state).find((l) => l.workouts.some((w) => w.id === workoutId))?.id;
@@ -1799,7 +2009,8 @@ export const intoLoops = (state: SessionState): SessionState => {
     ...rest,
     removedWorkouts: state.removedWorkouts.filter((r) => !theirs.has(r.workout.id)),
     planOrder: state.planOrder?.filter((id) => !theirs.has(id)),
-    loops: PLAN_IDS.map((id) => loops.find((l) => l.id === id)!),
+    // The two plans there were then; Kettlebell Flow comes with version 27.
+    loops: (["ppl", "pplppl"] as const).map((id) => loops.find((l) => l.id === id)!),
   };
 };
 
@@ -2338,7 +2549,7 @@ export const currentPrescription = (state: SessionState): Prescription | null =>
   const st =
     dueRecord(state, item.exerciseId, item.scheme);
   // The session's own weight, which +/- edits without touching history.
-  return prescribe({ ...st, weight: item.weight }, item.scheme, setsFor(item));
+  return prescribe(servedAt(state, st, item.weight), item.scheme, setsFor(item));
 };
 
 /** The partner's prescription, when one has been folded in. */
@@ -2572,7 +2783,7 @@ const readOutcome = (
   const ladder = ladderOf(byId(before.exerciseId), scheme);
   return after.deloads > before.deloads
     ? "drop"
-    : hitTarget(logged, ladder[Math.min(before.rung, ladder.length - 1)])
+    : hitTarget(logged, targetOf(ladder, before))
       ? "hit"
       : "miss";
 };
@@ -2583,7 +2794,7 @@ const verdictFor = (state: SessionState, item: Item): Verdict | null => {
   if (exercise.unloaded || item.logged.some((r) => r === null)) return null;
 
   const st = dueRecord(state, item.exerciseId, item.scheme);
-  const before = { ...st, weight: item.weight };
+  const before = servedAt(state, st, item.weight);
   const weights = weightsFor(exercise, kitAt(state));
   const after = withFeel(exercise, applyResult(before, item.scheme, item.logged, Date.now(), weights), item.feel, weights);
   const ladder = ladderOf(exercise, item.scheme);
@@ -2597,7 +2808,7 @@ const verdictFor = (state: SessionState, item: Item): Verdict | null => {
   }
   const weight = weightLabel(exercise, after.weight);
   // "10 reps", or "40 s" on a timed hold.
-  const target = `${ladder[after.rung]}${exercise.timed ? " s" : " reps"}`;
+  const target = `${targetOf(ladder, after)}${exercise.timed ? " s" : " reps"}`;
 
   if (outcome === "drop") {
     const lighterThan = after.lighterThan;
@@ -2632,6 +2843,9 @@ const verdictFor = (state: SessionState, item: Item): Verdict | null => {
   }
   if (after.weight !== before.weight) {
     return { outcome, say: before.reloading ? "owned" : "hit", fact: `Up to ${weight} next time.` };
+  }
+  if ((after.extra ?? 0) > (before.extra ?? 0)) {
+    return { outcome, say: "hit", fact: `${target} next time, on the same ${weight}. Then the next weight.` };
   }
   if (after.rung === before.rung) {
     // At the top with nowhere further to go: the same again, which is the point.
@@ -3137,7 +3351,7 @@ export const finishWorkout = (
     // Trained: the session's weight is what you actually lifted, so it carries
     // over. Skipped: nothing was lifted, so the record keeps the weight it
     // already had — a weight nudged up and then skipped was never trained at.
-    const base = performed ? { ...prior, weight } : prior;
+    const base = performed ? servedAt(state, prior, weight) : prior;
     // Only some weights here — one kettlebell — and a step up goes to the
     // next one there is, or nowhere.
     const weights = weightsFor(byId(exerciseId)!, kitAt(state));
@@ -3153,7 +3367,7 @@ export const finishWorkout = (
       scheme,
       weight: base.weight,
       reps: logged,
-      target: ladder[Math.min(prior.rung, ladder.length - 1)],
+      target: targetOf(ladder, performed ? base : prior),
       // The same reading as the verdict on the workout screen.
       outcome: performed ? readOutcome(base, after, logged, scheme) : "skipped",
     });
@@ -3519,6 +3733,13 @@ export const swapInPlan = (
   const next = chooseExercise(shown, workoutId, entryId, exerciseId);
   return next === shown ? state : next;
 };
+
+/**
+ * Only the exercises the plan in use can do with its equipment: everything
+ * at a full gym. What the Library and Add exercise show.
+ */
+export const doableHere = (state: SessionState, list: Exercise[]): Exercise[] =>
+  atGym(state) ? list : list.filter((e) => fits({ id: e.id }, kitAt(state)));
 
 /**
  * Everything a swap for today could reach from "Any exercise": the whole
@@ -4635,10 +4856,11 @@ export const shapeFor = (answers: Answers): Shape => answers.shape ?? "ppl";
  * from what your usual place has and nothing you ruled out. A slot with
  * nothing to fill it is left out, and a workout left with nothing goes too.
  */
-export const makePlan = (state: SessionState, answers: Answers): Workout[] => {
-  const kit = answers.home ?? GYM;
-  const avoid = avoidFor(answers.easy);
-  const shape = SHAPES[shapeFor(answers)];
+export const makePlan = (state: SessionState, answers: Answers): Workout[] =>
+  shapePlan(state, SHAPES[shapeFor(answers)], answers.home ?? GYM, avoidFor(answers.easy));
+
+/** A shape's workouts filled for a kit, minus what is ruled out: see `makePlan`. */
+const shapePlan = (state: SessionState, shape: Workout[], kit: Kit, avoid: string[]): Workout[] => {
   const blank: SessionState = { ...state, workouts: shape, choices: {}, avoid };
   return shape.flatMap((w) => {
     // The template's slots, then extras to top it up where the place falls

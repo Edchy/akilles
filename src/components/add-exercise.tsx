@@ -18,6 +18,7 @@ import {
   addExerciseToWorkout,
   chosen,
   createExerciseInWorkout,
+  doableHere,
   everyExercise,
   useSession,
 } from "@/store/session";
@@ -78,7 +79,8 @@ export function AddExerciseSheet({
 
   const name = workout.name || "this workout";
   const inIt = new Set(workout.exercises.map((e) => chosen(state, workout.id, e)));
-  const all = everyExercise(state);
+  // Only what this plan's equipment can do.
+  const all = doableHere(state, everyExercise(state));
   const typed = query.trim();
   const kind = kindOf(workout);
   // A few to start from: what this kind of workout doesn't train yet. The

@@ -19,7 +19,7 @@ import { forgetBody, loopInUse, loopName, loopsOf, useSession } from "@/store/se
 /**
  * Everything you set once and rarely touch, in one place, so the screens you
  * train from stay clear: where you are training, how Klay works, and your
- * data. Reached from the gear on Plan.
+ * data. Reached from the Settings card at the bottom of Profile.
  */
 export default function SettingsScreen() {
   const insets = useSafeAreaInsets();
@@ -51,7 +51,7 @@ export default function SettingsScreen() {
     >
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel="Back"
+        accessibilityLabel="Back to Profile"
         onPress={() => router.back()}
         hitSlop={8}
         style={({ pressed }) => ({
@@ -65,12 +65,6 @@ export default function SettingsScreen() {
       >
         <Icon name="back" size={20} color={colors.text} />
       </Pressable>
-      <Text
-        accessibilityRole="header"
-        style={{ color: colors.text, fontFamily: fonts.display, fontSize: 48, marginBottom: 10 }}
-      >
-        Settings
-      </Text>
 
       <SectionLabel>Your plan</SectionLabel>
       <OpenRow

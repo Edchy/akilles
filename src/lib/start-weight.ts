@@ -1,5 +1,7 @@
 import type { Exercise, Pattern } from "@/data/exercises";
+import { TWIN } from "@/data/kit";
 import { START_RATIO } from "@/data/start-ratios";
+import { similarity, SAME_LIFT } from "@/lib/similar";
 
 /**
  * Starting weights: where a lift opens the very first time.
@@ -123,14 +125,49 @@ export const personalFactor = (
 };
 
 /**
- * The first weight for a lift: your own weights' word if they have one,
- * else the answers' guess. Undefined when the lift has no ratio.
+ * A new lift starts at this share of what the same lift on other gear says:
+ * the movement is yours, the new gear is not yet. 80 kg dumbbells on the
+ * bench say about 225 kg on a bar; 85% of that is about 190 — close to the
+ * usual rule that a bar takes a fifth more than both dumbbells together.
+ */
+export const NEW_GEAR_SHARE = 0.85;
+
+/**
+ * The weight a new lift takes from the same lift on other gear you have
+ * trained — BB bench from DB bench, DB row from KB row — converted through
+ * the two lifts' ratios and taken down to `NEW_GEAR_SHARE`. A twin moves
+ * weight for weight. Undefined with no such lift trained.
+ */
+export const fromSameLift = (
+  ex: Exercise,
+  trained: { exercise: Exercise; weight: number }[],
+): number | undefined => {
+  const mine = START_RATIO[ex.id];
+  if (!mine || ex.unloaded) return undefined;
+  const best = trained
+    .filter((t) => t.exercise.id !== ex.id && t.weight > 0 && START_RATIO[t.exercise.id] &&
+      t.exercise.patterns[0] === ex.patterns[0] && similarity(ex, t.exercise) >= SAME_LIFT)
+    .sort((a, b) => similarity(ex, b.exercise) - similarity(ex, a.exercise))[0];
+  if (!best) return undefined;
+  const twin = TWIN[ex.id] === best.exercise.id || TWIN[best.exercise.id] === ex.id;
+  const raw = best.weight * (mine.ratio / START_RATIO[best.exercise.id].ratio) * (twin ? 1 : NEW_GEAR_SHARE);
+  // Rounded down, a step light rather than a step heavy.
+  const step = ex.increment || 2.5;
+  return Math.max(mine.bar ?? 0, step, Math.floor(raw / step) * step);
+};
+
+/**
+ * The first weight for a lift: the same lift on other gear if you have
+ * trained it, else your own weights' word on the rest, else the answers'
+ * guess. Undefined when the lift has no ratio.
  */
 export const firstWeight = (
   ex: Exercise,
   trained: { exercise: Exercise; weight: number }[],
   lifter?: Lifter,
 ): number | undefined => {
+  const same = fromSameLift(ex, trained);
+  if (same !== undefined) return same;
   const guess = startGuess(ex, lifter);
   if (guess === undefined) return undefined;
   const factor = personalFactor(ex, trained, lifter);

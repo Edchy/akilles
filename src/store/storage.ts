@@ -31,6 +31,7 @@ import {
   PULLUP_STEP_IDS,
   HANDSTAND_IDS,
   PPLPPL_IDS,
+  KB_FLOW_IDS,
   byId,
   leanHiddenExercises,
   setCustomExercises,
@@ -229,7 +230,10 @@ export const keepAside = async (state: SessionState): Promise<void> => {
 // 25: the first lift of each PPLPPL day is three sets, like the rest, not four —
 //     see `toThreeSets`.
 // 26: PPLPPL becomes Push, pull, legs, advanced: three days, not six — see `toAdvanced`.
-const VERSION = 26;
+// 27: Kettlebell Flow joins the plans, waiting — see `withKettlebellFlow` — and its
+//     one-bell lifts start in the library; on the advanced Legs day they take over from
+//     the dumbbell ones — see `toOneBell`.
+const VERSION = 27;
 
 /**
  * Version 14: lifts for training away from a gym. They start in the library
@@ -776,6 +780,10 @@ export const fromSaved = (raw: string): SessionState | Unreadable => {
     }
     if (saved.version < 25) migrated = toThreeSets(migrated);
     if (saved.version < 26) migrated = toAdvanced(migrated);
+    if (saved.version < 27) {
+      migrated.hidden = [...migrated.hidden, ...KB_FLOW_IDS.filter((id) => !migrated.hidden.includes(id))];
+      migrated = toOneBell(withKettlebellFlow(migrated));
+    }
     return correctTreadmillTarget(saved.version < 17 ? { ...migrated, treadmillTargetRevision: undefined } : migrated);
   } catch {
     return "invalid";
@@ -804,6 +812,58 @@ export const toThreeSets = (state: SessionState): SessionState => {
       ? { loops: state.loops.map((l) => (l.body ? { ...l, body: { ...l.body, workouts: fix(l.body.workouts) } } : l)) }
       : {}),
   };
+};
+
+/**
+ * Version 27: Kettlebell Flow joins your plans, waiting until you use it in
+ * Settings — unless it is there already.
+ */
+export const withKettlebellFlow = (state: SessionState): SessionState => {
+  if (!state.loops || state.loops.some((l) => l.id === "kettlebell_flow")) return state;
+  const workouts = PLANS.kettlebell_flow;
+  return {
+    ...state,
+    loops: [
+      ...state.loops,
+      {
+        id: "kettlebell_flow",
+        name: PLAN_NAME.kettlebell_flow,
+        body: { workouts, nextWorkout: workouts[0].id, removedWorkouts: [] },
+      },
+    ],
+  };
+};
+
+/**
+ * Version 27: on the advanced plan's Legs day, the kettlebell single-leg
+ * deadlift and suitcase carry take over from the dumbbell ones, the carry at
+ * two sets of a minute each side. A slot you changed stays as you made it;
+ * so does a swap. In use, they leave the library for your list.
+ */
+export const toOneBell = (state: SessionState): SessionState => {
+  const swaps: Record<string, { from: string; to: string; sets?: [number, number] }> = {
+    "Single-leg hinge": { from: "single_leg_rdl", to: "kb_single_leg_rdl" },
+    Carry: { from: "suitcase_carry", to: "kb_suitcase_carry", sets: [3, 2] },
+  };
+  const swapped = inLoop(state, "pplppl", (s) => ({
+    ...s,
+    workouts: s.workouts.map((w) =>
+      w.id !== "legs_a"
+        ? w
+        : {
+            ...w,
+            exercises: w.exercises.map((e) => {
+              const swap = swaps[e.id];
+              if (!swap || e.options[0] !== swap.from) return e;
+              const sets = swap.sets && e.sets === swap.sets[0] ? swap.sets[1] : e.sets;
+              return { ...e, options: [swap.to, ...e.options.slice(1)], ...(sets ? { sets } : {}) };
+            }),
+          },
+    ),
+  }));
+  if (loopInUse(swapped) !== "pplppl") return swapped;
+  const used = new Set(swapped.workouts.flatMap((w) => w.exercises.map((e) => e.options[0])));
+  return { ...swapped, hidden: swapped.hidden.filter((id) => !(KB_FLOW_IDS.includes(id) && used.has(id))) };
 };
 
 /**

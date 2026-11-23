@@ -12,9 +12,10 @@ import type { Gear, Kit, Load } from "@/data/kit";
 import { DECORATIVE } from "@/lib/decorative";
 
 /**
- * What a plan is trained with: a full gym, or somewhere with less — a home
- * with a pair of dumbbells, a hotel with nothing. Set on each plan in
- * Settings; Klay fills each slot with what is there.
+ * What a plan is trained with: a full gym, some equipment — a pair of
+ * dumbbells at home, two kettlebells — or just your bodyweight. Asked when a
+ * plan is added, changed in Settings; Klay fills each slot with what is
+ * there, and the Library shows only what can be done with it.
  */
 
 /** What can be ticked for somewhere else, in the order people think of it. */
@@ -44,14 +45,16 @@ export const kitSummary = (kit: Kit): string => {
     switch (g) {
       case "dumbbells":
         return [weights?.length ? `${kg(weights)} dumbbells` : "dumbbells"];
-      case "kettlebell":
-        return [
-          weights?.length === 1
-            ? `a ${weights[0]} kg kettlebell`
-            : weights?.length
-              ? `${kg(weights)} kettlebells`
-              : "kettlebells",
-        ];
+      case "kettlebell": {
+        const pairs = weights?.length ? (kit.pairs ?? []) : [];
+        const bells = weights?.length === 1
+          ? pairs.length ? `two ${weights[0]} kg kettlebells` : `a ${weights[0]} kg kettlebell`
+          : weights?.length
+            ? `${kg(weights)} kettlebells`
+            : "kettlebells";
+        const two = weights && weights.length > 1 && pairs.length ? ` (two of the ${kg(pairs)})` : "";
+        return [bells + two];
+      }
       case "pullup_bar":
         return ["a pull-up bar"];
       case "bench":
@@ -60,29 +63,33 @@ export const kitSummary = (kit: Kit): string => {
         return [];
     }
   });
-  return parts.length ? listed(parts) : "bodyweight only";
+  return parts.length ? listed(parts) : "just your bodyweight";
 };
 
-/** What a plan is trained with, in a few words: "A full gym", "Dumbbells and a bench". */
+/** What a plan is trained with, in a few words: "Full gym", "Dumbbells and a bench". */
 export const kitName = (kit: Kit | undefined): string => {
-  if (!kit || kit.gear.includes("machine")) return "A full gym";
+  if (!kit || kit.gear.includes("machine")) return "Full gym";
+  if (kit.gear.length === 0) return "Just bodyweight";
   const summary = kitSummary(kit);
   return summary.charAt(0).toUpperCase() + summary.slice(1);
 };
 
 /**
- * Where a plan is trained: a full gym, or somewhere with less — and then
- * what is there. Undefined is the gym.
+ * What a plan is trained with: a full gym, some equipment — and then which —
+ * or just your bodyweight. Undefined is the gym; no gear at all, bodyweight.
+ * "Some equipment" with nothing ticked yet is saved as bodyweight.
  */
 export function KitChooser({ kit, onChange }: { kit: Kit | undefined; onChange: (kit: Kit | undefined) => void }) {
-  const gym = !kit;
+  const [some, setSome] = useState(!!kit && kit.gear.length > 0);
+  const mode = !kit ? "gym" : some ? "some" : "body";
   return (
     <View style={{ gap: 12 }}>
-      <Option label="A full gym" on={gym} onPress={() => onChange(undefined)} />
-      <Option label="Somewhere with less" on={!gym} onPress={() => onChange(kit ?? { gear: [] })} />
-      {kit ? (
+      <Option label="Full gym" on={mode === "gym"} onPress={() => { setSome(false); onChange(undefined); }} />
+      <Option label="Some equipment" on={mode === "some"} onPress={() => { setSome(true); onChange(kit ?? { gear: [] }); }} />
+      <Option label="Just bodyweight" on={mode === "body"} onPress={() => { setSome(false); onChange({ gear: [] }); }} />
+      {mode === "some" && kit ? (
         <View style={{ paddingTop: 20, gap: 12 }}>
-          <SectionLabel>What is there?</SectionLabel>
+          <SectionLabel>What do you have?</SectionLabel>
           <KitPicker kit={kit} onChange={onChange} />
         </View>
       ) : null}
@@ -91,9 +98,8 @@ export function KitChooser({ kit, onChange }: { kit: Kit | undefined; onChange: 
 }
 
 /**
- * Tick what a place has. Dumbbells and kettlebells open a row of weights:
- * "Any weight" until you tick the ones that are there. Shared with
- * onboarding, which asks the same question about home.
+ * Tick what you have. Dumbbells and kettlebells open a row of weights:
+ * "Any weight" until you tick the ones that are there.
  */
 export function KitPicker({ kit, onChange }: { kit: Kit; onChange: (kit: Kit) => void }) {
   const has = (g: Gear) => kit.gear.includes(g);
@@ -104,7 +110,12 @@ export function KitPicker({ kit, onChange }: { kit: Kit; onChange: (kit: Kit) =>
     onChange({ gear, weights });
   };
   const setWeights = (load: Load, list: number[]) =>
-    onChange({ ...kit, weights: { ...kit.weights, [load]: list } });
+    onChange({
+      ...kit,
+      weights: { ...kit.weights, [load]: list },
+      // A bell no longer ticked can't be one of a pair.
+      ...(load === "kettlebell" ? { pairs: (kit.pairs ?? []).filter((w) => list.includes(w)) } : {}),
+    });
 
   return (
     <View style={{ gap: 12 }}>
@@ -122,29 +133,33 @@ export function KitPicker({ kit, onChange }: { kit: Kit; onChange: (kit: Kit) =>
               load={gear}
               chosen={kit.weights?.[gear] ?? []}
               onChange={(list) => setWeights(gear, list)}
+              pairs={gear === "kettlebell" ? (kit.pairs ?? []) : undefined}
+              onPairs={gear === "kettlebell" ? (pairs) => onChange({ ...kit, pairs }) : undefined}
             />
           ) : null}
         </View>
       ))}
-      <Option
-        label="Nothing, just me"
-        icon={<GearIcon gear="none" />}
-        on={kit.gear.length === 0}
-        onPress={() => onChange({ gear: [] })}
-      />
     </View>
   );
 }
 
-/** "Any weight", or just the ones that are there. */
-function WeightChips({
+/** "Any weight", or just the ones that are there. Also asked on its own when Kettlebell Flow is picked. */
+export function WeightChips({
   load,
   chosen,
   onChange,
+  bare,
+  pairs,
+  onPairs,
 }: {
   load: Load;
   chosen: number[];
   onChange: (list: number[]) => void;
+  /** Asked on its own: no question over the chips and no indent, the screen asks it. */
+  bare?: boolean;
+  /** Kettlebells: the ticked weights you have two of, asked once some are ticked. */
+  pairs?: number[];
+  onPairs?: (pairs: number[]) => void;
 }) {
   const [typing, setTyping] = useState(false);
   const [text, setText] = useState("");
@@ -162,10 +177,12 @@ function WeightChips({
   // The usual weights, and any you typed that aren't among them.
   const shown = [...new Set([...WEIGHTS[load], ...chosen])].sort((a, b) => a - b);
   return (
-    <View style={{ gap: 10, paddingLeft: 16 }}>
-      <Text style={{ color: colors.faint, fontSize: 15 }}>
-        {load === "kettlebell" ? "Which kettlebells?" : "Which dumbbells?"}
-      </Text>
+    <View style={{ gap: 10, paddingLeft: bare ? 0 : 16 }}>
+      {bare ? null : (
+        <Text style={{ color: colors.faint, fontSize: 15 }}>
+          {load === "kettlebell" ? "Which kettlebells?" : "Which pairs of dumbbells?"}
+        </Text>
+      )}
       <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
         <Chip label="Any weight" on={chosen.length === 0} onPress={() => onChange([])} />
         {shown.map((w) => (
@@ -196,6 +213,25 @@ function WeightChips({
           />
           <Text style={{ color: colors.muted, fontSize: 17 }}>kg</Text>
           <Chip label="Add" on={typed !== null && typed > 0} onPress={add} />
+        </View>
+      ) : null}
+      {/* "16 kg" alone can't say one bell or two, and a bell in each hand
+          needs two: asked once there are bells to ask about. */}
+      {pairs && onPairs && chosen.length > 0 ? (
+        <View style={{ gap: 10, paddingTop: 8 }}>
+          <Text style={{ color: bare ? colors.text : colors.faint, fontSize: bare ? 18 : 15 }}>
+            Do you have two of any of them?
+          </Text>
+          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+            {chosen.map((w) => (
+              <Chip
+                key={w}
+                label={`Two × ${w} kg`}
+                on={pairs.includes(w)}
+                onPress={() => onPairs(pairs.includes(w) ? pairs.filter((x) => x !== w) : [...pairs, w].sort((a, b) => a - b))}
+              />
+            ))}
+          </View>
         </View>
       ) : null}
     </View>

@@ -12,7 +12,7 @@ import { FAMILY, colors, fonts, radii } from "@/constants/theme";
 import { cardioById, courseLabel, distanceLabel, timeLabel } from "@/data/conditioning";
 import { byId, GROUP_LABEL, GROUP_ORDER, groupOf, type Exercise } from "@/data/exercises";
 import type { Scheme } from "@/data/split";
-import { ladderOf, schemeOf, type ExerciseState } from "@/lib/progression";
+import { ladderOf, schemeOf, targetOf, type ExerciseState } from "@/lib/progression";
 import { weightLabel } from "@/lib/warmup";
 import {
   useSession,
@@ -484,7 +484,7 @@ function LiftRowView({
 }) {
   const { st, exercise, scheme } = row;
   const ladder = ladderOf(exercise, scheme);
-  const target = ladder[Math.min(st.rung, ladder.length - 1)];
+  const target = targetOf(ladder, st);
 
   // This lift's past, newest first, from the log: every session of it, on
   // any range and in any plan.

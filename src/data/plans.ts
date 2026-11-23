@@ -6,7 +6,7 @@ import { DEFAULT_WORKOUTS, type Entry, type Scheme, type Workout } from "@/data/
  * The plans Klay comes with. Everyone starts on Push, pull, legs — three
  * workouts that start small and grow. Push, pull, legs, advanced is the
  * bigger one for someone who already trains: the same three days, with more
- * in each. Both are there from the start, with any plans you add, and
+ * in each. Kettlebell Flow is one light workout for every day. All three are there from the start, with any plans you add, and
  * Settings switches between them; the one you leave waits as it was — see
  * `switchLoop` in the store. These are only where they start: once there, a
  * plan is yours to change.
@@ -20,13 +20,14 @@ import { DEFAULT_WORKOUTS, type Entry, type Scheme, type Workout } from "@/data/
  * is still "pplppl".
  */
 
-export type PlanId = "ppl" | "pplppl";
+export type PlanId = "ppl" | "pplppl" | "kettlebell_flow";
 
-export const PLAN_IDS: PlanId[] = ["ppl", "pplppl"];
+export const PLAN_IDS: PlanId[] = ["ppl", "pplppl", "kettlebell_flow"];
 
 export const PLAN_NAME: Record<PlanId, string> = {
   ppl: "Push, pull, legs",
   pplppl: "Push, pull, legs, advanced",
+  kettlebell_flow: "Kettlebell Flow",
 };
 
 /** The advanced plan's name before 23 November 2026. Frozen. */
@@ -38,6 +39,7 @@ export const OLD_PPLPPL_DAYS = ["push_a", "pull_a", "legs_a", "push_b", "pull_b"
 export const PLAN_ABOUT: Record<PlanId, string> = {
   ppl: "Three workouts. They start small and grow as you come back.",
   pplppl: "Three bigger workouts, for when you already train. Dumbbells and kettlebells.",
+  kettlebell_flow: "One short workout with a kettlebell, light enough to do every day.",
 };
 
 /** One slot. Its id is its label: labels are unique within each workout. */
@@ -111,9 +113,40 @@ const PPLPPL: Workout[] = [
     exercises: [
       slot("Squat", "squat", "goblet_squat", "volume"),
       slot("Hinge", "hinge", "db_rdl", "volume"),
-      slot("Single-leg hinge", "hinge", "single_leg_rdl", "8-10"),
+      slot("Single-leg hinge", "hinge", "kb_single_leg_rdl", "8-10"),
       slot("Quads", "quads", "single_leg_ext", "10-14"),
-      slot("Carry", "abs", "suitcase_carry", "6-8", 3),
+      // A minute each side is a set: two sets, four minutes.
+      slot("Carry", "abs", "kb_suitcase_carry", "6-8", 2),
+    ],
+  },
+];
+
+/**
+ * Kettlebell Flow, from the Järna Kung Fu app's pass of the same name: six
+ * lifts for the whole body, light enough to do every day — done, you could
+ * do it all again straight away. One workout, so it simply repeats. The
+ * lifts climb the usual way. It opens on the kung fu mobility, with no
+ * cardio, and ends on the everyday stretch. One bell does it all: the
+ * single-leg deadlift is one-armed, the carry one-handed.
+ */
+const KETTLEBELL_FLOW: Workout[] = [
+  {
+    id: "kb_flow",
+    name: "Kettlebell Flow",
+    subtitle: "the whole body, light",
+    kind: "full",
+    cardio: { open: null, close: null },
+    warmup: "kung_fu",
+    mobility: DEFAULT_MOBILITY,
+    exercises: [
+      // One set, as the pass has it: the legs warm up for what follows.
+      slot("Squat", "squat", "kb_goblet_squat", "6-10", 1),
+      slot("Press", "vertical_push", "kb_press", "6-10"),
+      slot("Single-leg hinge", "hinge", "kb_single_leg_rdl", "6-10"),
+      slot("Swing", "hinge", "kb_swing", "10-14"),
+      slot("Row", "horizontal_pull", "kb_row", "6-10"),
+      // A minute each side is a set: two sets, four minutes.
+      slot("Carry", "abs", "kb_suitcase_carry", "6-8", 2),
     ],
   },
 ];
@@ -122,4 +155,5 @@ const PPLPPL: Workout[] = [
 export const PLANS: Record<PlanId, Workout[]> = {
   ppl: DEFAULT_WORKOUTS,
   pplppl: PPLPPL,
+  kettlebell_flow: KETTLEBELL_FLOW,
 };

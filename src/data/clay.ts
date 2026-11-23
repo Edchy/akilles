@@ -227,4 +227,6 @@ export const CLAY: Record<string, ClayStretch> = {
   twisting_knee_raise: { frames: [require("../../assets/clay/twisting_knee_raise-0.webp"), require("../../assets/clay/twisting_knee_raise-1.webp")], breath: "steady", effort: "to1" },
   single_leg_ext: { frames: [require("../../assets/clay/single_leg_ext-0.webp"), require("../../assets/clay/single_leg_ext-1.webp")], breath: "steady", effort: "to1" },
   double_kb_front_squat: { frames: [require("../../assets/clay/double_kb_front_squat-0.webp"), require("../../assets/clay/double_kb_front_squat-1.webp")], breath: "steady", effort: "to0" },
+  kb_single_leg_rdl: { frames: [require("../../assets/clay/kb_single_leg_rdl-0.webp"), require("../../assets/clay/kb_single_leg_rdl-1.webp")], breath: "steady", effort: "to0" },
+  kb_suitcase_carry: { frames: [require("../../assets/clay/kb_suitcase_carry-0.webp")], breath: "steady" },
 };
