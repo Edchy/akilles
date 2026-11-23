@@ -54,8 +54,9 @@ const PULL = { kind: "pull" as const, cardio: warmup("row"), warmup: WARMUP.pull
 const LEGS = { kind: "legs" as const, cardio: warmup("treadmill"), warmup: WARMUP.legs, mobility: DEFAULT_MOBILITY };
 
 /**
- * The first lift of each day gets four sets; everything else three — core
- * and carries too, where Klay usually gives two. Ranges
+ * Three sets for every lift — the first of the day too (four until
+ * 23 November 2026; see `toThreeSets` in storage) — core and carries
+ * included, where Klay usually gives two. Ranges
  * are on the app's even steps. Lifts with a range of their own — curls,
  * raises, core, leg extensions, swings — climb it whatever the slot says.
  */
@@ -66,7 +67,7 @@ const PPLPPL: Workout[] = [
     subtitle: "chest first",
     ...PUSH,
     exercises: [
-      slot("Horizontal press", "horizontal_push", "db_bench", "6-10", 4),
+      slot("Horizontal press", "horizontal_push", "db_bench", "6-10"),
       slot("Vertical press", "vertical_push", "kb_press", "6-10"),
       slot("Bodyweight press", "horizontal_push", "decline_push_up", "volume"),
       slot("Shoulders", "shoulders", "lateral_raise", "10-14"),
@@ -80,7 +81,7 @@ const PPLPPL: Workout[] = [
     subtitle: "lats first",
     ...PULL,
     exercises: [
-      slot("Vertical pull", "vertical_pull", "pullup", "6-10", 4),
+      slot("Vertical pull", "vertical_pull", "pullup", "6-10"),
       slot("Row", "horizontal_pull", "db_row", "volume"),
       slot("Wide row", "horizontal_pull", "chest_supported_row", "10-12"),
       slot("Biceps", "biceps", "hammer_curl", "10-14"),
@@ -93,7 +94,7 @@ const PPLPPL: Workout[] = [
     subtitle: "squat and hinge",
     ...LEGS,
     exercises: [
-      slot("Squat", "squat", "goblet_squat", "volume", 4),
+      slot("Squat", "squat", "goblet_squat", "volume"),
       slot("Hinge", "hinge", "db_rdl", "volume"),
       slot("Single leg", "lunge", "bulgarian", "8-10"),
       slot("Quads", "quads", "single_leg_ext", "10-14"),
@@ -106,7 +107,7 @@ const PPLPPL: Workout[] = [
     subtitle: "shoulders first",
     ...PUSH,
     exercises: [
-      slot("Vertical press", "vertical_push", "double_kb_press", "6-10", 4),
+      slot("Vertical press", "vertical_push", "double_kb_press", "6-10"),
       slot("Incline press", "horizontal_push", "incline_db_press", "volume"),
       slot("Bodyweight press", "horizontal_push", "deficit_push_up", "volume"),
       slot("Shoulders", "shoulders", "upright_row", "10-14"),
@@ -120,7 +121,7 @@ const PPLPPL: Workout[] = [
     subtitle: "upper back first",
     ...PULL,
     exercises: [
-      slot("Vertical pull", "vertical_pull", "chinup", "6-10", 4),
+      slot("Vertical pull", "vertical_pull", "chinup", "6-10"),
       slot("Row", "horizontal_pull", "db_bent_over_row", "volume"),
       slot("High pull", "horizontal_pull", "kb_high_pull", "10-12"),
       slot("Biceps", "biceps", "incline_db_curl", "10-14"),
@@ -133,7 +134,7 @@ const PPLPPL: Workout[] = [
     subtitle: "front squat and one leg",
     ...LEGS,
     exercises: [
-      slot("Squat", "squat", "double_kb_front_squat", "6-10", 4),
+      slot("Squat", "squat", "double_kb_front_squat", "6-10"),
       slot("Hinge", "hinge", "single_leg_rdl", "8-10"),
       slot("Single leg", "lunge", "reverse_lunge", "volume"),
       slot("Quads", "quads", "single_leg_ext", "10-14"),

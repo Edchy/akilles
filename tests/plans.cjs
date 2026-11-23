@@ -127,14 +127,14 @@ test("each PPLPPL day opens with its cardio and drills and ends on one stretch",
   }
 });
 
-test("the first lift of each PPLPPL day climbs 6–10 over four sets; small muscles keep to 10–14", () => {
+test("the first lift of each PPLPPL day climbs 6–10 over three sets; small muscles keep to 10–14", () => {
   const state = store.switchLoop(store.resetToDefault(), "pplppl");
   const built = store.buildWorkout(state);
   const reps = (id) => {
     const at = built.active.items.findIndex((it) => it.exerciseId === id);
     return store.currentPrescription({ ...built, active: { ...built.active, cursor: at } });
   };
-  assert.deepEqual([reps("db_bench").reps, reps("db_bench").sets], [6, 4]);
+  assert.deepEqual([reps("db_bench").reps, reps("db_bench").sets], [6, 3]);
   assert.equal(reps("lateral_raise").reps, 10);
   assert.equal(reps("hollow_hold").reps, 20);
 });
@@ -210,4 +210,16 @@ test("where you trained before plans becomes each plan's own kit", () => {
   now = storage.fromSaved(JSON.stringify({ version: 22, state: base }));
   assert.equal(store.kitOfLoop(now, "ppl"), undefined);
   assert.equal(store.kitOfLoop(now, "pplppl"), undefined);
+});
+
+test("saves before version 25: a PPLPPL day's first lift at four sets goes to three; any other count stays", () => {
+  const state = store.switchLoop(store.resetToDefault(), "pplppl");
+  const set = (w, sets) => ({ ...w, exercises: [{ ...w.exercises[0], sets }, ...w.exercises.slice(1)] });
+  const old = { ...state, workouts: state.workouts.map((w) => (w.id === "push_a" ? set(w, 4) : w.id === "pull_a" ? set(w, 5) : w)) };
+  const fixed = storage.toThreeSets(old);
+  const first = (id) => fixed.workouts.find((w) => w.id === id).exercises[0];
+  assert.equal(first("push_a").sets, undefined);
+  assert.equal(first("pull_a").sets, 5);
+  const built = store.buildWorkout(fixed);
+  assert.equal(store.currentPrescription({ ...built, active: { ...built.active, cursor: built.active.items.findIndex((it) => it.exerciseId === "db_bench") } }).sets, 3);
 });

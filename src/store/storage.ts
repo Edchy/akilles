@@ -223,7 +223,9 @@ export const keepAside = async (state: SessionState): Promise<void> => {
 // 23: plans: Push, pull, legs, PPLPPL and any you add, each with its own workouts —
 //     see `intoLoops`. Saves from 23 on keep their plans as they are.
 // 24: the handstand and its steps start in the library — see `HANDSTAND_IDS`.
-const VERSION = 24;
+// 25: the first lift of each PPLPPL day is three sets, like the rest, not four —
+//     see `toThreeSets`.
+const VERSION = 25;
 
 /**
  * Version 14: lifts for training away from a gym. They start in the library
@@ -768,10 +770,38 @@ export const fromSaved = (raw: string): SessionState | Unreadable => {
     if (saved.version < 24) {
       migrated.hidden = [...migrated.hidden, ...HANDSTAND_IDS.filter((id) => !LEAN.includes(id) && !migrated.hidden.includes(id))];
     }
+    if (saved.version < 25) migrated = toThreeSets(migrated);
     return correctTreadmillTarget(saved.version < 17 ? { ...migrated, treadmillTargetRevision: undefined } : migrated);
   } catch {
     return "invalid";
   }
+};
+
+/** The PPLPPL plan's six days. */
+const PPLPPL_DAYS = ["push_a", "pull_a", "legs_a", "push_b", "pull_b", "legs_b"];
+
+/**
+ * Version 25: the first lift of each PPLPPL day shipped with four sets; it
+ * is three now, like every other lift. A day's first slot still at four goes
+ * back to the default; any other count was chosen, and stays. In whichever
+ * plan the days are, the one in use or not. A workout in progress keeps
+ * what it started with.
+ */
+export const toThreeSets = (state: SessionState): SessionState => {
+  const fix = (workouts: Workout[]): Workout[] =>
+    workouts.map((w) => {
+      const first = w.exercises[0];
+      if (!PPLPPL_DAYS.includes(w.id) || first?.sets !== 4) return w;
+      const { sets: _four, ...rest } = first;
+      return { ...w, exercises: [rest, ...w.exercises.slice(1)] };
+    });
+  return {
+    ...state,
+    workouts: fix(state.workouts),
+    ...(state.loops
+      ? { loops: state.loops.map((l) => (l.body ? { ...l, body: { ...l.body, workouts: fix(l.body.workouts) } } : l)) }
+      : {}),
+  };
 };
 
 /**

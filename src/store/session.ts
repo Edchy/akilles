@@ -3544,28 +3544,6 @@ export const cardioAmount = (plan: CardioPlan): string =>
   plan.course !== undefined ? courseLabel(plan.machine, plan.course) : `${plan.minutes} min`;
 
 /**
- * Roughly how long a workout takes, to the nearest five minutes: its cardio,
- * its warm-up and stretch, and two and a half minutes for each set with its
- * rest. Said as "about" — it is a guide, not a timer.
- */
-export const workoutMinutes = (state: SessionState, workout: Workout): number => {
-  // A run over a set distance takes about seven minutes at a steady pace.
-  const cardio = (where: CardioWhere) => {
-    const plan = cardioPlan(state, workout, where);
-    return !plan ? 0 : plan.course !== undefined ? 7 : plan.minutes ?? 0;
-  };
-  const routine = (r: MobilityRoutine | null) => (r ? routineMinutes(r) : 0);
-  const sets = workout.exercises.reduce((n, e) => n + setsFor(e), 0);
-  const extras = (workout.extras ?? []).reduce(
-    (n, x) => n + (x.cardio ? cardio(x.id) : routine(routinePlan(state, workout, x.id))),
-    0,
-  );
-  const total =
-    cardio("open") + cardio("close") + routine(warmupPlan(state, workout)) + routine(mobilityPlan(state, workout)) + extras + sets * 2.5;
-  return Math.max(5, Math.round(total / 5) * 5);
-};
-
-/**
  * Swap the exercise a workout's slot uses, for good: any exercise of the
  * slot's movement, from your catalogue or the library — one from the library
  * joins your catalogue on the way in. Refused for one another slot is using.

@@ -33,6 +33,7 @@ export function Sheet({
   scrollKey,
   swipeToDismiss = true,
   full = false,
+  background = colors.bg,
   children,
 }: PropsWithChildren<{
   visible: boolean;
@@ -57,6 +58,8 @@ export function Sheet({
    * scroll is frozen, and the row is dropped. A full screen has none.
    */
   full?: boolean;
+  /** The sheet's ground, when not the page's sand: the how-to's is the pictures' own white. */
+  background?: string;
 }>) {
   const reduce = useReduceMotion();
   const scroll = (
@@ -73,7 +76,7 @@ export function Sheet({
         </ScrollView>
   );
   const content = page ?? (
-    <View style={{ flex: 1 }}>
+    <View style={{ flex: 1, backgroundColor: background }}>
         <Column
           style={{
             flexDirection: onBack ? "column" : "row",
@@ -130,7 +133,7 @@ export function Sheet({
     >
       <Plain>
         <SafeAreaProvider initialMetrics={initialWindowMetrics}>
-          <Clear full={full}>{content}</Clear>
+          <Clear full={full} background={background}>{content}</Clear>
         </SafeAreaProvider>
       </Plain>
     </Modal>
@@ -143,10 +146,10 @@ export function Sheet({
  * come back as 0, so it never goes below the top the app measured when it
  * started — the same phone, the same notch.
  */
-function Clear({ full, children }: PropsWithChildren<{ full: boolean }>) {
+function Clear({ full, background, children }: PropsWithChildren<{ full: boolean; background: string }>) {
   const insets = useSafeAreaInsets();
   const top = full ? Math.max(insets.top, initialWindowMetrics?.insets.top ?? 0) : 0;
-  return <View style={{ flex: 1, paddingTop: top, backgroundColor: colors.bg }}>{children}</View>;
+  return <View style={{ flex: 1, paddingTop: top, backgroundColor: background }}>{children}</View>;
 }
 
 /** A small heading over a group in a sheet. */

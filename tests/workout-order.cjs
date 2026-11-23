@@ -176,6 +176,7 @@ test("Today has no Skip: picking another workout only looks, and Start begins th
     if (name === "@/components/icon") return { Icon: "Icon" }; if (name === "@/components/buttons") return { Button: "Button", LinkButton: "LinkButton", Chip: "Chip" };
     if (name === "@/components/text") return { Text: "Text" };
     if (name === "@/components/mark") return { Mark: "Mark" };
+    if (name === "@/components/card-clay") return { ClaySheen: "ClaySheen" };
     if (name === "@/components/place") return { PlaceLine: "PlaceLine" };
     return load(name);
   };

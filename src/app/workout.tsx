@@ -5,6 +5,7 @@ import { SetCircle } from "@/components/set-circle";
 import {
   Children,
   createContext,
+  startTransition,
   useContext,
   useEffect,
   useLayoutEffect,
@@ -12,6 +13,7 @@ import {
   useRef,
   useState,
   type PropsWithChildren,
+  type ReactNode,
   type RefObject,
 } from "react";
 import {
@@ -31,6 +33,8 @@ import {
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Reanimated, {
   cancelAnimation,
+  FadeIn,
+  Easing as Ease,
   scrollTo,
   useAnimatedReaction,
   useAnimatedRef,
@@ -54,7 +58,7 @@ import { Column, COLUMN } from "@/components/screen";
 import { useHideBar } from "@/components/bar-actions";
 import { useBarSpace } from "@/components/bottom-bar";
 import { ClayField, Field, useColors } from "@/components/field";
-import { RestClock } from "@/components/rest-clock";
+import { REST_CLOCK_HEIGHT, RestClock } from "@/components/rest-clock";
 import { AnyExerciseRow, SwapBrowser } from "@/components/add-exercise";
 import { Icon, type IconName } from "@/components/icon";
 import { Mark } from "@/components/mark";
@@ -67,7 +71,7 @@ import { GestureHint } from "@/components/hint";
 import { ClayStretch, hasClay } from "@/components/clay";
 import { GoalSheet, Pips, hasTutorial, openTutorial } from "@/components/goals";
 import { BigButton, Sheet, TextButton } from "@/components/sheet";
-import { CLAY_CARD, CLAY_LOOK, colors, colors as paper, FAMILY, fieldColors, fonts, mix, radii } from "@/constants/theme";
+import { CLAY_CARD, CLAY_LOOK, CLAY_TONE, colors, colors as paper, FAMILY, fieldColors, fonts, mix, radii } from "@/constants/theme";
 import { GearIcon, gearOf, type Pictured } from "@/components/gear-icon";
 import { fullName } from "@/lib/exercise-name";
 import { ClayGround } from "@/components/clay-ground";
@@ -76,7 +80,7 @@ import { FitText, WholeText } from "@/components/fit-text";
 import { grain } from "@/constants/grain";
 import { byId, inSentence, type Exercise } from "@/data/exercises";
 import { ownCue } from "@/data/guides";
-import type { Family } from "@/data/families";
+import { familyOf, type Family } from "@/data/families";
 import {
   FINISHED_LINES,
   GOAL_LINES,
@@ -356,6 +360,19 @@ const UNIT_ROOM = 40;
  */
 const FEEL_ROOM = 26 + 10 + 44 + 10 + 24;
 
+/**
+ * Space a roomy card gives back between its parts — at most `most` points
+ * in all, the rest staying round the lift as a whole — and each gap's share.
+ */
+const SPREAD = { most: 120, weight: 0.3, sets: 0.3, clock: 0.15, under: 0.25 } as const;
+
+/**
+ * How far a crowded lift card may close its gaps and draw its weight smaller,
+ * at its real size, before `Fit` has to do anything. The set circles never
+ * give way: the same count is the same size on every card.
+ */
+const SQUEEZE_LEAST = 0.55;
+
 const LAYOUT = {
   solo: { name: 36, weight: 52, number: 96, sets: 48, under: 84, underGap: 28 },
   // On its own, with more under the circles — the feel question and its
@@ -381,8 +398,8 @@ const LIST_FOOT = 12;
 const LEAVE_AREA = 106;
 
 const CIRCLES = {
-  solo: { full: 92, gap: 22, font: 50 },
-  main: { full: 80, gap: 16, font: 44 },
+  solo: { full: 104, gap: 14, font: 56 },
+  main: { full: 86, gap: 12, font: 46 },
   partner: { full: 52, gap: 12, font: 28 },
 } as const;
 
@@ -1169,9 +1186,9 @@ function WorkoutCard({
           const color = FAMILY[itemFamily(it)].mark;
           const done = mark === "done";
           const current = i === active.cursor;
-          // Read at a glance: done is a band in its colour with a tick, the
-          // one you are on is white with a navy outline and says so, the
-          // rest are plain.
+          // Read at a glance: done is a solid band in its clay, struck
+          // through, with a tick; the one you are on is white with an
+          // outline and says so; the rest are plain.
           return (
             <Pressable
               key={i}
@@ -1188,23 +1205,28 @@ function WorkoutCard({
                 borderRadius: radii.button,
                 borderWidth: 2,
                 borderColor: current ? colors.text : "transparent",
-                backgroundColor: pressed ? colors.line : current ? colors.bg : done ? `${color}2E` : "transparent",
+                // Done: a solid band in the exercise's own clay.
+                backgroundColor: pressed ? colors.line : current ? colors.bg : done ? CLAY_TONE[itemFamily(it)].card : "transparent",
               })}
             >
               <CardDot mark={mark} color={color} size={18} />
               <WholeText
                 least={0.8}
-                style={{ flex: 1, color: colors.text, fontFamily: current ? fonts.semibold : fonts.regular, fontSize: 19, lineHeight: 22 }}
+                style={{
+                  flex: 1,
+                  color: colors.text,
+                  fontFamily: current ? fonts.semibold : fonts.regular,
+                  fontSize: 19,
+                  lineHeight: 22,
+                  textDecorationLine: done && !current ? "line-through" : "none",
+                }}
               >
                 {cardName(state, i)}
               </WholeText>
               {current ? (
                 <Text style={{ color: colors.text, fontFamily: fonts.uiSemibold, fontSize: 15 }}>Now</Text>
               ) : done ? (
-                <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-                  <Icon name="check" size={18} color={colors.text} />
-                  <Text style={{ color: colors.text, fontFamily: fonts.ui, fontSize: 15 }}>Done</Text>
-                </View>
+                <Icon name="check" size={20} color={colors.text} />
               ) : null}
             </Pressable>
           );
@@ -1307,9 +1329,20 @@ function StepBody() {
   const [room, setRoom] = useState(0);
   const [fill, setFill] = useState(0);
   const [tightened, setTightened] = useState(false);
+  // Room to spare, given back as space between the weight, the circles, the
+  // clock and the words under them, rather than left at the foot — up to
+  // `SPREAD.most`. What the lift needs on its own is what was measured less
+  // what was given, so giving never feeds back into the measuring.
+  const [spread, setSpread] = useState(0);
+  const needs = fill - spread;
+  // How much the gaps and the weight have given way, 1 for not at all.
+  const [squeeze, setSqueeze] = useState(1);
   useEffect(() => {
-    if (room > 0 && fill > room + 1) setTightened(true);
-  }, [room, fill]);
+    if (room <= 0 || fill <= 0) return;
+    if (needs > room + 1) setTightened(true);
+    const want = Math.max(0, Math.min(SPREAD.most, room - needs));
+    if (Math.abs(want - spread) > 2) setSpread(want);
+  }, [room, fill, needs, spread]);
   // The weight, while it is being changed, closes on a tap anywhere else.
   const tapAway = useRef<TapAway>({ close: null, inside: false });
   // The exercise whose note is open — this lift's, or its superset partner's.
@@ -1336,6 +1369,18 @@ function StepBody() {
     return () => clearTimeout(spent);
   }, [glint]);
   const sendOff = still ? 0 : glint;
+
+  // What the gaps and the weight came to on this draw (set further down,
+  // once the card's layout is known) — read once it is on screen.
+  const squeezing = useRef<{ given: number; all: number; solo: boolean } | null>(null);
+  squeezing.current = null;
+  useEffect(() => {
+    const at = squeezing.current;
+    if (!at || room <= 0 || fill <= 0) return;
+    const rest = needs - at.given;
+    const want = at.solo ? 1 : Math.min(1, Math.max(SQUEEZE_LEAST, (room - rest) / at.all));
+    if (Math.abs(want - squeeze) > 0.01) setSqueeze(want);
+  });
 
   // Past the last card there is nothing to draw here: the row's end card is its own.
   if (done) return null;
@@ -1475,6 +1520,23 @@ function StepBody() {
 
   // Before it is measured, a fair guess at what sits under the name.
   const under = underName ?? (note ? 28 : 0) + (myNote ? 39 : 0) + (rampLine ? 26 : 0) + (step ? 76 : 0);
+  // When the tight layout still does not fit, the parts that can give way —
+  // the gaps and the weight — take a smaller real size, together, by just
+  // enough; the circles and the words keep theirs. Laid out, never scaled as
+  // a picture, so nothing is ever blurred. What the rest needs is what was
+  // measured less what gives way, so squeezing never feeds back into it.
+  const gives = {
+    weight: note || myNote || rampLine ? Math.max(10, L.weight - under) : L.weight,
+    number: L.number,
+    sets: L.sets,
+    clock: 14,
+    under: L.underGap,
+  };
+  const givesAll = gives.weight + gives.number + (UNIT_BELOW ? UNIT_ROOM : 0) + gives.sets + gives.clock + gives.under;
+  const numberSize = Math.round(gives.number * squeeze);
+  const given =
+    gives.weight * squeeze + numberSize + (UNIT_BELOW ? UNIT_ROOM : 0) * squeeze + (gives.sets + gives.clock + gives.under) * squeeze;
+  squeezing.current = { given, all: givesAll, solo: L === LAYOUT.solo };
 
   return (
     <OnField family={family} sendOff={sendOff}>
@@ -1588,8 +1650,8 @@ function StepBody() {
           <View onLayout={(e) => setFill(e.nativeEvent.layout.height)}>
         <View
           style={{
-            height: L.number + (UNIT_BELOW ? UNIT_ROOM : 0),
-            marginTop: note || myNote || rampLine ? Math.max(10, L.weight - under) : L.weight,
+            height: numberSize + (UNIT_BELOW ? UNIT_ROOM : 0) * squeeze,
+            marginTop: gives.weight * squeeze + spread * SPREAD.weight,
             justifyContent: "center",
           }}
         >
@@ -1600,7 +1662,7 @@ function StepBody() {
           ) : item.derive ? (
             // Taken from the heavy day's weight, so there is nothing to edit.
             <View style={{ alignItems: "center" }}>
-              <Weight weight={p.weight} unit={unitFor(p.exercise, p.weight)} size={L.number} />
+              <Weight weight={p.weight} unit={unitFor(p.exercise, p.weight)} size={numberSize} />
             </View>
           ) : (
             <WeightControl
@@ -1609,7 +1671,7 @@ function StepBody() {
               bodyweight={p.exercise.bodyweight}
               holds={p.exercise.holds}
               perHand={p.exercise.perHand}
-              size={L.number}
+              size={numberSize}
               tapAway={tapAway}
               onNudge={(d) => setState((s) => nudgeWeight(s, d))}
               onSet={(w) => setState((s) => editWeight(s, w))}
@@ -1617,7 +1679,7 @@ function StepBody() {
           )}
         </View>
 
-        <View style={{ marginTop: L.sets }}>
+        <View style={{ marginTop: gives.sets * squeeze + spread * SPREAD.sets }}>
           {p.exercise.timed ? (
             <HoldSets
               logged={item.logged}
@@ -1647,16 +1709,16 @@ function StepBody() {
 
         {/* The rest between sets: from the first set until the last. Its room
             is always there, so the clock arriving moves nothing. */}
-        <View style={{ height: 28, marginTop: 8 }}>
+        <View style={{ height: REST_CLOCK_HEIGHT, marginTop: gives.clock * squeeze + spread * SPREAD.clock }}>
           {item.logged.some((r) => r !== null) && item.logged.some((r) => r === null) && !state.active?.hold ? (
-            <RestClock since={state.active?.lastSetAt} target={restSeconds(state) ?? REST.main} />
+            <RestClock since={state.active?.lastSetAt} />
           ) : null}
         </View>
 
         {/* At least this tall, so a line arriving moves nothing — but never
             capped: a two-line remark and the next-time line under it must
             both show in full, never clipped. */}
-        <View style={{ minHeight: !partner && willAskFeel(state) ? FEEL_ROOM : L.under, marginTop: L.underGap }}>
+        <View style={{ minHeight: !partner && willAskFeel(state) ? FEEL_ROOM : L.under, marginTop: gives.under * squeeze + spread * SPREAD.under }}>
           <Why
             prescription={p}
             result={logged ? result : null}
@@ -1696,16 +1758,15 @@ function StepBody() {
         )}
       </Fit>
 
-      {/* The way on is a swipe — the next card's edge shows at the right —
-          and once every circle is filled the card says so. Always laid out,
-          so the line appearing moves nothing. */}
-      <View style={{ height: 52, paddingHorizontal: 22, justifyContent: "center", marginBottom: barSpace + 6 }}>
-        <Text
-          numberOfLines={1}
-          style={{ textAlign: "center", color: colors.text, opacity: 0.8, fontFamily: fonts.regular, fontSize: 17 }}
-        >
-          {logged ? (after ? `Swipe on to ${inSentence(after)}` : "Swipe on to finish") : ""}
-        </Text>
+      {/* The way on: a swipe, or once every circle is filled, a button
+          saying where to. Its room is always there, so it arriving moves nothing. */}
+      <View style={{ height: 52, paddingHorizontal: 22, alignItems: "center", justifyContent: "center", marginBottom: barSpace + 6 }}>
+        {logged ? (
+          <NextButton
+            next={after}
+            onPress={() => setState((s) => (s.active ? seeTip(goToCard(s, s.active.cursor + 1), "swipe") : s))}
+          />
+        ) : null}
       </View>
 
       {menu ? <ToolsMenu anchor={menu} tools={tools} onClose={() => setMenu(null)} /> : null}
@@ -2019,6 +2080,33 @@ function LiftTitle({
       </Pressable>
       {children}
     </View>
+  );
+}
+
+/**
+ * The way on once a card is done: "Swipe for lateral raise", the quietest
+ * thing on the card — a reminder, not a button to look for. A tap does the
+ * same as the swipe. It fades in, so it arriving reads as the card being done.
+ */
+function NextButton({ next, onPress }: { next: string | null | undefined; onPress: () => void }) {
+  const colors = useColors();
+  return (
+    <Reanimated.View entering={FadeIn.duration(220)} style={{ maxWidth: "100%" }}>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={next ? `Next: ${next}` : "Finish the workout"}
+        hitSlop={12}
+        onPress={() => {
+          Haptics.selectionAsync();
+          onPress();
+        }}
+        style={({ pressed }) => ({ minHeight: 44, justifyContent: "center", opacity: pressed ? 0.3 : 0.55 })}
+      >
+        <Text numberOfLines={1} style={{ color: colors.text, fontFamily: fonts.regular, fontSize: 16 }}>
+          {next ? `Swipe for ${inSentence(next)}` : "Swipe to finish"}
+        </Text>
+      </Pressable>
+    </Reanimated.View>
   );
 }
 
@@ -2364,10 +2452,12 @@ function Conditioning({ item }: { item: Item }) {
             for anyone who doesn't swipe. */}
         <Column style={{ minHeight: 60, justifyContent: "center" }}>
           {cardioDone(item) ? (
-            <TextButton
-              label={nextItemName(state) ? `Swipe on to ${inSentence(nextItemName(state)!)}` : "Swipe on to finish"}
-              onPress={() => { Keyboard.dismiss(); setState((s) => completeCardio(s)); }}
-            />
+            <View style={{ alignItems: "center" }}>
+              <NextButton
+                next={nextItemName(state)}
+                onPress={() => { Keyboard.dismiss(); setState((s) => completeCardio(s)); }}
+              />
+            </View>
           ) : null}
         </Column>
       </View>
@@ -3591,8 +3681,10 @@ function ConditioningSwap({
 }
 
 /**
- * The exercises that can fill this slot. Picking one also makes it the
- * module's default from now on.
+ * The exercises that can fill this slot, each a lump of its own family's
+ * clay — push orange, pull teal — so a swap is seen to keep to the same kind
+ * of work as the lift it replaces. The one you are on is outlined and says
+ * so.
  */
 function SwapList({
   options,
@@ -3607,18 +3699,11 @@ function SwapList({
   onPick: (id: string) => void;
 }) {
   return (
-    <View
-      style={{
-        gap: 2,
-        borderRadius: radii.card,
-        borderCurve: "continuous",
-        backgroundColor: colors.surface,
-        padding: 10,
-      }}
-    >
+    <View style={{ gap: 8 }}>
       {options.map((id) => {
         const active = id === current;
         const used = taken.has(id) && !active;
+        const tone = CLAY_TONE[familyOf(byId(id))];
         return (
           <Pressable
             key={id}
@@ -3630,25 +3715,31 @@ function SwapList({
               flexDirection: "row",
               alignItems: "center",
               gap: 10,
-              minHeight: 50,
-              paddingHorizontal: 14,
-              borderRadius: 12,
-              backgroundColor: active ? colors.cloud : "transparent",
-              opacity: used ? 0.35 : pressed ? 0.7 : 1,
+              minHeight: 56,
+              paddingHorizontal: 16,
+              borderRadius: radii.button,
+              borderCurve: "continuous",
+              backgroundColor: tone.card,
+              borderWidth: 2.5,
+              borderColor: active ? tone.ink : "transparent",
+              boxShadow: CLAY_LOOK.bump,
+              opacity: used ? 0.4 : pressed ? 0.75 : 1,
             })}
           >
             <Text
               style={{
                 flex: 1,
-                color: active ? colors.ink : colors.text,
-                fontSize: 16,
-                fontWeight: active ? "800" : "600",
+                color: tone.ink,
+                fontSize: 17,
+                fontFamily: active ? fonts.bold : fonts.semibold,
               }}
             >
               {byId(id)!.name}
             </Text>
-            {used ? (
-              <Text style={{ color: colors.faint, fontSize: 13, fontStyle: "italic" }}>in use</Text>
+            {active ? (
+              <Text style={{ color: tone.ink, fontSize: 15, fontFamily: fonts.bold }}>Now</Text>
+            ) : used ? (
+              <Text style={{ color: tone.ink, fontSize: 14 }}>in use</Text>
             ) : null}
           </Pressable>
         );
@@ -3657,6 +3748,51 @@ function SwapList({
   );
 }
 
+
+/**
+ * A number that rolls on to its next value, like a counter: counting down,
+ * the old figure drops out below and the new one comes in from above;
+ * counting up, the other way. Moved and faded, never scaled, so the figures
+ * stay sharp the whole way. A tap before it has finished starts the next
+ * roll from there.
+ */
+function Roll({ value, distance, children }: { value: number; distance: number; children: ReactNode }) {
+  const reduce = useReduceMotion();
+  const prev = useRef({ value, node: children });
+  const [gone, setGone] = useState<{ node: ReactNode; key: number } | null>(null);
+  const t = useSharedValue(1);
+  const dir = useSharedValue(1);
+  useLayoutEffect(() => {
+    const before = prev.current;
+    prev.current = { value, node: children };
+    if (before.value === value || reduce) return;
+    dir.value = value < before.value ? 1 : -1;
+    setGone({ node: before.node, key: Date.now() });
+    t.value = 0;
+    t.value = withTiming(1, { duration: 260, easing: Ease.out(Ease.cubic) }, (finished) => {
+      if (finished) scheduleOnRN(setGone, null);
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [value, children, reduce]);
+  const coming = useAnimatedStyle(() => ({
+    opacity: Math.min(1, t.value * 1.6),
+    transform: [{ translateY: -(1 - t.value) * distance * dir.value }],
+  }));
+  const going = useAnimatedStyle(() => ({
+    opacity: Math.max(0, 1 - t.value * 1.6),
+    transform: [{ translateY: t.value * distance * dir.value }],
+  }));
+  return (
+    <View style={{ alignItems: "center", justifyContent: "center" }}>
+      {gone ? (
+        <Reanimated.View key={gone.key} style={[{ position: "absolute" }, going]}>
+          {gone.node}
+        </Reanimated.View>
+      ) : null}
+      <Reanimated.View style={coming}>{children}</Reanimated.View>
+    </View>
+  );
+}
 
 /**
  * One circle per set. An empty circle is an outline with the target in it;
@@ -3708,45 +3844,48 @@ function Sets({
       useNativeDriver: true,
     }).start();
   }, [cheer, wave]);
-  // Every circle is the same fixed size, centred as a group, and the row
+  // Every circle is the same fixed size, centred as a group, and one row
   // is always the same height — two sets must not make bigger circles than
-  // four, or the screen changes shape from one exercise to the next. Only
-  // when there are too many to fit do they shrink, and then inside the same
-  // row height.
+  // three, or the screen changes shape from one exercise to the next. Only
+  // when there are too many to fit across do they get smaller, and past
+  // five they wrap.
   const [width, setWidth] = useState(0);
   const { full, gap, font } = CIRCLES[role];
+  // What a tap here has just made each set, shown at once; the session — and
+  // the rest of the card with it — follows a moment later, as a transition,
+  // so a count never waits on the whole card being drawn again. Cleared as
+  // soon as the session says the same.
+  const [pending, setPending] = useState<Record<number, number | null>>({});
+  useEffect(() => setPending({}), [logged]);
+  const tap = (i: number) => {
+    if (!seconds && !clocked) {
+      const now = i in pending ? pending[i] : logged[i];
+      const next = now === null ? target : now === 0 ? null : Math.max(0, now - 1);
+      setPending((p) => ({ ...p, [i]: next }));
+    }
+    startTransition(() => onTap(i));
+  };
   const n = logged.length;
-  const fits = width > 0 ? (width - gap * (n - 1)) / n : full;
-  const size = Math.max(36, Math.min(full, fits));
+  // Up to five in a row; more wrap onto a second row, or a third — never
+  // squeezed below a thumb's width or past the card's edge. One row keeps
+  // the same height whatever the count, so the card keeps its shape.
+  const perRow = n <= 5 ? n : Math.ceil(n / Math.ceil(n / 5));
+  const rows = Math.max(1, Math.ceil(n / perRow));
+  const across = width > 0 ? (width - gap * (perRow - 1)) / perRow : full;
+  const down = rows === 1 ? full : (full * 1.5 - gap * (rows - 1)) / rows;
+  const size = Math.max(36, Math.min(full, across, down));
+  const tall = rows === 1 ? full : rows * size + (rows - 1) * gap;
   const fontSize = Math.round((font * size) / full);
   // Each circle's turn in the ripple, spread so the last starts by 0.4.
   const stagger = n > 1 ? Math.min(0.14, 0.4 / (n - 1)) : 0;
-  const first = (width - n * size - (n - 1) * gap) / 2 + size / 2;
-  return (
-    <View
-      onLayout={(e) => setWidth(e.nativeEvent.layout.width)}
-      style={{
-        height: full,
-        flexDirection: "row",
-        alignItems: "center",
-        justifyContent: "center",
-        gap,
-      }}
-    >
-      {/* First, so the circles cover where the marks start from. */}
-      {burst && cheer !== null ? (
-        <Burst
-          key={cheer}
-          family={burst}
-          from={logged.map((_, i) => ({
-            x: first + i * (size + gap),
-            y: full / 2,
-            at: i * stagger,
-          }))}
-          radius={size / 2}
-        />
-      ) : null}
-      {logged.map((reps, i) => {
+  const centre = (k: number) => {
+    const row = Math.floor(k / perRow);
+    const inRow = Math.min(perRow, n - row * perRow);
+    const left = (width - inRow * size - (inRow - 1) * gap) / 2;
+    return { x: left + (k - row * perRow) * (size + gap) + size / 2, y: (tall - (rows * size + (rows - 1) * gap)) / 2 + row * (size + gap) + size / 2 };
+  };
+  const circles = logged.map((saved, i) => {
+        const reps = i in pending ? pending[i] : saved;
         const running = clock?.index === i;
         const ready = running && clock.at < 0;
         const filled = reps !== null && !running;
@@ -3775,7 +3914,11 @@ function Sets({
               zero={zero}
               short={short}
               level={filled && target > 0 ? reps / target : 0}
-              wash={colors.wash}
+              // Three colours a set can be, told apart at a glance: deep clay
+              // on target, a pale clay short of it, and the card's own colour,
+              // hollow, not done. Cream is only ever a set not yet started.
+              wash={short ? mix(CLAY_LOOK.well, colors.wash, 0.42) : colors.wash}
+              card={colors.bg}
               ink={colors.text}
               ringWidth={role === "partner" ? 2 : 3}
               label={
@@ -3800,11 +3943,12 @@ function Sets({
                     : "Tap to start its clock, or to take a few seconds off. Hold if you didn't do it."
                   : "Tap to log or count down. Hold if you didn't do it."
               }
-              onTap={() => onTap(i)}
+              onTap={() => tap(i)}
               onReset={() => onReset(i)}
               fillsOnTap={!clocked || filled}
             >
               {running ? <HoldRing size={size} fill={ready ? 0 : clock.at / target} /> : null}
+              <Roll value={shown} distance={size * 0.34}>
               <Text
                 style={{
                   // The figures sit a touch low in a circle: lift them to its
@@ -3812,7 +3956,7 @@ function Sets({
                   marginTop: -Math.round(fontSize * 0.08),
                   // On a stamp the number is in the ink; a set well short
                   // still has most of it on the bare clay.
-                  color: filled && !zero && reps / target >= 0.55 ? colors.ink : colors.text,
+                  color: filled ? colors.ink : colors.text,
                   fontFamily: fonts.semibold,
                   fontSize: seconds ? Math.round(fontSize * 0.92) : fontSize,
                   fontVariant: ["lining-nums", "tabular-nums"],
@@ -3826,6 +3970,7 @@ function Sets({
                   </Text>
                 ) : null}
               </Text>
+              </Roll>
             </SetCircle>
             <Animated.View
               style={{
@@ -3844,7 +3989,23 @@ function Sets({
             />
           </Animated.View>
         );
-      })}
+      });
+  return (
+    <View onLayout={(e) => setWidth(e.nativeEvent.layout.width)} style={{ height: tall, justifyContent: "center", gap }}>
+        {/* First, so the circles cover where the marks start from. */}
+        {burst && cheer !== null ? (
+          <Burst
+            key={cheer}
+            family={burst}
+            from={logged.map((_, i) => ({ ...centre(i), at: i * stagger }))}
+            radius={size / 2}
+          />
+        ) : null}
+        {Array.from({ length: rows }, (_, r) => (
+          <View key={r} style={{ flexDirection: "row", justifyContent: "center", gap }}>
+            {circles.slice(r * perRow, (r + 1) * perRow)}
+          </View>
+        ))}
     </View>
   );
 }
@@ -4419,7 +4580,6 @@ function Why({
   const colors = useColors();
   if (!prescription) return null;
   const line = { textAlign: "center", color: colors.text, fontFamily: fonts.regular, fontSize: 19, lineHeight: 24 } as const;
-  const quip = { textAlign: "center", color: colors.text, fontFamily: fonts.italic, fontSize: 24, lineHeight: 28 } as const;
 
   if (result && feel) {
     return (
@@ -4467,22 +4627,26 @@ function Why({
   }
 
   if (result) {
+    // Two voices, told apart by weight and strength, not by a box: the
+    // fact that matters — what happens next time — in bold, and Klay's
+    // remark over it, lighter and softer.
+    const remark = { textAlign: "center", color: colors.text, opacity: 0.72, fontFamily: fonts.regular, fontSize: 18, lineHeight: 23 } as const;
     return (
-      <View accessibilityLiveRegion="polite" style={{ alignItems: "center", gap: 4 }}>
+      <View accessibilityLiveRegion="polite" style={{ alignItems: "center", gap: 8 }}>
         {compact ? (
-          <FitText least={0.75} style={quip}>
+          <FitText least={0.75} style={remark}>
             {result.quip}
           </FitText>
         ) : (
-          <Text style={quip}>
+          <Text style={remark}>
             {result.quip}
           </Text>
         )}
         <View>
           {glow !== null ? <Glow key={glow} /> : null}
-          <Text numberOfLines={1} style={line}>
+          <FitText least={0.8} style={{ textAlign: "center", color: colors.text, fontFamily: fonts.bold, fontSize: 20 }}>
             {result.fact}
-          </Text>
+          </FitText>
         </View>
       </View>
     );
@@ -4502,7 +4666,7 @@ function Why({
     const cue = ownCue(exercise.id, exercise.holds ? prescription.weight : 0);
     return (
       <Text style={line}>
-        <Text style={{ fontFamily: fonts.italic }}>Own it: </Text>
+        <Text style={{ fontFamily: fonts.bold }}>Own it: </Text>
         {cue.charAt(0).toLowerCase() + cue.slice(1)}
       </Text>
     );

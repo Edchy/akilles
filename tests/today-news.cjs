@@ -131,7 +131,8 @@ test("Today renders per-exercise changes, includes them in accessibility labels,
     if (name === "@/components/text") return { Text: "Text" };
     if (name === "@/components/buttons") return { Button: "Button", LinkButton: "LinkButton", Chip: "Chip" };
     if (name === "@/components/mark") return { Mark: "Mark" };
-    if (name === "@/components/dusk") return { DuskGround: "DuskGround" };
+    if (name === "@/components/icon") return { Icon: "Icon" };
+    if (name === "@/components/card-clay") return { ClaySheen: "ClaySheen" };
     if (name === "@/components/easy-week") return { EasyWeek: "EasyWeek", easyWeekShowing: () => false };
     if (name === "@/components/growth-offer") return { GrowthOffer: "GrowthOffer" };
     if (name === "@/lib/use-reduce-motion") return { useReduceMotion: () => true };

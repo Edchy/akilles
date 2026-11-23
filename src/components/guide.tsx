@@ -63,6 +63,12 @@ export function GuideButton({
   );
 }
 
+/**
+ * The white every exercise picture is drawn on. The how-to sheet takes it as
+ * its own ground, so a picture has no edge: the figure stands on the page.
+ */
+export const PICTURE_WHITE = "#FAFAF8";
+
 /** The how-to on its own, for opening from elsewhere: the lift screen's ⋯. */
 export function GuideSheet({
   visible,
@@ -78,20 +84,29 @@ export function GuideSheet({
   onClose: () => void;
 }) {
   return (
-    <Sheet visible={visible} title={fullName(name)} closeLabel="Done" onClose={onClose}>
-      <Guide id={id} cue={cue} />
+    <Sheet visible={visible} title={fullName(name)} closeLabel="Done" onClose={onClose} background={PICTURE_WHITE}>
+      <Guide id={id} cue={cue} onWhite />
     </Sheet>
   );
 }
 
-export function Guide({ id, cue }: { id: string; cue?: string }) {
+export function Guide({
+  id,
+  cue,
+  onWhite = false,
+}: {
+  id: string;
+  cue?: string;
+  /** On the pictures' own white (`PICTURE_WHITE`): the picture's box is that white too, with no edge. */
+  onWhite?: boolean;
+}) {
   const guide = guideFor(id);
 
   return (
     <View style={{ gap: 22, paddingTop: 8, width: "100%", maxWidth: 640, alignSelf: "center" }}>
       {hasIllustration(id) ? <Illustration
         id={id}
-        style={{ height: 240, borderRadius: radii.card, borderCurve: "continuous" }}
+        style={{ height: 240, borderRadius: radii.card, borderCurve: "continuous", ...(onWhite ? { backgroundColor: PICTURE_WHITE } : {}) }}
       /> : guide?.demonstration ? <ReferenceDemonstration key={`demo:${id}`} source={guide.demonstration} /> : null}
 
       {guide ? <GuideInstructions key={`steps:${id}`} id={id} /> : (

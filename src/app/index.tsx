@@ -11,6 +11,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useBarSpace } from "@/components/bottom-bar";
 import { EasyWeek, easyWeekShowing } from "@/components/easy-week";
 import { GrowthOffer } from "@/components/growth-offer";
+import { Icon } from "@/components/icon";
+import { ClaySheen } from "@/components/card-clay";
 import { Mark } from "@/components/mark";
 import { Column, COLUMN } from "@/components/screen";
 import { Sheet, OpenRow } from "@/components/sheet";
@@ -37,7 +39,6 @@ import {
   upNext,
   useSession,
   workoutFamily,
-  workoutMinutes,
   workoutPreview,
 } from "@/store/session";
 
@@ -403,7 +404,6 @@ function DeckSlot({
 export const DayCard = memo(function DayCard({ state, workout, inProgress = false }: { state: SessionState; workout: Workout; inProgress?: boolean }) {
   const family = workoutFamily(state, workout);
   const card = cardInk(family);
-  const minutes = workoutMinutes(state, workout);
   const rows = inProgress ? [] : workoutPreview(state, workout);
   // Slots with nothing here to do them with, said rather than hidden.
   const missing = inProgress ? [] : sittingOut(state, workout);
@@ -412,7 +412,9 @@ export const DayCard = memo(function DayCard({ state, workout, inProgress = fals
   const [content, setContent] = useState(0);
   const [atFoot, setAtFoot] = useState(false);
   const overflows = box > 0 && content > box + 1;
-  const body = CLAY_WELL;
+  // The list sits straight on the day's clay, in its ink; each shape keeps
+  // its own clay and fine edge, so one of the day's own family still shows.
+  const body: CardInk = { ...card, marks: true, line: `${CLAY_TONE[family].ink}1A` };
   return (
     <View
       style={{
@@ -425,11 +427,9 @@ export const DayCard = memo(function DayCard({ state, workout, inProgress = fals
         overflow: "hidden",
       }}
     >
-      <View style={{ backgroundColor: card.field, paddingHorizontal: 16, paddingTop: 14, paddingBottom: 14 }}>
+      <ClaySheen id={`today-${workout.id}`} />
+      <View style={{ paddingHorizontal: 16, paddingTop: 16, paddingBottom: 14 }}>
         <View style={{ flexDirection: "row", alignItems: "center", gap: GAP }}>
-          <View style={{ width: MARKS, alignItems: "center" }}>
-            <Mark family={family} size={MARKS - 4} color={card.ink} plain />
-          </View>
           <Text
             accessibilityRole="header"
             numberOfLines={2}
@@ -438,14 +438,13 @@ export const DayCard = memo(function DayCard({ state, workout, inProgress = fals
             {workout.name || "Untitled"}
           </Text>
         </View>
-        <Text style={{ marginLeft: INDENT, color: card.soft, fontSize: 19, fontStyle: "italic" }}>
-          {[workout.subtitle, `about ${minutes} min`].filter(Boolean).join(" · ")}
-        </Text>
+        {workout.subtitle ? (
+          <Text style={{ color: card.soft, fontSize: 19, fontStyle: "italic" }}>{workout.subtitle}</Text>
+        ) : null}
       </View>
-      {/* The list sits in a cream well pressed into the card. */}
-      <View
-        style={{ flex: 1, margin: 12, marginTop: 0, borderRadius: 22, borderCurve: "continuous", overflow: "hidden", backgroundColor: CLAY_LOOK.well, boxShadow: CLAY_LOOK.dent }}
-      >
+      {/* A fine line pressed into the clay between the day and its list. */}
+      <View style={{ marginHorizontal: 16, height: 2, borderRadius: 1, backgroundColor: CLAY_TONE[family].deep, boxShadow: "0 1px 0 rgba(255, 255, 255, 0.35)" }} />
+      <View style={{ flex: 1 }}>
       <ScrollView
         style={{ flex: 1 }}
         onLayout={(e) => setBox(e.nativeEvent.layout.height)}
@@ -453,17 +452,17 @@ export const DayCard = memo(function DayCard({ state, workout, inProgress = fals
         onScroll={(e) => setAtFoot(e.nativeEvent.contentOffset.y + e.nativeEvent.layoutMeasurement.height >= e.nativeEvent.contentSize.height - 4)}
         scrollEventThrottle={32}
         // Room under the last row, so it can be scrolled clear of the fade.
-        contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 10, paddingBottom: overflows ? FADE : 14, gap: 12 }}
+        contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 6, paddingBottom: overflows ? FADE : 16, gap: 12 }}
       >
         {inProgress ? <Progress ink={body} /> : <Preview rows={rows} ink={body} />}
         {missing.length > 0 ? (
-          <Text style={{ marginLeft: INDENT, color: colors.muted, fontSize: 16, lineHeight: 22 }}>
+          <Text style={{ marginLeft: INDENT, color: body.soft, fontSize: 16, lineHeight: 22 }}>
             {missingLine(missing.map((e) => e.slot))}
           </Text>
         ) : null}
       </ScrollView>
       {/* More below: the list fades into the card's foot, rather than being cut by its edge. */}
-      {overflows && !atFoot ? <FootFade color={CLAY_LOOK.well} /> : null}
+      {overflows && !atFoot ? <FootFade color={CLAY_TONE[family].card} /> : null}
       </View>
     </View>
   );
@@ -502,13 +501,11 @@ function missingLine(slots: string[]): string {
  * softer one; in the cream well, the warm ink, each shape in its own colour
  * (`marks`).
  */
-type CardInk = { field: string; ink: string; soft: string; marks?: boolean };
+type CardInk = { field: string; ink: string; soft: string; marks?: boolean; line?: string };
 const cardInk = (family: Family): CardInk => {
   const { card, ink } = CLAY_TONE[family];
   return { field: card, ink, soft: mix(ink, card, 0.15) };
 };
-/** The cream well, in the warm ink. */
-const CLAY_WELL: CardInk = { field: CLAY_LOOK.well, ink: CLAY_LOOK.ink, soft: "#6B5546", marks: true };
 
 /** A shape in a list: its own colours in the well, else the card's ink. */
 function RowMark({ family, size, ink }: { family: Family; size: number; ink: CardInk }) {
@@ -526,8 +523,8 @@ const ROWS = { most: 44, least: 36 } as const;
 /** The next workout, with short change labels tucked beneath the figures. */
 function Preview({ rows, rowHeight = ROWS.most, ink }: { rows: PreviewRow[]; rowHeight?: number; ink: CardInk }) {
   return (
-    <View accessibilityRole="list" style={{ gap: rowHeight >= ROWS.most ? 4 : 2 }}>
-      {rows.map((r) => {
+    <View accessibilityRole="list">
+      {rows.map((r, i) => {
         const timed = r.family === "cardio" || r.family === "mobility" || r.family === "goal";
         const strong = !!r.adjustmentLabel || r.family === "goal";
         const figure = timed ? r.amount : r.guess ? undefined : (r.weight ?? r.amount);
@@ -541,12 +538,15 @@ function Preview({ rows, rowHeight = ROWS.most, ink }: { rows: PreviewRow[]; row
               alignItems: "center",
               gap: GAP,
               minHeight: rowHeight,
+              paddingVertical: rowHeight >= ROWS.most ? 6 : 4,
+              // A hairline between rows, faint, in the card's ink.
+              ...(i > 0 && ink.line ? { borderTopWidth: 1, borderTopColor: ink.line } : {}),
             }}
           >
             <View style={{ width: MARKS, alignItems: "center" }}>
               <RowMark family={r.family} size={22} ink={ink} />
             </View>
-            <Text style={{ flex: 1, color: ink.ink, fontFamily: fonts.regular, fontSize: 20 }}>
+            <Text style={{ flex: 1, color: ink.ink, fontFamily: fonts.regular, fontSize: 17, lineHeight: 22 }}>
               {r.name}
             </Text>
             {figure ? (
@@ -555,15 +555,16 @@ function Preview({ rows, rowHeight = ROWS.most, ink }: { rows: PreviewRow[]; row
                   style={{
                     color: strong ? ink.ink : ink.soft,
                     fontFamily: strong ? fonts.medium : fonts.regular,
-                    fontSize: 17,
-                    lineHeight: 21,
+                    fontSize: 15,
+                    lineHeight: 19,
+                    textAlign: "right",
                     fontVariant: ["lining-nums", "tabular-nums"],
                   }}
                 >
                   {figure}
                 </Text>
                 {r.adjustmentLabel ? (
-                  <Text style={{ color: ink.soft, fontFamily: fonts.italic, fontSize: 13, lineHeight: 16 }}>
+                  <Text style={{ color: ink.soft, fontFamily: fonts.italic, fontSize: 13, lineHeight: 16, textAlign: "right" }}>
                     {r.adjustmentLabel}
                   </Text>
                 ) : null}
@@ -591,16 +592,30 @@ function Progress({ ink }: { ink: CardInk }) {
   const active = state.active;
   if (!active) return null;
   return (
-    <View accessibilityRole="list">
+    <View accessibilityRole="list" style={{ gap: 4 }}>
       {active.items.map((it, i) => {
         const done = cardMark(state, i) === "done";
         const color = ink.marks ? FAMILY[itemFamily(it)].mark : ink.ink;
+        // Done is a band in its own colour with a tick, as in the workout's
+        // own list (the pull-down): the same list, marked the same way.
+        // Padded out past the column, so the words stay where they were.
         return (
           <View
             key={i}
             accessible
             accessibilityLabel={`${cardName(state, i)}, ${done ? "done" : "not done"}`}
-            style={{ flexDirection: "row", alignItems: "center", gap: GAP, minHeight: 38 }}
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              gap: GAP,
+              minHeight: 44,
+              marginHorizontal: -10,
+              paddingHorizontal: 10,
+              borderRadius: radii.button,
+              borderCurve: "continuous",
+              // Done: a solid band, a clear shade darker than the card.
+              backgroundColor: done ? mix(ink.field, ink.ink, 0.2) : "transparent",
+            }}
           >
             <View style={{ width: MARKS, alignItems: "center" }}>
               <View
@@ -614,12 +629,19 @@ function Progress({ ink }: { ink: CardInk }) {
                 }}
               />
             </View>
-            <Text numberOfLines={1} style={{ flex: 1, color: ink.ink, fontFamily: fonts.regular, fontSize: 20 }}>
+            <Text
+              numberOfLines={1}
+              style={{
+                flex: 1,
+                color: ink.ink,
+                fontFamily: fonts.regular,
+                fontSize: 17,
+                textDecorationLine: done ? "line-through" : "none",
+              }}
+            >
               {cardName(state, i)}
             </Text>
-            {done ? (
-              <Text style={{ color: ink.soft, fontFamily: fonts.italic, fontSize: 17 }}>Done</Text>
-            ) : null}
+            {done ? <Icon name="check" size={20} color={ink.ink} /> : null}
           </View>
         );
       })}

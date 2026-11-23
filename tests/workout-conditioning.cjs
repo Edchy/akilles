@@ -568,7 +568,6 @@ test("a workout takes as much cardio and as many routines as you like, in any bl
   // Taking an extra out takes only it.
   const fewer = store.chooseRoutine(state, "legs", "x1", null);
   assert.equal(workout(fewer, "legs").extras.length, 1);
-  assert.ok(store.workoutMinutes(state, workout(state, "legs")) > store.workoutMinutes(fewer, workout(fewer, "legs")));
 });
 
 test("a block's new order puts its exercises in that order too", () => {

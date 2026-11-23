@@ -1,12 +1,13 @@
 import { useState, type ReactNode } from "react";
 import { LinkButton, Chip } from "@/components/buttons";
 import { Pressable, View } from "react-native";
+import Svg, { Polygon } from "react-native-svg";
 
 import { Icon } from "@/components/icon";
 import { Mark } from "@/components/mark";
 import { SectionLabel, Sheet, TextButton } from "@/components/sheet";
 import { Text, TextInput } from "@/components/text";
-import { colors, radii } from "@/constants/theme";
+import { CLAY_LOOK, CLAY_TONE, colors, radii } from "@/constants/theme";
 import type { Exercise, Pattern } from "@/data/exercises";
 import { familyOf, type Family } from "@/data/families";
 import { newId, type EntryPart, type Workout } from "@/data/split";
@@ -198,11 +199,12 @@ export function SwapBrowser({
 
 /** The body, in seven places to look: by an exercise's main movement. */
 type AreaId = "chest" | "shoulders" | "back" | "arms" | "legs" | "hips" | "core";
-const AREAS: { id: AreaId; label: string; family: Family; patterns: Pattern[] }[] = [
+// Arms are both: biceps pull, triceps push — so the tile is drawn in both.
+const AREAS: { id: AreaId; label: string; family: Family; also?: Family; patterns: Pattern[] }[] = [
   { id: "chest", label: "Chest", family: "push", patterns: ["horizontal_push", "chest_iso"] },
   { id: "shoulders", label: "Shoulders", family: "push", patterns: ["vertical_push", "shoulders"] },
   { id: "back", label: "Back", family: "pull", patterns: ["horizontal_pull", "vertical_pull"] },
-  { id: "arms", label: "Arms", family: "pull", patterns: ["biceps", "triceps"] },
+  { id: "arms", label: "Arms", family: "pull", also: "push", patterns: ["biceps", "triceps"] },
   { id: "legs", label: "Legs", family: "legs", patterns: ["squat", "lunge", "quads", "calves", "jump"] },
   { id: "hips", label: "Hips and hamstrings", family: "legs", patterns: ["hinge", "hamstrings"] },
   { id: "core", label: "Core", family: "core", patterns: ["abs"] },
@@ -377,6 +379,7 @@ export function LibraryBrowser({
                   key={a.id}
                   label={a.label}
                   family={a.family}
+                  also={a.also}
                   detail={`${exercises.filter((e) => a.patterns.includes(e.patterns[0])).length} exercises`}
                   onPress={() => setArea(a.id)}
                 />
@@ -390,11 +393,12 @@ export function LibraryBrowser({
   );
 }
 
-/** Stretches and mobility moves found by a search: a mark, the name, an arrow. */
+/** Stretches and mobility moves found by a search: in the stretch's pink, the name, an arrow. */
 function MoveRows({ list, onPick }: { list: { id: string; name: string }[]; onPick: (id: string) => void }) {
+  const tone = CLAY_TONE.mobility;
   return (
-    <View>
-      {list.map((m, i) => (
+    <View style={{ gap: 8 }}>
+      {list.map((m) => (
         <Pressable
           key={m.id}
           accessibilityRole="button"
@@ -403,33 +407,22 @@ function MoveRows({ list, onPick }: { list: { id: string; name: string }[]; onPi
           style={({ pressed }) => ({
             flexDirection: "row",
             alignItems: "center",
-            gap: 14,
-            minHeight: 60,
-            marginHorizontal: -10,
-            paddingHorizontal: 10,
-            borderRadius: 14,
+            gap: 12,
+            minHeight: 64,
+            paddingHorizontal: 16,
+            paddingVertical: 10,
+            borderRadius: radii.button,
             borderCurve: "continuous",
-            backgroundColor: pressed ? colors.surface : "transparent",
+            backgroundColor: tone.card,
+            boxShadow: CLAY_LOOK.bump,
+            opacity: pressed ? 0.75 : 1,
           })}
         >
-          <Mark family="mobility" size={18} />
-          <View
-            style={{
-              flex: 1,
-              flexDirection: "row",
-              alignItems: "center",
-              gap: 10,
-              alignSelf: "stretch",
-              borderTopWidth: i === 0 ? 0 : 1,
-              borderColor: colors.line,
-            }}
-          >
-            <View style={{ flex: 1, paddingVertical: 10, gap: 2 }}>
-              <Text style={{ color: colors.text, fontSize: 20 }}>{m.name}</Text>
-              <Text style={{ color: colors.muted, fontSize: 15, fontStyle: "italic" }}>Stretch</Text>
-            </View>
-            <Icon name="forward" size={16} color={colors.muted} />
+          <View style={{ flex: 1, gap: 2 }}>
+            <Text style={{ color: tone.ink, fontSize: 18, fontWeight: "600" }}>{m.name}</Text>
+            <Text style={{ color: tone.ink, opacity: 0.75, fontSize: 14 }}>Stretch</Text>
           </View>
+          <Icon name="forward" size={18} color={tone.ink} />
         </Pressable>
       ))}
     </View>
@@ -442,13 +435,28 @@ function BackRow({ label, onPress }: { label: string; onPress: () => void }) {
 }
 
 /**
- * A big square to tap: an area of the body, or cardio. A dusk card in its
- * family's colour, like the workouts on Plan, so the groups can be told
+ * A big square to tap: an area of the body, or cardio. A lump of its
+ * family's clay, like the workouts on Plan, so the groups can be told
  * apart at a glance: its shape, then its name on a line of its own so a long
  * one wraps cleanly, then how many — and an arrow, saying it opens.
  */
-function Tile({ label, detail, family, onPress }: { label: string; detail: string; family: Family; onPress: () => void }) {
-  const ink = colors.text;
+function Tile({
+  label,
+  detail,
+  family,
+  also,
+  onPress,
+}: {
+  label: string;
+  detail: string;
+  family: Family;
+  /** A second family it holds as much of — arms, pull and push — drawn as the other half, across a diagonal. */
+  also?: Family;
+  onPress: () => void;
+}) {
+  // In its family's clay, as every exercise is in the library: push orange,
+  // pull teal.
+  const ink = CLAY_TONE[family].ink;
   return (
     <Pressable
       accessibilityRole="button"
@@ -463,13 +471,24 @@ function Tile({ label, detail, family, onPress }: { label: string; detail: strin
         overflow: "hidden",
         borderRadius: radii.card,
         borderCurve: "continuous",
-        borderWidth: 1.5,
-        borderColor: colors.line,
-        backgroundColor: pressed ? colors.surface : colors.bg,
+        backgroundColor: CLAY_TONE[family].card,
+        boxShadow: CLAY_LOOK.bump,
+        opacity: pressed ? 0.75 : 1,
       })}
     >
+      {also ? (
+        // Its second family's clay in the lower right, cut on the diagonal.
+        <View pointerEvents="none" style={{ position: "absolute", left: 0, top: 0, right: 0, bottom: 0 }}>
+          <Svg width="100%" height="100%" viewBox="0 0 100 100" preserveAspectRatio="none">
+            <Polygon points="100,0 100,100 0,100" fill={CLAY_TONE[also].card} />
+          </Svg>
+        </View>
+      ) : null}
       <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
-        <Mark family={family} size={22} color={ink} />
+        <View style={{ flexDirection: "row", gap: 6 }}>
+          <Mark family={family} size={22} color={ink} />
+          {also ? <Mark family={also} size={22} color={ink} /> : null}
+        </View>
         <Icon name="forward" size={16} color={ink} />
       </View>
       <Text numberOfLines={2} style={{ color: ink, fontSize: 21, lineHeight: 25, fontWeight: "600" }}>{label}</Text>
@@ -479,9 +498,8 @@ function Tile({ label, detail, family, onPress }: { label: string; detail: strin
 }
 
 /**
- * Plain rows with a hairline between: the shape, the name, what it uses —
- * and at the end what a tap does: a + to add it, or an arrow to open it.
- * One already in the workout says so, with a tick, and can't be added again.
+ * The exercises: the name, what it uses — and at the end what a tap does.
+ * One already in the workout says so, with a tick, and can't be picked again.
  */
 function Rows({
   list,
@@ -494,71 +512,50 @@ function Rows({
   inIt: Set<string>;
   onPick: (id: string) => void;
 }) {
+  // Each a lump of its family's clay — push orange, pull teal — the same
+  // wherever the library is met: adding, swapping, or the Library tab. What
+  // a tap does is said at the end: a + to add, a swap, or an arrow to open.
   return (
-    <View>
-      {list.map((e, i) => {
+    <View style={{ gap: 8 }}>
+      {list.map((e) => {
         const used = mode !== "edit" && inIt.has(e.id);
+        const tone = CLAY_TONE[familyOf(e)];
         return (
           <Pressable
             key={e.id}
             accessibilityRole="button"
-            accessibilityLabel={used ? `${e.name}, already in this workout` : mode === "add" ? `Add ${e.name}` : mode === "swap" ? `Use ${e.name} instead` : e.name}
+            accessibilityLabel={
+              used ? `${e.name}, already in this workout` : mode === "add" ? `Add ${e.name}` : mode === "swap" ? `Use ${e.name} instead` : e.name
+            }
             accessibilityState={{ disabled: used }}
             disabled={used}
             onPress={() => onPick(e.id)}
             style={({ pressed }) => ({
               flexDirection: "row",
               alignItems: "center",
-              gap: 14,
-              minHeight: 60,
-              marginHorizontal: -10,
-              paddingHorizontal: 10,
-              borderRadius: 14,
+              gap: 12,
+              minHeight: 64,
+              paddingHorizontal: 16,
+              paddingVertical: 10,
+              borderRadius: radii.button,
               borderCurve: "continuous",
-              backgroundColor: pressed ? colors.surface : "transparent",
+              backgroundColor: tone.card,
+              boxShadow: CLAY_LOOK.bump,
+              opacity: used ? 0.4 : pressed ? 0.75 : 1,
             })}
           >
-            <View style={{ opacity: used ? 0.35 : 1 }}>
-              <Mark family={familyOf(e)} size={18} />
+            <View style={{ flex: 1, gap: 2 }}>
+              <Text style={{ color: tone.ink, fontSize: 18, fontWeight: "600" }}>{e.name}</Text>
+              <Text style={{ color: tone.ink, opacity: 0.75, fontSize: 14 }}>{exerciseTags(e).join(" · ")}</Text>
             </View>
-            <View
-              style={{
-                flex: 1,
-                flexDirection: "row",
-                alignItems: "center",
-                gap: 10,
-                alignSelf: "stretch",
-                borderTopWidth: i === 0 ? 0 : 1,
-                borderColor: colors.line,
-              }}
-            >
-              <View style={{ flex: 1, paddingVertical: 10, gap: 2 }}>
-                <Text style={{ color: used ? colors.muted : colors.text, fontSize: 20 }}>{e.name}</Text>
-                <Text style={{ color: colors.muted, fontSize: 15, fontStyle: "italic" }}>{exerciseTags(e).join(" · ")}</Text>
+            {used ? (
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+                <Icon name="check" size={16} color={tone.ink} />
+                <Text style={{ color: tone.ink, fontSize: 14 }}>In it</Text>
               </View>
-              {used ? (
-                <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-                  <Icon name="check" size={16} color={colors.muted} />
-                  <Text style={{ color: colors.muted, fontSize: 16, fontStyle: "italic" }}>In it</Text>
-                </View>
-              ) : mode !== "edit" ? (
-                <View
-                  style={{
-                    width: 34,
-                    height: 34,
-                    borderRadius: 17,
-                    borderWidth: 1.5,
-                    borderColor: colors.text,
-                    alignItems: "center",
-                    justifyContent: "center",
-                  }}
-                >
-                  <Icon name={mode === "swap" ? "swap" : "plus"} size={16} color={colors.text} />
-                </View>
-              ) : (
-                <Icon name="forward" size={16} color={colors.muted} />
-              )}
-            </View>
+            ) : (
+              <Icon name={mode === "add" ? "plus" : mode === "swap" ? "swap" : "forward"} size={18} color={tone.ink} />
+            )}
           </Pressable>
         );
       })}

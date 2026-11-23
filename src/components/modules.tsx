@@ -15,6 +15,7 @@ import { DragList, type Drag } from "@/components/drag-list";
 import { useDraft } from "@/components/draft-scope";
 import { WorkoutGoals } from "@/components/goals";
 import { GOALS_ON } from "@/data/goals";
+import { ClaySheen } from "@/components/card-clay";
 import { Icon } from "@/components/icon";
 import { Mark } from "@/components/mark";
 import { WholeText } from "@/components/fit-text";
@@ -31,7 +32,7 @@ import {
 } from "@/components/sheet";
 import { NoteField } from "@/components/note";
 import { WeightField } from "@/components/weight-field";
-import { CLAY_LOOK, CLAY_TONE, cardOf, mix, colors, familyWash, fonts, radii } from "@/constants/theme";
+import { CLAY_LOOK, cardOf, colors, familyWash, fonts, radii } from "@/constants/theme";
 import {
   cardioPool,
   mobilityPool,
@@ -81,7 +82,6 @@ import {
   routineMinutes,
   setCardio,
   balanceNotes,
-  workoutMinutes,
   everyExercise,
   swapInPlan,
   hiddenExercises,
@@ -482,7 +482,7 @@ function WorkoutRow({
           opacity: pressed && !drag.active ? 0.7 : 1,
         })}
       >
-        <Watermark id={workout.id} family={family} ground={paused ? colors.surface : fill.bg} ink={ink} faint={paused} />
+        <ClaySheen id={`plan-${workout.id}`} />
         {/* Paused: the shape goes grey and the words step back, so it reads
             as out of the loop at a glance; "Paused" says it in words too, and
             it comes back with a swipe left, Resume. */}
@@ -705,7 +705,6 @@ export function WorkoutSheet({
       <Text ui style={{ color: colors.text, fontSize: 17, fontWeight: "700" }}>Add</Text>
     </Pressable>
   );
-  const minutes = workoutMinutes(state, workout);
 
   return (
     <Sheet embedded={embedded} visible full title={draft?.isNew ? "New workout" : "Edit workout"} closeLabel="Done" scrollEnabled={!dragging} onClose={close}
@@ -726,9 +725,6 @@ export function WorkoutSheet({
             placeholder="What it trains (optional)"
             onChange={(subtitle) => setState((s) => renameWorkout(s, workout.id, { subtitle }))}
           />
-          <Text style={{ color: colors.muted, fontSize: 16, fontStyle: "italic", paddingLeft: 4 }}>
-            About {minutes} min
-          </Text>
         </View>
 
         {/* Three blocks, in the order you do them, named by where they sit
@@ -1382,66 +1378,6 @@ function Field({
         fontWeight: size ? "700" : "600",
       }}
     />
-  );
-}
-
-/** How big a workout row's shape is drawn, behind its words, on average. */
-const WATERMARK = 108;
-
-/** A whole number from a workout's id, the same every time: its shape's own placement. */
-function hash(id: string): number {
-  let h = 2166136261;
-  for (let i = 0; i < id.length; i++) h = Math.imul(h ^ id.charCodeAt(i), 16777619);
-  return h >>> 0;
-}
-
-/**
- * The family's shape, big, behind a workout row's words: run off the right
- * edge and cut by it, and pressed into the card — a shade of the card, with a
- * shadow along its top-left edge and a catch of light along its bottom-right,
- * as a blind stamp in card stock. Each workout sets its own a little
- * differently — size, tilt, how far it runs off, how high — from its id, so
- * the list looks set by hand and a workout keeps its look.
- */
-function Watermark({ id, family, ground, ink, faint }: { id: string; family: Family; ground: string; ink: string; faint: boolean }) {
-  const h = hash(id);
-  const pick = (shift: number, from: number, to: number) => from + (((h >>> shift) & 255) / 255) * (to - from);
-  const size = Math.round(pick(0, WATERMARK * 0.88, WATERMARK * 1.12));
-  const lean = pick(8, 5, 16) * ((h >>> 16) & 1 ? 1 : -1);
-  const off = pick(17, 0.18, 0.4);
-  const rise = pick(24, -12, 12);
-  // The pressed face: just off the card, toward its words.
-  const face = mix(ground, ink, faint ? 0.06 : 0.12);
-  const edge = faint ? 1 : 1.5;
-  const layer = (dx: number, dy: number, color: string) => (
-    <View style={{ position: "absolute", left: dx, top: dy }}>
-      <Mark family={family} size={size} color={color} plain />
-    </View>
-  );
-  return (
-    <View
-      style={{
-        position: "absolute",
-        right: -size * off,
-        top: "50%",
-        marginTop: -size / 2 + rise,
-        width: size,
-        height: size,
-        transform: [{ rotate: `${lean}deg` }],
-        pointerEvents: "none",
-      }}
-    >
-      {!faint ? (
-        // Pressed into the clay: the shape in its deeper shade.
-        layer(0, 0, CLAY_TONE[family].deep)
-      ) : (
-        <>
-          {layer(edge, edge, faint ? "rgba(255, 255, 255, 0.25)" : "rgba(255, 255, 255, 0.14)")}
-          {layer(-edge, -edge, faint ? "rgba(0, 0, 0, 0.08)" : "rgba(0, 0, 0, 0.3)")}
-          {layer(0, 0, face)}
-        </>
-      )}
-    </View>
   );
 }
 

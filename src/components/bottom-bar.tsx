@@ -31,7 +31,9 @@ function useGround(): Family | null {
 
 /** The bar's words and its pressed fill: the warm ink, on every ground (none is dark). */
 type Ink = { ink: string; quiet: string; pressed: string };
-const WHITE_INK: Ink = { ink: colors.text, quiet: colors.muted, pressed: colors.surface };
+// The tabs you are not on are a pale ghost of the ink, so the one you are on
+// stands out at a glance.
+const WHITE_INK: Ink = { ink: colors.text, quiet: `${colors.text}59`, pressed: colors.surface };
 const InkContext = createContext<Ink>(WHITE_INK);
 
 /** How far the capsule floats above the bottom edge of the screen. */
@@ -133,8 +135,9 @@ export const barLabel = {
 } as const;
 
 /**
- * One slot of the capsule: a glyph over its label, inside a rounded lozenge
- * that lights up for the current tab or under a pressing thumb. Every button
+ * One slot of the capsule: a glyph over its label. The current tab is in
+ * full ink and bold; a press dims a slot for a moment; nothing is ever
+ * filled in behind it. Every button
  * in the bar — tab or workout action — is one of these, so the bar keeps one
  * shape whatever it carries.
  */
@@ -143,12 +146,18 @@ export function Slot({
   label,
   tint,
   fill,
+  strong = false,
+  dim = false,
   children,
 }: {
   icon: IconName;
   label: string;
   tint: string;
   fill?: string;
+  /** The tab you are on: its label in bold. */
+  strong?: boolean;
+  /** Under a pressing thumb: dimmed for a moment, never filled. */
+  dim?: boolean;
   /** Drawn behind the glyph, inside the lozenge. */
   children?: ReactNode;
 }) {
@@ -162,17 +171,18 @@ export function Slot({
         gap: 3,
         overflow: "hidden",
         backgroundColor: fill ?? "transparent",
+        opacity: dim ? 0.45 : 1,
       }}
     >
       {children}
       <Icon name={icon} size={BAR.glyph} color={tint} />
-      <Text style={[barLabel, { color: tint }]}>{label}</Text>
+      <Text style={[barLabel, { color: tint }, strong ? { fontFamily: fonts.bold } : null]}>{label}</Text>
     </View>
   );
 }
 
 
-/** One of the three tabs. The current one sits in a soft grey pill. */
+/** One of the three tabs. The current one is in full ink, the rest quiet. */
 export function TabButton({
   icon,
   label,
@@ -184,7 +194,7 @@ export function TabButton({
   onPress: () => void;
   active: boolean;
 }) {
-  const { ink, quiet, pressed: fill } = useContext(InkContext);
+  const { ink, quiet } = useContext(InkContext);
   return (
     <Pressable
       accessibilityRole="tab"
@@ -197,8 +207,12 @@ export function TabButton({
         <Slot
           icon={icon}
           label={label}
+          // The tab you are on is in full ink with a bold label; the others
+          // are a pale ghost of it. No shape behind, ever — a press only
+          // dims it, for a moment.
           tint={active ? ink : quiet}
-          fill={active || pressed ? fill : undefined}
+          strong={active}
+          dim={pressed}
         />
       )}
     </Pressable>
@@ -217,7 +231,7 @@ export function ActionButton({
   onPress: () => void;
   disabled?: boolean;
 }) {
-  const { ink, pressed: fill } = useContext(InkContext);
+  const { ink } = useContext(InkContext);
   return (
     <Pressable
       accessibilityRole="button"
@@ -228,7 +242,7 @@ export function ActionButton({
       style={{ flex: 1, opacity: disabled ? 0.3 : 1 }}
     >
       {({ pressed }) => (
-        <Slot icon={icon} label={label} tint={ink} fill={pressed ? fill : undefined} />
+        <Slot icon={icon} label={label} tint={ink} dim={pressed} />
       )}
     </Pressable>
   );

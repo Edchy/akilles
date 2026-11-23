@@ -9,6 +9,7 @@ import * as Haptics from "expo-haptics";
  *   dragged row found a new place, a segment changed).
  * - lift: something came off the page under your finger (hold to move).
  * - drop: it went down again.
+ * - set: a set logged — a firm tap, the one you do most.
  * - done: a set or a workout counted.
  * - warn: something was taken away (removed, deleted), with Undo on screen.
  */
@@ -18,6 +19,7 @@ export const haptic = {
   tick: () => quiet(Haptics.selectionAsync()),
   lift: () => quiet(Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)),
   drop: () => quiet(Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)),
+  set: () => quiet(Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)),
   done: () => quiet(Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)),
   warn: () => quiet(Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning)),
 };
