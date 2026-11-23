@@ -209,8 +209,33 @@ const AREAS: { id: AreaId; label: string; family: Family; also?: Family; pattern
   { id: "arms", label: "Arms", family: "pull", also: "push", patterns: ["biceps", "triceps"] },
   { id: "legs", label: "Legs", family: "legs", patterns: ["squat", "lunge", "quads", "calves", "jump"] },
   { id: "hips", label: "Hips and hamstrings", family: "legs", patterns: ["hinge", "hamstrings"] },
-  { id: "core", label: "Core", family: "core", patterns: ["abs"] },
+  { id: "core", label: "Core", family: "core", patterns: ["abs", "carry"] },
 ];
+
+/**
+ * Inside an area, the exercises come under the movement they are, in words
+ * a beginner knows: on Legs, squats apart from lunges; on Core, carries
+ * apart from abs. The same movement types that keep a swap like for like.
+ */
+const MOVEMENT_HEADING: Record<Pattern, string> = {
+  horizontal_push: "Presses",
+  chest_iso: "Flyes",
+  vertical_push: "Overhead presses and handstands",
+  shoulders: "Raises and shrugs",
+  horizontal_pull: "Rows",
+  vertical_pull: "Pull-ups and pull-downs",
+  biceps: "Biceps",
+  triceps: "Triceps",
+  squat: "Squats",
+  lunge: "Lunges and split squats",
+  quads: "Leg extensions",
+  calves: "Calves",
+  jump: "Jumps and throws",
+  hinge: "Deadlifts, swings and hip thrusts",
+  hamstrings: "Hamstrings and glutes",
+  abs: "Abs",
+  carry: "Carries",
+};
 
 /**
  * Up to five to add to a workout: for each area its kind trains that the
@@ -289,7 +314,21 @@ export function LibraryBrowser({
         <Text style={{ color: colors.muted, fontSize: 18, fontStyle: "italic" }}>
           {mode === "add" ? "Tap one to add it." : mode === "swap" ? "Tap one to use it instead." : "Tap one to change it."}
         </Text>
-        <Rows list={list} mode={mode} inIt={inIt} onPick={onPick} />
+        {(() => {
+          // Each under the first of its movements this area holds.
+          const under = (e: Exercise) => e.patterns.find((p) => opened.patterns.includes(p))!;
+          const groups = opened.patterns
+            .map((p) => ({ p, list: list.filter((e) => under(e) === p) }))
+            .filter((g) => g.list.length > 0);
+          // One movement only: no heading over the whole list.
+          if (groups.length < 2) return <Rows list={list} mode={mode} inIt={inIt} onPick={onPick} />;
+          return groups.map((g) => (
+            <View key={g.p} style={{ gap: 8, marginTop: 6 }}>
+              <SectionLabel>{MOVEMENT_HEADING[g.p]}</SectionLabel>
+              <Rows list={g.list} mode={mode} inIt={inIt} onPick={onPick} />
+            </View>
+          ));
+        })()}
         {onCreate ? <CreateButton label="Create your own" onPress={() => onCreate("", opened.patterns[0])} /> : null}
       </View>
     );

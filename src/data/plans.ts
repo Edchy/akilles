@@ -116,7 +116,7 @@ const PPLPPL: Workout[] = [
       slot("Single-leg hinge", "hinge", "kb_single_leg_rdl", "8-10"),
       slot("Quads", "quads", "single_leg_ext", "10-14"),
       // A minute each side is a set: two sets, four minutes.
-      slot("Carry", "abs", "kb_suitcase_carry", "6-8", 2),
+      slot("Carry", "carry", "kb_suitcase_carry", "6-8", 2),
     ],
   },
 ];
@@ -146,7 +146,7 @@ const KETTLEBELL_FLOW: Workout[] = [
       slot("Swing", "hinge", "kb_swing", "10-14"),
       slot("Row", "horizontal_pull", "kb_row", "6-10"),
       // A minute each side is a set: two sets, four minutes.
-      slot("Carry", "abs", "kb_suitcase_carry", "6-8", 2),
+      slot("Carry", "carry", "kb_suitcase_carry", "6-8", 2),
     ],
   },
 ];

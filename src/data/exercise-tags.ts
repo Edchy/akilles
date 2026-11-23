@@ -32,7 +32,7 @@ const MOVEMENTS: Record<Pattern, Movement[]> = {
   squat: ["squat"], hinge: ["hinge"], lunge: ["lunge"], biceps: ["elbow_flexion"],
   triceps: ["elbow_extension"], shoulders: ["shoulder_raise"], quads: ["knee_extension"],
   hamstrings: ["knee_flexion"], calves: ["calf_raise"], chest_iso: ["chest_fly"],
-  abs: ["trunk_flexion"], jump: ["jump"],
+  abs: ["trunk_flexion"], carry: ["carry"], jump: ["jump"],
 };
 const MUSCLES: Record<Pattern, Muscle[]> = {
   horizontal_push: ["chest", "triceps", "shoulders"], vertical_push: ["shoulders", "triceps"],
@@ -40,7 +40,7 @@ const MUSCLES: Record<Pattern, Muscle[]> = {
   squat: ["quads", "glutes"], hinge: ["glutes", "hamstrings"], lunge: ["quads", "glutes"],
   biceps: ["biceps"], triceps: ["triceps"], shoulders: ["shoulders"], quads: ["quads"],
   hamstrings: ["hamstrings"], calves: ["calves"], chest_iso: ["chest"],
-  abs: ["abs"], jump: ["quads", "glutes", "calves"],
+  abs: ["abs"], carry: ["forearms", "obliques"], jump: ["quads", "glutes", "calves"],
 };
 
 type Tags = { movements?: Movement[]; muscles?: Muscle[] };

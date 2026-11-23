@@ -30,6 +30,7 @@ const BY_PATTERN: Record<Pattern, Family> = {
   calves: "legs",
   jump: "legs",
   abs: "core",
+  carry: "core",
 };
 
 /** The family a movement type belongs to. */

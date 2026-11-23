@@ -297,7 +297,7 @@ const FULL_CYCLE: Authored[] = [
       { slot: "Hinge", pattern: "hinge", options: ["db_rdl"], scheme: DEFAULT_SCHEME },
       { slot: "Single leg", pattern: "lunge", options: ["split_squat"], scheme: DEFAULT_SCHEME },
       // A carry over a leg curl: grip, trunk, legs and posture at once. Timed.
-      { slot: "Carry", pattern: "abs", options: ["farmer_carry"], scheme: DEFAULT_SCHEME },
+      { slot: "Carry", pattern: "carry", options: ["farmer_carry"], scheme: DEFAULT_SCHEME },
       { slot: "Abs", pattern: "abs", options: ["plank"], scheme: DEFAULT_SCHEME },
     ],
   },

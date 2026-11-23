@@ -32,6 +32,7 @@ export type Pattern =
   | "calves"
   | "chest_iso"
   | "abs"
+  | "carry"
   | "jump";
 
 /**
@@ -300,9 +301,9 @@ export const EXERCISES: Exercise[] = [
     aliases: ["barbell hip thrust", "glute thrust", "hip thrusts"] },
   { id: "back_ext", name: "Back extension", patterns: ["hinge", "hamstrings"], increment: 2.5, bodyweight: true,
     aliases: ["hyperextension", "hyperextensions", "back hyper", "45 degree back extension", "roman chair"] },
-  { id: "db_rdl", name: "DB Romanian deadlift", patterns: ["hamstrings", "hinge"], increment: 2.5, perHand: true, cue: "Hips back, dumbbells close to the legs.",
+  { id: "db_rdl", name: "DB Romanian deadlift", patterns: ["hinge", "hamstrings"], increment: 2.5, perHand: true, cue: "Hips back, dumbbells close to the legs.",
     aliases: ["dumbbell romanian deadlift", "db rdl", "dumbbell rdl", "dumbbell stiff leg deadlift"] },
-  { id: "kb_rdl", name: "KB Romanian deadlift", patterns: ["hamstrings", "hinge"], increment: 4, cue: "Hips back, the bell close to your legs.",
+  { id: "kb_rdl", name: "KB Romanian deadlift", patterns: ["hinge", "hamstrings"], increment: 4, cue: "Hips back, the bell close to your legs.",
     aliases: ["kettlebell romanian deadlift", "kb rdl", "kettlebell rdl"] },
   { id: "nordic_curl", name: "Nordic curl", patterns: ["hamstrings"], increment: 1, bodyweight: true, holds: true,
     aliases: ["nordic hamstring curl", "nordics", "nordic"] },
@@ -526,10 +527,10 @@ export const EXERCISES: Exercise[] = [
   { id: "suspension_row", name: "Suspension row", patterns: ["horizontal_pull"], autoSelect: false, increment: 1, bodyweight: true, holds: true,
     aliases: ["trx row", "suspension trainer row", "trx back row"] },
   // Carries use the existing timed-set ladder (seconds) and track kg separately.
-  { id: "farmer_carry", name: "DB farmer’s carry", patterns: ["abs"], movements: ["carry"], muscles: ["forearms", "abs", "upper_back"],
+  { id: "farmer_carry", name: "DB farmer’s carry", patterns: ["carry", "abs"], movements: ["carry"], muscles: ["forearms", "abs", "upper_back"],
     autoSelect: false, increment: 2.5, perHand: true, timed: true, startWeight: 7.5,
     aliases: ["farmers walk", "farmer carry", "dumbbell loaded carry", "farmer's carry"] },
-  { id: "suitcase_carry", name: "DB suitcase carry", patterns: ["abs"], movements: ["carry", "lateral_stability"], muscles: ["forearms", "obliques"],
+  { id: "suitcase_carry", name: "DB suitcase carry", patterns: ["carry", "abs"], movements: ["carry", "lateral_stability"], muscles: ["forearms", "obliques"],
     autoSelect: false, increment: 2.5, timed: true, startWeight: 7.5, aliases: ["suitcase walk", "single arm loaded carry", "dumbbell suitcase carry"] },
   // The PPLPPL plan's kettlebell and dumbbell lifts — see `data/plans.ts`.
   { id: "double_kb_press", name: "Double KB overhead press", patterns: ["vertical_push"], autoSelect: false, increment: 4, perHand: true, startWeight: 8,
@@ -554,7 +555,7 @@ export const EXERCISES: Exercise[] = [
     aliases: ["single leg kettlebell deadlift", "single arm single leg deadlift", "kettlebell single leg rdl", "kb single leg rdl"] },
   // Marched with high knees, forward and back. A minute each side, every set:
   // the bell gets heavier, the minute stays.
-  { id: "kb_suitcase_carry", name: "KB suitcase carry", patterns: ["abs"], movements: ["carry", "lateral_stability"], muscles: ["forearms", "obliques"],
+  { id: "kb_suitcase_carry", name: "KB suitcase carry", patterns: ["carry", "abs"], movements: ["carry", "lateral_stability"], muscles: ["forearms", "obliques"],
     autoSelect: false, increment: 4, timed: true, seconds: { from: 60, to: 60, step: 5 }, startWeight: 12,
     aliases: ["kettlebell suitcase carry", "one arm kettlebell carry", "suitcase walk", "suitcase march", "high knee carry"] },
 ];
@@ -684,6 +685,7 @@ const GROUP_BY_PATTERN: Record<Pattern, Group> = {
   biceps: "arms",
   triceps: "arms",
   abs: "core",
+  carry: "core",
   jump: "explosive",
 };
 
@@ -740,6 +742,7 @@ const CATEGORY_BY_PATTERN: Record<Pattern, Category> = {
   calves: "legs",
   jump: "legs",
   abs: "core",
+  carry: "core",
 };
 
 export const CATEGORY_LABEL: Record<Category, string> = {
@@ -775,6 +778,7 @@ export const PATTERN_LABEL: Record<Pattern, string> = {
   biceps: "Biceps",
   triceps: "Triceps",
   abs: "Abs",
+  carry: "Carry",
   jump: "Explosive",
 };
 
@@ -794,6 +798,7 @@ export const PATTERN_ORDER: Pattern[] = [
   "biceps",
   "triceps",
   "abs",
+  "carry",
   "jump",
 ];
 
