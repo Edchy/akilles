@@ -29,11 +29,6 @@ expo-env.d.ts
 art/clay/*.png
 !art/clay/sheet.png
 art/clay/old/
-# Art experiments that weren't used: realistic photos, Codex stick drawings.
-art/photos/
-art/drawn/*-stick.png
-art/drawn/stick-style.png
-art/STYLE-stick.md
 
 # Local tool settings (Claude Code, Gemini)
 .claude/

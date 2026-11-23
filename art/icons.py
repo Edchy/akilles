@@ -7,7 +7,6 @@ K on black), both made by art/logo.mjs. Their backgrounds are shifted to
 exactly the app's colours, so a picture's edge never shows against the screen
 around it, then each is cut to size with the K centred:
 
-    assets/logo/k-black.jpg, k-white.jpg   the logo, for use in the app
     assets/icon.png                        the app icon (iOS, Expo)
     assets/adaptive-icon.png               Android's icon, K inside the safe circle
     assets/splash.png, splash-dark.png     the splash screen
@@ -66,18 +65,8 @@ def png(img, path, colors=256):
     print(f"{path.relative_to(ROOT)}  {path.stat().st_size // 1024} KB")
 
 
-def jpg(img, path):
-    path = ROOT / path
-    path.parent.mkdir(parents=True, exist_ok=True)
-    img.save(path, quality=86, optimize=True, progressive=True)
-    print(f"{path.relative_to(ROOT)}  {path.stat().st_size // 1024} KB")
-
-
 black = load("k-black.png", PAPER)
 white = load("k-white.png", INK)
-
-jpg(frame(black, 1024, 0.72, PAPER), "assets/logo/k-black.jpg")
-jpg(frame(white, 1024, 0.72, INK), "assets/logo/k-white.jpg")
 
 png(frame(black, 1024, 0.68, PAPER), "assets/icon.png")
 png(frame(black, 1024, 0.44, PAPER), "assets/adaptive-icon.png")

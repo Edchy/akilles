@@ -11,7 +11,6 @@
 // The pictures are WebP (about half a jpg's size, 23 November 2026), made with
 // sharp: `npm i -D sharp` once, or point SHARP_FROM at a folder that has it.
 
-import { spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { dirname, join } from "node:path";
@@ -88,17 +87,9 @@ for (const [id, s0] of Object.entries(spec)) {
   entries.push(`  ${id}: { frames: [${frames}], breath: ${breath}${effort} },`);
 }
 
-// The intro's pictures (art/clay/scenes.json): one each, as assets/clay/<id>.jpg,
-// required by name in components/intro.tsx.
+// The film's scenes (art/clay/scenes.json) aren't the app's: video/ copies its own
+// (npm run pictures there). The intro plays the film, so no scene is exported here.
 const scenes = JSON.parse(readFileSync(join(here, "clay", "scenes.json"), "utf8"));
-for (const id of Object.keys(scenes)) {
-  const png = join(here, "clay", `${id}-0.png`);
-  if (!existsSync(png)) throw new Error(`${id}: make it first, node art/clay.mjs ${id}`);
-  const run = spawnSync("ffmpeg", ["-v", "error", "-y", "-i", png, "-vf", "scale=960:-2", "-q:v", "4",
-    join(out, `${id}.jpg`)]);
-  if (run.status !== 0) throw new Error(`${id}: ${run.stderr}`);
-  written.add(`${id}.jpg`);
-}
 
 writeFileSync(
   join(root, "src", "data", "clay.ts"),

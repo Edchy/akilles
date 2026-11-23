@@ -67,7 +67,7 @@ Leave the ego at the door. Klay is the opposite of the typical gym-bro app, and 
 
 ## The Core (November 2026)
 
-Klay is being cut back to its core and rebuilt from it. What was put away is listed in `ARCHIVE.md`.
+Klay is being cut back to its core and rebuilt from it. What was put away is in the git tag `full-app-2026-11-13` (`git checkout full-app-2026-11-13` shows the app as it was).
 
 - **Move every day.** The aim is that everyone trains every day, not three times a week: the hard thing done daily until it is not so hard. A day can be small — twenty minutes of cardio and a stretch — but there is always something for today, and Klay has it worked out. Start small, build up, drop back a little, build up again.
 - **Two people.** Someone who has trained for years and never stayed consistent, and someone anxious about the gym who doesn't know where to go or what to do. Both get the same app: everything decided, easy to change, never a reason to feel ashamed.

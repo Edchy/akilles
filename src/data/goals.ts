@@ -61,7 +61,7 @@ export type Goal = {
 export const OWN_AFTER = 2;
 
 /**
- * Goals are put away while Klay is cut back to its core (see ARCHIVE.md):
+ * Goals are put away while Klay is cut back to its core (the full app is the git tag full-app-2026-11-13):
  * no Goals in Plan, none in a workout, none on Progress. Everything behind
  * them is kept, and saved goals stay saved, so turning this on brings them
  * back as they were. They return when they have a simpler design.
