@@ -450,15 +450,17 @@ export const MOBILITY: MobilityRoutine[] = [
   },
   {
     // On all fours and on the floor, like an animal: the spine, shoulders
-    // and wrists, for fun. No clay pictures yet, so each shows the placeholder.
+    // and wrists, for fun, and the get-up to finish. No clay pictures yet, so each shows the placeholder.
     id: "animal",
     name: "Animal",
-    subtitle: "crawl, arch and push, on the floor",
+    subtitle: "crawl, arch, push and get up, on the floor",
     use: "warmup",
     moves: [
       drill("back_bend", "Back bend", { seconds: 40 }, "On your back, hands by your ears. Push up into an arch, twice for 20 seconds."),
       drill("alligator_crawl", "Alligator crawl", { seconds: 30, reps: 10 }, "Low push-up position, hips down. Crawl forward, knee toward elbow each step."),
       drill("cobra_pushup", "Cobra push-up", { seconds: 24, reps: 8 }, "Lower to the floor like a push-up, lift the chest into cobra, then push back up."),
+      // The lift's id, so the drill borrows its picture and guide. Not weighed here.
+      drill("turkish_get_up", "Turkish get-up", { seconds: 80, reps: 1, perSide: true }, "Slowly, one each side. A light bell or none: eyes on the hand, arm straight, up and back down."),
     ],
   },
 ];

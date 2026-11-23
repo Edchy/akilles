@@ -81,7 +81,7 @@ import { feelWeight, firstWeight, type Feel, type Lifter } from "@/lib/start-wei
 import { BODYWEIGHT, GYM, fits, nearestWeight, TWIN, weightsFor, type Kit } from "@/data/kit";
 import { FALL_BACK, fitOf, pick, STAND_IN, type Candidate } from "@/lib/fill";
 import { avoidFor, EXTRAS, SHAPES, type Easy, type Shape, type Time } from "@/data/templates";
-import { PLAN_IDS, PLAN_NAME, PLANS, type PlanId } from "@/data/plans";
+import { OLD_PPLPPL_DAYS, PLAN_IDS, PLAN_NAME, PLANS, type PlanId } from "@/data/plans";
 import type { Outcome, Say } from "@/data/voice";
 import { familyOf, type Family } from "@/data/families";
 import { chainFor, type Chain } from "@/data/chains";
@@ -1645,9 +1645,13 @@ export const viewLoop = (state: SessionState, id: string): SessionState => {
     postponed: b.postponed,
     removedWorkouts: b.removedWorkouts ?? [],
     planOrder: b.planOrder,
-    loops: state.loops.map((l) =>
-      l.id === id ? { id: l.id, name: l.name } : l.id === current ? { ...l, body: bodyOf(state) } : l,
-    ),
+    // The plan coming in leaves its body behind and keeps its kit.
+    loops: state.loops.map((l) => {
+      if (l.id === current) return { ...l, body: bodyOf(state) };
+      if (l.id !== id) return l;
+      const { body: _body, ...rest } = l;
+      return rest;
+    }),
   };
 };
 
@@ -1677,7 +1681,11 @@ export const switchLoop = (state: SessionState, id: string): SessionState => {
   if (s === state) return state;
   const workouts = planWorkouts(s);
   const lifts = new Set(workouts.flatMap((w) => w.exercises.flatMap((e) => e.options)));
-  const routines = new Set(workouts.flatMap((w) => [w.warmup, w.mobility].filter((r): r is string => !!r)));
+  const routines = new Set(
+    workouts.flatMap((w) =>
+      [w.warmup, w.mobility, ...(w.extras ?? []).map((x) => x.routine)].filter((r): r is string => !!r),
+    ),
+  );
   return {
     ...s,
     hidden: s.hidden.filter((x) => !lifts.has(x)),
@@ -1766,7 +1774,8 @@ export const everyLoopWorkout = (state: SessionState): Workout[] =>
  */
 export const intoLoops = (state: SessionState): SessionState => {
   if (state.loops) return state;
-  const of = (plan: PlanId) => new Set(PLANS[plan].map((w) => w.id));
+  // The advanced plan as it was then: six days, not today's three.
+  const of = (plan: PlanId) => new Set(plan === "pplppl" ? OLD_PPLPPL_DAYS : PLANS[plan].map((w) => w.id));
   const running = state.workouts.map((w) => w.id);
   const current: PlanId = running.length > 0 && running.every((id) => of("pplppl").has(id)) ? "pplppl" : "ppl";
   const other: PlanId = current === "ppl" ? "pplppl" : "ppl";

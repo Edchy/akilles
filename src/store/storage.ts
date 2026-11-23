@@ -46,12 +46,15 @@ import {
   type Scheme,
   type Workout,
 } from "@/data/split";
+import { OLD_PPLPPL_DAYS, OLD_PPLPPL_NAME, PLAN_NAME, PLANS } from "@/data/plans";
 import { HOLD_MAX, schemeOf, type ExerciseState } from "@/lib/progression";
 import {
   CARDIO_SLOTS,
   correctTreadmillTarget,
   foldLoops,
   intoLoops,
+  inLoop,
+  loopInUse,
   cardioKey,
   courseKey,
   CONDITIONING_ID,
@@ -225,7 +228,8 @@ export const keepAside = async (state: SessionState): Promise<void> => {
 // 24: the handstand and its steps start in the library — see `HANDSTAND_IDS`.
 // 25: the first lift of each PPLPPL day is three sets, like the rest, not four —
 //     see `toThreeSets`.
-const VERSION = 25;
+// 26: PPLPPL becomes Push, pull, legs, advanced: three days, not six — see `toAdvanced`.
+const VERSION = 26;
 
 /**
  * Version 14: lifts for training away from a gym. They start in the library
@@ -771,14 +775,12 @@ export const fromSaved = (raw: string): SessionState | Unreadable => {
       migrated.hidden = [...migrated.hidden, ...HANDSTAND_IDS.filter((id) => !LEAN.includes(id) && !migrated.hidden.includes(id))];
     }
     if (saved.version < 25) migrated = toThreeSets(migrated);
+    if (saved.version < 26) migrated = toAdvanced(migrated);
     return correctTreadmillTarget(saved.version < 17 ? { ...migrated, treadmillTargetRevision: undefined } : migrated);
   } catch {
     return "invalid";
   }
 };
-
-/** The PPLPPL plan's six days. */
-const PPLPPL_DAYS = ["push_a", "pull_a", "legs_a", "push_b", "pull_b", "legs_b"];
 
 /**
  * Version 25: the first lift of each PPLPPL day shipped with four sets; it
@@ -791,7 +793,7 @@ export const toThreeSets = (state: SessionState): SessionState => {
   const fix = (workouts: Workout[]): Workout[] =>
     workouts.map((w) => {
       const first = w.exercises[0];
-      if (!PPLPPL_DAYS.includes(w.id) || first?.sets !== 4) return w;
+      if (!OLD_PPLPPL_DAYS.includes(w.id) || first?.sets !== 4) return w;
       const { sets: _four, ...rest } = first;
       return { ...w, exercises: [rest, ...w.exercises.slice(1)] };
     });
@@ -800,6 +802,49 @@ export const toThreeSets = (state: SessionState): SessionState => {
     workouts: fix(state.workouts),
     ...(state.loops
       ? { loops: state.loops.map((l) => (l.body ? { ...l, body: { ...l.body, workouts: fix(l.body.workouts) } } : l)) }
+      : {}),
+  };
+};
+
+/**
+ * Version 26: the six PPLPPL days become the three of Push, pull, legs,
+ * advanced. What comes next is the same kind of day — after a Pull, Legs —
+ * and workouts of your own in the plan stay where they are. Swaps made on
+ * the second-version days go with them; the first-version days keep their
+ * ids, so swaps made there stay. Weights carry over: they belong to the
+ * lift, not the plan. The old name becomes the new one; a name of your own
+ * stays. A workout in progress keeps what it started with.
+ */
+export const toAdvanced = (state: SessionState): SessionState => {
+  if (!state.loops?.some((l) => l.id === "pplppl")) return state;
+  const old = new Set(OLD_PPLPPL_DAYS);
+  const fresh = PLANS.pplppl;
+  const sameDay = (id: string) => fresh.find((w) => w.id.split("_")[0] === id.split("_")[0])?.id;
+  const rebuilt = inLoop(state, "pplppl", (s) => ({
+    ...s,
+    workouts: [...fresh, ...s.workouts.filter((w) => !old.has(w.id))],
+    nextWorkout: old.has(s.nextWorkout) ? (sameDay(s.nextWorkout) ?? fresh[0].id) : s.nextWorkout,
+    workoutQueue: undefined,
+    postponed: undefined,
+    removedWorkouts: s.removedWorkouts.filter((r) => !old.has(r.workout.id)),
+    planOrder: undefined,
+  }));
+  const gone = new Set(OLD_PPLPPL_DAYS.filter((id) => !fresh.some((w) => w.id === id)));
+  const inUse = loopInUse(state) === "pplppl";
+  const lifts = new Set(fresh.flatMap((w) => w.exercises.flatMap((e) => e.options)));
+  const routines = new Set(fresh.flatMap((w) => (w.extras ?? []).map((x) => x.routine)));
+  return {
+    ...rebuilt,
+    loops: rebuilt.loops!.map((l) =>
+      l.id === "pplppl" && l.name === OLD_PPLPPL_NAME ? { ...l, name: PLAN_NAME.pplppl } : l,
+    ),
+    choices: Object.fromEntries(Object.entries(rebuilt.choices).filter(([k]) => !gone.has(k.split("/")[0]))),
+    goals: rebuilt.goals.map((g) => ({ ...g, workouts: g.workouts.filter((w) => !gone.has(w)) })),
+    ...(inUse
+      ? {
+          hidden: rebuilt.hidden.filter((id) => !lifts.has(id)),
+          hiddenConditioning: rebuilt.hiddenConditioning.filter((id) => !routines.has(id)),
+        }
       : {}),
   };
 };

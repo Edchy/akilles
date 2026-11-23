@@ -194,8 +194,8 @@ test("a workout can get a copy of its routine, leaving the others alone", () => 
   assert.equal(store.mobilityPlan(state, workout(state, "legs")).moves.length, 7);
   assert.equal(store.mobilityPlan(state, workout(state, "push")).moves.length, 6);
   assert.deepEqual(plain(store.workoutsUsing(state, "m_legs").map((w) => w.id)), ["legs"]);
-  // Push and Pull here, and the six PPLPPL days waiting: the everyday stretch ends them all.
-  assert.equal(store.workoutsUsing(state, "everyday").length, 8);
+  // Push and Pull here, and the three advanced days waiting: the everyday stretch ends them all.
+  assert.equal(store.workoutsUsing(state, "everyday").length, 5);
 });
 
 test("a removed machine falls back, and comes back when restored", () => {
