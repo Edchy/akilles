@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { View } from "react-native";
 import Svg, { Circle, G, Path, Polygon, Rect } from "react-native-svg";
 
-import { CONCRETE_MARK, FAMILY, MARK_EDGE, mix, POSTER_COLOUR, POSTER_INK, worn } from "@/constants/theme";
+import { CLAY_TONE, FAMILY, MARK_EDGE, mix } from "@/constants/theme";
 import type { Family } from "@/data/families";
 
 /**
@@ -31,15 +31,13 @@ export function Mark({
 }) {
   const { mark } = FAMILY[family];
   const edged = MARK_EDGE && !plain;
-  // Strong family fills stay distinct against the softer coloured cards.
-  // Poster: the family's flat colour in a heavy black line.
-  // Concrete: the family's colour, in a fine line a shade darker.
-  const c = edged ? (worn.poster ? POSTER_COLOUR[family].card : worn.concrete ? CONCRETE_MARK[family] : mark) : (color ?? mark);
-  // The edge stays about one point at any size (Poster: about two); the
-  // shape draws in by half of it, so the edge is never cut off at the frame.
-  const edge = edged ? Math.max(1, size / (worn.poster ? 10 : 24)) * (48 / size) : 0;
+  // A little lump of the family's clay, in a fine line a shade darker.
+  const c = edged ? CLAY_TONE[family].card : (color ?? mark);
+  // The edge stays about one point at any size; the shape draws in by half
+  // of it, so the edge is never cut off at the frame.
+  const edge = edged ? Math.max(1, size / 24) * (48 / size) : 0;
   const k = (48 - edge) / 48;
-  const paint = { fill: c, stroke: edged ? (worn.poster ? POSTER_INK : worn.concrete ? mix(CONCRETE_MARK[family], "#000000", 0.3) : mark) : undefined, strokeWidth: edge || undefined, strokeLinejoin: "round" as const };
+  const paint = { fill: c, stroke: edged ? mix(CLAY_TONE[family].card, CLAY_TONE[family].ink, 0.45) : undefined, strokeWidth: edge || undefined, strokeLinejoin: "round" as const };
 
   let shape: ReactNode;
   switch (family) {

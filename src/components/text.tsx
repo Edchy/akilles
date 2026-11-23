@@ -8,33 +8,21 @@ import {
   type TextStyle,
 } from "react-native";
 
-import { fonts, headlineOf, worn } from "@/constants/theme";
+import { LINE } from "@/constants/font-lines";
+import { fonts } from "@/constants/theme";
 import { noOrphan } from "@/lib/typography";
 
 /**
- * Every word in the app is EB Garamond, but for the interface — see `ui`
- * below, and `fonts.ui`. These stand in for React Native's
- * `Text` and `TextInput` so that an ordinary `fontWeight` or `fontStyle`
- * picks the matching Garamond file — custom faces ignore `fontWeight` on
- * iOS, and on the web a weight on top of a named file is a faked bold.
- *
- * Garamond sets small for its size (a short x-height), and the sizes across
- * the app were chosen for the system face, so a size given here is scaled up
- * to read the same. A style that names its own `fontFamily` is taken as
- * meant: drawn at exactly the size written, which is how the lift screen,
- * set straight from its comp, specifies everything.
+ * Every word in the app is M PLUS Rounded, but for names and headings, which
+ * name Bebas Neue (`fonts.display`) themselves. These stand in for React
+ * Native's `Text` and `TextInput` so that an ordinary `fontWeight` picks the
+ * matching file — custom faces ignore `fontWeight` on iOS, and on the web a
+ * weight on top of a named file is a faked bold. A style that names its own
+ * `fontFamily` is taken as meant.
  */
 
 type Face = { weight: TextStyle["fontWeight"]; italic: boolean; ui: boolean };
 
-/**
- * How much larger than written a size is drawn: Garamond's lift, unless the
- * style names its own face (drawn as written) or it's the interface face.
- */
-export function drawnScale(style: TextProps["style"], ui?: boolean): number {
-  const flat = (StyleSheet.flatten(style) ?? {}) as TextStyle;
-  return flat.fontFamily || ui ? 1 : worn.fontScale;
-}
 
 /** What a nested `Text` inherits when it says nothing about weight or slant. */
 const Parent = createContext<Face | null>(null);
@@ -50,7 +38,7 @@ function familyFor({ weight, italic, ui }: Face): string {
     return fonts.ui;
   }
   // A step lighter than asked: the app's labels were set heavy for the
-  // system face, and Garamond's bold weights are heavy for small text.
+  // system face, and the rounded face's boldest weights are heavy for small text.
   if (w >= 900) return italic ? fonts.semiboldItalic : fonts.bold;
   if (w >= 700) return italic ? fonts.semiboldItalic : fonts.semibold;
   if (w >= 500) return italic ? fonts.mediumItalic : fonts.medium;
@@ -63,16 +51,15 @@ function serif(
   ui?: boolean,
 ): { style: TextProps["style"]; face: Face | null } {
   const flat = (StyleSheet.flatten(style) ?? {}) as TextStyle;
-  // Garamond's own figures are old-style, rising and falling like lowercase:
-  // lovely in a sentence, unsteady in a weight or a rep count. Every number
-  // in the app is data, so figures stand at cap height unless asked.
+  // Every number in the app is data, so figures stand at cap height unless
+  // asked otherwise (a face with old-style figures would let them wander).
   const variant = flat.fontVariant ?? [];
   const lining: TextStyle | null = variant.includes("oldstyle-nums") || variant.includes("lining-nums")
     ? null
     : { fontVariant: [...variant, "lining-nums"] };
   if (flat.fontFamily) {
-    const tall = worn.poster && flat.fontFamily === fonts.display ? headlineSize(flat) : null;
-    return { style: lining || tall ? [style, lining, tall] : style, face: null };
+    const room = roomAbove(flat);
+    return { style: lining || room ? [style, lining, room] : style, face: null };
   }
 
   const said = flat.fontWeight !== undefined || flat.fontStyle !== undefined;
@@ -88,43 +75,26 @@ function serif(
     extra.fontWeight = "normal";
     extra.fontStyle = "normal";
   }
-  // Atkinson reads full size as written; only Garamond needs the lift.
-  const scale = face.ui ? 1 : worn.fontScale;
-  if (typeof flat.fontSize === "number") extra.fontSize = Math.round(flat.fontSize * scale * 2) / 2;
-  if (typeof flat.lineHeight === "number") extra.lineHeight = Math.round(flat.lineHeight * scale);
-  return { style: [style, extra], face };
+  const room = roomAbove({ ...flat, ...extra });
+  return { style: [style, extra, room], face };
 }
 
 /**
- * A Poster headline, sized for its face (see `HEADLINES`): scaled so its
- * capitals stand as tall as Anton's would. And a tall face given a line
- * shorter than its own is cut off at the top on iOS, which keeps the foot of
- * the letters — so it gets its whole line, and the margins give back the
- * difference, half above and half below, so it takes the room written.
+ * A line too short for its font, given the height the font needs (see
+ * `LINE`): iOS keeps the foot of the line and cuts off whatever rises above
+ * it — the tops of a 7.5 in a rounded face, set on a line exactly its size. The extra
+ * height is all taken back above, by the top margin, so the baseline and
+ * everything around it stay exactly where they were.
  */
-function headlineSize(flat: TextStyle): TextStyle | null {
-  if (typeof flat.fontSize !== "number") return null;
-  const face = headlineOf(worn.headline);
-  const size = Math.round(flat.fontSize * face.scale);
-  if (typeof flat.lineHeight !== "number") return face.scale === 1 ? null : { fontSize: size };
-  const written = Math.round(flat.lineHeight * face.scale);
-  const whole = Math.ceil(size * face.height);
-  if (written >= whole) return { fontSize: size, lineHeight: written };
-  const back = (whole - written) / 2;
-  const at = (side: TextStyle["marginTop"]) => (typeof side === "number" ? side : 0) - back;
-  return {
-    fontSize: size,
-    lineHeight: whole,
-    marginTop: at(flat.marginTop ?? flat.marginVertical ?? flat.margin),
-    marginBottom: at(flat.marginBottom ?? flat.marginVertical ?? flat.margin),
-  };
-}
-
-/** Every plain string in a run of text, in capitals. */
-function upper(children: ReactNode): ReactNode {
-  if (typeof children === "string") return children.toUpperCase();
-  if (Array.isArray(children)) return children.map((c) => (typeof c === "string" ? c.toUpperCase() : c));
-  return children;
+function roomAbove(flat: TextStyle): TextStyle | null {
+  const { fontFamily, fontSize, lineHeight } = flat;
+  if (!fontFamily || typeof fontSize !== "number" || typeof lineHeight !== "number") return null;
+  const need = LINE[fontFamily];
+  if (!need) return null;
+  const whole = Math.ceil(fontSize * need);
+  if (lineHeight >= whole) return null;
+  const top = flat.marginTop ?? flat.marginVertical ?? flat.margin;
+  return { lineHeight: whole, marginTop: (typeof top === "number" ? top : 0) - (whole - lineHeight) };
 }
 
 /**
@@ -161,8 +131,7 @@ export const Text = forwardRef<NativeText, TextProps & { ui?: boolean; name?: bo
   // themselves are capitalised, not the style: a `textTransform` is measured
   // before it is applied, so wider capitals overrun their line and are cut.
   const flat = (StyleSheet.flatten(style) ?? {}) as TextStyle;
-  const cased = worn.poster && flat.fontFamily === fonts.display ? upper(children) : children;
-  const text = name ? cased : settle(cased);
+  const text = name ? children : settle(children);
   return (
     <NativeText ref={ref} style={next} {...rest}>
       {face ? <Parent.Provider value={face}>{text}</Parent.Provider> : text}

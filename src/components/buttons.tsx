@@ -5,7 +5,7 @@ import { Pressable, View } from "react-native";
 import { Icon, type IconName } from "@/components/icon";
 import { Text } from "@/components/text";
 import { duration, PRESS_SCALE, spring } from "@/constants/motion";
-import { colors, PAPER, radii } from "@/constants/theme";
+import { colors, radii } from "@/constants/theme";
 
 /**
  * Every button in the app, by what it does — so the same kind of action
@@ -69,7 +69,7 @@ export function Button({
   const reduce = useReduceMotion();
   // On paper the main button is the day's colour, flat, so it says which
   // day it is; with no day it is plain ink.
-  const inked = PAPER && kind === "primary" && !on && !disabled;
+  const inked = kind === "primary" && !on && !disabled;
   const scale = useSharedValue(1);
   const feedback = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
   const press = () => {

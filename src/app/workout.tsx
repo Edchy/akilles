@@ -67,8 +67,10 @@ import { GestureHint } from "@/components/hint";
 import { ClayStretch, hasClay } from "@/components/clay";
 import { GoalSheet, Pips, hasTutorial, openTutorial } from "@/components/goals";
 import { BigButton, Sheet, TextButton } from "@/components/sheet";
-import { CLAY_CARD, CONCRETE, colors, colors as paper, FAMILY, fieldColors, fieldIsDark, fonts, DUSK, LETTERPRESS, mix, PAPER, POSTER_INK, radii, worn, POSTER_EDGE } from "@/constants/theme";
-import { ClayGround, DuskGround, PosterFrame, PosterGround } from "@/components/dusk";
+import { CLAY_CARD, CLAY_LOOK, colors, colors as paper, FAMILY, fieldColors, fonts, mix, radii } from "@/constants/theme";
+import { GearIcon, gearOf, type Pictured } from "@/components/gear-icon";
+import { fullName } from "@/lib/exercise-name";
+import { ClayGround } from "@/components/clay-ground";
 import { Fit } from "@/components/fit";
 import { FitText, WholeText } from "@/components/fit-text";
 import { grain } from "@/constants/grain";
@@ -127,6 +129,7 @@ import {
   nextAfterSession,
   nextTime,
   asksFeel,
+  willAskFeel,
   setFeel,
   sessionNoteFor as noteFor,
   sessionTally,
@@ -346,6 +349,13 @@ function StepsSheet({ visible, chain, at, onClose, onStep }: {
 const UNIT_BELOW = true;
 const UNIT_ROOM = 40;
 
+/**
+ * The room under the circles on a lift that asks how it felt: the question,
+ * its answers, and next time's weight under them once answered — kept from
+ * the start, so nothing moves as they come.
+ */
+const FEEL_ROOM = 26 + 10 + 44 + 10 + 24;
+
 const LAYOUT = {
   solo: { name: 36, weight: 52, number: 96, sets: 48, under: 84, underGap: 28 },
   // On its own, with more under the circles — the feel question and its
@@ -383,7 +393,7 @@ const CIRCLES = {
  * deck's width; let go past `away` of the way, or flicked faster than
  * `flick` points a second, and it goes — sooner, and it comes back.
  */
-const DECK = { side: 14, peek: 13, shrink: 0.045, corner: 14, travel: 0.8, away: 0.28, flick: 600, shade: 0.07 };
+const DECK = { side: 14, peek: 10, shrink: 0.045, corner: 14, travel: 0.8, away: 0.28, flick: 600, shade: 0.07 };
 /** How the deck comes to rest on a card: quick, and without a wobble. */
 const SETTLE = { damping: 26, stiffness: 260, mass: 1 };
 
@@ -431,7 +441,9 @@ function Deck() {
   const [shut, setShut] = useState(0);
   const deckTop = shut + MENU.gap;
   const room = { width: stage.width, height: Math.max(0, stage.height - deckTop) };
-  const foot = Math.max(insets.bottom, 12);
+  // The deck runs down close to the home bar, never onto it, so the cards
+  // have the screen's height.
+  const foot = Math.max(insets.bottom - 16, 10);
   const cardHeight = Math.max(0, room.height - foot - 2 * DECK.peek);
   /** How far the workout card grows, and the deck goes down, when they swap. */
   const shift = Math.max(0, stage.height - MENU.strip - deckTop);
@@ -647,7 +659,7 @@ function Deck() {
         setDismissed(showing);
         if (!isHint(showing)) setState((s) => seeTip(s, showing));
       }}
-      style={{ flex: 1, overflow: "hidden", backgroundColor: PAPER ? colors.surface : colors.bg, paddingTop: insets.top + 4 }}
+      style={{ flex: 1, overflow: "hidden", backgroundColor: colors.surface, paddingTop: insets.top + 4 }}
     >
       <StatusBar style="dark" />
       <GestureDetector gesture={Gesture.Race(pan, pull)}>
@@ -761,14 +773,13 @@ function DeckCard({
 }>) {
   const { state } = useSession();
   const item = state.active?.items[index];
-  const edge = item ? fieldColors(itemFamily(item)).text : paper.text;
-  // Letterpress: the card is its own colour all the way to the edge, so the
-  // smoothed pixels of a rounded or tilted edge never show white through.
+  // The card is its own colour all the way to the edge, so the smoothed
+  // pixels of a rounded or tilted edge never show white through.
   // The last card, the end, is in the workout's own colour.
   const family = item ? itemFamily(item) : state.active ? workoutFamily(state, currentWorkout(state)) : null;
-  // The mobility card is white, the clay pictures' own, not dusk (see `CLAY_CARD`).
+  // The mobility card is white, the clay pictures' own (see `CLAY_CARD`).
   const clay = family === "mobility";
-  const ground = clay ? CLAY_CARD.top : family && worn.dusk ? DUSK[family].foot : LETTERPRESS && family ? fieldColors(family).bg : null;
+  const ground = clay ? CLAY_CARD.top : family ? fieldColors(family).bg : null;
   // How much each side is trimmed this far down the deck.
   const trimAt = (down: number) => {
     "worklet";
@@ -835,35 +846,19 @@ function DeckCard({
           right: DECK.side,
           height,
           overflow: "hidden",
-          borderRadius: worn.concrete ? CONCRETE.corner : DECK.corner,
+          borderRadius: CLAY_LOOK.corner,
           borderCurve: "continuous",
-          backgroundColor: ground ?? (PAPER ? colors.bg : colors.surface),
-          // Concrete: white cards, each floating on a soft shadow.
-          boxShadow: worn.concrete ? CONCRETE.shadow : undefined,
+          backgroundColor: ground ?? colors.bg,
+          // A puffy lump of clay: no line round it, its own light and shadow
+          // are its edge.
+          boxShadow: CLAY_LOOK.puff,
           pointerEvents: onTop ? "auto" : "none",
-          // Each card's edge, so the deck reads as cards and the feet of the
-          // ones underneath show: an ink line on paper, or a line of the
-          // ground between coloured cards.
-          // Letterpress: no ink line, just the card stock's own darker edge.
-          // Poster: no border; its frame is laid over the top (see `PosterFrame`).
-          // The stretch card too: framed as every card of the look, told apart by its white.
-          borderWidth: worn.poster ? 0 : LETTERPRESS ? 1 : PAPER ? 2 : 1.5,
-          // Solid, a shade under the card: a see-through edge picks up whatever is behind it.
-          borderColor: worn.poster ? POSTER_INK : worn.concrete ? CONCRETE.edge : clay ? mix(CLAY_CARD.foot, "#000000", 0.12) : family && worn.dusk ? mix(DUSK[family].top, "#000000", 0.35) : ground ? mix(ground, "#000000", 0.28) : edge,
         },
         style,
       ]}
     >
-      {clay ? <ClayGround /> : family && worn.poster ? <PosterGround family={family} shape={height * 0.62} at="foot" /> : family && worn.dusk ? <DuskGround family={family} /> : null}
+      {clay ? <ClayGround /> : null}
       <Reanimated.View style={[{ position: "absolute", top: 0, bottom: 0 }, inner]}>{children}</Reanimated.View>
-      {/* The paper's grain, over everything, so the words look pressed into it. */}
-      {worn.poster && family ? <PosterFrame radius={DECK.corner} /> : null}
-      {LETTERPRESS && !worn.dusk && !worn.poster && !worn.concrete ? (
-        // Never takes a touch: it lies over the whole card.
-        <View pointerEvents="none" style={StyleSheet.absoluteFill}>
-          <Image source={grain()} resizeMode="repeat" style={{ width: "100%", height: "100%", opacity: 0.14 }} />
-        </View>
-      ) : null}
       <Reanimated.View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: "#000000" }, shade]} />
     </Reanimated.View>
   );
@@ -1032,7 +1027,7 @@ function DeckTrack() {
  * The two cards' sizes: the room between them, and how much of the deck
  * still shows, as a strip at the foot, while the workout card is big.
  */
-const MENU = { gap: 14, strip: 92 } as const;
+const MENU = { gap: 10, strip: 92 } as const;
 
 /**
  * The workout card, above the deck: small, it is the workout's name, how
@@ -1120,14 +1115,12 @@ function WorkoutCard({
           left: DECK.side,
           right: DECK.side,
           overflow: "hidden",
-          borderRadius: worn.concrete ? CONCRETE.corner : DECK.corner,
+          borderRadius: CLAY_LOOK.corner,
           borderCurve: "continuous",
           // Off the white, plainly: its own card, not part of the page.
           backgroundColor: colors.panel,
-          // Edged as the look edges its cards, so it sits with the deck under it.
-          borderWidth: worn.poster ? POSTER_EDGE : worn.concrete ? 1 : 1.5,
-          borderColor: worn.poster ? POSTER_INK : worn.concrete ? CONCRETE.edge : colors.panelEdge,
-          boxShadow: worn.concrete ? CONCRETE.shadow : undefined,
+          // A bump of clay, like the deck under it.
+          boxShadow: CLAY_LOOK.bump,
         },
         grown,
       ]}
@@ -1138,7 +1131,8 @@ function WorkoutCard({
         accessibilityLabel={`${currentWorkout(state).name}. ${done} of ${active.items.length} cards done. ${open ? "Close the list" : "Show every card"}`}
         onPress={onToggle}
         onLayout={(e) => onShut(e.nativeEvent.layout.height)}
-        style={({ pressed }) => ({ gap: 8, paddingTop: 14, paddingBottom: 24, paddingHorizontal: 18, opacity: pressed ? 0.7 : 1 })}
+        // Kept close, so the cards under it have the room.
+        style={({ pressed }) => ({ gap: 4, paddingTop: 10, paddingBottom: 18, paddingHorizontal: 18, opacity: pressed ? 0.7 : 1 })}
       >
         <View style={{ flexDirection: "row", alignItems: "center", gap: 10, height: 30 }}>
           <Text numberOfLines={1} style={{ flex: 1, color: colors.text, fontFamily: fonts.medium, fontSize: 21 }}>
@@ -1277,7 +1271,7 @@ function WorkoutCard({
       <View
         style={{
           position: "absolute",
-          bottom: 9,
+          bottom: 6,
           alignSelf: "center",
           width: 40,
           height: 5,
@@ -1401,7 +1395,9 @@ function StepBody() {
   const partner = item.supersetWith ? byId(item.supersetWith) : undefined;
   // The partner keeps its own scheme, set count and set log when folded in.
   const partnerP = partnerPrescription(state);
-  const L = partner ? LAYOUT.paired : asksFeel(state) || tightened ? LAYOUT.tight : LAYOUT.solo;
+  // A lift that will ask how it felt is drawn tight from its first set, so the
+  // question arriving changes nothing else on the card.
+  const L = partner ? LAYOUT.paired : willAskFeel(state) || tightened ? LAYOUT.tight : LAYOUT.solo;
 
   const warmup = currentWarmup(state);
   // Always offered — the library is in reach, so there is something to swap
@@ -1524,6 +1520,7 @@ function StepBody() {
         <LiftTitle
           family={family}
           name={p.exercise.name}
+          gear={gearOf(p.exercise)}
           onMore={openMenu}
           style={{ marginTop: L.name }}
         >
@@ -1659,7 +1656,7 @@ function StepBody() {
         {/* At least this tall, so a line arriving moves nothing — but never
             capped: a two-line remark and the next-time line under it must
             both show in full, never clipped. */}
-        <View style={{ minHeight: L.under, marginTop: L.underGap }}>
+        <View style={{ minHeight: !partner && willAskFeel(state) ? FEEL_ROOM : L.under, marginTop: L.underGap }}>
           <Why
             prescription={p}
             result={logged ? result : null}
@@ -1841,7 +1838,7 @@ function OnField({
   const onCard = useOnCard();
   return (
     <Field family={family}>
-      {onCard ? null : <StatusBar style={fieldIsDark(family) ? "light" : "dark"} />}
+      {onCard ? null : <StatusBar style="dark" />}
       <SendOff.Provider value={sendOff}>{children}</SendOff.Provider>
     </Field>
   );
@@ -1906,21 +1903,33 @@ function Header({ showRest = false }: { showRest?: boolean }) {
   );
 }
 
+/** A name on a card, in Bebas. */
+const TITLE_SIZE = 44;
+/** The gear's icon at the start of a card's title row. */
+const GEAR_ICON = 30;
+/** The round ⋯ button in the card's top-right corner. */
+const MORE_BUTTON = 44;
+
 /**
- * The lift's name, centred over the number and circles below it: the
- * family's shape, the name — a long one ends in an ellipsis rather than
- * wrapping — and ⋯ for everything else about the lift. Under it, whatever
- * applies (a word in italics, your note).
+ * The lift's name, centred over the number and circles below it. On a card:
+ * one row: the gear's icon, the name in the display face — "DB", "KB" and
+ * "BB" kept, so a dumbbell bench and a barbell bench stay two lifts — and a
+ * round ⋯ button, the one way into the menu. Off a card, one button: the
+ * shape, the name and ⋯.
+ * Under it, whatever applies (a word in italics, your note).
  */
 function LiftTitle({
   family,
   name,
+  gear = null,
   onMore,
   style,
   children,
 }: PropsWithChildren<{
   family: Family;
   name: string;
+  /** The gear shown at the start of the row on a card. */
+  gear?: Pictured | null;
   /** Opens the menu under the ⋯, which is handed over to anchor it. */
   onMore: (button: View) => void;
   style?: ViewStyle;
@@ -1929,42 +1938,54 @@ function LiftTitle({
   const more = useRef<View>(null);
   const onCard = useOnCard();
   if (onCard) {
-    // On a card: one button, the whole title — its shape beside the name,
-    // in the card's own ink, and ⋯ at the end saying a tap opens more. Always
-    // one line: a long name comes down in size to fit rather than breaking
-    // after its first word, and the card's height never changes.
+    // One row, on one centre line: the gear, the name, the ⋯. The gear's
+    // place is kept even when there is none, so the name stays centred.
+    // The name is always whole: a long one comes down in size, then takes
+    // two lines, and the card's height never changes.
     return (
       <View style={style}>
-        <Pressable
-          ref={more}
-          accessibilityRole="button"
-          accessibilityLabel={name}
-          accessibilityHint="Opens more for this exercise."
-          onPress={() => more.current && onMore(more.current)}
-          style={({ pressed }) => ({
-            minHeight: 52,
-            flexDirection: "row",
-            alignItems: "center",
-            justifyContent: "center",
-            gap: 10,
-            paddingHorizontal: 12,
-            borderRadius: radii.card,
-            borderCurve: "continuous",
-            backgroundColor: pressed ? colors.surface : "transparent",
-          })}
-        >
-          <Mark family={family} size={22} color={colors.text} />
-          {/* Never cut: it comes down in size, then takes two lines (see `WholeText`).
-              Poster sets it in its condensed headline face. */}
-          <WholeText
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+          <View style={{ width: MORE_BUTTON, height: MORE_BUTTON, alignItems: "center", justifyContent: "center" }}>
+            {gear ? <GearIcon gear={gear} size={GEAR_ICON} color={colors.text} /> : null}
+          </View>
+          {/* Bebas's capitals sit high in its line (ascent 0.9, descent 0.3,
+              capitals 0.7 of its size): on its own full line, with the
+              capitals' middle brought down by the 0.05 they sit above it,
+              they line up with the gear and the ⋯. */}
+          <View
+            accessible
             accessibilityRole="header"
-            least={0.75}
-            style={{ flexShrink: 1, textAlign: "center", color: colors.text, fontFamily: worn.poster ? fonts.display : fonts.medium, fontSize: 34, lineHeight: 40 }}
+            accessibilityLabel={fullName(name)}
+            style={{ flex: 1, marginTop: TITLE_SIZE * 0.05, marginBottom: -TITLE_SIZE * 0.05 }}
           >
-            {name}
-          </WholeText>
-          <Icon name="more" size={20} color={colors.text} />
-        </Pressable>
+            <WholeText
+              least={0.75}
+              style={{ textAlign: "center", color: colors.text, fontFamily: fonts.display, fontSize: TITLE_SIZE, lineHeight: Math.round(TITLE_SIZE * 1.2) }}
+            >
+              {name}
+            </WholeText>
+          </View>
+          {/* A little bump of cream clay, the one way into the menu; pressed, it gives in. */}
+          <Pressable
+            ref={more}
+            accessibilityRole="button"
+            accessibilityLabel={`More for ${name}`}
+            accessibilityHint="How to do it, swap it, a note and more."
+            hitSlop={8}
+            onPress={() => more.current && onMore(more.current)}
+            style={({ pressed }) => ({
+              width: MORE_BUTTON,
+              height: MORE_BUTTON,
+              borderRadius: MORE_BUTTON / 2,
+              alignItems: "center",
+              justifyContent: "center",
+              backgroundColor: pressed ? colors.raised : CLAY_LOOK.well,
+              boxShadow: pressed ? CLAY_LOOK.dent : CLAY_LOOK.bump,
+            })}
+          >
+            <Icon name="more" size={20} color={colors.text} />
+          </Pressable>
+        </View>
         {children}
       </View>
     );
@@ -1987,7 +2008,7 @@ function LiftTitle({
             flexShrink: 1,
             textAlign: "center",
             color: colors.text,
-            fontFamily: worn.poster ? fonts.display : fonts.medium,
+            fontFamily: fonts.display,
             fontSize: 27,
             lineHeight: 33,
           }}
@@ -2212,8 +2233,8 @@ function Underline({
             position: "absolute",
             left: 0,
             right: 0,
-            // Garamond's figures stand almost on the bottom of the line:
-            // this puts the line a small gap under them.
+            // The figures stand almost on the bottom of the line: this puts
+            // the line a small gap under them.
             bottom: -Math.round(size * 0.07),
             flexDirection: "row",
             justifyContent: "space-between",
@@ -3733,11 +3754,6 @@ function Sets({
         const zero = filled && reps === 0;
         const shown = running ? (ready ? Math.ceil(-clock.at) : Math.floor(clock.at)) : filled ? reps : target;
         const at = i * stagger;
-        const swell = wave.interpolate({
-          inputRange: [at, at + 0.06, at + 0.12, at + 0.26, at + 0.4],
-          outputRange: [1, 1.06, 1.09, 1.03, 1],
-          extrapolate: "clamp",
-        });
         const ring = wave.interpolate({
           inputRange: [at, at + 0.55],
           outputRange: [1, 1.55],
@@ -3749,7 +3765,9 @@ function Sets({
           extrapolate: "clamp",
         });
         return (
-          <Animated.View key={i} style={{ transform: [{ scale: swell }] }}>
+          // The ripple runs through the ring of colour round each circle; the
+          // circle itself never swells (a scaled view is drawn rough on iOS).
+          <Animated.View key={i}>
             <SetCircle
               size={size}
               seed={i}
@@ -3789,22 +3807,19 @@ function Sets({
               {running ? <HoldRing size={size} fill={ready ? 0 : clock.at / target} /> : null}
               <Text
                 style={{
-                  // Garamond's figures sit a touch low in a circle: lift them
-                  // to its optical centre.
+                  // The figures sit a touch low in a circle: lift them to its
+                  // optical centre.
                   marginTop: -Math.round(fontSize * 0.08),
-                  // On a stamp the number is knocked out in the card's colour;
-                  // a set well short still has most of it on the bare card.
-                  color: LETTERPRESS
-                    ? filled && !zero && reps / target >= 0.55 ? colors.ink : colors.text
-                    : filled && !zero && !short ? colors.ink : colors.text,
+                  // On a stamp the number is in the ink; a set well short
+                  // still has most of it on the bare clay.
+                  color: filled && !zero && reps / target >= 0.55 ? colors.ink : colors.text,
                   fontFamily: fonts.semibold,
-                  fontSize: short && !zero && !LETTERPRESS ? Math.round(fontSize * 0.78) : seconds ? Math.round(fontSize * 0.92) : fontSize,
+                  fontSize: seconds ? Math.round(fontSize * 0.92) : fontSize,
                   fontVariant: ["lining-nums", "tabular-nums"],
                 }}
               >
                 {shown}
-                {/* Letterpress says a short set by how full the circle is, so just the reps. */}
-                {short && !zero && !LETTERPRESS ? <Text style={{ fontFamily: fonts.semibold, fontSize: Math.round(fontSize * 0.4) }}>/{target}</Text> : null}
+                {/* A short set is said by how full the circle is, so just the reps. */}
                 {seconds && !ready ? (
                   <Text style={{ fontFamily: fonts.semibold, fontSize: Math.round(fontSize * 0.4) }}>
                     {" s"}
@@ -4084,8 +4099,8 @@ function WeightControl({
  */
 function Step({ label, onPress }: { label: "−" | "+"; onPress: () => void }) {
   const colors = useColors();
-  const quiet = LETTERPRESS;
-  const size = quiet ? 38 : 48;
+  // Quiet: a fine ring, not a filled button.
+  const size = 38;
   return (
     <Pressable
       accessibilityRole="button"
@@ -4094,7 +4109,7 @@ function Step({ label, onPress }: { label: "−" | "+"; onPress: () => void }) {
         Haptics.selectionAsync();
         onPress();
       }}
-      hitSlop={quiet ? 9 : 4}
+      hitSlop={9}
       style={({ pressed }) => ({
         width: 48,
         height: 48,
@@ -4110,13 +4125,13 @@ function Step({ label, onPress }: { label: "−" | "+"; onPress: () => void }) {
           alignItems: "center",
           justifyContent: "center",
           borderRadius: 999,
-          backgroundColor: quiet ? "transparent" : colors.surface,
-          borderWidth: quiet ? 1.5 : 0,
+          backgroundColor: "transparent",
+          borderWidth: 1.5,
           borderColor: colors.line,
         }}
       >
-        <View style={{ opacity: quiet ? 0.7 : 1 }}>
-          <Icon name={label === "+" ? "plus" : "minus"} size={quiet ? 16 : 22} color={colors.text} />
+        <View style={{ opacity: 0.7 }}>
+          <Icon name={label === "+" ? "plus" : "minus"} size={16} color={colors.text} />
         </View>
       </View>
     </Pressable>
@@ -4864,7 +4879,7 @@ function EndCard({ left, nothing, quip, facts, onFinish }: {
                     backgroundColor: pressed ? colors.raised : colors.surface,
                   })}
                 >
-                  <Mark family={itemFamily(items[i])} size={18} color={worn.dusk ? DUSK[itemFamily(items[i])].glow : colors.text} plain={worn.dusk} />
+                  <Mark family={itemFamily(items[i])} size={18} color={colors.text} />
                   <WholeText style={{ flex: 1, color: colors.text, fontFamily: fonts.regular, fontSize: 20 }}>
                     {cardName(state, i)}
                   </WholeText>

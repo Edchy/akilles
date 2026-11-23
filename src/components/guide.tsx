@@ -8,6 +8,7 @@ import { hasIllustration, Illustration } from "@/components/illustration";
 import { Sheet } from "@/components/sheet";
 import { colors, fonts, radii } from "@/constants/theme";
 import { guideFor } from "@/data/guides";
+import { fullName } from "@/lib/exercise-name";
 
 /**
  * The ⓘ beside a movement's name, and the sheet it opens: the picture, how to
@@ -77,7 +78,7 @@ export function GuideSheet({
   onClose: () => void;
 }) {
   return (
-    <Sheet visible={visible} title={name} closeLabel="Done" onClose={onClose}>
+    <Sheet visible={visible} title={fullName(name)} closeLabel="Done" onClose={onClose}>
       <Guide id={id} cue={cue} />
     </Sheet>
   );

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { StyleSheet, View, type TextProps, type TextStyle } from "react-native";
 
-import { drawnScale, Text } from "@/components/text";
+import { Text } from "@/components/text";
 
 /**
  * One line of text that comes down in size to fit its room, the same on
@@ -33,14 +33,12 @@ export function FitText({
 
   const flat = (StyleSheet.flatten(style) ?? {}) as TextStyle;
   const size = flat.fontSize ?? 14;
-  // Measurements come back as drawn; sizes go in as written.
-  const k = drawnScale(style, ui);
   const fit = natural && room > 0 ? Math.max(least, Math.min(1, room / natural.width)) : 1;
   // Rounded down to the half point the text component draws at, so the
   // drawn line is never a hair wider than the room.
-  const drawn = fit < 1 ? Math.floor(size * k * fit * 2) / 2 : size * k;
-  const scale = drawn / (size * k);
-  const leading = Math.max((flat.lineHeight ?? 0) * k, natural?.height ?? 0);
+  const drawn = fit < 1 ? Math.floor(size * fit * 2) / 2 : size;
+  const scale = drawn / size;
+  const leading = Math.max(flat.lineHeight ?? 0, natural?.height ?? 0);
 
   const ghost = { ...flat };
   delete ghost.lineHeight;
@@ -53,7 +51,7 @@ export function FitText({
         {...rest}
         ui={ui}
         numberOfLines={1}
-        style={[style, { fontSize: drawn / k }, leading ? { lineHeight: Math.ceil(leading * scale) / k } : null]}
+        style={[style, { fontSize: drawn }, leading ? { lineHeight: Math.ceil(leading * scale) } : null]}
       >
         {children}
       </Text>

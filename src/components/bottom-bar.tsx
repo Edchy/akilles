@@ -8,7 +8,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { Icon, type IconName } from "@/components/icon";
 import { COLUMN } from "@/components/screen";
-import { BAR, colors, FAMILY, fieldColors, fieldIsDark, fonts, radii } from "@/constants/theme";
+import { BAR, colors, FAMILY, fieldColors, fonts, radii } from "@/constants/theme";
 import type { Family } from "@/data/families";
 import { isComplete, itemFamily, useSession } from "@/store/session";
 
@@ -29,21 +29,9 @@ function useGround(): Family | null {
   return item ? itemFamily(item) : null;
 }
 
-/**
- * The bar's words and its pressed fill, matched to what is under the glass:
- * white on the dark fields, navy on the light ones and on white.
- */
+/** The bar's words and its pressed fill: the warm ink, on every ground (none is dark). */
 type Ink = { ink: string; quiet: string; pressed: string };
 const WHITE_INK: Ink = { ink: colors.text, quiet: colors.muted, pressed: colors.surface };
-const inkFor = (ground: Family | null): Ink => {
-  if (!ground || !fieldIsDark(ground)) return WHITE_INK;
-  const on = FAMILY[ground].dark ? colors.white : colors.text;
-  return {
-    ink: on,
-    quiet: on,
-    pressed: FAMILY[ground].dark ? "rgba(255, 255, 255, 0.18)" : "rgba(19, 50, 91, 0.10)",
-  };
-};
 const InkContext = createContext<Ink>(WHITE_INK);
 
 /** How far the capsule floats above the bottom edge of the screen. */
@@ -77,8 +65,7 @@ export function useBarSpace() {
 export function BottomBar({ children }: PropsWithChildren) {
   const bottom = useBarBottom();
   const ground = useGround();
-  const ink = inkFor(ground);
-  const dark = !!ground && fieldIsDark(ground);
+  const ink = WHITE_INK;
 
   const capsule: ViewStyle = {
     width: "100%",
@@ -104,7 +91,7 @@ export function BottomBar({ children }: PropsWithChildren) {
         {GLASS ? (
           <GlassView
             glassEffectStyle="regular"
-            colorScheme={dark ? "dark" : "light"}
+            colorScheme="light"
             // Tinted with the field itself, so over orange it is orange glass
             // rather than a frosted white or a smoked navy.
             tintColor={ground ? `${FAMILY[ground].field}B3` : undefined}

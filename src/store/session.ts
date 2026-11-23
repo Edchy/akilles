@@ -2428,7 +2428,7 @@ export const tapSet = (
   );
 
 /**
- * Long press: a set not done, in one move — 0, shown crossed out. It counts
+ * Long press: a set not done, in one move — 0. It counts
  * as a missed set, so the weight doesn't go up on a set you skipped.
  */
 export const skipSet = (
@@ -2583,12 +2583,19 @@ const withFeel = (
  * Whether the lift on screen is one Klay is still learning — never trained,
  * and a weight to move — so it asks how it felt once every set is in.
  */
-export const asksFeel = (state: SessionState): boolean => {
+export const asksFeel = (state: SessionState): boolean =>
+  willAskFeel(state) && !state.active!.items[state.active!.cursor].logged.some((r) => r === null);
+
+/**
+ * Whether this lift asks how it felt once its sets are in — known from the
+ * start, so the card can make room for the question before it comes rather
+ * than change its whole layout under you when it does.
+ */
+export const willAskFeel = (state: SessionState): boolean => {
   const item = state.active?.items[state.active.cursor];
   if (!item || !isLift(item) || item.derive || item.skipped || item.supersetWith) return false;
   const ex = byId(item.exerciseId);
   if (!ex || ex.bodyweight || ex.holds || ex.timed || ex.unloaded) return false;
-  if (item.logged.some((r) => r === null)) return false;
   return !Object.values(state.history).some((r) => r.exerciseId === item.exerciseId && r.lastTrainedAt);
 };
 

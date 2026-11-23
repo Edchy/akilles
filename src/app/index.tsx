@@ -14,8 +14,7 @@ import { GrowthOffer } from "@/components/growth-offer";
 import { Mark } from "@/components/mark";
 import { Column, COLUMN } from "@/components/screen";
 import { Sheet, OpenRow } from "@/components/sheet";
-import { colors, CONCRETE, CONCRETE_TONE, DUSK, DUSK_INK, FAMILY, fonts, mix, POSTER_COLOUR, POSTER_EDGE, POSTER_INK, radii, worn } from "@/constants/theme";
-import { DuskGround, PosterGround } from "@/components/dusk";
+import { CLAY_LOOK, CLAY_TONE, colors, FAMILY, fonts, mix, radii } from "@/constants/theme";
 import Svg, { Defs, LinearGradient, Rect, Stop } from "react-native-svg";
 import type { Family } from "@/data/families";
 import type { Workout } from "@/data/split";
@@ -216,16 +215,10 @@ function Deck() {
                   bottom: -8 * depth,
                   left: 10 * depth,
                   right: 10 * depth,
-                  borderRadius: worn.poster ? POSTER_CORNER : worn.concrete ? CONCRETE.corner : radii.card,
+                  borderRadius: CLAY_LOOK.corner,
                   borderCurve: "continuous",
-                  borderWidth: worn.poster ? POSTER_EDGE : worn.dusk || worn.concrete ? 1 : 1.5,
-                  borderColor: worn.poster ? POSTER_INK : worn.concrete ? CONCRETE.edge : worn.dusk ? mix(DUSK[workoutFamily(state, w)].top, "#000000", 0.35) : colors.text,
-                  // Concrete: white like every card in it, each on its own soft shadow.
-                  boxShadow: worn.concrete ? "0 4px 14px rgba(0, 0, 0, 0.08)" : undefined,
-                  backgroundColor: worn.poster
-                    ? POSTER_COLOUR[workoutFamily(state, w)].card
-                    : worn.concrete ? CONCRETE.card
-                    : worn.dusk ? DUSK[workoutFamily(state, w)].top : FAMILY[workoutFamily(state, w)].field,
+                  boxShadow: "inset 0 -6px 12px rgba(0, 0, 0, 0.12), 0 8px 14px -8px rgba(80, 50, 20, 0.4)",
+                  backgroundColor: CLAY_TONE[workoutFamily(state, w)].card,
                 }}
               >
                 {/* Deeper in the deck, deeper in its shade. */}
@@ -236,7 +229,7 @@ function Deck() {
                     bottom: 0,
                     left: 0,
                     right: 0,
-                    borderRadius: worn.poster ? POSTER_CORNER : worn.concrete ? CONCRETE.corner : radii.card,
+                    borderRadius: CLAY_LOOK.corner,
                     borderCurve: "continuous",
                     backgroundColor: "#000000",
                     opacity: SHADE * (depth + 1),
@@ -398,7 +391,7 @@ function DeckSlot({
         pointerEvents="none"
         style={[
           { position: "absolute", top: 0, bottom: 0, left: 0, right: 0, backgroundColor: "#000000" },
-          { borderRadius: worn.poster ? POSTER_CORNER : worn.concrete ? CONCRETE.corner : radii.card, borderCurve: "continuous" },
+          { borderRadius: CLAY_LOOK.corner, borderCurve: "continuous" },
           shade,
         ]}
       />
@@ -414,53 +407,28 @@ export const DayCard = memo(function DayCard({ state, workout, inProgress = fals
   const rows = inProgress ? [] : workoutPreview(state, workout);
   // Slots with nothing here to do them with, said rather than hidden.
   const missing = inProgress ? [] : sittingOut(state, workout);
-  const dusk = worn.dusk ? DUSK[family] : null;
   // Whether the list runs past the card, and whether it has been scrolled to its end.
   const [box, setBox] = useState(0);
   const [content, setContent] = useState(0);
   const [atFoot, setAtFoot] = useState(false);
   const overflows = box > 0 && content > box + 1;
-  const body = dusk ? DUSK_CARD : PAPER;
+  const body = CLAY_WELL;
   return (
     <View
       style={{
         flex: 1,
-        borderRadius: worn.poster ? POSTER_CORNER : worn.concrete ? CONCRETE.corner : radii.card,
+        borderRadius: CLAY_LOOK.corner,
         borderCurve: "continuous",
-        borderWidth: worn.poster ? POSTER_EDGE : worn.concrete || dusk ? 1 : 1.5,
-        borderColor: worn.poster ? POSTER_INK : worn.concrete ? CONCRETE.edge : dusk ? mix(dusk.top, "#000000", 0.35) : colors.text,
-        backgroundColor: dusk ? dusk.foot : worn.concrete ? CONCRETE.card : colors.bg,
-        // Concrete: the card floats on a soft shadow.
-        boxShadow: worn.concrete ? CONCRETE.shadow : undefined,
+        backgroundColor: CLAY_TONE[family].card,
+        // A puffy lump of clay.
+        boxShadow: CLAY_LOOK.puff,
         overflow: "hidden",
       }}
     >
-      {dusk ? <DuskGround family={family} shape={160} /> : null}
-      {worn.poster ? (
-        // The day's colour, its shape huge off the corner, and the name as a headline.
-        <View style={{ overflow: "hidden", paddingHorizontal: 16, paddingTop: 14, paddingBottom: 14 }}>
-          <PosterGround family={family} shape={200} />
-          {/* One line: a long name ends in "…" rather than taking over the card. */}
-          <Text
-            accessibilityRole="header"
-            numberOfLines={1}
-            style={{ color: card.ink, fontFamily: fonts.display, fontSize: 68, lineHeight: 76 }}
-          >
-            {workout.name || "Untitled"}
-          </Text>
-          {/* Capitalised in the words, not the style: see `upper` in text.tsx. */}
-          <Text ui style={{ color: card.ink, fontSize: 14, fontWeight: "800", letterSpacing: 1.2 }}>
-            {[workout.subtitle, `about ${minutes} min`].filter(Boolean).join(" · ").toUpperCase()}
-          </Text>
-        </View>
-      ) : null}
-      {/* The rule under the header, its own strip: nothing in the header can cover it. */}
-      {worn.poster ? <View style={{ height: POSTER_EDGE, backgroundColor: POSTER_INK }} /> : (
-      <View style={{ backgroundColor: dusk ? "transparent" : card.field, paddingHorizontal: 16, paddingTop: 14, paddingBottom: 14 }}>
+      <View style={{ backgroundColor: card.field, paddingHorizontal: 16, paddingTop: 14, paddingBottom: 14 }}>
         <View style={{ flexDirection: "row", alignItems: "center", gap: GAP }}>
           <View style={{ width: MARKS, alignItems: "center" }}>
-            {/* Concrete: the icon keeps its colour on the grey band. */}
-            <Mark family={family} size={MARKS - 4} color={card.ink} plain={worn.dusk} />
+            <Mark family={family} size={MARKS - 4} color={card.ink} plain />
           </View>
           <Text
             accessibilityRole="header"
@@ -474,7 +442,10 @@ export const DayCard = memo(function DayCard({ state, workout, inProgress = fals
           {[workout.subtitle, `about ${minutes} min`].filter(Boolean).join(" · ")}
         </Text>
       </View>
-      )}
+      {/* The list sits in a cream well pressed into the card. */}
+      <View
+        style={{ flex: 1, margin: 12, marginTop: 0, borderRadius: 22, borderCurve: "continuous", overflow: "hidden", backgroundColor: CLAY_LOOK.well, boxShadow: CLAY_LOOK.dent }}
+      >
       <ScrollView
         style={{ flex: 1 }}
         onLayout={(e) => setBox(e.nativeEvent.layout.height)}
@@ -486,13 +457,14 @@ export const DayCard = memo(function DayCard({ state, workout, inProgress = fals
       >
         {inProgress ? <Progress ink={body} /> : <Preview rows={rows} ink={body} />}
         {missing.length > 0 ? (
-          <Text style={{ marginLeft: INDENT, color: dusk ? DUSK_INK.soft : colors.muted, fontSize: 16, lineHeight: 22 }}>
+          <Text style={{ marginLeft: INDENT, color: colors.muted, fontSize: 16, lineHeight: 22 }}>
             {missingLine(missing.map((e) => e.slot))}
           </Text>
         ) : null}
       </ScrollView>
       {/* More below: the list fades into the card's foot, rather than being cut by its edge. */}
-      {overflows && !atFoot ? <FootFade color={dusk ? dusk.foot : worn.concrete ? CONCRETE.card : colors.bg} /> : null}
+      {overflows && !atFoot ? <FootFade color={CLAY_LOOK.well} /> : null}
+      </View>
     </View>
   );
 });
@@ -526,30 +498,22 @@ function missingLine(slots: string[]): string {
 }
 
 /**
- * What words and shapes are drawn in: on the day's colour, its own ink —
- * white or navy, and a softer one — with every shape in it too; on paper,
- * ink, and each shape in its own colour (`marks`).
+ * What words and shapes are drawn in: on the day's clay, its ink and a
+ * softer one; in the cream well, the warm ink, each shape in its own colour
+ * (`marks`).
  */
-type CardInk = { field: string; ink: string; soft: string; marks?: boolean; glow?: boolean };
-/** Poster's corners: just off square, like a printed card. */
-const POSTER_CORNER = 4;
+type CardInk = { field: string; ink: string; soft: string; marks?: boolean };
 const cardInk = (family: Family): CardInk => {
-  if (worn.poster) return { field: POSTER_COLOUR[family].card, ink: POSTER_COLOUR[family].ink, soft: POSTER_COLOUR[family].ink };
-  if (worn.concrete) return { field: CONCRETE_TONE[family].tone, ink: CONCRETE_TONE[family].ink, soft: `${CONCRETE_TONE[family].ink}CC` };
-  if (worn.dusk) return { field: "transparent", ink: DUSK_INK.ink, soft: DUSK_INK.soft };
-  const { field, mark: ink } = FAMILY[family];
-  return { field, ink, soft: `${ink}CC` };
+  const { card, ink } = CLAY_TONE[family];
+  return { field: card, ink, soft: mix(ink, card, 0.15) };
 };
-const PAPER: CardInk = { field: colors.bg, ink: colors.text, soft: colors.muted, marks: true };
-/** The list on a dusk card: cream words, each shape in its own family's glow. */
-const DUSK_CARD: CardInk = { field: "transparent", ink: DUSK_INK.ink, soft: DUSK_INK.soft, glow: true };
+/** The cream well, in the warm ink. */
+const CLAY_WELL: CardInk = { field: CLAY_LOOK.well, ink: CLAY_LOOK.ink, soft: "#6B5546", marks: true };
 
-/** A shape in a list: its own colours on paper, its family's glow at dusk, else the card's ink. */
+/** A shape in a list: its own colours in the well, else the card's ink. */
 function RowMark({ family, size, ink }: { family: Family; size: number; ink: CardInk }) {
-  if (ink.glow) return <Mark family={family} size={size} color={DUSK[family].glow} plain />;
   return <Mark family={family} size={size} color={ink.marks ? undefined : ink.ink} />;
 }
-
 
 /** The left column every shape sits in, and the edge every word starts on. */
 const MARKS = 30;
@@ -562,7 +526,7 @@ const ROWS = { most: 44, least: 36 } as const;
 /** The next workout, with short change labels tucked beneath the figures. */
 function Preview({ rows, rowHeight = ROWS.most, ink }: { rows: PreviewRow[]; rowHeight?: number; ink: CardInk }) {
   return (
-    <View accessibilityRole="list" style={{ gap: worn.poster ? 0 : rowHeight >= ROWS.most ? 4 : 2 }}>
+    <View accessibilityRole="list" style={{ gap: rowHeight >= ROWS.most ? 4 : 2 }}>
       {rows.map((r) => {
         const timed = r.family === "cardio" || r.family === "mobility" || r.family === "goal";
         const strong = !!r.adjustmentLabel || r.family === "goal";
@@ -577,22 +541,20 @@ function Preview({ rows, rowHeight = ROWS.most, ink }: { rows: PreviewRow[]; row
               alignItems: "center",
               gap: GAP,
               minHeight: rowHeight,
-              // Poster: each row ruled off in the ink, like a results table.
-              ...(worn.poster ? { borderBottomWidth: 2, borderColor: POSTER_INK } : null),
             }}
           >
             <View style={{ width: MARKS, alignItems: "center" }}>
               <RowMark family={r.family} size={22} ink={ink} />
             </View>
-            <Text style={{ flex: 1, color: ink.ink, fontFamily: worn.poster ? fonts.semibold : fonts.regular, fontSize: worn.poster ? 18 : 20 }}>
+            <Text style={{ flex: 1, color: ink.ink, fontFamily: fonts.regular, fontSize: 20 }}>
               {r.name}
             </Text>
             {figure ? (
               <View style={{ alignItems: "flex-end", flexShrink: 0 }}>
                 <Text
                   style={{
-                    color: strong || worn.poster ? ink.ink : ink.soft,
-                    fontFamily: worn.poster ? fonts.bold : strong ? fonts.medium : fonts.regular,
+                    color: strong ? ink.ink : ink.soft,
+                    fontFamily: strong ? fonts.medium : fonts.regular,
                     fontSize: 17,
                     lineHeight: 21,
                     fontVariant: ["lining-nums", "tabular-nums"],
@@ -632,7 +594,7 @@ function Progress({ ink }: { ink: CardInk }) {
     <View accessibilityRole="list">
       {active.items.map((it, i) => {
         const done = cardMark(state, i) === "done";
-        const color = ink.glow ? DUSK[itemFamily(it)].glow : ink.marks ? FAMILY[itemFamily(it)].mark : ink.ink;
+        const color = ink.marks ? FAMILY[itemFamily(it)].mark : ink.ink;
         return (
           <View
             key={i}
@@ -680,9 +642,9 @@ function BigButton({
     <Button
       label={label}
       kind={primary ? "primary" : "secondary"}
-      // Poster: the day's flat colour, its word in the day's ink.
-      fill={primary ? (worn.poster ? POSTER_COLOUR[primary].card : colors.text) : undefined}
-      onFill={primary && worn.poster ? POSTER_COLOUR[primary].ink : colors.bg}
+      // The day's clay, its word in the warm ink.
+      fill={primary ? CLAY_TONE[primary].card : undefined}
+      onFill={primary ? CLAY_TONE[primary].ink : colors.bg}
       // Start is the answer nearly every time, so it takes twice the room.
       flex={primary ? 2 : 1}
       onPress={onPress}
