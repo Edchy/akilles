@@ -37,7 +37,6 @@ import {
   REPS_RANGE_MOVE,
   WARMUP,
   type WarmupDay,
-  TIME_STEP,
   cardioById,
   cardioPool,
   courseLabel,
@@ -48,7 +47,6 @@ import {
   leanHiddenConditioning,
   lengthOf,
   mobilityById,
-  onTheClock,
   mobilityPool,
   routineUse,
   type RoutineUse,
@@ -80,9 +78,9 @@ import {
 } from "@/data/split";
 import { warmupFor, weightLabel, type WarmupSet } from "@/lib/warmup";
 import { feelWeight, firstWeight, type Feel, type Lifter } from "@/lib/start-weight";
-import { BODYWEIGHT, GYM, fits, nearestWeight, needsOf, TWIN, weightsFor, type Kit } from "@/data/kit";
+import { BODYWEIGHT, GYM, fits, nearestWeight, TWIN, weightsFor, type Kit } from "@/data/kit";
 import { FALL_BACK, fitOf, pick, STAND_IN, type Candidate } from "@/lib/fill";
-import { avoidFor, EXTRAS, SHAPE_FOR, SHAPES, type Easy, type Shape, type Time } from "@/data/templates";
+import { avoidFor, EXTRAS, SHAPES, type Easy, type Shape, type Time } from "@/data/templates";
 import { PLAN_IDS, PLAN_NAME, PLANS, type PlanId } from "@/data/plans";
 import type { Outcome, Say } from "@/data/voice";
 import { familyOf, type Family } from "@/data/families";
@@ -110,7 +108,6 @@ import {
   type GoalStep,
   isStarted,
   type Measure,
-  onTarget,
   STARTING_GOALS,
   TARGET_LIMITS,
 } from "@/data/goals";
@@ -1455,10 +1452,6 @@ export const foldLoops = (state: SessionState): SessionState => {
 /** Whether a workout can be paused. The last one stays: the loop needs something in it. */
 export const canPauseWorkout = (state: SessionState): boolean => state.workouts.length > 1;
 
-/** Whether a workout is one of the starting program's, rather than one you created. */
-export const isBuiltInWorkout = (id: string): boolean =>
-  DEFAULT_WORKOUTS.some((w) => w.id === id);
-
 /**
  * Pause a workout: it leaves the loop and waits, exactly as it was — its
  * exercises, its choices, its place. If it was next, the one after it becomes
@@ -1802,18 +1795,6 @@ export const intoLoops = (state: SessionState): SessionState => {
 };
 
 /**
- * Movement types a workout could add a slot for: anything with an exercise
- * in the catalogue that the workout is not already using.
- */
-export const addablePatterns = (state: SessionState, workoutId: string): Pattern[] => {
-  const w = workoutById(state, workoutId);
-  if (!w) return [];
-  const taken = new Set(w.exercises.map((e) => chosen(state, workoutId, e)));
-  const list = catalogue(state).filter((e) => !e.restricted && !taken.has(e.id));
-  return [...new Set(list.flatMap((e) => e.patterns))];
-};
-
-/**
  * Add a slot for a movement type at the bottom of a workout, filled with the
  * first exercise of that type the workout is not already using. It opens on
  * 6–10; everything about it can be changed afterwards.
@@ -2131,23 +2112,6 @@ export const declineDecay = (
   return { ...state, history };
 };
 
-/**
- * Cuts already applied and not yet trained through, for the line under each
- * exercise. Only ever populated by `acceptDecay`.
- */
-export const pendingDecays = (
-  state: SessionState,
-): { exerciseId: string; decay: Decay }[] => {
-  const seen = new Set<string>();
-  const out: { exerciseId: string; decay: Decay }[] = [];
-  for (const record of Object.values(state.history)) {
-    if (!record.pendingDecay || seen.has(record.exerciseId)) continue;
-    seen.add(record.exerciseId);
-    out.push({ exerciseId: record.exerciseId, decay: record.pendingDecay });
-  }
-  return out;
-};
-
 export const buildWorkout = (
   state: SessionState,
   _now: number = Date.now(),
@@ -2381,15 +2345,6 @@ export const partnerPrescription = (state: SessionState): Prescription | null =>
   );
 };
 
-/** State for the exercise on screen, falling back to a fresh record. */
-const currentState = (state: SessionState): ExerciseState | null => {
-  if (!state.active) return null;
-  const item = state.active.items[state.active.cursor];
-  if (!item) return null;
-  return (
-    dueRecord(state, item.exerciseId, item.scheme)
-  );
-};
 
 /** Write a change to the on-screen exercise's session values. */
 const patchItem = (
@@ -2535,20 +2490,6 @@ export const allSetsLogged = (state: SessionState): boolean => {
   if (!item || !isLift(item)) return false;
   const filled = (log?: (number | null)[]) => !log || log.every((r) => r !== null);
   return filled(item.logged) && filled(item.supersetLogged);
-};
-
-/** Every set at or above target — the only route to more reps or weight. */
-export const madeTarget = (state: SessionState): boolean => {
-  const item = state.active?.items[state.active.cursor];
-  const p = currentPrescription(state);
-  if (!item || !p) return false;
-  // Speed and jump work has no ladder: nothing progresses from it.
-  if (item.derive || p.exercise.unloaded) return false;
-  if (!hitTarget(item.logged, p.reps)) return false;
-
-  const pp = partnerPrescription(state);
-  if (pp && item.supersetLogged) return hitTarget(item.supersetLogged, pp.reps);
-  return true;
 };
 
 /**
@@ -2910,10 +2851,6 @@ export const currentWarmup = (state: SessionState): WarmupSet[] => {
   if (!item?.warmup || !p) return [];
   return warmupFor(p.exercise, p.weight);
 };
-
-/** Move past the warm-up screen to the working sets. */
-export const dismissWarmup = (state: SessionState): SessionState =>
-  patchItem(state, (it) => ({ ...it, warmup: false }));
 
 /**
  * Step back to the previous exercise. Its circles are still filled in, so you
@@ -4040,20 +3977,6 @@ export const lastScore = (state: SessionState, item: Item): number | null =>
   cardioRecord(state, item)?.last ?? null;
 
 /**
- * Step the score — by the machine's own increment, or by a few seconds —
- * from last time's, if unentered.
- */
-export const nudgeScore = (state: SessionState, direction: 1 | -1): SessionState =>
-  patchItem(state, (it) => {
-    if (!isCardio(it)) return it;
-    const step = isTimed(it) ? TIME_STEP : (cardioById(it.exerciseId)?.metric.step ?? 0.05);
-    const next = (scoreOf(it) ?? lastScore(state, it) ?? 0) + step * direction;
-    // Round back onto the step grid, so a nudge after a typed 1.03 gives 1.05.
-    const snapped = Math.max(0, Number((Math.round(next / step) * step).toFixed(4)));
-    return isTimed(it) ? { ...it, seconds: snapped } : { ...it, distance: snapped };
-  });
-
-/**
  * Done on a cardio block. Left unentered with a record to go on, it means
  * "same as last time" — the number you were shown is what gets logged.
  */
@@ -4085,12 +4008,6 @@ export const pauseClock = (state: SessionState, now: number): SessionState =>
 export const finishClock = (state: SessionState): SessionState =>
   patchItem(state, (it) =>
     isCardio(it) && !it.ran ? { ...it, clock: undefined, ran: (it.minutes ?? CARDIO_MINUTES) * 60 } : it,
-  );
-
-/** Mark a pose of the mobility routine done — its timer has run out on every side. */
-export const completeMove = (state: SessionState, index: number): SessionState =>
-  patchItem(state, (it) =>
-    it.moves ? { ...it, moves: it.moves.map((d, i) => (i === index ? true : d)) } : it,
   );
 
 /** Save one warm-up/stretch side independently, including a deliberate skip. */

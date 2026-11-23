@@ -232,17 +232,6 @@ export const FINISHED_LINES = {
 
 export type FinishedMood = keyof typeof FINISHED_LINES;
 
-/** Skip pressed on a warm-up: Klay refuses, once. */
-export const WARMUP_SKIP_LINES = [
-  "Even the strongest started with a warm-up. Your turn.",
-  "Cold muscles, hot take.",
-  "Skip the warm-up? Your tendons have filed a complaint.",
-  "The bar can wait a minute. Can your shoulders?",
-  "Straight in cold? Bold. The weight thanks you for the head start.",
-  "Warm-ups are boring. So is physio.",
-  "The light sets are where the form gets built. Indulge me.",
-];
-
 /**
  * A goal's step. Learning a skill is slow and mostly not yet, so the voice
  * is patient with a short count — every session on the ladder is practice —

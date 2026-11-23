@@ -215,21 +215,6 @@ export const decayFor = (state: ExerciseState, now: number): Decay | null => {
 };
 
 /**
- * The cut, in words. One sentence, said plainly — the weight on the screen
- * changed without being asked, so the app owes an explanation.
- */
-export const decayLabel = (decay: Decay): string => {
-  const pct = Math.round(decay.fraction * 100);
-  if (decay.kind === "backoff") {
-    return `Eased back ${pct}% after a month without progress. Build it up again.`;
-  }
-  const d = decay.days ?? 0;
-  const gap =
-    d >= 60 ? `${Math.round(d / 30)} months` : d >= 21 ? `${Math.round(d / 7)} weeks` : `${d} days`;
-  return `Backed off ${pct}% after ${gap} away. Build it up again.`;
-};
-
-/**
  * Apply a cut. The rep ladder restarts too — coming back at the bottom rung
  * of a lighter weight is the point, and it is what the failure deload does.
  */

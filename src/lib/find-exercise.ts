@@ -11,11 +11,6 @@ export const GEAR_NAME: Record<Gear, string> = {
   suspension_trainer: "Suspension trainer", parallel_bars: "Parallel bars", ab_wheel: "Ab wheel",
 };
 
-export const EQUIPMENT_FILTERS: [string, string][] = [
-  ["", "All equipment"], ["bodyweight", "Bodyweight"], ["no_equipment", "No equipment"],
-  ...Object.entries(GEAR_NAME).map(([id, label]): [string, string] => [id, label]),
-];
-
 export const exerciseTags = (exercise: Exercise): string[] => [
   ...categoriesOf(exercise).map((c) => CATEGORY_LABEL[c]),
   ...(exercise.bodyweight ? ["Bodyweight"] : []),

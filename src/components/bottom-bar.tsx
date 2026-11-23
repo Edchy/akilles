@@ -218,32 +218,3 @@ export function TabButton({
     </Pressable>
   );
 }
-
-/** A workout action — Back, Leave or Skip. */
-export function ActionButton({
-  icon,
-  label,
-  onPress,
-  disabled,
-}: {
-  icon: IconName;
-  label: string;
-  onPress: () => void;
-  disabled?: boolean;
-}) {
-  const { ink } = useContext(InkContext);
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={label}
-      accessibilityState={{ disabled }}
-      disabled={disabled}
-      onPress={onPress}
-      style={{ flex: 1, opacity: disabled ? 0.3 : 1 }}
-    >
-      {({ pressed }) => (
-        <Slot icon={icon} label={label} tint={ink} dim={pressed} />
-      )}
-    </Pressable>
-  );
-}

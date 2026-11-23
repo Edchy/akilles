@@ -4,12 +4,11 @@ import { Image, Pressable, View } from "react-native";
 import { Text, TextInput } from "@/components/text";
 
 import { Create, LibraryBrowser } from "@/components/add-exercise";
-import { Count, Setting, Step } from "@/components/controls";
 import { Icon } from "@/components/icon";
 import { NoteField } from "@/components/note";
 import { RoutineEditor } from "@/components/routine";
 import { BigButton, OpenRow, SectionLabel, Sheet, TextButton } from "@/components/sheet";
-import { WeightField, parseWeight } from "@/components/weight-field";
+import { WeightField } from "@/components/weight-field";
 import { FAMILY, colors, radii } from "@/constants/theme";
 import { Mark } from "@/components/mark";
 import { CLAY } from "@/data/clay";
@@ -30,12 +29,6 @@ import {
   type MobilityRoutine,
 } from "@/data/conditioning";
 import {
-  CATEGORY_LABEL,
-  CATEGORY_ORDER,
-  PATTERN_LABEL,
-  categoriesOf,
-  patternsIn,
-  type Category,
   type Exercise,
   type Pattern,
 } from "@/data/exercises";
@@ -48,7 +41,6 @@ import {
   cardioTarget,
   catalogue,
   hiddenExercises,
-  everyExercise,
   createRoutine,
   editExercise,
   editRoutine,
@@ -63,6 +55,7 @@ import {
   workoutsUsing,
 } from "@/store/session";
 
+const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
 
 /**
  * Your exercises, grouped the way you train them: push, pull, legs, core —
@@ -73,11 +66,6 @@ import {
  * each exercise opens its own sheet on top, with room for what you can
  * change. Built-ins you are not using are the library, offered by Add.
  */
-
-type Group = Category | "cardio" | "mobility";
-
-const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
-
 export function Catalogue() {
   const { state, setState } = useSession();
   const [open, setOpen] = useState<"cardio" | "mobility" | null>(null);
@@ -433,7 +421,7 @@ function CardioSheet({ visible, onClose }: { visible: boolean; onClose: () => vo
 
 /** Shared cardio settings and notes, wherever this exercise appears. */
 function MachineEditor({ id, onRemoved }: { id: string; onRemoved: () => void }) {
-  const { state, setState } = useSession();
+  const { state } = useSession();
   const exercise = cardioById(id);
   if (!exercise) return null;
   return (

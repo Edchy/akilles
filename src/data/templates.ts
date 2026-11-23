@@ -27,18 +27,6 @@ export const SHAPE_FOR: Record<Time, Shape> = {
   long: "ppl",
 };
 
-export const TIME_LABEL: Record<Time, string> = {
-  short: "About 30 minutes",
-  medium: "About 45 minutes",
-  long: "An hour or more",
-};
-
-export const SHAPE_LABEL: Record<Shape, string> = {
-  full: "Full body, every time",
-  upper_lower: "Upper body, then lower body",
-  ppl: "Push, pull, legs",
-};
-
 const slot = (name: string, pattern: Pattern, option: string) => ({
   id: name,
   slot: name,
@@ -131,12 +119,6 @@ export const EXTRAS: Record<string, Pattern[]> = {
  * other. A slot left with nothing is dropped from the plan.
  */
 export type Easy = "knees" | "back" | "shoulders";
-
-export const EASY_LABEL: Record<Easy, string> = {
-  knees: "My knees",
-  back: "My lower back",
-  shoulders: "My shoulders",
-};
 
 export const EASY_ON: Record<Easy, string[]> = {
   knees: [

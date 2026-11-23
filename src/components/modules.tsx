@@ -1,6 +1,6 @@
 import { useEffect, useState, type ReactNode } from "react";
-import { Button, Chip, Chips } from "@/components/buttons";
-import { Image, Pressable, View } from "react-native";
+import { Button } from "@/components/buttons";
+import { Pressable, View } from "react-native";
 import Animated, { useAnimatedProps, useAnimatedStyle, useSharedValue, withSpring, withTiming } from "react-native-reanimated";
 import { duration, PRESS_SCALE, spring } from "@/constants/motion";
 import Svg, { Path } from "react-native-svg";
@@ -19,7 +19,6 @@ import { ClaySheen } from "@/components/card-clay";
 import { Icon } from "@/components/icon";
 import { Mark } from "@/components/mark";
 import { WholeText } from "@/components/fit-text";
-import { Segments } from "@/components/segments";
 import { Swipe, swipedRecently } from "@/components/swipe";
 import { HINT_LABELS, InlineTip, playedHint } from "@/components/tips";
 import { GestureHint } from "@/components/hint";
@@ -32,7 +31,7 @@ import {
 } from "@/components/sheet";
 import { NoteField } from "@/components/note";
 import { WeightField } from "@/components/weight-field";
-import { CLAY_LOOK, cardOf, colors, familyWash, fonts, radii } from "@/constants/theme";
+import { CLAY_LOOK, cardOf, colors, fonts, radii } from "@/constants/theme";
 import {
   cardioPool,
   mobilityPool,
@@ -43,7 +42,6 @@ import { familyOf, type Family } from "@/data/families";
 import { KIND_NAME, KIND_ORDER, KIND_SUBTITLE, type WorkoutKind } from "@/data/kinds";
 import {
   REP_STEP,
-  newId,
   rangeScheme,
   repLabel,
   repRange,
@@ -62,7 +60,6 @@ import {
   cardioPlan,
   chooseCardio,
   restoreConditioning,
-
   chosen,
   addExtra,
   arrangePart,
@@ -72,7 +69,6 @@ import {
   type CardioWhere,
   type Placed,
   type RoutineWhere,
-  movePlanWorkout,
   planWorkouts,
   pauseWorkout,
   poolFor,
@@ -90,7 +86,6 @@ import {
   updateEntry,
   useSession,
   workoutFamily,
-  workoutsUsing,
   type SessionState,
   seeTip,
   seenTip,
@@ -1020,13 +1015,6 @@ const routinesFor = (state: SessionState, use: "warmup" | "end") => {
 
 const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
 
-/** "Push A", "Push A and Legs", "Push A, Pull A and 2 more". */
-const namesOf = (workouts: Workout[]): string => {
-  const names = workouts.map((w) => w.name || "Untitled");
-  if (names.length <= 2) return names.join(" and ");
-  if (names.length === 3) return `${names[0]}, ${names[1]} and ${names[2]}`;
-  return `${names[0]}, ${names[1]} and ${names.length - 2} more`;
-};
 
 /**
  * One lift's settings. Swap replaces the body with a focused chooser;

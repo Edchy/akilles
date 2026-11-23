@@ -4,7 +4,7 @@ import { Pressable, View } from "react-native";
 import Svg, { Circle, Path, Rect } from "react-native-svg";
 
 import { Icon } from "@/components/icon";
-import { BigButton, SectionLabel, Sheet } from "@/components/sheet";
+import { SectionLabel } from "@/components/sheet";
 import { Text, TextInput } from "@/components/text";
 import { parseWeight } from "@/components/weight-field";
 import { colors } from "@/constants/theme";

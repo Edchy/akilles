@@ -38,15 +38,3 @@ export const familyOfPattern = (pattern: Pattern): Family => BY_PATTERN[pattern]
 /** A lift's family, from the first movement type it counts as. */
 export const familyOf = (exercise: Exercise | undefined): Family =>
   (exercise && BY_PATTERN[exercise.patterns[0]]) || "push";
-
-/** What each shape means, for screen readers. */
-export const FAMILY_LABEL: Record<Family, string> = {
-  push: "Push",
-  pull: "Pull",
-  legs: "Legs",
-  core: "Core",
-  cardio: "Cardio",
-  mobility: "Stretch",
-  goal: "Goal",
-  full: "Full body",
-};

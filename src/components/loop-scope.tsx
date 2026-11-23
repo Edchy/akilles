@@ -1,4 +1,4 @@
-import { useMemo, useSyncExternalStore, type ReactNode } from "react";
+import { useMemo, type ReactNode } from "react";
 
 import { inLoop, loopInUse, loopOfWorkout, SessionContext, useSession, viewLoop } from "@/store/session";
 
@@ -26,27 +26,3 @@ export function WorkoutLoop({ id, children }: { id: string; children: ReactNode 
   const { state } = useSession();
   return <LoopScope loop={loopOfWorkout(state, id)}>{children}</LoopScope>;
 }
-
-/**
- * What Plan should show when you come back to it: the loop a workout just
- * went to, and a line saying what happened — so nothing moves without you
- * seeing where it went. Read once by Plan, then cleared.
- */
-export type PlanFocus = { loop: string; note?: string };
-
-let focus: PlanFocus | null = null;
-const listeners = new Set<() => void>();
-
-export const setPlanFocus = (next: PlanFocus | null) => {
-  focus = next;
-  listeners.forEach((listener) => listener());
-};
-
-export const usePlanFocus = (): PlanFocus | null =>
-  useSyncExternalStore(
-    (listener) => {
-      listeners.add(listener);
-      return () => listeners.delete(listener);
-    },
-    () => focus,
-  );

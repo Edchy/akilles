@@ -3,7 +3,6 @@ import { router } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { SetCircle } from "@/components/set-circle";
 import {
-  Children,
   createContext,
   startTransition,
   useContext,
@@ -19,7 +18,6 @@ import {
 import {
   Animated,
   Easing,
-  Image,
   Keyboard,
   Pressable,
   ScrollView,
@@ -27,7 +25,6 @@ import {
   useWindowDimensions,
   View,
   type TextInput as NativeTextInput,
-  type TextStyle,
   type ViewStyle,
 } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
@@ -65,19 +62,17 @@ import { Mark } from "@/components/mark";
 import { NoteLine, NoteSheet } from "@/components/note";
 import { GuideButton, GuideSheet } from "@/components/guide";
 import { CardActiveContext, useCardActive, CardContext, useOnCard } from "@/components/card-context";
-import { Illustration } from "@/components/illustration";
 import { FloatingTip, HINT_LABELS, firstUnseen, isHint, playedHint, type HintId } from "@/components/tips";
 import { GestureHint } from "@/components/hint";
 import { ClayStretch, hasClay } from "@/components/clay";
 import { GoalSheet, Pips, hasTutorial, openTutorial } from "@/components/goals";
-import { BigButton, Sheet, TextButton } from "@/components/sheet";
+import { Sheet } from "@/components/sheet";
 import { CLAY_CARD, CLAY_LOOK, CLAY_TONE, colors, colors as paper, FAMILY, fieldColors, fonts, mix, radii } from "@/constants/theme";
 import { GearIcon, gearOf, type Pictured } from "@/components/gear-icon";
 import { fullName } from "@/lib/exercise-name";
 import { ClayGround } from "@/components/clay-ground";
 import { Fit } from "@/components/fit";
 import { FitText, WholeText } from "@/components/fit-text";
-import { grain } from "@/constants/grain";
 import { byId, inSentence, type Exercise } from "@/data/exercises";
 import { ownCue } from "@/data/guides";
 import { familyOf, type Family } from "@/data/families";
@@ -129,7 +124,6 @@ import {
   isLift,
   itemFamily,
   isMobility,
-  logGoalSet,
   nextAfterSession,
   nextTime,
   asksFeel,
@@ -141,12 +135,9 @@ import {
   partnerPrescription,
   removeSuperset,
   skipGoalSet,
-  REST,
-  restSeconds,
   swapAnywhere,
   atGym,
   skipSet,
-  scoreOf,
   cardioDone,
   cancelHold,
   heldFor,
@@ -937,7 +928,6 @@ function CardDot({ mark, color, size = 14, current = false }: { mark: CardMark; 
   );
 }
 
-const MARK_WORD: Record<CardMark, string> = { todo: "", done: "Done" };
 
 /**
  * Every card of the workout as a mark along the full width of the workout

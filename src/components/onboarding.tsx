@@ -101,7 +101,6 @@ const placeOnLine = (step: Step): number => ALONG.indexOf(step);
 const tap = () => Haptics.selectionAsync().catch(() => {});
 
 function Steps({ onDone }: { onDone: (answers: Answers) => void }) {
-  const { state } = useSession();
   const insets = useSafeAreaInsets();
   const [trail, setTrail] = useState<Step[]>(["film"]);
   const [forward, setForward] = useState(true);

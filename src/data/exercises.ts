@@ -700,15 +700,6 @@ export const GROUP_ORDER: Group[] = [
   "explosive",
 ];
 
-/** Which muscle group a movement type belongs to. */
-export const groupForPattern = (pattern: Pattern): Group =>
-  GROUP_BY_PATTERN[pattern];
-
-/** Every group an exercise belongs to, from all of its patterns. */
-export const groupsOf = (ex: Exercise): Group[] => [
-  ...new Set(ex.patterns.map((p) => GROUP_BY_PATTERN[p])),
-];
-
 /** The group an exercise belongs to, taken from its first pattern. */
 export const groupOf = (ex: Exercise): Group =>
   ex.group ?? GROUP_BY_PATTERN[ex.patterns[0]];
@@ -833,10 +824,6 @@ const HIGH_REP_PATTERNS: Pattern[] = ["triceps", "biceps", "shoulders", "calves"
 
 export const highReps = (ex: Exercise): boolean =>
   !ex.timed && !ex.unloaded && HIGH_REP_PATTERNS.includes(ex.patterns[0]);
-
-/** Every exercise of a pattern, in pool order. */
-export const byPattern = (pattern: Pattern): Exercise[] =>
-  EXERCISES.filter((e) => isPattern(e, pattern) && e.enabled !== false);
 
 /**
  * Exercises you have added, kept here so `byId` resolves them everywhere

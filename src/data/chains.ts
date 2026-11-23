@@ -118,12 +118,3 @@ export const CHAINS: Chain[] = [
 
 /** The chain an exercise names, if it is one. */
 export const chainFor = (exerciseId: string): Chain | undefined => CHAINS.find((c) => c.id === exerciseId);
-
-/** The chain a step belongs to, and where in it. */
-export const chainOfStep = (exerciseId: string): { chain: Chain; at: number } | undefined => {
-  for (const chain of CHAINS) {
-    const at = chain.steps.findIndex((s) => s.exerciseId === exerciseId);
-    if (at >= 0) return { chain, at };
-  }
-  return undefined;
-};

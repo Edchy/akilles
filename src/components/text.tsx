@@ -130,7 +130,6 @@ export const Text = forwardRef<NativeText, TextProps & { ui?: boolean; name?: bo
   // Poster: the display face is set in capitals, as on the poster. The words
   // themselves are capitalised, not the style: a `textTransform` is measured
   // before it is applied, so wider capitals overrun their line and are cut.
-  const flat = (StyleSheet.flatten(style) ?? {}) as TextStyle;
   const text = name ? children : settle(children);
   return (
     <NativeText ref={ref} style={next} {...rest}>
