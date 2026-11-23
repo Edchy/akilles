@@ -44,3 +44,8 @@ Round 7: thread_needle from the user's yoga chart (panels 2 and 4; needle2-*.png
 Round 8: thread_needle = front view (variant B, user picked); the face in frame 1 smoothed out by hand with ffmpeg delogo (Codex blocked every edit). No breathing faces for it.
 Round 9: worlds_greatest finish to keep the start's legs (left knee down, right foot planted) with only the arms threading; queued for when Codex is back.
 Batch 3 check (first 18): 16 pass; close_grip_bench redrawn with our bench as reference (flat bar on a diagonal bench).
+Batch 3 check (rest): bench_dip (hips on floor, no movement), reverse_fly_machine (sat backwards), pallof_press (press not visible) redrawn.
+Pallof press: 4th try (three-quarter, column at her side) passes.
+User approved face_pull and worlds_greatest (current pair) on 2026-11-23.
+Batch 2+1 check: 34 of 36 pass; ab_machine (no crunch visible) and leg_press_calf (no ankle movement) redrawn from the side.
+Last 13 (handstand chain, double KB, Turkish get-up, etc.) drawn 2026-11-23; twisting_knee_raise redrawn so the twist shows. Every exercise now has clay; films retired; export writes WebP.

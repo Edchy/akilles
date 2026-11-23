@@ -138,21 +138,15 @@ edit, clear it to remove it. One note per exercise or machine, not one per
 session, and nothing shows until there is one. The same note is under **Note**
 when you tap an exercise or machine in Plan.
 
-**Films** are Klay's own pictures, so far of the back squat and the bench
-press: a short loop drawn flat after the Munich '72 pictograms — a circle
-head, a ▽ trunk, even bars for limbs, in the family's ink on its field. A
-squat shows a rep from the side, turns, and shows one from the front; a bench
-press stays side on. The pose isn't drawn but worked out from the rules a
-coach gives — feet flat, knees over the toes, the bar over mid-foot; on the
-bench, the arch, forearms upright, elbows about 45° — so it is true from any
-side, and `tests/motion.cjs` checks it against a coach's ranges. A plate seen
-from the side is see-through, so the bar reads as where it is. With Reduce
-Motion, a film holds the bottom of the rep. See `src/motion/`.
-
-**Stretches** are the clay figure (`art/clay.mjs`, exported to `assets/clay`
-by `art/clay-export.mjs`): one picture for a hold, two that swap with the
-breath for a movement. A lift without a film that reads shows a placeholder.
-There are no stock photos.
+**Pictures** are clay, for every lift, machine and stretch: Klay and a cast
+of eight people (`art/clay/cast.json`), one fixed person per exercise, drawn
+by `art/clay.mjs` (batches: `art/clay-batch.mjs`) and exported to
+`assets/clay` as WebP by `art/clay-export.mjs`. A lift is two pictures, start
+and finish, cut between at lifting pace; a stretch is one picture for a hold
+or two that swap with the breath. Each is drawn in the optimal form a coach
+would show, often from a reference photo of the pose. An exercise you added
+yourself shows a placeholder. There are no stock photos. (The flat
+stick-figure films that came before were retired on 23 November 2026.)
 
 **Logging a set** — one circle per set. Tap it and it fills at the target reps;
 tap again and it counts down if you got fewer — and a rep you swung, bounced or

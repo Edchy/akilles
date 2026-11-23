@@ -2,18 +2,30 @@
 //
 //   node art/clay-export.mjs
 //
-// Shrinks each picture in art/clay to app size (assets/clay/<id>-<n>.jpg) and
+// Shrinks each picture in art/clay to app size (assets/clay/<id>-<n>.webp) and
 // writes src/data/clay.ts (and the intro's pictures, from scenes.json): for every stretch in
 // art/clay/stretches.json with its pictures made, the frames and the breath between them;
 // for every lift in art/clay/lifts.json, its two frames and which way is the effort.
 // Don't edit clay.ts by hand: change the JSON and run this again.
+//
+// The pictures are WebP (about half a jpg's size, 23 November 2026), made with
+// sharp: `npm i -D sharp` once, or point SHARP_FROM at a folder that has it.
 
 import { spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { createRequire } from "node:module";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const here = dirname(fileURLToPath(import.meta.url));
+let sharp;
+try {
+  sharp = createRequire(process.env.SHARP_FROM ? join(process.env.SHARP_FROM, "x.js") : import.meta.url)("sharp");
+} catch {
+  throw new Error("clay-export needs sharp to write WebP: run `npm i -D sharp` (or set SHARP_FROM)");
+}
+/** 960 wide is sharp on a phone at full width; quality 80 keeps one about 15 KB. */
+const webp = (from, to) => sharp(from).resize({ width: 960 }).webp({ quality: 80 }).toFile(to);
 const root = join(here, "..");
 const out = join(root, "assets", "clay");
 mkdirSync(out, { recursive: true });
@@ -62,15 +74,14 @@ for (const [id, s0] of Object.entries(spec)) {
     console.log(`skipping ${id}: not every picture is made`);
     continue;
   }
-  const files = shown.map((n, i) => {
-    const file = `${n.replace(/@[a-z]+/, "")}.jpg`;
-    // 960 wide is sharp on a phone at full width; quality 82 keeps them ~50 KB.
-    const run = spawnSync("ffmpeg", ["-v", "error", "-y", "-i", pngs[i], "-vf", "scale=960:-2",
-      "-q:v", "4", join(out, file)]);
-    if (run.status !== 0) throw new Error(`${file}: ${run.stderr}`);
-    written.add(file);
-    return file;
-  });
+  const files = await Promise.all(
+    shown.map(async (n, i) => {
+      const file = `${n.replace(/@[a-z]+/, "")}.webp`;
+      await webp(pngs[i], join(out, file));
+      written.add(file);
+      return file;
+    }),
+  );
   const frames = files.map((f) => `require("../../assets/clay/${f}")`).join(", ");
   const breath = s.breath === "steady" ? '"steady"' : `{ to1: "${s.breath.to1}", to0: "${s.breath.to0}" }`;
   const effort = s.effort ? `, effort: "${s.effort}"` : "";
@@ -123,6 +134,8 @@ ${entries.join("\n")}
 // Pictures nothing uses any more (a hold that now breathes, say) leave the app.
 // Only pictures of a stretch, lift or scene this script knows: anything else in
 // assets/clay was put there by hand (gym_ready.jpg) and stays.
+// (The jpgs of before 23 November 2026 go this way too, now that each is a .webp.)
 const ours = (f) => Object.keys(spec).concat(Object.keys(scenes)).some((id) => f === `${id}.jpg` || f.startsWith(`${id}-`));
-for (const f of readdirSync(out)) if (f.endsWith(".jpg") && !written.has(f) && ours(f)) rmSync(join(out, f));
+for (const f of readdirSync(out))
+  if (/\.(jpg|webp)$/.test(f) && !written.has(f) && ours(f)) rmSync(join(out, f));
 console.log(`wrote ${entries.length} stretches and lifts`);

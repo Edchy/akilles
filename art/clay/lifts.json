@@ -1182,16 +1182,21 @@
  },
  "reverse_fly_machine": {
   "what": "The reverse fly on the pec deck.",
-  "view": "Seen exactly from the side, the figure facing right.",
+  "view": "Seen from behind the figure, a little to one side, so we see the back, with the machine in front of the figure.",
   "frames": [
-   "sitting facing the pec deck's pad, chest against it; arms straight forward holding the handles.",
-   "the arms swept out and back to the sides in a wide arc, the shoulder blades squeezed."
+   "sitting facing the machine, chest pressed against the upright pad, seen from behind: the arms straight forward at shoulder height, hands on the handles in front of the pad.",
+   "the same seat, chest still on the pad, seen from behind: the arms swept out and back until they are straight out to the sides in line with the shoulders, like wings; the shoulder blades squeezed together, shoulders down."
   ],
   "props": "the pec deck machine from the equipment sheet, sat in facing the pad",
   "gear": 3,
   "effort": "to1",
   "common": 3,
-  "cast": "kenji"
+  "cast": "kenji",
+  "refs": [
+   "refs/Reverse_Machine_Flyes-0.jpg",
+   "refs/Reverse_Machine_Flyes-1.jpg"
+  ],
+  "refCamera": true
  },
  "cable_rear_delt_fly": {
   "what": "The cable rear delt fly.",
@@ -1472,8 +1477,8 @@
   "what": "The bench dip.",
   "view": "Seen exactly from the side, the figure facing right.",
   "frames": [
-   "hands on the edge of the flat bench behind, fingers forward, arms straight; legs out in front, heels on the floor, the bottom just in front of the bench.",
-   "the elbows bent straight back until the upper arms are level, the bottom lowered close to the bench."
+   "the TOP: hands on the edge of the flat bench behind the hips, fingers forward, ARMS FULLY STRAIGHT so the whole body is held up high off the floor; legs straight out in front, only the heels touching the floor; the bottom hovering just in front of the bench edge, high, at bench height. Shoulders down, chest up.",
+   "the BOTTOM: the same hands and heels; the elbows bent straight back to 90 degrees, the bottom lowered straight down to about half the bench height, still in the air and never touching the floor. Shoulders down, chest up."
   ],
   "props": "the flat bench from the equipment sheet",
   "effort": "to0",
@@ -1508,10 +1513,10 @@
  },
  "leg_press_calf": {
   "what": "The calf raise on the leg press.",
-  "view": "Seen exactly from the side, the figure facing right.",
+  "view": "Seen exactly from the side, the figure facing right, close enough that the feet and ankles are large and clear.",
   "frames": [
-   "seated in the leg press, legs straight, only the balls of the feet on the bottom edge of the footplate, the toes pulled back towards the shins.",
-   "the footplate pushed away by pointing the toes, the legs still straight."
+   "in the leg press, legs straight (knees soft, not locked); only the BALLS of the feet on the bottom edge of the footplate, the heels hanging off below it and dropped low, the ankles bent so the toes point up.",
+   "the same legs, still straight: the ankles pushed all the way, toes pointed hard so the footplate is pushed away and the heels are now far up, only the toes on the plate edge; the calves squeezed."
   ],
   "props": "the 45-degree leg press from the equipment sheet",
   "gear": 3,
@@ -1660,10 +1665,10 @@
  },
  "ab_machine": {
   "what": "The rotary torso machine.",
-  "view": "Seen from the front at a slight three-quarter angle, the figure facing the camera.",
+  "view": "Seen exactly from the side, the figure facing right.",
   "frames": [
-   "sitting in a rotary torso machine, facing forward.",
-   "the torso turned to one side, the hips still."
+   "sitting upright in the ab crunch machine, back against the pad, hands holding the handles by the shoulders, the torso tall.",
+   "the trunk curled forward and down a long way, the chest brought towards the thighs, the back rounded in a crunch, the hands still on the handles by the shoulders; the hips stay on the seat."
   ],
   "props": "the ab crunch machine from the equipment sheet, set up as a rotary torso machine",
   "gear": 4,
@@ -1788,10 +1793,10 @@
  },
  "pallof_press": {
   "what": "The Pallof press.",
-  "view": "Seen from the front at a slight three-quarter angle, the figure facing the camera.",
+  "view": "Seen from the front at three-quarters, a little above: the figure faces towards the lower right of the picture; the cable column stands at the figure's LEFT SIDE, level with her, so the cable runs sideways into her hands from her left, at a right angle to the way she faces.",
   "frames": [
-   "standing side-on to the cable column, the D-handle from the chest-height pulley held in both hands at the chest.",
-   "the handle pressed straight out in front of the chest, arms straight, the body not turning towards the column."
+   "standing tall, feet hip-width, side-on to the column; the D-handle held in both hands pressed against the middle of the chest; the cable pulling sideways from her left.",
+   "the same stance, still side-on to the column: the arms pressed straight out in front of her chest, in the direction she faces, fully straight; the cable now pulls sideways on her straight arms at an angle, and her body stays square and does not turn towards the column."
   ],
   "props": "the cable column from the equipment sheet with a D-handle at chest height",
   "gear": 2,
@@ -2011,5 +2016,166 @@
   "effort": "to1",
   "common": 5,
   "cast": "kenji"
+ },
+ "tripod_knees_elbows": {
+  "what": "The tripod balance with knees on the elbows, the first step towards a headstand.",
+  "view": "Seen exactly from the side, the figure facing right.",
+  "single": 0,
+  "props": "the exercise mat from the equipment sheet",
+  "gear": 2,
+  "common": 1,
+  "cast": "kofi",
+  "frames": [
+   "on the exercise mat: the top of the head and both hands on the mat in a triangle, hands shoulder-width and a little behind the head, forearms upright with the elbows straight above the wrists; the hips high, stacked over the head; the knees resting on the backs of the upper arms just above the elbows; both feet lifted off the mat; a calm face."
+  ]
+ },
+ "tripod_headstand": {
+  "what": "The tripod headstand.",
+  "view": "Seen exactly from the side, the figure facing right.",
+  "single": 0,
+  "props": "the exercise mat from the equipment sheet",
+  "gear": 2,
+  "common": 1,
+  "cast": "kenji",
+  "frames": [
+   "on the exercise mat: the top of the head and both hands on the mat in a triangle, hands shoulder-width a little behind the head, forearms upright with the elbows above the wrists; the hips stacked over the head and the legs straight up together to the ceiling, toes pointed; the whole body one straight vertical line, steady, a calm face."
+  ]
+ },
+ "wall_walk": {
+  "what": "The wall walk: feet on the wall, hands walking in.",
+  "view": "Seen exactly from the side, a plain wall standing upright at the right side of the picture.",
+  "props": "the exercise mat from the equipment sheet",
+  "gear": 2,
+  "effort": "to1",
+  "common": 1,
+  "cast": "maeve",
+  "frames": [
+   "in a high push-up position on the exercise mat, arms straight, the hands under the shoulders, the head towards the left; the feet against the wall behind at the right, low on it, the body one straight line.",
+   "the hands walked in close to the wall, arms straight, the body now almost upside down and nearly upright, chest facing the wall, the feet high up the wall; the body one straight line from hands to feet, belly tight, the head between the arms looking at the floor."
+  ]
+ },
+ "wall_handstand": {
+  "what": "The handstand facing the wall.",
+  "view": "Seen exactly from the side, a plain wall standing upright at the right side of the picture.",
+  "single": 0,
+  "props": "the exercise mat from the equipment sheet",
+  "gear": 2,
+  "common": 1,
+  "cast": "noor",
+  "frames": [
+   "a handstand with the chest facing the wall: the hands on the mat a short way from the wall, arms straight and locked, the shoulders pushed up to the ears; the body one straight vertical line, only the toes lightly touching the wall; the head neutral between the arms, eyes on the floor between the hands."
+  ]
+ },
+ "handstand": {
+  "what": "The freestanding handstand.",
+  "view": "Seen exactly from the side, the figure facing right.",
+  "single": 0,
+  "props": "the exercise mat from the equipment sheet",
+  "gear": 2,
+  "common": 1,
+  "cast": "kofi",
+  "frames": [
+   "a freestanding handstand on the exercise mat, no wall: hands shoulder-width, fingers spread, arms straight and locked, the shoulders pushed up; the body one straight vertical line with the legs together and the toes pointed; the head neutral between the arms, eyes on the floor between the hands."
+  ]
+ },
+ "double_kb_press": {
+  "what": "The double kettlebell overhead press.",
+  "view": "Seen from the front at a slight three-quarter angle, the figure facing the camera.",
+  "props": "two kettlebells like the one on the equipment sheet",
+  "effort": "to1",
+  "common": 1,
+  "cast": "arne",
+  "frames": [
+   "standing tall, feet hip-width; a kettlebell racked at each shoulder, each bell resting on the back of the forearm, elbows tucked in.",
+   "both kettlebells pressed straight up overhead until both arms are straight, the bells behind the forearms, the biceps by the ears, the body straight, not leaning back."
+  ]
+ },
+ "deficit_push_up": {
+  "what": "The deficit push-up: hands raised on two weight plates so the chest goes lower.",
+  "view": "Seen exactly from the side, the figure facing right.",
+  "props": "two weight plates laid flat on the exercise mat, from the equipment sheet",
+  "gear": 2,
+  "effort": "to0",
+  "common": 1,
+  "cast": "rosa",
+  "frames": [
+   "the top of a push-up with each hand on a weight plate laid flat on the floor, arms straight, hands under the shoulders, the body one straight line from head to heels, eyes on the floor.",
+   "the bottom: the elbows bent back at about 45 degrees from the body, the chest lowered below the level of the hands, between the plates, just above the floor; the body still one straight line, eyes on the floor."
+  ]
+ },
+ "turkish_get_up": {
+  "what": "The Turkish get-up: from lying to standing with a kettlebell held up overhead.",
+  "view": "Seen from the front at a slight three-quarter angle, the figure facing the camera.",
+  "props": "the kettlebell from the equipment sheet and the exercise mat from the equipment sheet",
+  "gear": 2,
+  "effort": "to1",
+  "common": 1,
+  "cast": "dele",
+  "frames": [
+   "lying on the back on the exercise mat; the right arm straight up to the ceiling holding the kettlebell, the bell resting on the back of the forearm; the right knee bent with the foot flat, the left leg straight and the left arm out on the mat at 45 degrees; the eyes on the bell.",
+   "standing tall at the end of the get-up, feet hip-width, the kettlebell still held straight up overhead in the right hand, the arm locked and the bell behind the forearm; the eyes forward."
+  ]
+ },
+ "db_bent_over_row": {
+  "what": "The bent-over row with two dumbbells.",
+  "view": "Seen exactly from the side, the figure facing right.",
+  "props": "the pair of dumbbells from the equipment sheet",
+  "effort": "to1",
+  "common": 2,
+  "cast": "rosa",
+  "frames": [
+   "standing, hinged forward at the hips with soft knees until the back is flat and nearly level, a dumbbell hanging straight down in each hand under the shoulders. The head and neck in line with the spine, the eyes on the floor a little ahead, NOT looking up.",
+   "both dumbbells pulled up to the lower ribs, the elbows driven back close to the body, the shoulder blades squeezed; the back still flat and level. The head and neck in line with the spine, the eyes on the floor."
+  ]
+ },
+ "kb_high_pull": {
+  "what": "The kettlebell high pull.",
+  "view": "Seen exactly from the side, the figure facing right.",
+  "props": "the kettlebell from the equipment sheet",
+  "effort": "to1",
+  "common": 1,
+  "cast": "arne",
+  "frames": [
+   "hinged at the hips with soft knees, the back flat, one kettlebell held in both hands hanging between the legs, arms straight; head in line with the spine.",
+   "standing tall after a strong hip drive, the kettlebell pulled up to chest height, both elbows bent high and out to the sides above the hands, the bell close to the body."
+  ]
+ },
+ "twisting_knee_raise": {
+  "what": "The hanging knee raise with a twist to the side.",
+  "view": "Seen from the front, the whole figure and the bar in frame.",
+  "props": "the pull-up station from the equipment sheet",
+  "gear": 2,
+  "effort": "to1",
+  "common": 1,
+  "cast": "kofi",
+  "frames": [
+   "hanging from the pull-up bar with straight arms, hands shoulder-width, palms facing away, shoulders engaged; legs straight together below.",
+   "the knees pulled up to hip height and swung FAR across to the right side of the picture, the thighs pointing diagonally up and to the right, the hips clearly turned so the twist is obvious; the knees together, the arms still straight, the shoulders square to the camera, no swinging."
+  ]
+ },
+ "single_leg_ext": {
+  "what": "The leg extension, one leg at a time.",
+  "view": "Seen exactly from the side, the figure facing right.",
+  "props": "the leg extension machine from the equipment sheet",
+  "gear": 4,
+  "effort": "to1",
+  "common": 1,
+  "cast": "maeve",
+  "frames": [
+   "sitting upright in the leg extension machine, back against the pad, hands on the side handles; only the near leg hooked under the roller pad with the knee bent at 90 degrees; the other leg resting relaxed, its foot off the roller.",
+   "the near leg straightened fully, lifting the roller pad up until the leg is straight out in front, the thigh muscle tight; the other leg still resting down; the back still against the pad."
+  ]
+ },
+ "double_kb_front_squat": {
+  "what": "The front squat with two kettlebells.",
+  "view": "Seen from the front at a slight three-quarter angle, the figure facing the camera.",
+  "props": "two kettlebells like the one on the equipment sheet",
+  "effort": "to0",
+  "common": 1,
+  "cast": "noor",
+  "frames": [
+   "standing tall, feet shoulder-width, a kettlebell racked at each shoulder, the bells resting on the backs of the forearms, elbows tucked in, chest up.",
+   "a deep squat with the kettlebells still racked: the thighs below parallel, the knees out over the toes, the heels down, the chest up and the back straight."
+  ]
  }
 }
