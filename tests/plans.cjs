@@ -49,7 +49,7 @@ test("every built-in plan's lift and routine is one the app knows", () => {
         assert.ok(ex, `${w.id}/${id}`);
         assert.ok(ex.patterns.includes(e.pattern), `${w.id}/${id} is not ${e.pattern}`);
         assert.ok(guideFor(id), `${id} has no guide`);
-        assert.ok(kit.isListed(id), `${id} has no equipment listed`);
+        assert.notEqual(kit.needsOf({ id, equipment: ["unlisted"] })[0], "unlisted", `${id} has no equipment listed`);
       }
     }
     if (w.cardio.open) assert.ok(conditioning.cardioById(w.cardio.open.machine), w.id);
@@ -89,7 +89,6 @@ test("a plan of your own: added empty, used, filled on Plan, and kept when you s
   assert.equal(state.workouts.length, 0);
   assert.equal(store.upNext(state), undefined);
   assert.equal(store.buildWorkout(state), state, "nothing to start");
-  assert.equal(store.skipWorkout(state), state);
   assert.equal(store.upcomingWorkouts(state, 3).length, 0);
   state = store.addWorkoutOfKind(state, "bw1", "bodyweight");
   assert.equal(store.upNext(state).id, "bw1");

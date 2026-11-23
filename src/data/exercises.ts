@@ -749,16 +749,10 @@ export const CATEGORY_LABEL: Record<Category, string> = {
   core: "Core",
 };
 
-export const CATEGORY_ORDER: Category[] = ["push", "pull", "legs", "core"];
-
 /** Every category an exercise belongs to, from all of its movement types. */
 export const categoriesOf = (ex: Exercise): Category[] => [
   ...new Set(ex.patterns.map((p) => CATEGORY_BY_PATTERN[p])),
 ];
-
-/** Movement types that make up a category, in list order. */
-export const patternsIn = (category: Category): Pattern[] =>
-  PATTERN_ORDER_FOR_CATEGORY.filter((p) => CATEGORY_BY_PATTERN[p] === category);
 
 /** Whether an exercise counts as a given movement type. */
 export const isPattern = (ex: Exercise, pattern: Pattern): boolean =>
@@ -783,26 +777,6 @@ export const PATTERN_LABEL: Record<Pattern, string> = {
   abs: "Abs",
   jump: "Explosive",
 };
-
-/** The order patterns appear in the library. */
-const PATTERN_ORDER_FOR_CATEGORY: Pattern[] = [
-  "horizontal_push",
-  "vertical_push",
-  "chest_iso",
-  "shoulders",
-  "triceps",
-  "vertical_pull",
-  "horizontal_pull",
-  "biceps",
-  "squat",
-  "hinge",
-  "lunge",
-  "quads",
-  "hamstrings",
-  "calves",
-  "jump",
-  "abs",
-];
 
 export const PATTERN_ORDER: Pattern[] = [
   "horizontal_push",

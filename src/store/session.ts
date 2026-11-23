@@ -27,9 +27,6 @@ import {
   AWAY_CARDIO,
   awayVersion,
   CARDIO_MINUTES,
-  COURSE_STEP,
-  MINUTES_MAX,
-  MINUTES_STEP,
   DEFAULT_MOBILITY,
   HOLD_RANGE,
   HOLD_STEP,
@@ -40,7 +37,6 @@ import {
   cardioById,
   cardioPool,
   courseLabel,
-  defaultCourse,
   holdOf,
   hiddenCardio,
   hiddenMobility,
@@ -117,7 +113,6 @@ import {
   applyResult,
   daysBetween,
   decayFor,
-  settleLayoff,
   freshState,
   HOLD_MAX,
   hitTarget,
@@ -594,12 +589,6 @@ export const everyExercise = (state: SessionState): Exercise[] =>
   [...EXERCISES.filter((e) => e.enabled !== false), ...state.custom]
     .filter((e) => !e.restricted)
     .map(withEdits);
-
-/** Bring a built-in in from the library. */
-export const restoreExercise = (state: SessionState, id: string): SessionState => ({
-  ...state,
-  hidden: state.hidden.filter((h) => h !== id),
-});
 
 /** Whether an exercise is one of yours, rather than built in. */
 export const isCustom = (state: SessionState, id: string): boolean =>
@@ -1363,13 +1352,6 @@ const patchWorkout = (
   workouts: state.workouts.map((w) => (w.id === id ? fn(w) : w)),
 });
 
-/** Add an empty workout at the bottom of the cycle. */
-export const addWorkout = (state: SessionState, id: string, name: string): SessionState => ({
-  ...state,
-  // A blank workout contains only what its owner adds.
-  workouts: [...state.workouts, { id, name, subtitle: "", exercises: [], cardio: { open: null, close: null }, warmup: null, mobility: null }],
-});
-
 /**
  * Add a copy of a workout — running or paused — at the bottom of the cycle:
  * the same exercises, the same choice in every slot, the same cardio and
@@ -1465,25 +1447,6 @@ export const planWorkouts = (state: SessionState): Workout[] => {
     const rank = (id: string) => order.includes(id) ? order.indexOf(id) : order.length + rows.findIndex((w) => w.id === id);
     return rank(a.id) - rank(b.id);
   });
-};
-
-export const movePlanWorkout = (state: SessionState, from: number, to: number): SessionState => {
-  const rows = move(planWorkouts(state), from, to);
-  const running = new Set(state.workouts.map((w) => w.id));
-  return { ...state, planOrder: rows.map((w) => w.id), workouts: rows.filter((w) => running.has(w.id)) };
-};
-
-/**
- * Reorder the active workouts — the ones that take turns. Paused workouts
- * keep their own list and are not part of the order. What is next stays next.
- */
-export const moveActiveWorkout = (state: SessionState, from: number, to: number): SessionState => {
-  const workouts = move(state.workouts, from, to);
-  return {
-    ...state,
-    workouts,
-    planOrder: [...workouts.map((w) => w.id), ...state.removedWorkouts.map((r) => r.workout.id)],
-  };
 };
 
 /**
@@ -1607,70 +1570,6 @@ export const resumeWorkout = (state: SessionState, id: string): SessionState => 
     workouts,
     planOrder: order.map((w) => w.id),
     removedWorkouts: state.removedWorkouts.filter((r) => r.workout.id !== id),
-  };
-};
-
-/**
- * Move a workout to a new position in the cycle. Only the order changes: what
- * is next stays next, and the cycle carries on from wherever it now sits.
- * Changing what is next is `setNextWorkout`'s job — Do next — never a drag's.
- */
-export const moveWorkout = (state: SessionState, from: number, to: number): SessionState => ({
-  ...state,
-  workouts: move(state.workouts, from, to),
-});
-
-/**
- * Skip the next workout without starting it: the cycle moves on to the one
- * after, and nothing is recorded — no exercise is flagged as skipped, since
- * none was ever offered. Undo restores the previous next id and temporary queue.
- */
-export const skipWorkout = (state: SessionState): SessionState => {
-  const next = upNext(state);
-  if (state.active || !next) return state;
-  const skipped = { ...state, ...advanceWorkout(state, next.id) };
-  // A workout put off for next time stays put off: skipping the one that
-  // came up instead walks on to the next that isn't waiting, as "Do it next
-  // time" does, rather than bringing back one you have already said no to.
-  const waiting = skipped.postponed ?? [];
-  if (waiting.length === 0) return skipped;
-  const rest = (skipped.workoutQueue ?? []).filter((id) => !waiting.includes(id));
-  if (rest.length === 0) return skipped;
-  return {
-    ...skipped,
-    nextWorkout: rest[0],
-    workoutQueue: [rest[0], ...waiting, ...rest.slice(1)],
-  };
-};
-
-/**
- * Do it next time: the next workout that is not already waiting comes up
- * now, and this one waits straight after it — behind any you put off before
- * it, in the order they were due — before the cycle resumes. Put off the one
- * that came up instead and the one after that comes up, never one you have
- * just put off, so doing it twice walks on rather than swapping back and
- * forth. With everything else already waiting there is nothing to bring
- * forward, and the state comes back unchanged.
- */
-export const postponeWorkout = (state: SessionState): SessionState => {
-  if (state.active || state.workouts.length < 2) return state;
-  const current = upNext(state)!.id;
-  const exists = (id: string) => !!workoutById(state, id);
-  const waiting = (state.postponed ?? []).filter((id) => id !== current && exists(id));
-  const savedQueue = state.workoutQueue?.filter(exists);
-  const at = state.workouts.findIndex((w) => w.id === current);
-  const cycle = [...state.workouts.slice(at), ...state.workouts.slice(0, at)].map((w) => w.id);
-  // A final queued workout can still borrow the next workout from the normal cycle.
-  const queue =
-    savedQueue && savedQueue.length > 1 && savedQueue[0] === current ? savedQueue : cycle;
-  const rest = queue.slice(1).filter((id) => !waiting.includes(id));
-  if (rest.length === 0) return state;
-  const line = [...waiting, current];
-  return {
-    ...state,
-    nextWorkout: rest[0],
-    workoutQueue: [rest[0], ...line, ...rest.slice(1)],
-    postponed: line,
   };
 };
 
@@ -2015,37 +1914,6 @@ export const intoLoops = (state: SessionState): SessionState => {
 };
 
 /**
- * Add a slot for a movement type at the bottom of a workout, filled with the
- * first exercise of that type the workout is not already using. It opens on
- * 6–10; everything about it can be changed afterwards.
- */
-export const addEntry = (
-  state: SessionState,
-  workoutId: string,
-  pattern: Pattern,
-  entryId: string = newId("s"),
-): SessionState => {
-  const w = workoutById(state, workoutId);
-  if (!w) return state;
-  const taken = new Set(w.exercises.map((e) => chosen(state, workoutId, e)));
-  const pick = catalogue(state).find(
-    (e) => isPattern(e, pattern) && !e.restricted && !taken.has(e.id),
-  );
-  if (!pick) return state;
-  const entry: Entry = {
-    id: entryId,
-    slot: PATTERN_LABEL[pattern],
-    pattern,
-    options: [pick.id],
-    scheme: defaultScheme(pattern),
-  };
-  return patchWorkout(state, workoutId, (wk) => ({
-    ...wk,
-    exercises: [...wk.exercises, entry],
-  }));
-};
-
-/**
  * Add a chosen exercise to the bottom of a workout. Its slot takes the
  * exercise's own movement type, so Swap offers its alternatives as for any
  * other; one from the library joins your catalogue on the way in. An
@@ -2132,15 +2000,6 @@ export const removeEntry = (
     choices,
   };
 };
-
-/** Move a slot to a new position within its workout. */
-export const moveEntry = (
-  state: SessionState,
-  workoutId: string,
-  from: number,
-  to: number,
-): SessionState =>
-  patchWorkout(state, workoutId, (w) => ({ ...w, exercises: move(w.exercises, from, to) }));
 
 /**
  * A fresh install.
@@ -2271,17 +2130,6 @@ export const decayOffers = (
  * headline — "3 weeks since your last workout" is the fact you recognise,
  * not a per-exercise breakdown.
  */
-/**
- * Whether anything was trained on today's calendar date, in the phone's own
- * timezone. Not `daysSinceTrained(...) === 0`: that counts whole 24-hour
- * spans, so last night's session would still read as "today" this morning.
- */
-export const trainedToday = (state: SessionState, now: number = Date.now()): boolean => {
-  const today = new Date(now).toDateString();
-  return Object.values(state.history).some(
-    (r) => typeof r.lastTrainedAt === "number" && new Date(r.lastTrainedAt).toDateString() === today,
-  );
-};
 
 export const daysSinceTrained = (
   state: SessionState,
@@ -2308,26 +2156,6 @@ export const acceptDecay = (
   const history = { ...state.history };
   for (const offer of decayOffers(state, now)) {
     history[offer.key] = applyDecay(history[offer.key], offer.decay, now);
-  }
-  return { ...state, history };
-};
-
-/**
- * Decline it: keep every weight where it is, and do not ask again until the
- * situation changes.
- *
- * The gap is settled exactly as if the cut had been applied, so declining is
- * a real answer rather than a snooze — you are not asked the same question
- * every time you open the app. The training clock is left alone: declining
- * is not a workout, and Today should not greet you as if you had just done one.
- */
-export const declineDecay = (
-  state: SessionState,
-  now: number = Date.now(),
-): SessionState => {
-  const history = { ...state.history };
-  for (const offer of decayOffers(state, now)) {
-    history[offer.key] = settleLayoff(history[offer.key], now);
   }
   return { ...state, history };
 };
@@ -3076,16 +2904,6 @@ export const currentWarmup = (state: SessionState): WarmupSet[] => {
 };
 
 /**
- * Step back to the previous exercise. Its circles are still filled in, so you
- * can correct a mis-tap; whatever it wrote to history is rewritten when you
- * move forward again.
- */
-export const previousExercise = (state: SessionState): SessionState => {
-  if (!state.active || state.active.cursor === 0) return state;
-  return { ...state, active: { ...state.active, cursor: state.active.cursor - 1 } };
-};
-
-/**
  * Whether skipping the lift on screen only puts it off: it is a lift, it has
  * not been put off already, and another lift is still to come. It then comes
  * back after the last of them (see `skipExercise`) — so a taken bench never
@@ -3164,60 +2982,6 @@ export const skipExercise = (state: SessionState): SessionState => {
   return {
     ...state,
     active: { ...state.active, items: [...next, ...released], cursor: cursor + 1 },
-  };
-};
-
-/**
- * Whether a later item can be folded into the one on screen. Any lift can:
- * what to pair is your call, not the program's. Not conditioning, not one
- * already carrying a partner, not speed work (its weight comes from
- * elsewhere), and not one you have already started.
- */
-const canPair = (it: Item): boolean =>
-  isLift(it) &&
-  !it.supersetWith &&
-  !it.derive &&
-  !it.logged.some((r) => r !== null);
-
-/** Lifts still ahead of the cursor — the valid superset partners. */
-export const supersetOptions = (state: SessionState): Exercise[] => {
-  if (!state.active) return [];
-  const { items, cursor } = state.active;
-  return items
-    .filter((it, i) => i > cursor && canPair(it))
-    .map((it) => byId(it.exerciseId)!);
-};
-
-/**
- * Pair a later lift into the current exercise. It is removed from further
- * down the workout so it isn't prescribed twice.
- */
-export const addSuperset = (state: SessionState, exerciseId: string): SessionState => {
-  if (!state.active) return state;
-  const { items, cursor } = state.active;
-  const at = items.findIndex(
-    (f, j) => j > cursor && canPair(f) && f.exerciseId === exerciseId,
-  );
-  if (at === -1) return state;
-  const partner = items[at];
-  return {
-    ...state,
-    active: {
-      ...state.active,
-      items: items
-        .map((it, i) =>
-          i === cursor
-            ? {
-                ...it,
-                supersetWith: exerciseId,
-                supersetEntry: partner,
-                supersetWeight: partner.weight,
-                supersetLogged: Array<number | null>(setsFor(partner)).fill(null),
-              }
-            : it,
-        )
-        .filter((_, i) => i !== at),
-    },
   };
 };
 
@@ -3650,33 +3414,6 @@ export const cardioTarget = (state: SessionState, id: string): CardioLength => {
   return lengthOf(cardioById(id)!);
 };
 
-const validCardioTarget = (target: CardioLength): boolean => {
-  const value = target.course ?? target.minutes;
-  return Number.isFinite(value) && value > 0 && Number(value.toFixed(3)) > 0;
-};
-
-/** A Plan/Exercises edit is shared; the active workout is deliberately untouched. */
-export const setCardioTarget = (state: SessionState, id: string, target: CardioLength): SessionState => {
-  if (!cardioById(id) || !validCardioTarget(target)) return state;
-  const length: CardioLength = target.course !== undefined
-    ? { course: Number(target.course.toFixed(3)) }
-    : { minutes: Number(target.minutes.toFixed(3)) };
-  return { ...state, cardioTargets: { ...state.cardioTargets, [id]: length } };
-};
-
-/** Switch mode or value for the current session only, clearing the previous result. */
-export const setTodayCardioTarget = (state: SessionState, target: CardioLength): SessionState => {
-  if (!validCardioTarget(target)) return state;
-  const length: CardioLength = target.course !== undefined
-    ? { course: Number(target.course.toFixed(3)) }
-    : { minutes: Number(target.minutes.toFixed(3)) };
-  return patchItem(state, (it) => {
-    if (!isCardio(it)) return it;
-    if (it.course === length.course && it.minutes === length.minutes) return it;
-    return { ...it, ...lengthFields(length) };
-  });
-};
-
 /**
  * The cardio as it runs here. At the gym, the workout's machine. Without
  * machines, the opening block becomes a walk or jog outside — skipping rope
@@ -3901,137 +3638,9 @@ export const chooseCardio = (
   machine: string,
 ): SessionState => setCardio(state, workoutId, where, { machine });
 
-/** Replace an exercise throughout the saved plan, including paused workouts. */
-export const replacePlannedCardio = (
-  state: SessionState, workoutId: string, where: CardioWhere, exerciseId: string,
-): SessionState => {
-  const workout = workoutById(state, workoutId);
-  const original = workout && cardioPlan(state, workout, where)?.machine.id;
-  if (!original || original === exerciseId || !cardioById(exerciseId)) return state;
-  const replace = (w: Workout): Workout => {
-    const cardio = { ...w.cardio };
-    for (const end of ["open", "close"] as const) {
-      if (cardioPlan(state, w, end)?.machine.id === original) cardio[end] = { machine: exerciseId };
-    }
-    const extras = w.extras?.map((x) => (x.cardio?.machine === original ? { ...x, cardio: { machine: exerciseId } } : x));
-    return { ...w, cardio, ...(extras ? { extras } : {}) };
-  };
-  return { ...state, workouts: state.workouts.map(replace), removedWorkouts: state.removedWorkouts.map((entry) => ({ ...entry, workout: replace(entry.workout) })) };
-};
-
-/**
- * Switch a block between a set distance, timed, and a set time, measured.
- * It starts on the machine's own default for whichever it becomes.
- */
-export const setCardioMode = (
-  state: SessionState,
-  workoutId: string,
-  where: CardioWhere,
-  mode: "distance" | "time",
-): SessionState => {
-  const w = workoutById(state, workoutId);
-  const plan = w && cardioPlan(state, w, where);
-  if (!plan) return state;
-  const machine = plan.machine.id;
-  return setCardio(
-    state,
-    workoutId,
-    where,
-    mode === "distance"
-      ? { machine, course: defaultCourse(plan.machine) }
-      : { machine, minutes: CARDIO_MINUTES },
-  );
-};
-
-/**
- * Step a block's length: a distance by one `COURSE_STEP`, never below one
- * step; minutes by one, between one and `MINUTES_MAX`. Each length keeps its
- * own record, so only whole steps are offered.
- */
-export const nudgeCardio = (
-  state: SessionState,
-  workoutId: string,
-  where: CardioWhere,
-  direction: 1 | -1,
-): SessionState => {
-  const w = workoutById(state, workoutId);
-  const plan = w && cardioPlan(state, w, where);
-  if (!plan) return state;
-  return setCardio(state, workoutId, where, {
-    machine: plan.machine.id,
-    ...stepLength(plan.machine, plan, direction),
-  });
-};
-
-/** One step longer or shorter, on the grid every length keeps its records on. */
-const stepLength = (
-  machine: CardioExercise,
-  length: CardioLength,
-  direction: 1 | -1,
-): CardioLength => {
-  if (length.course !== undefined) {
-    const step = COURSE_STEP[machine.metric.unit];
-    // Snapped onto the grid, so the records only ever land on whole steps.
-    return { course: Math.max(step, Math.round(length.course / step) * step + step * direction) };
-  }
-  return {
-    minutes: Math.max(
-      MINUTES_STEP,
-      Math.min(
-        MINUTES_MAX,
-        Math.round(length.minutes / MINUTES_STEP) * MINUTES_STEP + MINUTES_STEP * direction,
-      ),
-    ),
-  };
-};
-
 /** Which of the workout's cardio a running block is: the opening one, the closing one, or an extra. */
 export const cardioEnd = (item: Item): CardioWhere =>
   item.id === CARDIO_SLOTS.close ? "close" : item.id === CARDIO_SLOTS.open ? "open" : item.id;
-
-/** How far or how long a running cardio block is. */
-export const itemLength = (item: Item): CardioLength =>
-  item.course !== undefined ? { course: item.course } : { minutes: item.minutes ?? CARDIO_MINUTES };
-
-/**
- * Make the cardio on screen longer or shorter, for today only: you feel like
- * 2 km instead of 1. The workout is untouched — `keepTodayLength` is the way
- * to make it stick. The score goes back to unentered, since a time over 1 km
- * says nothing about 2; each length keeps its own records.
- */
-export const setTodayLength = (state: SessionState, value: number): SessionState => {
-  const item = state.active?.items[state.active.cursor];
-  return item && isCardio(item) ? setTodayCardioTarget(state, item.course !== undefined ? { course: value } : { minutes: value }) : state;
-};
-
-export const nudgeTodayLength = (state: SessionState, direction: 1 | -1): SessionState =>
-  patchItem(state, (it) => {
-    const machine = isCardio(it) ? cardioById(it.exerciseId) : undefined;
-    return machine ? { ...it, ...lengthFields(stepLength(machine, itemLength(it), direction)) } : it;
-  });
-
-/**
- * What the running workout's plan has at this block's end, if it differs
- * from today — the length to go back to, or to replace with today's.
- */
-export const plannedLength = (state: SessionState, item: Item): CardioLength | null => {
-  const workout = state.active && workoutById(state, state.active.workoutId);
-  const plan = workout && cardioPlan(state, workout, cardioEnd(item));
-  return plan ? (plan.course !== undefined ? { course: plan.course } : { minutes: plan.minutes }) : null;
-};
-
-/**
- * Today's length on the cardio on screen, kept in the workout from now on —
- * the same as changing it in Plan, without leaving the session.
- */
-export const keepTodayLength = (state: SessionState): SessionState => {
-  const item = state.active?.items[state.active.cursor];
-  if (!state.active || !item || !isCardio(item)) return state;
-  return setCardio(state, state.active.workoutId, cardioEnd(item), {
-    machine: item.exerciseId,
-    ...itemLength(item),
-  });
-};
 
 /**
  * Set the routine a workout opens with. Undefined goes back to the shoulder
@@ -4195,16 +3804,6 @@ export const setScore = (state: SessionState, score: number | null): SessionStat
     const value = score === null || !Number.isFinite(score) || score <= 0 ? null : score;
     return isTimed(it) ? { ...it, seconds: value } : { ...it, distance: value };
   });
-
-/**
- * Last session's score on this block's machine and length, if there is one.
- * It is what an unentered block starts from: shown in the box, stepped from
- * by −/+, and taken as the answer if you press Done without touching it.
- * The item's own score stays null until then, so leaving or skipping a
- * block you never did still records nothing.
- */
-export const lastScore = (state: SessionState, item: Item): number | null =>
-  cardioRecord(state, item)?.last ?? null;
 
 /**
  * Done on a cardio block. Left unentered with a record to go on, it means
@@ -4418,31 +4017,6 @@ export const isRoutineEdited = (state: SessionState, routineId: string): boolean
 export const resetRoutine = (state: SessionState, routineId: string): SessionState => {
   const { [routineId]: _gone, ...mobilityEdits } = state.mobilityEdits;
   return syncMobilityEdits({ ...state, mobilityEdits });
-};
-
-/**
- * Give a workout a routine of its own: a copy of the one it ends on, named
- * after it, so changing it leaves every other workout alone.
- */
-export const copyRoutineFor = (
-  state: SessionState,
-  workoutId: string,
-  routineId: string = newId("m"),
-  where: RoutineEnd = "end",
-): SessionState => {
-  const workout = workoutById(state, workoutId);
-  const from = workout && (where === "warmup" ? warmupPlan : mobilityPlan)(state, workout);
-  if (!workout || !from) return state;
-  const copy: MobilityRoutine = {
-    id: routineId,
-    name: `${workout.name || "Workout"} ${where === "warmup" ? "warm-up" : "stretch"}`,
-    subtitle: `for ${workout.name || "one workout"}`,
-    moves: from.moves.map((m) => ({ ...m })),
-  };
-  const added = addMobility(state, copy);
-  return where === "warmup"
-    ? setWarmup(added, workoutId, copy.id)
-    : setMobility(added, workoutId, copy.id);
 };
 
 /** Which routine of a workout: the warm-up it opens with, or the stretch it ends on. */

@@ -251,16 +251,6 @@ export const applyDecay = (state: ExerciseState, decay: Decay, now: number): Exe
 };
 
 /**
- * A layoff turned down: the weight stays, and the gap counts as settled, so
- * the question is not asked again until there is a new one. The training
- * clock is left alone — declining is not a workout.
- */
-export const settleLayoff = (state: ExerciseState, now: number): ExerciseState => ({
-  ...state,
-  lastBackOffAt: now,
-});
-
-/**
  * Make a lift easier by a fraction, snapped to the equipment's increment.
  *
  * The weight is ONE continuous axis, not two regimes either side of zero:

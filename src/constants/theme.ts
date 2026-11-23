@@ -158,11 +158,6 @@ export const cardOf = (family: Family): { bg: string; ink: string } => ({ bg: CL
 /** Outlined geometry uses its family's ink, rather than a second colour. */
 export const MARK_EDGE = true;
 
-/** One opaque tint of a family's colour, the same over every background. */
-export function familyWash(family: Family): string {
-  return mix(CLAY_LOOK.page, HUE[family], 0.12);
-}
-
 /** A workout card's palette: its family's clay, in the one warm ink; a done set pressed in, a shade deeper. */
 export function fieldColors(family: Family): Palette {
   const { card, deep, ink } = CLAY_TONE[family];

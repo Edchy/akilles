@@ -20,13 +20,6 @@ import { DEFAULT_SCHEME, DEFAULT_WORKOUTS, type Workout } from "@/data/split";
 export type Time = "short" | "medium" | "long";
 export type Shape = "full" | "upper_lower" | "ppl";
 
-/** What each length of visit gets, unless you choose another shape. */
-export const SHAPE_FOR: Record<Time, Shape> = {
-  short: "full",
-  medium: "upper_lower",
-  long: "ppl",
-};
-
 const slot = (name: string, pattern: Pattern, option: string) => ({
   id: name,
   slot: name,

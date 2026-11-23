@@ -111,10 +111,6 @@ export const CARDIO_DEFAULT: Record<CardioEnd, string> = {
 /** How long a cardio block on the clock runs, in minutes, unless a workout says otherwise. */
 export const CARDIO_MINUTES = 5;
 
-/** How far − and + move a block's minutes, and the most it can run. */
-export const MINUTES_STEP = 1;
-export const MINUTES_MAX = 60;
-
 /**
  * One cardio block as a workout has it: the machine, and how long.
  *
@@ -622,16 +618,6 @@ export const distanceLabel = (cardio: CardioExercise, distance: number): string 
 /** A set distance, without trailing zeros — "1 km", "2.5 km", "500 m". */
 export const courseLabel = (cardio: CardioExercise, distance: number): string =>
   `${Number(distance.toFixed(cardio.metric.decimals))} ${cardio.metric.unit}`;
-
-/**
- * How far a set distance moves at a time, by unit. Coarse on purpose: every
- * distance keeps its own record, so a free choice would scatter your times
- * across 1.35, 1.4 and 1.55 km with nothing to compare against.
- */
-export const COURSE_STEP: Record<CardioMetric["unit"], number> = { km: 0.5, m: 500, skips: 100, reps: 10 };
-
-/** How far − and + move a time, in seconds. */
-export const TIME_STEP = 5;
 
 /** Seconds as a clock — "4:52", "1:02:10". */
 export const timeLabel = (seconds: number): string => {

@@ -40,7 +40,7 @@ test("every rep target is 6, 8, 10 or 12, and abs are two sets", () => {
       if (entry.pattern === "abs") assert.equal(split.setsFor(entry), 2);
     }
   }
-  const state = store.addEntry(store.resetToDefault(), "legs", "abs");
+  const state = store.addExerciseToWorkout(store.resetToDefault(), "legs", "cable_crunch");
   assert.equal(split.setsFor(state.workouts.find((w) => w.id === "legs").exercises.at(-1)), 2);
 });
 

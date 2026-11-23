@@ -25,6 +25,9 @@ const store = load("@/store/session");
 const ids = (s) => s.workouts.map((w) => w.id);
 const paused = (s) => s.removedWorkouts.map((r) => r.workout.id);
 
+/** A blank workout of your own, as the store once made one; for the setup below. */
+const addWorkout = (s, id, name) => ({ ...s, workouts: [...s.workouts, { id, name, subtitle: "", exercises: [], cardio: { open: null, close: null }, warmup: null, mobility: null }] });
+
 test("a paused workout leaves the loop and comes back where it sat, exactly as it was", () => {
   const s = store.resetToDefault();
   const legs = store.workoutById(s, "legs");
@@ -38,7 +41,7 @@ test("a paused workout leaves the loop and comes back where it sat, exactly as i
 
 test("a workout you made pauses too, choices and all", () => {
   let s = store.resetToDefault();
-  s = store.addWorkout(s, "w_mine", "Full body");
+  s = addWorkout(s, "w_mine", "Full body");
   s = store.addExerciseToWorkout(s, "w_mine", "back_squat", "s1");
   s = store.chooseExercise(s, "w_mine", "s1", "goblet_squat");
   const out = store.pauseWorkout(s, "w_mine");
@@ -95,20 +98,6 @@ test("a paused workout can be copied into the loop", () => {
 });
 
 
-test("Plan preserves positions across multiple pauses, reordering and resuming", () => {
-  let s = store.resetToDefault();
-  const original = [...ids(s)];
-  s = store.pauseWorkout(s, original[0]);
-  s = store.pauseWorkout(s, original[1]);
-  assert.deepEqual([...store.planWorkouts(s).map((w) => w.id)], original);
-  s = store.movePlanWorkout(s, 2, 0);
-  const expected = [original[2], original[0], original[1]];
-  assert.deepEqual([...store.planWorkouts(s).map((w) => w.id)], expected);
-  s = store.resumeWorkout(s, original[1]);
-  s = store.resumeWorkout(s, original[0]);
-  assert.deepEqual([...ids(s)], expected);
-});
-
 test("a save from before Plan ordering reconstructs paused workouts in place", () => {
   let s = store.resetToDefault();
   const original = [...ids(s)];
@@ -120,7 +109,6 @@ test("a save from before Plan ordering reconstructs paused workouts in place", (
 
 test("deleting the next workout advances the rotation, clears scheduling references, and keeps training", () => {
   let s = store.resetToDefault();
-  s = store.postponeWorkout(s);
   const id = store.upNext(s).id;
   const history = s.history;
   const log = s.log;

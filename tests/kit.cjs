@@ -45,7 +45,7 @@ const withRecord = (state, id, weight, extra = {}) => ({
 const KB = (...weights) => ({ gear: ["kettlebell"], weights: { kettlebell: weights } });
 
 test("every built-in exercise says what it needs", () => {
-  const missing = exercises.EXERCISES.filter((e) => !kit.isListed(e.id)).map((e) => e.id);
+  const missing = exercises.EXERCISES.filter((e) => kit.needsOf({ id: e.id, equipment: ["unlisted"] })[0] === "unlisted").map((e) => e.id);
   assert.equal(missing.length, 0, missing.join(", "));
 });
 

@@ -121,10 +121,3 @@ test("a move done for reps steps a rep at a time, within 5 to 30", () => {
   assert.equal(move("warmup_legs", "goblet_hold").reps, undefined);
 });
 
-test("a warm-up copied for one workout is that workout's alone", () => {
-  let state = store.setWarmup(fresh(), "legs", "warmup_push");
-  state = store.copyRoutineFor(state, "push", "m_push", "warmup");
-  assert.equal(warmupOf(state, "push").exerciseId, "m_push");
-  assert.equal(warmupOf(state, "legs").exerciseId, "warmup_push");
-  assert.equal(started(state, "push").at(-1).exerciseId, "everyday");
-});

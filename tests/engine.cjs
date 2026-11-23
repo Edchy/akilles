@@ -145,14 +145,7 @@ function act(state, rnd, now, planOnly = false) {
   const entry = w.exercises.length ? pick(rnd, w.exercises) : undefined;
   const moves = [
     ["train", () => train(state, rnd, now)],
-    ["skip workout", () => store.skipWorkout(state)],
-    ["put off", () => store.postponeWorkout(state)],
     ["do next", () => store.setNextWorkout(state, w.id)],
-    ["reorder", () => store.moveWorkout(state, Math.floor(rnd() * state.workouts.length), Math.floor(rnd() * state.workouts.length))],
-    ["reorder in Plan", () => {
-      const n = store.planWorkouts(state).length;
-      return store.movePlanWorkout(state, Math.floor(rnd() * n), Math.floor(rnd() * n));
-    }],
     ["pause", () => store.pauseWorkout(state, w.id)],
     ["resume", () => state.removedWorkouts.length ? store.resumeWorkout(state, pick(rnd, state.removedWorkouts).workout.id) : state],
     ["delete", () => store.deleteWorkout(state, pick(rnd, store.planWorkouts(state)).id)],
@@ -163,7 +156,6 @@ function act(state, rnd, now, planOnly = false) {
       return store.addExerciseToWorkout(state, w.id, ex.id, `s_${Math.floor(rnd() * 1e9)}`);
     }],
     ["remove exercise", () => entry ? store.removeEntry(state, w.id, entry.id) : state],
-    ["move exercise", () => store.moveEntry(state, w.id, Math.floor(rnd() * w.exercises.length), Math.floor(rnd() * w.exercises.length))],
     ["swap", () => {
       if (!entry) return state;
       return store.swapInPlan(state, w.id, entry.id, pick(rnd, store.poolFor(state, w.id, entry)));
@@ -247,6 +239,14 @@ const slot = (s, wid, label) => store.workoutById(s, wid).exercises.find((e) => 
 const third = (s) => push(s).exercises[2];
 const now0 = Date.UTC(2026, 10, 1);
 
+/** Move a slot within its workout; for the setup below. */
+const moveEntry = (s, workoutId, from, to) => ({ ...s, workouts: s.workouts.map((w) => {
+  if (w.id !== workoutId) return w;
+  const exercises = [...w.exercises];
+  exercises.splice(to, 0, ...exercises.splice(from, 1));
+  return { ...w, exercises };
+}) });
+
 test("a weight belongs to the exercise: swapped out and back, it is where it was", () => {
   let s = fresh();
   s = train(s, random(1), now0, { shortChance: 0, skipChance: 0 });
@@ -264,7 +264,7 @@ test("a slot keeps its id through a swap, and the swap stays with the slot when 
   const fly = third(s);
   const other = store.poolFor(s, "push", fly).find((id) => !store.liftsToRun(s, push(s)).some((l) => l.exerciseId === id));
   s = store.swapInPlan(s, "push", fly.id, other);
-  s = store.moveEntry(s, "push", push(s).exercises.findIndex((e) => e.id === fly.id), 0);
+  s = moveEntry(s, "push", push(s).exercises.findIndex((e) => e.id === fly.id), 0);
   assert.equal(push(s).exercises[0].id, fly.id);
   assert.equal(store.chosen(s, "push", push(s).exercises[0]), other);
 });

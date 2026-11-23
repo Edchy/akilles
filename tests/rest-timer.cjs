@@ -72,24 +72,6 @@ test("a set marked not done with a long press starts no rest", () => {
   });
 });
 
-test("superset partners share the timer without restarting it on corrections", () => {
-  withClock((advance) => {
-    let state = lifting();
-    const partner = store.supersetOptions(state)[0];
-    assert.ok(partner);
-    state = store.addSuperset(state, partner.id);
-    const first = advance();
-    state = store.tapSet(state, 0);
-    assert.equal(state.active.lastSetAt, first);
-    const second = advance();
-    state = store.tapSet(state, 0, "partner");
-    assert.equal(state.active.lastSetAt, second);
-    advance();
-    state = store.tapSet(state, 0, "partner");
-    assert.equal(state.active.lastSetAt, second);
-  });
-});
-
 test("rest timestamp survives saving, reopening, and exercise navigation; a new workout starts fresh", () => {
   let state = store.tapSet(lifting(), 0);
   const timestamp = state.active.lastSetAt;
@@ -97,7 +79,7 @@ test("rest timestamp survives saving, reopening, and exercise navigation; a new 
   assert.equal(restored.active.lastSetAt, timestamp);
   state = store.skipExercise(restored);
   assert.equal(state.active.lastSetAt, timestamp);
-  state = store.previousExercise(state);
+  state = { ...state, active: { ...state.active, cursor: state.active.cursor - 1 } };
   assert.equal(state.active.lastSetAt, timestamp);
   const nextWorkout = store.buildWorkout(store.finishWorkout(state));
   assert.equal(nextWorkout.active.lastSetAt, undefined);

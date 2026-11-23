@@ -36,6 +36,9 @@ const record = (exerciseId, weight, extra = {}) => ({ exerciseId, weight, rung: 
 const hit = (st) => prog.applyResult(st, SCHEME, [target(st), target(st), target(st)], NOW);
 const miss = (st) => prog.applyResult(st, SCHEME, [target(st), target(st), target(st) - 2], NOW);
 
+/** A blank workout of your own, as the store once made one; for the setup below. */
+const addWorkout = (s, id, name) => ({ ...s, workouts: [...s.workouts, { id, name, subtitle: "", exercises: [], cardio: { open: null, close: null }, warmup: null, mobility: null }] });
+
 test("two steps up, then the top of the ladder is climbed again before the next", () => {
   let st = record("db_bench", 20);
   const seen = [];
@@ -128,7 +131,7 @@ test("only a layoff eases weights back: no monthly trim on a lift you train", ()
   assert.deepEqual({ ...prog.decayFor(away, NOW) }, { kind: "layoff", fraction: 0.15, days: 50 });
 });
 
-test("a layoff ends a reload; declining one settles it without counting as training", () => {
+test("a layoff ends a reload", () => {
   const state = {
     ...store.resetToDefault(),
     history: {
@@ -141,12 +144,6 @@ test("a layoff ends a reload; declining one settles it without counting as train
   assert.ok(accepted.weight < 25);
   assert.equal(accepted.rung, 0);
   assert.ok(!accepted.reloading);
-
-  const declined = store.declineDecay(state, NOW);
-  assert.equal(declined.history["db_bench:6-12"].weight, 25);
-  assert.equal(store.decayOffers(declined, NOW).length, 0);
-  assert.equal(store.trainedToday(declined, NOW), false);
-  assert.equal(store.daysSinceTrained(declined, NOW), 50);
 });
 
 /** Start Push A with DB bench in a given state, every set logged at its target. */
@@ -184,23 +181,6 @@ test("finishing a reload is owned, and earns the next step", () => {
   assert.equal(verdict.fact, "Up to 27.5 kg per hand next time.");
 });
 
-test("Today says a lift reloads", () => {
-  const base = store.resetToDefault();
-  const state = {
-    ...base,
-    history: {
-      "db_bench:6-10": record("db_bench", 25, { rung: 1, reloading: true, lastPerformed: { weight: 25, reps: [10, 10, 10], target: 10 }, lastTrainedAt: NOW - 3 * DAY }),
-    },
-  };
-  const rows = store.workoutPreview(state, store.workoutById(state, "push"));
-  const bench = rows.find((r) => r.name === "DB bench press");
-  assert.equal(bench.change, "reload");
-  assert.equal(bench.amount, "3 × 8");
-
-  const line = voice.newsLine({ up: [], fresh: [], reload: [{ name: bench.name, weight: bench.weight }], down: [] }, "x");
-  assert.match(line, /DB bench press reloads/);
-});
-
 test("an unfinished attempt never advances or counts as a second miss", () => {
   let st = miss(record("db_bench", 20, { rung: 2 }));
   st = prog.applyResult(st, SCHEME, [10, null, 8], NOW);
@@ -223,7 +203,7 @@ test("the verdict states the real reduced weight without claiming an exact perce
 });
 
 test("a trained manual weight carries to the same exercise in another workout and rep range", () => {
-  let state = store.addWorkout(store.resetToDefault(), "other", "Other");
+  let state = addWorkout(store.resetToDefault(), "other", "Other");
   state = store.addExerciseToWorkout(state, "other", "db_bench");
   const other = store.workoutById(state, "other");
   state = { ...state, workouts: state.workouts.map((w) => w.id === "other" ? { ...w, exercises: w.exercises.map((e) => ({ ...e, scheme: "8-12" })) } : w), history: {
@@ -252,7 +232,7 @@ test("editing a weight without training does not change another workout's prescr
 });
 
 test("legacy records without timestamps resolve to one consistent weight across ranges", () => {
-  let state = store.addWorkout(store.resetToDefault(), "legacy", "Legacy");
+  let state = addWorkout(store.resetToDefault(), "legacy", "Legacy");
   state = store.addExerciseToWorkout(state, "legacy", "db_bench");
   const entry = store.workoutById(state, "legacy").exercises[0];
   state = { ...state, history: { "db_bench:6-12": record("db_bench", 50), "db_bench:8-12": record("db_bench", 40) } };

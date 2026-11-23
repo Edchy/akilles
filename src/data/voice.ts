@@ -1,4 +1,3 @@
-import { inSentence } from "@/data/exercises";
 
 /**
  * Klay talks back.
@@ -111,79 +110,12 @@ export type TodayMood = keyof typeof TODAY_LINES;
 export const fillLine = (line: string, vars: { days?: number; name?: string }): string =>
   line.replace("{days}", String(vars.days ?? "")).replace("{name}", vars.name ?? "");
 
-/**
- * What changed since you last did a workout's lifts, in Klay's words. One
- * kind of news gets a voiced line; two or three are said plainly, one after
- * the other. `{name}` is the lift at the start of a sentence, `{lname}` the
- * same mid-sentence, `{count}` a number word.
- */
-const NEWS_LINES = {
-  up: [
-    "{name} goes up to {weight}. Same slow reps.",
-    "{name}: {weight} today. Heavier, not sloppier.",
-    "{name} goes up to {weight}. Own it like the last one.",
-  ],
-  upMany: [
-    "{count} lifts go up today. Same standard.",
-    "{count} lifts heavier than last time. Keep them slow.",
-  ],
-  fresh: [
-    "First go at the {lname}. Start lighter than you think.",
-    "New today: the {lname}. Leave two reps in the tank.",
-  ],
-  freshMany: [
-    "{count} lifts you haven't done. Start lighter than you think.",
-    "{count} new lifts today. Leave two reps in the tank.",
-  ],
-  reload: [
-    "{name} reloads today. Lighter is the flex.",
-    "{name} reloads: {weight} again, slower. Own it.",
-    "{name} reloads today. Same weight, more control.",
-  ],
-  reloadMany: [
-    "{count} lifts reload today. Climb them again, slower.",
-    "{count} lifts reload today. Lighter is the flex.",
-  ],
-  down: ["{name} drops to {weight}. Lighter, cleaner.", "{name} back to {weight}. A run-up, not a retreat."],
-  downMany: ["{count} lifts drop back today. A run-up, not a retreat."],
-} as const;
-
-const PLAIN = {
-  up: "{name} goes up to {weight}.",
-  upMany: "{count} lifts go up.",
-  fresh: "First go at the {lname}.",
-  freshMany: "{count} lifts are new.",
-  reload: "{name} reloads at {weight}.",
-  reloadMany: "{count} lifts reload.",
-  down: "{name} drops to {weight}.",
-  downMany: "{count} lifts drop back.",
-} as const;
-
-const WORDS = ["No", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine", "Ten"];
-
 export type News = {
   up: { name: string; weight: string }[];
   fresh: { name: string; weight?: string }[];
   /** Same weight as last time, back two rungs to climb the top again. */
   reload: { name: string; weight: string }[];
   down: { name: string; weight: string }[];
-};
-
-export const newsLine = (news: News, seed: string): string | null => {
-  const kinds = (["up", "fresh", "reload", "down"] as const).filter((k) => news[k].length > 0);
-  if (kinds.length === 0) return null;
-  const say = (k: (typeof kinds)[number], voiced: boolean) => {
-    const items = news[k];
-    const key = (items.length === 1 ? k : `${k}Many`) as keyof typeof PLAIN;
-    const line = voiced ? pickLine(NEWS_LINES[key], `${seed}:${k}`) : PLAIN[key];
-    const one = items[0];
-    return line
-      .replace("{name}", one.name)
-      .replace("{lname}", inSentence(one.name))
-      .replace("{weight}", one.weight ?? "")
-      .replace("{count}", WORDS[items.length] ?? String(items.length));
-  };
-  return kinds.length === 1 ? say(kinds[0], true) : kinds.map((k) => say(k, false)).join(" ");
 };
 
 /** The finished screen: how the whole session went. */

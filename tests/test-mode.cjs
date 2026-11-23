@@ -134,17 +134,6 @@ test("a save with loops from before they were folded away keeps every workout", 
   assert.ok(now.removedWorkouts.some((r) => r.workout.id === "bw1"), "the away workout waits, paused");
 });
 
-test("dragging the active workouts reorders only them, and keeps what is next", () => {
-  let s = store.resetToDefault();
-  s = store.pauseWorkout(s, s.workouts[2].id);
-  const next = s.nextWorkout;
-  const [a, b] = s.workouts.map((w) => w.id);
-  const moved = store.moveActiveWorkout(s, 0, 1);
-  assert.equal(moved.workouts.map((w) => w.id).join(), [b, a].join());
-  assert.equal(moved.nextWorkout, next);
-  assert.equal(moved.removedWorkouts.length, 1);
-});
-
 test("saving the editor's draft keeps only what the editor changed", () => {
   const base = store.resetToDefault();
   const draft = store.renameWorkout(base, base.workouts[0].id, { name: "Chest" });

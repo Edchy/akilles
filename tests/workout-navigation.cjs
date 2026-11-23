@@ -51,6 +51,9 @@ function findAll(node, predicate) {
 }
 const label = (tree, text) => findAll(tree, (n) => n.props?.label === text)[0];
 
+/** A blank workout of your own, as the store once made one; for the setup below. */
+const addWorkout = (s, id, name) => ({ ...s, workouts: [...s.workouts, { id, name, subtitle: "", exercises: [], cardio: { open: null, close: null }, warmup: null, mobility: null }] });
+
 test("the stretch card: one card a move, thrown away to move on, and a tap sets it running", () => {
   slots = [];
   state = store.buildWorkout(store.setNextWorkout(store.resetToDefault(), "legs"));
@@ -85,7 +88,7 @@ test("the stretch card: one card a move, thrown away to move on, and a tap sets 
 
 test("twenty-card overview keeps every row scrollable and its current progress mark visible", () => {
   slots = [];
-  state = store.addWorkout(store.resetToDefault(), "long", "Long");
+  state = addWorkout(store.resetToDefault(), "long", "Long");
   for (const ex of store.everyExercise(state).filter((e) => !e.restricted).slice(0, 20)) state = store.addExerciseToWorkout(state, "long", ex.id);
   state = store.buildWorkout(store.setNextWorkout(state, "long"));
   for (const cursor of [0, 9, 19]) {
@@ -114,7 +117,7 @@ test("twenty-card overview keeps every row scrollable and its current progress m
 });
 
  test("an empty workout has no invalid progress track", () => {
-  state = store.addWorkout(store.resetToDefault(), "empty", "Empty");
+  state = addWorkout(store.resetToDefault(), "empty", "Empty");
   state = store.buildWorkout(store.setNextWorkout(state, "empty"));
   assert.equal(render(DeckTrack), null);
 });

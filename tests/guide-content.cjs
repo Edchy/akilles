@@ -27,6 +27,9 @@ const prog = load("@/lib/progression");
 const { weightLabel, warmupFor } = load("@/lib/warmup");
 const { totalLifted } = load("@/lib/insights");
 
+/** Bring a built-in back from the library; for the setup below. */
+const restoreExercise = (s, id) => ({ ...s, hidden: s.hidden.filter((h) => h !== id) });
+
 test("every default-plan option has dated technique and mistake references", () => {
   for (const workouts of Object.values(SHAPES)) for (const w of workouts) for (const slot of w.exercises) for (const id of slot.options) {
     const guide = guideFor(id);
@@ -97,6 +100,6 @@ test("version 19 saves keep their actual workouts, choices and history when the 
   assert.equal(restored.choices["push/Old fly"], "pec_deck");
   assert.equal(restored.history["bench/6-12"].weight, 40);
   assert.ok(restored.hidden.includes("suitcase_carry"));
-  const chosen = store.restoreExercise(restored, "suitcase_carry");
+  const chosen = restoreExercise(restored, "suitcase_carry");
   assert.ok(!storage.fromSaved(storage.toSaved(chosen)).hidden.includes("suitcase_carry"));
 });

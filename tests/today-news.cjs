@@ -64,24 +64,6 @@ test("cardio and the stretch carry no news", () => {
   }
 });
 
-test("one kind of news is voiced; several are said plainly; none says nothing", () => {
-  const empty = { up: [], fresh: [], reload: [], down: [] };
-  assert.equal(voice.newsLine(empty, "x"), null);
-
-  const up = voice.newsLine({ ...empty, up: [{ name: "Back squat", weight: "60 kg" }] }, "x");
-  assert.match(up, /Back squat/);
-  assert.match(up, /60 kg/);
-
-  const many = voice.newsLine({ ...empty, fresh: [{ name: "Dips" }, { name: "Cable crossover" }] }, "x");
-  assert.match(many, /^Two /);
-
-  const mixed = voice.newsLine(
-    { up: [{ name: "Back squat", weight: "60 kg" }], fresh: [{ name: "Dips" }], reload: [], down: [] },
-    "x",
-  );
-  assert.equal(mixed, "Back squat goes up to 60 kg. First go at the dips.");
-});
-
 test("Today explains actual heavier and lighter weights beside their exercises", () => {
   const rows = legs({
     "goblet_squat:6-10": done("goblet_squat", 20, 18),
@@ -174,7 +156,6 @@ test("Today renders per-exercise changes, includes them in accessibility labels,
     it.exerciseId === "goblet_squat" ? { ...it, logged: it.logged.map(() => 6) } : it,
   ) } };
   state = store.finishWorkout(state);
-  assert.equal(store.trainedToday(state), true);
   assert.equal(store.upNext(state).id, "push");
   nodes.length = 0;
   walk(module.exports.default());

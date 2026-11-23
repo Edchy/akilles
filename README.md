@@ -76,9 +76,8 @@ progression; bodyweight and timed movements get no ramp at all. **Skip** on a
 warm-up is refused once with a word from Klay; pressed again it skips the
 warm-up only and goes straight to that exercise's working sets.
 
-**Arms and abs close each session**; fold them into an earlier lift's rest
-period as a superset and the session doesn't get longer. They get no warm-up
-ramp — by then they are warm.
+**Arms and abs close each session.** They get no warm-up ramp — by then they
+are warm.
 
 **On a day that presses, the shoulder warm-up comes straight after the opening
 cardio**, before any goal or lift: a ball on the wall under the front of each
@@ -121,9 +120,8 @@ Exercises → Mobility: add stretches, take them out, hold and drag to reorder,
 tap one to change its time or hold it on each side. Stretches are added from a
 list of fourteen, each with a photo and a guide (`STRETCHES` in
 `src/data/conditioning.ts`); one you type in yourself has neither. A routine is
-shared by every workout that ends on it — the sheet says which — and **Make a
-copy just for …** gives one workout its own. An edited built-in can be put back
-as it was. A new routine starts as a copy of the everyday stretch.
+shared by every workout that ends on it — the sheet says which. An edited
+built-in can be put back as it was. A new routine starts as a copy of the everyday stretch.
 
 **How to do it** — the ⓘ beside any lift or machine, and on every mobility
 card, opens a sheet: the picture, three steps, and the one mistake to watch
@@ -216,19 +214,6 @@ can only be set within 10–14; the slot keeps its own range for anything
 swapped in. Saves from before this kept each such lift's weight and started
 its ladder again at 10.
 
-**Add superset** folds any lift from later in the workout into the current one,
-removing it from further down so it isn't done twice. What to pair is your
-call: every lift still ahead is offered, each with its ⓘ so you can check how
-it is done first, and the partner card keeps that ⓘ.
-
-A `×` on the partner card undoes the pairing: the exercise goes back to its own
-place in the workout's slot order, keeping any sets already logged against it.
-
-The partner gets **its own circles**, its own target, and its own weight
-record — a supersetted curl progresses on the same ladder it would have on its
-own. Both sets of circles must be filled before the exercise counts as done,
-and each progresses on its own reps.
-
 ## Screens
 
 Three tabs, plus the workout itself which takes over the screen.
@@ -242,7 +227,7 @@ it any time.
 
 | Tab | |
 |---|---|
-| **Today** | The next workout, large and nothing else. **Start**, or **Skip**: **Do this next time** trains the following workout now and returns to this one next session; **Skip this round** leaves it until the cycle repeats. Both offer Undo and record no training. With a workout in progress, **Continue** and **End** instead. |
+| **Today** | The next workout, large and nothing else. **Start**. With a workout in progress, **Continue** and **End** instead. |
 | **Progress** | This week's training days as seven circles, then your **goals** — each one's ladder with the day you owned every step, and the goals you have learned — then three views. **Results**: total weight lifted (put in proportion — "3.8 small cars"), sessions this month, weeks in a row, share of lifts on target, lifts that got stronger, standing records, cardio that got faster or further. **Sessions**: every finished workout, newest first, with each set coloured hit or short. **Lifts**: every exercise by muscle group at its current weight, tap for its past sessions; cardio bests too. Backup & restore sits in a sheet at the bottom, and under it **Test mode**. |
 | **Plan** | Three segments: **Workouts** (your sessions, their order, what fills each slot, and the cardio and mobility either side), **Exercises** (the catalogue of every movement) and **Goals** (what you are learning, step by step). |
 
@@ -328,27 +313,10 @@ only its buttons change. Mounting a second bar per screen was what made the
 Start button appear to slide as the tab bar faded out.
 
 The workout takes over the screen — the exercise name and the weight are the
-surface, not contents of a card. The superset panel sits directly below the
-circles.
+surface, not contents of a card.
 
 A segmented bar across the top shows one mark per exercise — acid for done,
 grey for the one you are on, dim for what is left — with the count beside it.
-
-**Supersetting never changes the total.** A paired screen holds two exercises,
-so its segment is twice as wide and the count stays put — `1/8` before and
-after. Finishing that screen advances the count by two, because two exercises
-were done.
-
-While a workout is running the bar carries its buttons instead of the tabs — same surface, height and weight as the tab
-bar on the other screens, so navigation looks the same everywhere:
-
-```
-     ⏮            ×            ⏭
-   Back        Leave        Skip
-```
-
-Back steps to the previous exercise with its circles still filled, so a
-mis-tap is fixable. Skip moves on (on a warm-up, see above).
 
 **Leave steps out without ending anything.** The session stays exactly where
 it is — circles, weights, the exercise you were on — while you change a
@@ -414,9 +382,6 @@ Everything about the program is edited in the app, under **Plan → Workouts**.
 - **Make a copy**, at the foot of a workout's own sheet, does the same from
   there: "Push 2" goes at the bottom with the same exercises, cardio, stretch
   and goals, and its sheet opens with the name selected, so typing renames it.
-- **Hold and drag** a workout to reorder the cycle. Dragging only changes the
-  order — whatever was next stays next, and the cycle carries on from wherever
-  it now sits.
 - **Do next** makes a workout the next one Start runs. It is the only way to
   change what is next, other than finishing a workout.
 - **Rename** edits its name and the line under it.
@@ -436,9 +401,7 @@ see what it can be swapped for; tap one and it's swapped. Under it, its
 **weight**, then **Sets & reps**: the set count and the rep range (bottom and
 top, 6–12 in steps of two). **Remove** takes it out of the workout.
 
-**+ Add exercise** adds a slot by movement type, filled with the first exercise
-of that type the workout is not already using. **Hold and drag** a slot to
-reorder it within the workout.
+**+ Add exercise** adds the exercise you pick to the bottom of the workout.
 
 Edits to a workout that is in progress take effect from its next run; the
 session you are in keeps the shape it started with. A weight is the exception:

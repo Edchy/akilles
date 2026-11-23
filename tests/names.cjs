@@ -21,9 +21,8 @@ function load(name) {
   return module.exports;
 }
 
-const { EXERCISES, byId, inSentence } = load("@/data/exercises");
+const { EXERCISES, byId } = load("@/data/exercises");
 const { searchExercises, hasName } = load("@/lib/find-exercise");
-const { newsLine } = load("@/data/voice");
 
 test("no catalogue name spells out the gear", () => {
   const long = EXERCISES.filter((e) => /dumbbell|barbell|kettlebell/i.test(e.name)).map((e) => e.name);
@@ -44,10 +43,3 @@ test("the full words still find them", () => {
   assert.ok(hasName(EXERCISES, "incline dumbbell curl"));
 });
 
-test("mid-sentence, the shorthand keeps its capitals", () => {
-  assert.equal(inSentence("DB bench press"), "DB bench press");
-  assert.equal(inSentence("Incline DB press"), "incline DB press");
-  assert.equal(inSentence("Seated cable row"), "seated cable row");
-  const news = { up: [], fresh: [{ name: "KB goblet squat", weight: "" }], reload: [], down: [] };
-  assert.match(newsLine(news, "seed"), /the KB goblet squat/);
-});

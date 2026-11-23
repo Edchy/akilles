@@ -67,6 +67,9 @@ const APPROVED = [
   "ab_wheel",
 ];
 
+/** Bring a built-in back from the library; for the setup below. */
+const restoreExercise = (s, id) => ({ ...s, hidden: s.hidden.filter((h) => h !== id) });
+
 test("every built-in has an id of its own", () => {
   assert.equal(new Set(ids).size, ids.length, "duplicate ids");
   for (const id of ids) {
@@ -181,7 +184,7 @@ test("the migration runs once: a lift brought in after updating stays in", () =>
   const old = { ...plain(fresh()), hidden: v10Hidden };
   let state = storage.fromSaved(JSON.stringify({ version: 10, state: old }));
   assert.ok(state.hidden.includes("sumo_deadlift"));
-  state = store.restoreExercise(state, "sumo_deadlift");
+  state = restoreExercise(state, "sumo_deadlift");
   const reloaded = storage.fromSaved(storage.toSaved(state));
   assert.ok(!reloaded.hidden.includes("sumo_deadlift"));
   assert.deepEqual(plain(reloaded.hidden), plain(state.hidden));

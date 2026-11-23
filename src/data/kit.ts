@@ -293,9 +293,6 @@ export const TWIN: Record<string, string> = {
   kb_suitcase_carry: "suitcase_carry",
 };
 
-/** Whether a built-in exercise has its needs listed. For the test. */
-export const isListed = (id: string): boolean => id in NEEDS;
-
 /** What an exercise needs. One of yours, unlisted, needs a gym. */
 export const needsOf = (ex: Pick<Exercise, "id"> & Partial<Pick<Exercise, "equipment" | "bodyweight">>): Gear[] => {
   const saved = byId(ex.id);

@@ -1,4 +1,4 @@
-import { CATEGORY_LABEL, categoriesOf, PATTERN_ORDER, type Exercise, type Category } from "@/data/exercises";
+import { CATEGORY_LABEL, categoriesOf, PATTERN_ORDER, type Exercise } from "@/data/exercises";
 import { MOVEMENT_LABEL, MUSCLE_LABEL, movementsOf, musclesOf } from "@/data/exercise-tags";
 
 import { needsOf, type Gear } from "@/data/kit";
@@ -16,11 +16,6 @@ export const exerciseTags = (exercise: Exercise): string[] => [
   ...(exercise.bodyweight ? ["Bodyweight"] : []),
   ...(needsOf(exercise).length ? needsOf(exercise).map((g) => GEAR_NAME[g]) : ["No equipment"]),
 ];
-export const matchesExerciseFilters = (exercise: Exercise, category: string, equipment: string) =>
-  (!category || categoriesOf(exercise).includes(category as Category)) &&
-  (!equipment || (equipment === "bodyweight" ? exercise.bodyweight === true
-    : equipment === "no_equipment" ? needsOf(exercise).length === 0
-    : needsOf(exercise).includes(equipment as Gear)));
 
 /**
  * Finding an exercise by what you would call it. Add exercise's search box,
